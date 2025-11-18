@@ -476,21 +476,28 @@ npm install
 npm run start:dev
 ```
 
-### Production with Docker
+### Management Scripts
+
+The project includes management scripts in the `scripts/` directory:
+
+- `scripts/start.sh` - Start the service with Docker Compose
+- `scripts/stop.sh` - Stop the service
+- `scripts/status.sh` - Check service status and health
+
+Usage:
 
 ```bash
-# Build and start service
-docker compose up -d
+# Start service
+./scripts/start.sh
 
-# View logs
-docker compose logs -f auth-service
+# Check status
+./scripts/status.sh
 
 # Stop service
-docker compose down
-
-# Restart service
-docker compose restart auth-service
+./scripts/stop.sh
 ```
+
+**Note**: These scripts are for local development. Production deployments use the blue/green deployment system via nginx-microservice.
 
 ## Integration Guide
 
@@ -596,6 +603,16 @@ async def validate_token(token: str):
 
 ## Database Schema
 
+### Database Setup
+
+The service requires a PostgreSQL database named `auth` on the shared database-server. The database is automatically created during initial deployment, or can be created manually:
+
+```bash
+docker exec db-server-postgres psql -U dbadmin -d postgres -c 'CREATE DATABASE auth;'
+```
+
+### Entity Schemas
+
 The service uses the following User entity:
 
 ```typescript
@@ -663,7 +680,57 @@ Logs are also written to local files as a fallback mechanism.
 
 ## Deployment
 
-### Production Server
+### Blue/Green Deployment
+
+The auth-microservice uses a zero-downtime blue/green deployment system managed by nginx-microservice. This allows for seamless deployments without service interruption.
+
+#### Deployment Files
+
+- `docker-compose.auth-microservice.blue.yml` - Blue environment configuration
+- `docker-compose.auth-microservice.green.yml` - Green environment configuration
+- Service registry: `nginx-microservice/service-registry/auth-microservice.json`
+
+#### Deployment Process
+
+The deployment is managed by nginx-microservice's blue/green deployment scripts:
+
+```bash
+# On production server
+ssh statex
+cd /home/statex/nginx-microservice
+./scripts/blue-green/deploy.sh auth-microservice
+```
+
+The deployment process includes:
+
+1. **Phase 0**: Ensure shared infrastructure (database-server) is running
+2. **Phase 1**: Build and start the new color (green/blue) deployment
+3. **Phase 2**: Switch traffic to the new deployment
+4. **Phase 3**: Monitor health for 5 minutes
+5. **Phase 4**: Cleanup old deployment
+
+#### Service Registry Configuration
+
+The service is registered in `nginx-microservice/service-registry/auth-microservice.json`:
+
+```json
+{
+  "service_name": "auth-microservice",
+  "domain": "auth.statex.cz",
+  "services": {
+    "backend": {
+      "container_name_base": "auth-microservice",
+      "port": 3370,
+      "health_endpoint": "/health",
+      "startup_time": 30
+    }
+  }
+}
+```
+
+### Production Server Setup
+
+#### Initial Setup
 
 1. Clone repository to production server:
 
@@ -674,27 +741,69 @@ git clone git@github.com:speakASAP/auth-microservice.git
 cd auth-microservice
 ```
 
-2. Create `.env` file with production values
+2. Create `.env` file with production values (see Environment Variables section)
 
-3. Build and start containers:
+3. Initialize database:
 
 ```bash
-docker compose up -d --build
+# Create auth database on shared database-server
+docker exec db-server-postgres psql -U dbadmin -d postgres -c 'CREATE DATABASE auth;'
 ```
 
-4. Register with nginx-microservice:
+4. Pull latest code and deploy:
 
 ```bash
-# Create nginx config
+# Pull latest code
+cd /home/statex/auth-microservice
+git pull
+
+# Pull nginx-microservice updates
 cd /home/statex/nginx-microservice
-# Add configuration for auth.statex.cz
-# Run SSL certificate generation
+git pull
+
+# Deploy using blue/green deployment
+./scripts/blue-green/deploy.sh auth-microservice
 ```
 
-5. Verify health endpoint:
+#### Updating Deployment
+
+For updates, pull the latest code and redeploy:
 
 ```bash
+ssh statex "cd /home/statex/auth-microservice && git pull && cd ../nginx-microservice && git pull && ./scripts/blue-green/deploy.sh auth-microservice"
+```
+
+#### Verification
+
+Verify the service is running:
+
+```bash
+# Check health endpoint
 curl https://auth.statex.cz/health
+
+# Check container status
+docker ps | grep auth-microservice
+
+# Check deployment state
+cat /home/statex/nginx-microservice/state/auth-microservice.json | jq .
+```
+
+### Local Development
+
+For local development, use the standard docker-compose.yml:
+
+```bash
+# Build and start service
+docker compose up -d --build
+
+# View logs
+docker compose logs -f auth-service
+
+# Stop service
+docker compose down
+
+# Restart service
+docker compose restart auth-service
 ```
 
 ## Related Services
@@ -715,5 +824,35 @@ All applications use the same centralized authentication service for consistent 
 
 ---
 
-**Last Updated**: 2025-11-16  
+## Blue/Green Deployment Architecture
+
+The service is deployed using a blue/green deployment strategy:
+
+- **Blue Environment**: Primary deployment (container: `auth-microservice-blue`)
+- **Green Environment**: Secondary deployment (container: `auth-microservice-green`)
+- **Traffic Routing**: Managed by nginx-microservice with upstream blocks
+- **Zero Downtime**: Traffic switches between blue and green seamlessly
+- **Automatic Rollback**: Failed deployments automatically rollback to previous color
+
+### Container Naming
+
+- Blue: `auth-microservice-blue` (port 3370)
+- Green: `auth-microservice-green` (port 3371, internal 3370)
+
+### Nginx Configuration
+
+The nginx configuration uses upstream blocks for load balancing:
+
+```nginx
+upstream auth-microservice {
+    server auth-microservice-blue:3370 backup max_fails=3 fail_timeout=30s;
+    server auth-microservice-green:3370 weight=100 max_fails=3 fail_timeout=30s;
+}
+```
+
+The active color has `weight=100`, while the inactive color is marked as `backup`.
+
+---
+
+**Last Updated**: 2025-11-18  
 **Maintained by**: Statex Development Team
