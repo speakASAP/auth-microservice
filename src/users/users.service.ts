@@ -18,6 +18,20 @@ export class UsersService {
     return this.userRepository.findOne({ where: { email } });
   }
 
+  async findByPhone(phone: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { phone } });
+  }
+
+  async findByContact(type: string, value: string): Promise<User | null> {
+    // Search in contactInfo JSONB field
+    return this.userRepository
+      .createQueryBuilder('user')
+      .where(`user.contactInfo @> :contact`, {
+        contact: JSON.stringify([{ type, value }]),
+      })
+      .getOne();
+  }
+
   async findById(id: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { id } });
   }
@@ -29,6 +43,11 @@ export class UsersService {
 
   async update(id: string, userData: Partial<User>): Promise<User> {
     await this.userRepository.update(id, userData);
+    return this.findById(id);
+  }
+
+  async updatePassword(id: string, hashedPassword: string): Promise<User> {
+    await this.userRepository.update(id, { password: hashedPassword });
     return this.findById(id);
   }
 }
