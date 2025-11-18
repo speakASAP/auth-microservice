@@ -2,8 +2,8 @@ node_modules
 dist
 logs
 .env
+.env.backup
 *.log
 .DS_Store
 coverage
 .nyc_output
-

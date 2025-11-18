@@ -5,12 +5,17 @@ Centralized authentication service for the Statex microservices ecosystem. Handl
 ## Features
 
 - ✅ **User Registration** - Create new user accounts with email and password
+- ✅ **Contact-Based Registration** - Register users with contact information (email/phone) without password
 - ✅ **User Login** - Authenticate users and generate JWT tokens
+- ✅ **Contact-Based Login** - Login for contact-based users (email/phone)
 - ✅ **Token Validation** - Validate JWT tokens and return user data
 - ✅ **Token Refresh** - Refresh expired access tokens using refresh tokens
 - ✅ **User Profile** - Get authenticated user profile
+- ✅ **Password Reset** - Request and confirm password reset with email notifications
+- ✅ **Password Change** - Change password for authenticated users
 - ✅ **Password Security** - bcrypt password hashing
 - ✅ **Database Integration** - PostgreSQL storage via shared database-server
+- ✅ **Email Notifications** - Password reset emails via notifications-microservice
 - ✅ **Comprehensive Logging** - Centralized logging via external logging microservice with local fallback
 
 ## Technology Stack
@@ -43,7 +48,7 @@ https://auth.statex.cz
 - For external/public access, use: `https://auth.statex.cz`
 - The external URL is managed by nginx-microservice with automatic SSL certificate management
 
-### API Endpoints
+### API Endpoints list
 
 #### 1. Register User
 
@@ -221,7 +226,7 @@ Get the authenticated user's profile (requires JWT token).
 
 **Headers**:
 
-```
+```text
 Authorization: Bearer jwt-access-token
 ```
 
@@ -252,7 +257,158 @@ Authorization: Bearer jwt-access-token
 }
 ```
 
-#### 6. Health Check
+#### 6. Password Reset Request
+
+Request a password reset link to be sent via email.
+
+**Endpoint**: `POST /auth/password-reset-request`
+
+**Request Body**:
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "message": "If the email exists, a password reset link has been sent."
+}
+```
+
+#### 7. Password Reset Confirm
+
+Confirm password reset using the token from the email.
+
+**Endpoint**: `POST /auth/password-reset-confirm`
+
+**Request Body**:
+
+```json
+{
+  "token": "reset-token-from-email",
+  "newPassword": "newsecurepassword123"
+}
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "message": "Password reset successfully"
+}
+```
+
+#### 8. Password Change
+
+Change password for authenticated users.
+
+**Endpoint**: `POST /auth/password-change`
+
+**Headers**:
+
+```text
+Authorization: Bearer jwt-access-token
+```
+
+**Request Body**:
+
+```json
+{
+  "currentPassword": "oldpassword123",
+  "newPassword": "newsecurepassword123"
+}
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "message": "Password changed successfully"
+}
+```
+
+#### 9. Contact-Based Registration
+
+Register a user with contact information (email/phone) without password.
+
+**Endpoint**: `POST /auth/register-contact`
+
+**Request Body**:
+
+```json
+{
+  "name": "John Doe",
+  "contactInfo": [
+    {
+      "type": "email",
+      "value": "user@example.com",
+      "isPrimary": true
+    },
+    {
+      "type": "phone",
+      "value": "+420123456789",
+      "isPrimary": false
+    }
+  ],
+  "source": "website",
+  "sessionId": "optional-session-id"
+}
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "success": true,
+  "userId": "uuid",
+  "sessionId": "session-token",
+  "message": "User registered successfully",
+  "isNewUser": true,
+  "user": {
+    "id": "uuid",
+    "name": "John Doe",
+    "email": "user@example.com",
+    "contactInfo": [...],
+    "isActive": true,
+    "isVerified": false
+  }
+}
+```
+
+#### 10. Contact-Based Login
+
+Login for contact-based users.
+
+**Endpoint**: `POST /auth/login-contact`
+
+**Request Body**:
+
+```json
+{
+  "type": "email",
+  "value": "user@example.com"
+}
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "name": "John Doe",
+    "email": "user@example.com",
+    "isActive": true
+  },
+  "sessionId": "session-token"
+}
+```
+
+#### 11. Health Check
 
 Check if the auth microservice is running and healthy.
 
@@ -295,6 +451,12 @@ JWT_REFRESH_EXPIRES_IN=30d
 
 # Logging (Shared)
 LOGGING_SERVICE_URL=https://logging.statex.cz
+
+# Notifications (Shared) - For password reset emails
+NOTIFICATIONS_SERVICE_URL=https://notifications.statex.cz
+
+# Frontend URL - For password reset links
+FRONTEND_URL=https://statex.cz
 
 # Service Configuration
 PORT=3370
@@ -439,11 +601,16 @@ The service uses the following User entity:
 ```typescript
 {
   id: string (UUID, primary key)
-  email: string (unique)
-  password: string (bcrypt hashed)
+  email: string (unique, nullable for contact-based users)
+  password: string (bcrypt hashed, nullable for contact-based users)
   firstName: string (optional)
   lastName: string (optional)
   phone: string (optional)
+  name: string (optional, for contact-based users)
+  contactInfo: Array<{type: string, value: string, isPrimary?: boolean}> (JSONB, for contact-based users)
+  source: string (optional, registration source)
+  sessionId: string (optional, session identifier)
+  lastActivity: Date (optional)
   isActive: boolean (default: true)
   isVerified: boolean (default: false)
   createdAt: Date
@@ -451,15 +618,36 @@ The service uses the following User entity:
 }
 ```
 
+The service also uses the following PasswordResetToken entity:
+
+```typescript
+{
+  id: string (UUID, primary key)
+  userId: string (foreign key to User)
+  token: string (unique, reset token)
+  expiresAt: Date (token expiration)
+  used: boolean (default: false)
+  createdAt: Date
+}
+```
+
 ## Security Features
 
 - **Password Hashing**: All passwords are hashed using bcrypt with salt rounds of 10
-- **JWT Tokens**: 
-  - Access tokens (default: 7 days)
-  - Refresh tokens (default: 30 days)
+- **JWT Tokens**:
+  - Access tokens (default: 7 days, configurable via `JWT_EXPIRES_IN`)
+  - Refresh tokens (default: 30 days, configurable via `JWT_REFRESH_EXPIRES_IN`)
 - **Token Validation**: All tokens are validated before use
 - **User Status Check**: Inactive users cannot login or use tokens
 - **Input Validation**: All inputs are validated using class-validator
+- **Password Reset Security**:
+  - Reset tokens expire after 1 hour
+  - Tokens are single-use (marked as used after password reset)
+  - Email notifications sent via notifications-microservice
+- **Contact-Based Security**:
+  - Contact-based users don't require passwords
+  - Session tokens for contact-based authentication
+  - Support for multiple contact methods (email, phone)
 
 ## Logging
 
@@ -509,18 +697,23 @@ cd /home/statex/nginx-microservice
 curl https://auth.statex.cz/health
 ```
 
-## Status
-
-✅ **Complete** - All features implemented and ready for production deployment.
-
 ## Related Services
 
 - **database-server**: Shared PostgreSQL database
 - **logging-microservice**: Centralized logging service
 - **notifications-microservice**: Notification service (for password reset emails, etc.)
 
+## Integration with Applications
+
+The auth-microservice is used by the following applications:
+
+1. **Crypto-AI-Agent**: Email/password authentication, password reset/change
+2. **E-Commerce**: Email/password authentication (via shared `AuthService`)
+3. **Statex**: Contact-based registration and email/password authentication
+
+All applications use the same centralized authentication service for consistent security and user management.
+
 ---
 
 **Last Updated**: 2025-11-16  
 **Maintained by**: Statex Development Team
-
