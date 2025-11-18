@@ -1,0 +1,43 @@
+services:
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth-microservice-green
+    ports:
+      - "3371:3370"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3370
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - DB_HOST=${DB_HOST:-db-server-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-dbadmin}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-auth}
+      - DB_SYNC=${DB_SYNC:-false}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-30d}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOGGING_SERVICE_URL=${LOGGING_SERVICE_URL:-http://logging-microservice:3268}
+      - NOTIFICATIONS_SERVICE_URL=${NOTIFICATIONS_SERVICE_URL:-https://notifications.statex.cz}
+      - FRONTEND_URL=${FRONTEND_URL:-https://statex.cz}
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - nginx-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3370/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  nginx-network:
+    external: true
+    name: nginx-network
+
