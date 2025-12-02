@@ -1,8 +1,8 @@
 node_modules
 dist
 logs
-.env
-.env.backup
+.env*
+!.env.example
 *.log
 .DS_Store
 coverage
