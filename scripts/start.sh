@@ -38,10 +38,16 @@ sleep 2
 
 # Check service status
 if docker compose ps | grep -q "auth-microservice.*Up"; then
+    # Load PORT from .env if available
+    if [ -f .env ]; then
+      source .env
+    fi
+    PORT=${PORT:-3370}
+    
     echo "✓ Auth microservice started successfully"
     echo ""
     echo "Service is running on:"
-    echo "  - Internal: http://auth-microservice:3370"
+    echo "  - Internal: http://auth-microservice:${PORT} (port configured in auth-microservice/.env)"
     echo "  - External: https://auth.statex.cz"
     echo ""
     echo "View logs with: ./scripts/status.sh"

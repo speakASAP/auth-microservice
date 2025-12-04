@@ -32,13 +32,14 @@ Centralized authentication service for the Statex microservices ecosystem. Handl
 
 **Port Range**: 33xx (shared microservices)
 
-| Service | Host Port (Blue) | Host Port (Green) | Container Port | Description |
-|---------|------------------|-------------------|----------------|-------------|
-| **Auth Service** | 3370 | 3371 | 3370 | Authentication service |
+| Service | Host Port (Blue) | Host Port (Green) | Container Port | .env Variable | Description |
+|---------|------------------|-------------------|----------------|---------------|-------------|
+| **Auth Service** | `${PORT:-3370}` | `3371` | `${PORT:-3370}` | `PORT` (auth-microservice/.env) | Authentication service |
 
 **Note**:
 
-- Blue and green deployments use different host ports (3370/3371) but same container port (3370)
+- All ports are configured in `auth-microservice/.env`. The values shown are defaults.
+- Blue and green deployments use different host ports (${PORT:-3370}/3371) but same container port (${PORT:-3370})
 - All ports are exposed on `127.0.0.1` only (localhost) for security
 - External access is provided via nginx-microservice reverse proxy at `https://auth.statex.cz`
 
@@ -47,7 +48,7 @@ Centralized authentication service for the Statex microservices ecosystem. Handl
 **Internal Access** (Docker network):
 
 ```text
-http://auth-microservice:3370
+http://auth-microservice:${PORT:-3370}
 ```
 
 **External Access** (via HTTPS):
@@ -58,7 +59,7 @@ https://auth.statex.cz
 
 **Note**:
 
-- For services on the same Docker network (`nginx-network`), use the internal URL: `http://auth-microservice:3370`
+- For services on the same Docker network (`nginx-network`), use the internal URL: `http://auth-microservice:${PORT:-3370}` (port configured in `auth-microservice/.env`)
 - For external/public access, use: `https://auth.statex.cz`
 - The external URL is managed by nginx-microservice with automatic SSL certificate management
 
@@ -431,7 +432,8 @@ Check if the auth microservice is running and healthy.
 **Example Request**:
 
 ```bash
-curl http://auth-microservice:3370/health
+# Port configured in auth-microservice/.env: PORT (default: 3370)
+curl http://auth-microservice:${PORT:-3370}/health
 ```
 
 **Success Response** (200 OK):
@@ -473,7 +475,7 @@ NOTIFICATIONS_SERVICE_URL=https://notifications.statex.cz
 FRONTEND_URL=https://statex.cz
 
 # Service Configuration
-PORT=3370
+PORT=3370  # Configured in auth-microservice/.env (default: 3370)
 NODE_ENV=production
 CORS_ORIGIN=*
 ```
@@ -539,7 +541,7 @@ networks:
 Set the auth service URL in your service's environment variables:
 
 ```env
-AUTH_SERVICE_URL=http://auth-microservice:3370
+AUTH_SERVICE_URL=http://auth-microservice:${PORT:-3370}  # PORT configured in auth-microservice/.env
 # or for external access:
 AUTH_SERVICE_URL=https://auth.statex.cz
 ```
@@ -551,7 +553,8 @@ AUTH_SERVICE_URL=https://auth.statex.cz
 ```typescript
 import axios from 'axios';
 
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-microservice:3370';
+// Port configured in auth-microservice/.env: PORT (default: 3370)
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-microservice:${PORT:-3370}';
 
 // Register user
 async function register(email: string, password: string) {
@@ -585,7 +588,8 @@ async function validateToken(token: string) {
 ```python
 import httpx
 
-AUTH_SERVICE_URL = os.getenv('AUTH_SERVICE_URL', 'http://auth-microservice:3370')
+# Port configured in auth-microservice/.env: PORT (default: 3370)
+AUTH_SERVICE_URL = os.getenv('AUTH_SERVICE_URL', 'http://auth-microservice:${PORT:-3370}')
 
 # Register user
 async def register(email: str, password: str):
@@ -734,7 +738,7 @@ The service is registered in `nginx-microservice/service-registry/auth-microserv
   "services": {
     "backend": {
       "container_name_base": "auth-microservice",
-      "port": 3370,
+      "port": "${PORT:-3370}",  # Port configured in auth-microservice/.env
       "health_endpoint": "/health",
       "startup_time": 30
     }
@@ -850,17 +854,18 @@ The service is deployed using a blue/green deployment strategy:
 
 ### Container Naming
 
-- Blue: `auth-microservice-blue` (port 3370)
-- Green: `auth-microservice-green` (port 3371, internal 3370)
+- Blue: `auth-microservice-blue` (port ${PORT:-3370}, configured in `auth-microservice/.env`)
+- Green: `auth-microservice-green` (port 3371 host, ${PORT:-3370} container, port configured in `auth-microservice/.env`)
 
 ### Nginx Configuration
 
 The nginx configuration uses upstream blocks for load balancing:
 
 ```nginx
+# Port configured in auth-microservice/.env: PORT (default: 3370)
 upstream auth-microservice {
-    server auth-microservice-blue:3370 backup max_fails=3 fail_timeout=30s;
-    server auth-microservice-green:3370 weight=100 max_fails=3 fail_timeout=30s;
+    server auth-microservice-blue:${PORT:-3370} backup max_fails=3 fail_timeout=30s;
+    server auth-microservice-green:${PORT:-3370} weight=100 max_fails=3 fail_timeout=30s;
 }
 ```
 

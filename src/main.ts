@@ -24,7 +24,7 @@ async function bootstrap() {
     }),
   );
 
-  const port = process.env.PORT || 3370;
+  const port = parseInt(process.env.PORT || '3370', 10);
   const nodeEnv = process.env.NODE_ENV || 'development';
   await app.listen(port);
 

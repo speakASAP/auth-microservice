@@ -29,11 +29,17 @@ if docker compose ps | grep -q "auth-microservice"; then
         echo "✓ Service is running"
         echo ""
         
+        # Load PORT from .env if available
+        if [ -f .env ]; then
+          source .env
+        fi
+        PORT=${PORT:-3370}
+        
         # Try to check health endpoint
         echo "Health Check:"
-        if curl -s -f http://localhost:3370/health > /dev/null 2>&1; then
+        if curl -s -f "http://localhost:${PORT}/health" > /dev/null 2>&1; then
             echo "✓ Health endpoint is responding"
-            curl -s http://localhost:3370/health | jq . 2>/dev/null || curl -s http://localhost:3370/health
+            curl -s "http://localhost:${PORT}/health" | jq . 2>/dev/null || curl -s "http://localhost:${PORT}/health"
         else
             echo "⚠ Health endpoint is not responding (service may still be starting)"
         fi
