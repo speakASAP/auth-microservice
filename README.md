@@ -28,6 +28,20 @@ Centralized authentication service for the Statex microservices ecosystem. Handl
 
 ## API Endpoints
 
+## 🔌 Port Configuration
+
+**Port Range**: 33xx (shared microservices)
+
+| Service | Host Port (Blue) | Host Port (Green) | Container Port | Description |
+|---------|------------------|-------------------|----------------|-------------|
+| **Auth Service** | 3370 | 3371 | 3370 | Authentication service |
+
+**Note**:
+
+- Blue and green deployments use different host ports (3370/3371) but same container port (3370)
+- All ports are exposed on `127.0.0.1` only (localhost) for security
+- External access is provided via nginx-microservice reverse proxy at `https://auth.statex.cz`
+
 ### Base URLs
 
 **Internal Access** (Docker network):
