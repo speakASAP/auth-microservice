@@ -26,11 +26,9 @@ services:
       - NOTIFICATIONS_SERVICE_URL=${NOTIFICATIONS_SERVICE_URL:-https://notifications.statex.cz}
       - FRONTEND_URL=${FRONTEND_URL:-https://statex.cz}
     volumes:
-      - ./logs:/app/logs
+      - /srv/storagebox/statex/docker-volumes/auth-microservice/logs:/app/logs
     networks:
-      nginx-network:
-        aliases:
-          - auth-microservice
+      - nginx-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:${PORT:-3370}/health"]
@@ -41,5 +39,4 @@ services:
 networks:
   nginx-network:
     external: true
-    name: nginx-network
 
