@@ -48,13 +48,13 @@ if docker compose ps | grep -q "auth-microservice"; then
         # Show recent logs
         echo "Recent Logs (last 20 lines):"
         echo "---"
-        docker compose logs --tail=20 auth-service
+        docker compose logs --tail=20 auth-microservice
     else
         echo "❌ Service container exists but is not running"
         echo ""
         echo "Recent logs:"
         echo "---"
-        docker compose logs --tail=20 auth-service
+        docker compose logs --tail=20 auth-microservice
     fi
 else
     echo "❌ Service is not running"

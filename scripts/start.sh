@@ -53,7 +53,7 @@ if docker compose ps | grep -q "auth-microservice.*Up"; then
     echo "View logs with: ./scripts/status.sh"
     echo "Stop service with: ./scripts/stop.sh"
 else
-    echo "Error: Service failed to start. Check logs with: docker compose logs auth-service"
+    echo "Error: Service failed to start. Check logs with: docker compose logs auth-microservice"
     exit 1
 fi
 

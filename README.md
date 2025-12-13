@@ -815,13 +815,13 @@ For local development, use the standard docker-compose.yml:
 docker compose up -d --build
 
 # View logs
-docker compose logs -f auth-service
+docker compose logs -f auth-microservice
 
 # Stop service
 docker compose down
 
 # Restart service
-docker compose restart auth-service
+docker compose restart auth-microservice
 ```
 
 ## Related Services
