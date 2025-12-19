@@ -471,6 +471,9 @@ LOGGING_SERVICE_URL=https://logging.statex.cz
 # Notifications (Shared) - For password reset emails
 NOTIFICATIONS_SERVICE_URL=https://notifications.statex.cz
 
+# Service Domain - Used by nginx-microservice for auto-registry (required for correct domain detection)
+DOMAIN=auth.statex.cz
+
 # Frontend URL - For password reset links
 FRONTEND_URL=https://statex.cz
 
@@ -835,7 +838,7 @@ docker compose restart auth-microservice
 The auth-microservice is used by the following applications:
 
 1. **Crypto-AI-Agent**: Email/password authentication, password reset/change
-2. **E-Commerce**: Email/password authentication (via shared `AuthService`)
+2. **flipflop**: Email/password authentication (via shared `AuthService`)
 3. **Statex**: Contact-based registration and email/password authentication
 
 All applications use the same centralized authentication service for consistent security and user management.

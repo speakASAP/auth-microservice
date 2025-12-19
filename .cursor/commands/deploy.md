@@ -4,7 +4,7 @@
 
 ## Details needed
 
-Our application flipflop.statex.cz consists of several microservices in /home/statex/ (logging, nginx, database, notifications, e-commerce). Access via ssh statex.
+Our application flipflop.statex.cz consists of several microservices in /home/statex/ (logging, nginx, database, notifications, flipflop). Access via ssh statex.
 
 ssh statex "cd auth-microservice && git pull"
 
