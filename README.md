@@ -531,18 +531,47 @@ Usage:
 
 ## Integration Guide
 
-### For Services Using the Auth Microservice
+This guide provides comprehensive instructions for integrating the auth-microservice into other services and applications.
 
-To integrate your service with the auth microservice, you need to:
+### Overview
 
-#### 1. Network Configuration
+The auth-microservice provides centralized authentication for your microservices ecosystem. It supports:
 
-Ensure your service is on the same Docker network (`nginx-network`):
+- **Email/Password Authentication**: Traditional login with email and password
+- **Contact-Based Authentication**: Registration and login without passwords (email/phone)
+- **JWT Token Management**: Access and refresh token generation, validation, and refresh
+- **Password Management**: Password reset, change, and secure storage
+- **User Profile Management**: User data retrieval and management
+
+### Integration Approaches
+
+There are two main approaches to integrate with the auth-microservice:
+
+1. **HTTP Client Integration**: Make HTTP requests directly to auth endpoints
+2. **JWT Validation Middleware**: Validate JWT tokens in your application middleware/guards
+
+### Prerequisites
+
+Before integrating, ensure:
+
+- Your service/application can make HTTP requests (internal Docker network or external HTTPS)
+- You have access to the `nginx-network` Docker network (for internal services)
+- You understand JWT token structure and handling
+- You have appropriate error handling in place
+
+---
+
+### Step 1: Network Configuration
+
+For services running in Docker containers, ensure your service is on the same Docker network (`nginx-network`):
 
 ```yaml
 # In your service's docker-compose.yml
-networks:
-  - nginx-network
+services:
+  your-service:
+    # ... other configuration
+    networks:
+      - nginx-network
 
 networks:
   nginx-network:
@@ -550,88 +579,1043 @@ networks:
     name: nginx-network
 ```
 
-#### 2. Service Configuration
+**Note**: For applications running outside Docker or in different environments, use the external HTTPS URL instead.
 
-Set the auth service URL in your service's environment variables:
+---
+
+### Step 2: Environment Variables Configuration
+
+Add the following environment variables to your service/application:
 
 ```env
-AUTH_SERVICE_URL=http://auth-microservice:${PORT:-3370}  # PORT configured in auth-microservice/.env
-# or for external access:
-AUTH_SERVICE_URL=https://${DOMAIN}  # DOMAIN configured in auth-microservice/.env
+# Auth Service URL
+# For internal Docker network access:
+AUTH_SERVICE_URL=http://auth-microservice:3370
+# For external HTTPS access:
+AUTH_SERVICE_URL=https://auth.statex.cz
+
+# JWT Configuration (if validating tokens locally)
+# IMPORTANT: Must match the JWT_SECRET in auth-microservice/.env
+JWT_SECRET=your-shared-jwt-secret-key
+JWT_EXPIRES_IN=7d
+JWT_REFRESH_EXPIRES_IN=30d
 ```
 
-#### 3. Use Auth Service via HTTP
+**Security Note**: The `JWT_SECRET` must be the same across all services that validate tokens. Store it securely and never commit it to version control.
 
-**TypeScript/JavaScript (Node.js)**:
+---
+
+### Step 3: HTTP Client Integration
+
+#### TypeScript/JavaScript (Node.js/NestJS)
+
+**Basic HTTP Client Setup**:
 
 ```typescript
-import axios from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 
-// Port configured in auth-microservice/.env: PORT (default: 3370)
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-microservice:${PORT:-3370}';
+class AuthServiceClient {
+  private client: AxiosInstance;
+  private baseUrl: string;
+
+  constructor() {
+    this.baseUrl = process.env.AUTH_SERVICE_URL || 'http://auth-microservice:3370';
+    this.client = axios.create({
+      baseURL: this.baseUrl,
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  }
+
+  /**
+   * Register a new user
+   */
+  async register(data: {
+    email: string;
+    password: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+  }) {
+    try {
+      const response = await this.client.post('/auth/register', data);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw this.handleError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Login user and get JWT tokens
+   */
+  async login(email: string, password: string) {
+    try {
+      const response = await this.client.post('/auth/login', { email, password });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw this.handleError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Validate JWT token
+   */
+  async validateToken(token: string) {
+    try {
+      const response = await this.client.post('/auth/validate', { token });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw this.handleError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Refresh access token using refresh token
+   */
+  async refreshToken(refreshToken: string) {
+    try {
+      const response = await this.client.post('/auth/refresh', { refreshToken });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw this.handleError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get user profile (requires JWT token in Authorization header)
+   */
+  async getProfile(accessToken: string) {
+    try {
+      const response = await this.client.get('/auth/profile', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw this.handleError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Request password reset
+   */
+  async requestPasswordReset(email: string) {
+    try {
+      const response = await this.client.post('/auth/password-reset-request', { email });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw this.handleError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Confirm password reset
+   */
+  async confirmPasswordReset(token: string, newPassword: string) {
+    try {
+      const response = await this.client.post('/auth/password-reset-confirm', {
+        token,
+        newPassword,
+      });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw this.handleError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Change password (requires JWT token)
+   */
+  async changePassword(accessToken: string, currentPassword: string, newPassword: string) {
+    try {
+      const response = await this.client.post(
+        '/auth/password-change',
+        { currentPassword, newPassword },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw this.handleError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Register contact-based user (no password)
+   */
+  async registerContact(data: {
+    name: string;
+    contactInfo: Array<{ type: 'email' | 'phone'; value: string; isPrimary?: boolean }>;
+    source?: string;
+    sessionId?: string;
+  }) {
+    try {
+      const response = await this.client.post('/auth/register-contact', data);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw this.handleError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Login contact-based user
+   */
+  async loginContact(type: 'email' | 'phone', value: string) {
+    try {
+      const response = await this.client.post('/auth/login-contact', { type, value });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw this.handleError(error);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Error handler
+   */
+  private handleError(error: AxiosError) {
+    if (error.response) {
+      // Server responded with error status
+      const status = error.response.status;
+      const message = (error.response.data as any)?.message || error.message;
+      return new Error(`Auth Service Error (${status}): ${message}`);
+    } else if (error.request) {
+      // Request made but no response
+      return new Error('Auth Service is unreachable. Please check network connection.');
+    } else {
+      // Error in request setup
+      return new Error(`Request Error: ${error.message}`);
+    }
+  }
+}
+
+// Export singleton instance
+export const authServiceClient = new AuthServiceClient();
+```
+
+**Usage Example**:
+
+```typescript
+import { authServiceClient } from './auth-service-client';
 
 // Register user
-async function register(email: string, password: string) {
-  const response = await axios.post(`${AUTH_SERVICE_URL}/auth/register`, {
-    email,
-    password,
+try {
+  const result = await authServiceClient.register({
+    email: 'user@example.com',
+    password: 'securepassword123',
+    firstName: 'John',
+    lastName: 'Doe',
   });
-  return response.data;
+  console.log('User registered:', result.user);
+  console.log('Access Token:', result.accessToken);
+  console.log('Refresh Token:', result.refreshToken);
+} catch (error) {
+  console.error('Registration failed:', error.message);
 }
 
 // Login
-async function login(email: string, password: string) {
-  const response = await axios.post(`${AUTH_SERVICE_URL}/auth/login`, {
-    email,
-    password,
-  });
-  return response.data;
+try {
+  const result = await authServiceClient.login('user@example.com', 'securepassword123');
+  // Store tokens securely (e.g., in HTTP-only cookies, secure storage)
+  localStorage.setItem('accessToken', result.accessToken);
+  localStorage.setItem('refreshToken', result.refreshToken);
+} catch (error) {
+  console.error('Login failed:', error.message);
 }
 
 // Validate token
-async function validateToken(token: string) {
-  const response = await axios.post(`${AUTH_SERVICE_URL}/auth/validate`, {
-    token,
-  });
-  return response.data;
+try {
+  const token = localStorage.getItem('accessToken');
+  const validation = await authServiceClient.validateToken(token);
+  console.log('Token is valid. User:', validation.user);
+} catch (error) {
+  console.error('Token validation failed:', error.message);
 }
 ```
 
-**Python**:
+#### Python (FastAPI/Django/Flask)
+
+**Basic HTTP Client Setup**:
 
 ```python
+import os
 import httpx
+from typing import Optional, Dict, Any, List
+from datetime import datetime
 
-# Port configured in auth-microservice/.env: PORT (default: 3370)
-AUTH_SERVICE_URL = os.getenv('AUTH_SERVICE_URL', 'http://auth-microservice:${PORT:-3370}')
+class AuthServiceClient:
+    def __init__(self):
+        self.base_url = os.getenv('AUTH_SERVICE_URL', 'http://auth-microservice:3370')
+        self.timeout = 10.0
+
+    def _make_request(
+        self,
+        method: str,
+        endpoint: str,
+        data: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None
+    ) -> Dict[str, Any]:
+        """Make HTTP request to auth service"""
+        url = f"{self.base_url}{endpoint}"
+        request_headers = {'Content-Type': 'application/json'}
+        if headers:
+            request_headers.update(headers)
+
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.request(method, url, json=data, headers=request_headers)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as e:
+            error_msg = e.response.json().get('message', str(e)) if e.response.text else str(e)
+            raise Exception(f"Auth Service Error ({e.response.status_code}): {error_msg}")
+        except httpx.RequestError as e:
+            raise Exception(f"Auth Service is unreachable: {str(e)}")
+
+    def register(
+        self,
+        email: str,
+        password: str,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+        phone: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Register a new user"""
+        data = {
+            'email': email,
+            'password': password,
+            'firstName': first_name,
+            'lastName': last_name,
+            'phone': phone
+        }
+        return self._make_request('POST', '/auth/register', data)
+
+    def login(self, email: str, password: str) -> Dict[str, Any]:
+        """Login user and get JWT tokens"""
+        data = {'email': email, 'password': password}
+        return self._make_request('POST', '/auth/login', data)
+
+    def validate_token(self, token: str) -> Dict[str, Any]:
+        """Validate JWT token"""
+        data = {'token': token}
+        return self._make_request('POST', '/auth/validate', data)
+
+    def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
+        """Refresh access token using refresh token"""
+        data = {'refreshToken': refresh_token}
+        return self._make_request('POST', '/auth/refresh', data)
+
+    def get_profile(self, access_token: str) -> Dict[str, Any]:
+        """Get user profile (requires JWT token)"""
+        headers = {'Authorization': f'Bearer {access_token}'}
+        return self._make_request('GET', '/auth/profile', headers=headers)
+
+    def request_password_reset(self, email: str) -> Dict[str, Any]:
+        """Request password reset"""
+        data = {'email': email}
+        return self._make_request('POST', '/auth/password-reset-request', data)
+
+    def confirm_password_reset(self, token: str, new_password: str) -> Dict[str, Any]:
+        """Confirm password reset"""
+        data = {'token': token, 'newPassword': new_password}
+        return self._make_request('POST', '/auth/password-reset-confirm', data)
+
+    def change_password(
+        self,
+        access_token: str,
+        current_password: str,
+        new_password: str
+    ) -> Dict[str, Any]:
+        """Change password (requires JWT token)"""
+        data = {'currentPassword': current_password, 'newPassword': new_password}
+        headers = {'Authorization': f'Bearer {access_token}'}
+        return self._make_request('POST', '/auth/password-change', data, headers)
+
+    def register_contact(
+        self,
+        name: str,
+        contact_info: List[Dict[str, Any]],
+        source: Optional[str] = None,
+        session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Register contact-based user (no password)"""
+        data = {
+            'name': name,
+            'contactInfo': contact_info,
+            'source': source,
+            'sessionId': session_id
+        }
+        return self._make_request('POST', '/auth/register-contact', data)
+
+    def login_contact(self, contact_type: str, value: str) -> Dict[str, Any]:
+        """Login contact-based user"""
+        data = {'type': contact_type, 'value': value}
+        return self._make_request('POST', '/auth/login-contact', data)
+
+# Export singleton instance
+auth_service_client = AuthServiceClient()
+```
+
+**Usage Example**:
+
+```python
+from auth_service_client import auth_service_client
 
 # Register user
-async def register(email: str, password: str):
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{AUTH_SERVICE_URL}/auth/register",
-            json={"email": email, "password": password}
-        )
-        return response.json()
+try:
+    result = auth_service_client.register(
+        email='user@example.com',
+        password='securepassword123',
+        first_name='John',
+        last_name='Doe'
+    )
+    print(f"User registered: {result['user']}")
+    print(f"Access Token: {result['accessToken']}")
+except Exception as e:
+    print(f"Registration failed: {e}")
 
 # Login
-async def login(email: str, password: str):
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{AUTH_SERVICE_URL}/auth/login",
-            json={"email": email, "password": password}
-        )
-        return response.json()
-
-# Validate token
-async def validate_token(token: str):
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{AUTH_SERVICE_URL}/auth/validate",
-            json={"token": token}
-        )
-        return response.json()
+try:
+    result = auth_service_client.login('user@example.com', 'securepassword123')
+    # Store tokens securely
+    access_token = result['accessToken']
+    refresh_token = result['refreshToken']
+except Exception as e:
+    print(f"Login failed: {e}")
 ```
+
+#### Go
+
+**Basic HTTP Client Setup**:
+
+```go
+package auth
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "io"
+    "net/http"
+    "os"
+    "time"
+)
+
+type AuthServiceClient struct {
+    baseURL string
+    client  *http.Client
+}
+
+type RegisterRequest struct {
+    Email     string `json:"email"`
+    Password  string `json:"password"`
+    FirstName string `json:"firstName,omitempty"`
+    LastName  string `json:"lastName,omitempty"`
+    Phone     string `json:"phone,omitempty"`
+}
+
+type LoginRequest struct {
+    Email    string `json:"email"`
+    Password string `json:"password"`
+}
+
+type ValidateTokenRequest struct {
+    Token string `json:"token"`
+}
+
+type AuthResponse struct {
+    User         User   `json:"user"`
+    AccessToken  string `json:"accessToken"`
+    RefreshToken string `json:"refreshToken"`
+}
+
+type User struct {
+    ID        string `json:"id"`
+    Email     string `json:"email"`
+    FirstName string `json:"firstName,omitempty"`
+    LastName  string `json:"lastName,omitempty"`
+    IsActive  bool   `json:"isActive"`
+    IsVerified bool  `json:"isVerified"`
+}
+
+func NewAuthServiceClient() *AuthServiceClient {
+    baseURL := os.Getenv("AUTH_SERVICE_URL")
+    if baseURL == "" {
+        baseURL = "http://auth-microservice:3370"
+    }
+
+    return &AuthServiceClient{
+        baseURL: baseURL,
+        client: &http.Client{
+            Timeout: 10 * time.Second,
+        },
+    }
+}
+
+func (c *AuthServiceClient) Register(req RegisterRequest) (*AuthResponse, error) {
+    return c.makeRequest("POST", "/auth/register", req)
+}
+
+func (c *AuthServiceClient) Login(email, password string) (*AuthResponse, error) {
+    req := LoginRequest{Email: email, Password: password}
+    return c.makeRequest("POST", "/auth/login", req)
+}
+
+func (c *AuthServiceClient) ValidateToken(token string) (*User, error) {
+    req := ValidateTokenRequest{Token: token}
+    var response struct {
+        Valid bool `json:"valid"`
+        User  User `json:"user"`
+    }
+    
+    err := c.makeRequestWithResponse("POST", "/auth/validate", req, &response)
+    if err != nil {
+        return nil, err
+    }
+    
+    if !response.Valid {
+        return nil, fmt.Errorf("invalid token")
+    }
+    
+    return &response.User, nil
+}
+
+func (c *AuthServiceClient) makeRequest(method, endpoint string, body interface{}) (*AuthResponse, error) {
+    var response AuthResponse
+    err := c.makeRequestWithResponse(method, endpoint, body, &response)
+    if err != nil {
+        return nil, err
+    }
+    return &response, nil
+}
+
+func (c *AuthServiceClient) makeRequestWithResponse(method, endpoint string, body interface{}, response interface{}) error {
+    url := c.baseURL + endpoint
+    
+    var reqBody io.Reader
+    if body != nil {
+        jsonData, err := json.Marshal(body)
+        if err != nil {
+            return fmt.Errorf("failed to marshal request: %w", err)
+        }
+        reqBody = bytes.NewBuffer(jsonData)
+    }
+    
+    req, err := http.NewRequest(method, url, reqBody)
+    if err != nil {
+        return fmt.Errorf("failed to create request: %w", err)
+    }
+    
+    req.Header.Set("Content-Type", "application/json")
+    
+    resp, err := c.client.Do(req)
+    if err != nil {
+        return fmt.Errorf("request failed: %w", err)
+    }
+    defer resp.Body.Close()
+    
+    if resp.StatusCode >= 400 {
+        bodyBytes, _ := io.ReadAll(resp.Body)
+        return fmt.Errorf("auth service error (%d): %s", resp.StatusCode, string(bodyBytes))
+    }
+    
+    if err := json.NewDecoder(resp.Body).Decode(response); err != nil {
+        return fmt.Errorf("failed to decode response: %w", err)
+    }
+    
+    return nil
+}
+```
+
+**Usage Example**:
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    "your-project/auth"
+)
+
+func main() {
+    client := auth.NewAuthServiceClient()
+    
+    // Register
+    result, err := client.Register(auth.RegisterRequest{
+        Email:    "user@example.com",
+        Password: "securepassword123",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("User registered: %+v\n", result.User)
+    
+    // Login
+    result, err = client.Login("user@example.com", "securepassword123")
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Access Token: %s\n", result.AccessToken)
+}
+```
+
+---
+
+### Step 4: JWT Token Validation Middleware
+
+For services that need to protect routes with JWT authentication, implement middleware to validate tokens.
+
+#### NestJS Middleware Example
+
+```typescript
+import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
+import { Request, Response, NextFunction } from 'express';
+import { authServiceClient } from './auth-service-client';
+
+@Injectable()
+export class AuthMiddleware implements NestMiddleware {
+  async use(req: Request, res: Response, next: NextFunction) {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('No token provided');
+    }
+    
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    
+    try {
+      const validation = await authServiceClient.validateToken(token);
+      // Attach user to request object
+      (req as any).user = validation.user;
+      next();
+    } catch (error) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+  }
+}
+```
+
+#### Express.js Middleware Example
+
+```typescript
+import { Request, Response, NextFunction } from 'express';
+import { authServiceClient } from './auth-service-client';
+
+export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'No token provided' });
+  }
+  
+  const token = authHeader.substring(7);
+  
+  try {
+    const validation = await authServiceClient.validateToken(token);
+    (req as any).user = validation.user;
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: 'Invalid or expired token' });
+  }
+}
+```
+
+#### FastAPI Middleware Example
+
+```python
+from fastapi import Request, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from auth_service_client import auth_service_client
+
+security = HTTPBearer()
+
+async def auth_middleware(request: Request, call_next):
+    """Validate JWT token from Authorization header"""
+    auth_header = request.headers.get("Authorization")
+    
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No token provided"
+        )
+    
+    token = auth_header.split(" ")[1]
+    
+    try:
+        validation = auth_service_client.validate_token(token)
+        request.state.user = validation["user"]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
+    
+    response = await call_next(request)
+    return response
+```
+
+---
+
+### Step 5: Token Storage and Management
+
+**Security Best Practices**:
+
+1. **Access Tokens**: Store in memory or secure HTTP-only cookies (for web apps)
+2. **Refresh Tokens**: Store securely (HTTP-only cookies, secure storage)
+3. **Never store tokens in localStorage** (vulnerable to XSS attacks)
+4. **Implement token refresh logic** to automatically refresh expired tokens
+
+**Token Refresh Implementation**:
+
+```typescript
+class TokenManager {
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
+
+  async refreshAccessToken(): Promise<string> {
+    if (!this.refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    try {
+      const result = await authServiceClient.refreshToken(this.refreshToken);
+      this.accessToken = result.accessToken;
+      this.refreshToken = result.refreshToken; // New refresh token
+      return this.accessToken;
+    } catch (error) {
+      // Refresh token expired - user needs to login again
+      this.clearTokens();
+      throw error;
+    }
+  }
+
+  async getValidAccessToken(): Promise<string> {
+    if (!this.accessToken) {
+      throw new Error('No access token available');
+    }
+
+    // Validate token (optional - can decode JWT to check expiration)
+    try {
+      await authServiceClient.validateToken(this.accessToken);
+      return this.accessToken;
+    } catch (error) {
+      // Token expired, try to refresh
+      return await this.refreshAccessToken();
+    }
+  }
+
+  setTokens(accessToken: string, refreshToken: string) {
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
+  }
+
+  clearTokens() {
+    this.accessToken = null;
+    this.refreshToken = null;
+  }
+}
+```
+
+---
+
+### Step 6: Error Handling
+
+Implement comprehensive error handling for all auth operations:
+
+```typescript
+enum AuthErrorCode {
+  INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
+  USER_EXISTS = 'USER_EXISTS',
+  TOKEN_EXPIRED = 'TOKEN_EXPIRED',
+  TOKEN_INVALID = 'TOKEN_INVALID',
+  USER_INACTIVE = 'USER_INACTIVE',
+  SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
+}
+
+class AuthError extends Error {
+  constructor(
+    public code: AuthErrorCode,
+    message: string,
+    public statusCode?: number
+  ) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
+function handleAuthError(error: any): AuthError {
+  if (error.response) {
+    const status = error.response.status;
+    const message = error.response.data?.message || error.message;
+
+    switch (status) {
+      case 401:
+        if (message.includes('credentials')) {
+          return new AuthError(AuthErrorCode.INVALID_CREDENTIALS, message, status);
+        }
+        return new AuthError(AuthErrorCode.TOKEN_INVALID, message, status);
+      case 409:
+        return new AuthError(AuthErrorCode.USER_EXISTS, message, status);
+      default:
+        return new AuthError(AuthErrorCode.SERVICE_UNAVAILABLE, message, status);
+    }
+  } else if (error.request) {
+    return new AuthError(
+      AuthErrorCode.SERVICE_UNAVAILABLE,
+      'Auth service is unreachable',
+      503
+    );
+  }
+  return new AuthError(AuthErrorCode.SERVICE_UNAVAILABLE, error.message);
+}
+```
+
+---
+
+### Step 7: Integration Testing
+
+Create integration tests to verify your auth integration:
+
+```typescript
+import { authServiceClient } from './auth-service-client';
+
+describe('Auth Service Integration', () => {
+  const testEmail = `test-${Date.now()}@example.com`;
+  const testPassword = 'testpassword123';
+  let accessToken: string;
+  let refreshToken: string;
+
+  test('should register a new user', async () => {
+    const result = await authServiceClient.register({
+      email: testEmail,
+      password: testPassword,
+      firstName: 'Test',
+      lastName: 'User',
+    });
+
+    expect(result.user).toBeDefined();
+    expect(result.user.email).toBe(testEmail);
+    expect(result.accessToken).toBeDefined();
+    expect(result.refreshToken).toBeDefined();
+
+    accessToken = result.accessToken;
+    refreshToken = result.refreshToken;
+  });
+
+  test('should login with valid credentials', async () => {
+    const result = await authServiceClient.login(testEmail, testPassword);
+
+    expect(result.user).toBeDefined();
+    expect(result.accessToken).toBeDefined();
+    expect(result.refreshToken).toBeDefined();
+  });
+
+  test('should validate token', async () => {
+    const validation = await authServiceClient.validateToken(accessToken);
+
+    expect(validation.valid).toBe(true);
+    expect(validation.user).toBeDefined();
+    expect(validation.user.email).toBe(testEmail);
+  });
+
+  test('should refresh token', async () => {
+    const result = await authServiceClient.refreshToken(refreshToken);
+
+    expect(result.accessToken).toBeDefined();
+    expect(result.refreshToken).toBeDefined();
+  });
+});
+```
+
+---
+
+### Step 8: Security Best Practices
+
+1. **Always use HTTPS** in production for external access
+2. **Validate tokens server-side** - never trust client-side validation only
+3. **Implement rate limiting** on login/register endpoints
+4. **Use secure password requirements** (minimum length, complexity)
+5. **Store tokens securely** - HTTP-only cookies for web, secure storage for mobile
+6. **Implement token rotation** - refresh tokens should be rotated on use
+7. **Log authentication events** for security auditing
+8. **Handle token expiration gracefully** - automatically refresh when possible
+9. **Never expose JWT_SECRET** in client-side code
+10. **Implement CORS properly** - restrict origins in production
+
+---
+
+### Step 9: Troubleshooting
+
+**Common Issues and Solutions**:
+
+1. **Connection Refused / Service Unreachable**
+   - Verify `AUTH_SERVICE_URL` is correct
+   - Check if services are on the same Docker network
+   - Verify auth-microservice is running: `docker ps | grep auth-microservice`
+   - Check health endpoint: `curl http://auth-microservice:3370/health`
+
+2. **401 Unauthorized Errors**
+   - Verify JWT token is valid and not expired
+   - Check if `JWT_SECRET` matches between services
+   - Ensure token is sent in `Authorization: Bearer <token>` format
+   - Verify user account is active
+
+3. **Token Validation Fails**
+   - Check token expiration time
+   - Verify JWT_SECRET matches
+   - Ensure token format is correct (should start with `Bearer` in header)
+
+4. **Network Timeout**
+   - Increase timeout values in HTTP client
+   - Check network connectivity
+   - Verify service is not overloaded
+
+5. **CORS Errors**
+   - Configure CORS_ORIGIN in auth-microservice `.env`
+   - Ensure frontend origin is whitelisted
+
+---
+
+### Step 10: Complete Integration Example
+
+Here's a complete example for a NestJS service:
+
+```typescript
+// auth.module.ts
+import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { AuthMiddleware } from './auth.middleware';
+
+@Module({
+  imports: [HttpModule],
+  controllers: [AuthController],
+  providers: [AuthService],
+  exports: [AuthService],
+})
+export class AuthModule {}
+
+// auth.service.ts
+import { Injectable } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class AuthService {
+  private readonly authServiceUrl: string;
+
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
+  ) {
+    this.authServiceUrl = this.configService.get<string>('AUTH_SERVICE_URL');
+  }
+
+  async validateToken(token: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`${this.authServiceUrl}/auth/validate`, { token }),
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error('Token validation failed');
+    }
+  }
+}
+
+// auth.middleware.ts
+import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
+import { Request, Response, NextFunction } from 'express';
+import { AuthService } from './auth.service';
+
+@Injectable()
+export class AuthMiddleware implements NestMiddleware {
+  constructor(private readonly authService: AuthService) {}
+
+  async use(req: Request, res: Response, next: NextFunction) {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('No token provided');
+    }
+    
+    const token = authHeader.substring(7);
+    const validation = await this.authService.validateToken(token);
+    
+    (req as any).user = validation.user;
+    next();
+  }
+}
+
+// app.module.ts
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { AuthModule } from './auth/auth.module';
+import { AuthMiddleware } from './auth/auth.middleware';
+
+@Module({
+  imports: [AuthModule],
+})
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AuthMiddleware).forRoutes('protected-route');
+  }
+}
+```
+
+---
+
+### Summary
+
+To integrate the auth-microservice into your service/application:
+
+1. ✅ Configure Docker network (for containerized services)
+2. ✅ Set environment variables (`AUTH_SERVICE_URL`, `JWT_SECRET`)
+3. ✅ Implement HTTP client for auth operations
+4. ✅ Add JWT validation middleware/guards
+5. ✅ Implement token storage and refresh logic
+6. ✅ Add comprehensive error handling
+7. ✅ Write integration tests
+8. ✅ Follow security best practices
+
+For questions or issues, check the logs in `auth-microservice/logs/` or contact the development team.
 
 ## Database Schema
 
@@ -782,7 +1766,7 @@ cd auth-microservice
 docker exec db-server-postgres psql -U dbadmin -d postgres -c 'CREATE DATABASE auth;'
 ```
 
-4. Pull latest code and deploy:
+3. Pull latest code and deploy:
 
 ```bash
 # Pull latest code
