@@ -33,7 +33,10 @@ export class AuthService {
     @InjectRepository(PasswordResetToken)
     private readonly passwordResetTokenRepository: Repository<PasswordResetToken>,
   ) {
-    this.notificationsServiceUrl = process.env.NOTIFICATIONS_SERVICE_URL || 'https://notifications.statex.cz';
+    this.notificationsServiceUrl = process.env.NOTIFICATIONS_SERVICE_URL || '';
+    if (!this.notificationsServiceUrl) {
+      this.logger.warn('NOTIFICATIONS_SERVICE_URL is not set. Email notifications will not work.', 'AuthService');
+    }
   }
 
   async register(registerDto: RegisterDto) {
@@ -197,7 +200,12 @@ export class AuthService {
     await this.passwordResetTokenRepository.save(resetToken);
 
     // Send password reset email via notifications-microservice
-    const resetUrl = `${process.env.FRONTEND_URL || 'https://statex.cz'}/reset-password?token=${token}`;
+    const frontendUrl = process.env.FRONTEND_URL;
+    if (!frontendUrl) {
+      this.logger.error('FRONTEND_URL is not set. Cannot generate password reset link.', 'AuthService');
+      throw new BadRequestException('Frontend URL is not configured');
+    }
+    const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
     try {
       await firstValueFrom(
         this.httpService.post(`${this.notificationsServiceUrl}/notifications/send`, {

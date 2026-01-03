@@ -48,7 +48,9 @@ if docker compose ps | grep -q "auth-microservice.*Up"; then
     echo ""
     echo "Service is running on:"
     echo "  - Internal: http://auth-microservice:${PORT} (port configured in auth-microservice/.env)"
-    echo "  - External: https://auth.statex.cz"
+    if [ -n "${DOMAIN:-}" ]; then
+      echo "  - External: https://${DOMAIN}"
+    fi
     echo ""
     echo "View logs with: ./scripts/status.sh"
     echo "Stop service with: ./scripts/stop.sh"

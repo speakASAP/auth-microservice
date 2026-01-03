@@ -23,10 +23,10 @@ services:
       - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-30d}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOGGING_SERVICE_URL=${LOGGING_SERVICE_URL:-http://logging-microservice:${LOGGING_SERVICE_PORT:-3367}}
-      - NOTIFICATIONS_SERVICE_URL=${NOTIFICATIONS_SERVICE_URL:-https://notifications.statex.cz}
-      - FRONTEND_URL=${FRONTEND_URL:-https://statex.cz}
+      - NOTIFICATIONS_SERVICE_URL=${NOTIFICATIONS_SERVICE_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
     volumes:
-      - /srv/storagebox/statex/docker-volumes/auth-microservice/logs:/app/logs
+      - ${LOGS_VOLUME_PATH:-./logs}:/app/logs
     networks:
       - nginx-network
     deploy:

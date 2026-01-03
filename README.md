@@ -1,6 +1,14 @@
 # Auth Microservice
 
-Centralized authentication service for the Statex microservices ecosystem. Handles user registration, login, JWT token generation and validation, and user session management.
+Centralized authentication service for microservices ecosystems. Handles user registration, login, JWT token generation and validation, and user session management.
+
+## ⚠️ Production-Ready Service
+
+This service is **production-ready** and should **NOT** be modified directly.
+
+- **✅ Allowed**: Use scripts from this service's directory
+- **❌ NOT Allowed**: Modify code, configuration, or infrastructure directly
+- **⚠️ Permission Required**: If you need to modify something, **ask for permission first**
 
 ## Features
 
@@ -41,7 +49,7 @@ Centralized authentication service for the Statex microservices ecosystem. Handl
 - All ports are configured in `auth-microservice/.env`. The values shown are defaults.
 - Blue and green deployments use different host ports (${PORT:-3370}/3371) but same container port (${PORT:-3370})
 - All ports are exposed on `127.0.0.1` only (localhost) for security
-- External access is provided via nginx-microservice reverse proxy at `https://auth.statex.cz`
+- External access is provided via nginx-microservice reverse proxy at the domain configured in `DOMAIN` environment variable
 
 ### Base URLs
 
@@ -54,13 +62,13 @@ http://auth-microservice:${PORT:-3370}
 **External Access** (via HTTPS):
 
 ```text
-https://auth.statex.cz
+https://${DOMAIN}
 ```
 
 **Note**:
 
 - For services on the same Docker network (`nginx-network`), use the internal URL: `http://auth-microservice:${PORT:-3370}` (port configured in `auth-microservice/.env`)
-- For external/public access, use: `https://auth.statex.cz`
+- For external/public access, use: `https://${DOMAIN}` (domain configured in `DOMAIN` environment variable)
 - The external URL is managed by nginx-microservice with automatic SSL certificate management
 
 ### API Endpoints list
@@ -466,16 +474,19 @@ JWT_EXPIRES_IN=7d
 JWT_REFRESH_EXPIRES_IN=30d
 
 # Logging (Shared)
-LOGGING_SERVICE_URL=https://logging.statex.cz
+LOGGING_SERVICE_URL=
 
 # Notifications (Shared) - For password reset emails
-NOTIFICATIONS_SERVICE_URL=https://notifications.statex.cz
+NOTIFICATIONS_SERVICE_URL=
 
 # Service Domain - Used by nginx-microservice for auto-registry (required for correct domain detection)
-DOMAIN=auth.statex.cz
+DOMAIN=
 
 # Frontend URL - For password reset links
-FRONTEND_URL=https://statex.cz
+FRONTEND_URL=
+
+# Logs Volume Path - Path for storing logs (default: ./logs)
+LOGS_VOLUME_PATH=
 
 # Service Configuration
 PORT=3370  # Configured in auth-microservice/.env (default: 3370)
@@ -546,7 +557,7 @@ Set the auth service URL in your service's environment variables:
 ```env
 AUTH_SERVICE_URL=http://auth-microservice:${PORT:-3370}  # PORT configured in auth-microservice/.env
 # or for external access:
-AUTH_SERVICE_URL=https://auth.statex.cz
+AUTH_SERVICE_URL=https://${DOMAIN}  # DOMAIN configured in auth-microservice/.env
 ```
 
 #### 3. Use Auth Service via HTTP
@@ -717,8 +728,8 @@ The deployment is managed by nginx-microservice's blue/green deployment scripts:
 
 ```bash
 # On production server
-ssh statex
-cd /home/statex/nginx-microservice
+# Connect to your production server and navigate to nginx-microservice directory
+cd /path/to/nginx-microservice
 ./scripts/blue-green/deploy.sh auth-microservice
 ```
 
@@ -737,7 +748,7 @@ The service is registered in `nginx-microservice/service-registry/auth-microserv
 ```json
 {
   "service_name": "auth-microservice",
-  "domain": "auth.statex.cz",
+  "domain": "${DOMAIN}",
   "services": {
     "backend": {
       "container_name_base": "auth-microservice",
@@ -756,9 +767,9 @@ The service is registered in `nginx-microservice/service-registry/auth-microserv
 1. Clone repository to production server:
 
 ```bash
-ssh statex
-cd /home/statex
-git clone git@github.com:speakASAP/auth-microservice.git
+# Connect to your production server
+cd /path/to/project
+git clone <repository-url>
 cd auth-microservice
 ```
 
@@ -775,11 +786,11 @@ docker exec db-server-postgres psql -U dbadmin -d postgres -c 'CREATE DATABASE a
 
 ```bash
 # Pull latest code
-cd /home/statex/auth-microservice
+cd /path/to/auth-microservice
 git pull
 
 # Pull nginx-microservice updates
-cd /home/statex/nginx-microservice
+cd /path/to/nginx-microservice
 git pull
 
 # Deploy using blue/green deployment
@@ -791,7 +802,8 @@ git pull
 For updates, pull the latest code and redeploy:
 
 ```bash
-ssh statex "cd /home/statex/auth-microservice && git pull && cd ../nginx-microservice && git pull && ./scripts/blue-green/deploy.sh auth-microservice"
+# Connect to your production server and run:
+cd /path/to/auth-microservice && git pull && cd ../nginx-microservice && git pull && ./scripts/blue-green/deploy.sh auth-microservice
 ```
 
 #### Verification
@@ -799,14 +811,14 @@ ssh statex "cd /home/statex/auth-microservice && git pull && cd ../nginx-microse
 Verify the service is running:
 
 ```bash
-# Check health endpoint
-curl https://auth.statex.cz/health
+# Check health endpoint (replace ${DOMAIN} with your configured domain)
+curl https://${DOMAIN}/health
 
 # Check container status
 docker ps | grep auth-microservice
 
 # Check deployment state
-cat /home/statex/nginx-microservice/state/auth-microservice.json | jq .
+cat /path/to/nginx-microservice/state/auth-microservice.json | jq .
 ```
 
 ### Local Development
@@ -835,11 +847,12 @@ docker compose restart auth-microservice
 
 ## Integration with Applications
 
-The auth-microservice is used by the following applications:
+The auth-microservice can be integrated with any application that requires authentication:
 
-1. **Crypto-AI-Agent**: Email/password authentication, password reset/change
-2. **flipflop**: Email/password authentication (via shared `AuthService`)
-3. **Statex**: Contact-based registration and email/password authentication
+- Email/password authentication
+- Password reset/change
+- Contact-based registration
+- Token validation and refresh
 
 All applications use the same centralized authentication service for consistent security and user management.
 
@@ -876,5 +889,4 @@ The active color has `weight=100`, while the inactive color is marked as `backup
 
 ---
 
-**Last Updated**: 2025-11-18  
-**Maintained by**: Statex Development Team
+**Last Updated**: 2025-11-18
