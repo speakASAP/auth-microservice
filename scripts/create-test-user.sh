@@ -20,9 +20,20 @@ else
   echo "⚠ No .env file found"
 fi
 
-# Get PORT from environment or use default
+# AUTH_URL: use if set (e.g. https://auth.statex.cz on prod); otherwise try localhost
 PORT=${PORT:-3370}
-AUTH_URL="http://localhost:${PORT}"
+if [ -n "$AUTH_URL" ]; then
+  AUTH_URL="${AUTH_URL%/}"
+else
+  # On prod after blue/green deploy, active backend may be on 3370 (blue) or 3371 (green)
+  if curl -s -f --connect-timeout 2 "http://localhost:${PORT}/health" > /dev/null 2>&1; then
+    AUTH_URL="http://localhost:${PORT}"
+  elif curl -s -f --connect-timeout 2 "http://localhost:3371/health" > /dev/null 2>&1; then
+    AUTH_URL="http://localhost:3371"
+  else
+    AUTH_URL="http://localhost:${PORT}"
+  fi
+fi
 
 # Get test credentials from environment or use defaults
 TEST_EMAIL="${TEST_EMAIL:-test@example.com}"
@@ -40,12 +51,13 @@ echo ""
 
 # Check if service is running
 echo "Checking service status..."
-if curl -s -f "${AUTH_URL}/health" > /dev/null 2>&1; then
-  echo "✓ Service is running on port ${PORT}"
+if curl -s -f --connect-timeout 5 "${AUTH_URL}/health" > /dev/null 2>&1; then
+  echo "✓ Service is responding at ${AUTH_URL}"
   echo ""
 else
-  echo "❌ Service is not responding on port ${PORT}"
-  echo "   Please start the service first: ./scripts/start.sh"
+  echo "❌ Service is not responding at ${AUTH_URL}"
+  echo "   On prod, set AUTH_URL=https://\${DOMAIN} in .env (e.g. https://auth.statex.cz) or ensure backend is running."
+  echo "   Locally: ./scripts/start.sh"
   exit 1
 fi
 
