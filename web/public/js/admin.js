@@ -91,7 +91,7 @@
         backendStatusEl.textContent = health.message || 'Error';
         backendStatusEl.classList.add('error');
       }
-    } catch () {
+    } catch (_) {
       backendStatusEl.textContent = 'Unreachable';
       backendStatusEl.classList.add('error');
     }
@@ -120,7 +120,7 @@
         logsContent.classList.add('hidden');
         logsEmpty.classList.remove('hidden');
       }
-    } catch () {
+    } catch (_) {
       loggingStatusEl.textContent = 'Error';
       loggingStatusEl.classList.add('error');
       logsLoading.classList.add('hidden');
