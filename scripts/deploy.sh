@@ -178,6 +178,23 @@ if [ -f "$REGISTRY_FILE" ]; then
     rm -f "$REGISTRY_FILE"
 fi
 
+# Remove nginx blue/green configs for this domain so they are regenerated from the new registry.
+# Otherwise "configs already exist" skips regeneration and we keep backend-only config (no location / for frontend).
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    set -a
+    # shellcheck source=../.env
+    source "$PROJECT_ROOT/.env" 2>/dev/null || true
+    set +a
+fi
+DEPLOY_DOMAIN="${DOMAIN:-auth.statex.cz}"
+NGINX_BLUE_GREEN_DIR="${NGINX_MICROSERVICE_PATH}/nginx/conf.d/blue-green"
+for f in "${NGINX_BLUE_GREEN_DIR}/${DEPLOY_DOMAIN}.blue.conf" "${NGINX_BLUE_GREEN_DIR}/${DEPLOY_DOMAIN}.green.conf"; do
+    if [ -f "$f" ]; then
+        log_with_timestamp "Removing $f so it is regenerated with frontend"
+        rm -f "$f"
+    fi
+done
+
 # Change to nginx-microservice directory and run deployment
 start_phase "Pre-deployment Setup"
 log_with_timestamp "Starting blue/green deployment..."
