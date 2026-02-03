@@ -43,11 +43,19 @@ A web UI is included for potential customers and admins:
   - **Service status** – Auth backend health and logging service status.
   - **Recent activity** – Recent log entries for `auth-microservice` from the logging service (if `LOGGING_SERVICE_URL` is set).
 
-The frontend is served by the `frontend` container; nginx-microservice routes `/` and `/admin` to it and `/auth`, `/health` to the backend. Deploy with:
+The frontend is served by the `frontend` container; nginx-microservice routes `/` and `/admin` to it and `/auth/`, `/health` to the backend. Deploy with:
 
 ```bash
 ./scripts/deploy.sh
 # or from nginx-microservice: ./scripts/blue-green/deploy-smart.sh auth-microservice
+```
+
+**If https://${DOMAIN} returns 404**: The nginx service registry was likely created before the frontend existed (only backend in registry). Remove the registry and redeploy so it is recreated with both `backend` and `frontend` from the current compose:
+
+```bash
+# On prod (e.g. ssh statex)
+rm -f ~/nginx-microservice/service-registry/auth-microservice.json
+cd ~/auth-microservice && ./scripts/deploy.sh
 ```
 
 SSL uses **Let's Encrypt** (not self-signed): the deploy flow creates a temporary certificate if needed, then requests a real certificate. Ensure `CERTBOT_EMAIL` is set in `nginx-microservice/.env` for first-time certificate request.
