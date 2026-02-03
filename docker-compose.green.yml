@@ -29,7 +29,9 @@ services:
     volumes:
       - ${LOGS_VOLUME_PATH:-./logs}:/app/logs
     networks:
-      - nginx-network
+      nginx-network:
+        aliases:
+          - auth-microservice
     deploy:
       resources:
         limits:
