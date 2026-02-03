@@ -205,6 +205,15 @@ for f in "${NGINX_BLUE_GREEN_DIR}/${DEPLOY_DOMAIN}.blue.conf" "${NGINX_BLUE_GREE
     fi
 done
 
+# Blue/green health checks expect backend to listen on 3370 inside the container. Validate .env.
+PORT_VAL="${PORT:-3370}"
+if [ "$PORT_VAL" != "3370" ]; then
+    echo -e "${RED}❌ Error: PORT must be 3370 for blue/green health checks (current: ${PORT_VAL})${NC}"
+    echo "  The backend must listen on 3370 inside the container. Set PORT=3370 in auth-microservice/.env (or leave unset)."
+    echo "  On sgipreal/statex ensure .env has PORT=3370 so prepare-green health check can reach the backend."
+    exit 1
+fi
+
 # Change to nginx-microservice directory and run deployment
 start_phase "Pre-deployment Setup"
 log_with_timestamp "Starting blue/green deployment..."
@@ -322,6 +331,7 @@ else
     echo "  1. Verify nginx-microservice is properly configured"
     echo "  2. Check service registry file exists: $NGINX_MICROSERVICE_PATH/service-registry/$SERVICE_NAME.json"
     echo "  3. Review deployment logs"
-    echo "  4. Check service health: cd $NGINX_MICROSERVICE_PATH && ./scripts/blue-green/health-check.sh"
+    echo "  4. If 'Port 3370 is not listening': ensure PORT=3370 in .env, then: docker logs auth-microservice-green (backend may be failing to start: DB, JWT_SECRET, or network)."
+    echo "  5. Check service health: cd $NGINX_MICROSERVICE_PATH && ./scripts/blue-green/health-check.sh"
     exit 1
 fi
