@@ -102,6 +102,7 @@
   }
 
   async function loadDashboard() {
+    if (!backendStatusEl || !loggingStatusEl) return;
     backendStatusEl.textContent = '—';
     backendStatusEl.classList.remove('ok', 'error');
     loggingStatusEl.textContent = '—';
@@ -129,32 +130,35 @@
         if (stats.source === 'logging' && stats.data && stats.data.length > 0) {
           loggingStatusEl.textContent = 'OK';
           loggingStatusEl.classList.add('ok');
-          renderLogs(stats.data);
-          logsLoading.classList.add('hidden');
-          logsContent.classList.remove('hidden');
-          logsEmpty.classList.add('hidden');
+          if (logsContent) {
+            renderLogs(stats.data);
+            logsContent.classList.remove('hidden');
+          }
+          if (logsLoading) logsLoading.classList.add('hidden');
+          if (logsEmpty) logsEmpty.classList.add('hidden');
         } else {
           loggingStatusEl.textContent = stats.source === 'none' ? 'Not configured' : 'No data';
-          logsLoading.classList.add('hidden');
-          logsContent.classList.add('hidden');
-          logsEmpty.classList.remove('hidden');
+          if (logsLoading) logsLoading.classList.add('hidden');
+          if (logsContent) logsContent.classList.add('hidden');
+          if (logsEmpty) logsEmpty.classList.remove('hidden');
         }
       } else {
         loggingStatusEl.textContent = 'Error';
         loggingStatusEl.classList.add('error');
-        logsLoading.classList.add('hidden');
-        logsContent.classList.add('hidden');
-        logsEmpty.classList.remove('hidden');
+        if (logsLoading) logsLoading.classList.add('hidden');
+        if (logsContent) logsContent.classList.add('hidden');
+        if (logsEmpty) logsEmpty.classList.remove('hidden');
       }
     } catch (_) {
       loggingStatusEl.textContent = 'Error';
       loggingStatusEl.classList.add('error');
-      logsLoading.classList.add('hidden');
-      logsEmpty.classList.remove('hidden');
+      if (logsLoading) logsLoading.classList.add('hidden');
+      if (logsEmpty) logsEmpty.classList.remove('hidden');
     }
   }
 
   function renderLogs(rows) {
+    if (!logsContent) return;
     const table = document.createElement('table');
     table.innerHTML = '<thead><tr><th>Time</th><th>Level</th><th>Message</th></tr></thead><tbody></tbody>';
     const tbody = table.querySelector('tbody');
