@@ -515,7 +515,7 @@ LOGS_VOLUME_PATH=
 # Service Configuration
 PORT=3370  # Configured in auth-microservice/.env (default: 3370)
 NODE_ENV=production
-CORS_ORIGIN=*
+CORS_ORIGIN=https://auth.statex.cz,https://logging.statex.cz,https://notifications.statex.cz,https://database-server.statex.cz  # comma-separated for admin logins from other domains
 ```
 
 ## Running the Service
@@ -1531,8 +1531,8 @@ describe('Auth Service Integration', () => {
    - Verify service is not overloaded
 
 5. **CORS Errors**
-   - Configure CORS_ORIGIN in auth-microservice `.env`
-   - Ensure frontend origin is whitelisted
+   - Set CORS_ORIGIN in auth-microservice `.env` to a comma-separated list of allowed origins (e.g. https://auth.statex.cz,https://logging.statex.cz,https://notifications.statex.cz,https://database-server.statex.cz). Required for admin logins from logging/notifications/database-server; when credentials are used, origin cannot be `*`.
+   - Ensure each frontend origin is listed in CORS_ORIGIN
 
 ---
 
@@ -1769,6 +1769,8 @@ The service is registered in `nginx-microservice/service-registry/auth-microserv
 ```
 
 ### Production Server Setup
+
+**Production checklist:** Set `CORS_ORIGIN` in `.env` to a comma-separated list of allowed origins (e.g. `https://auth.statex.cz,https://logging.statex.cz,https://notifications.statex.cz,https://database-server.statex.cz`) so admin logins from logging, notifications, and database-server work.
 
 #### Initial Setup
 

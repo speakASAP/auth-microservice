@@ -15,14 +15,14 @@ const PORT = process.env.PORT || 3380;
 const LOGGING_SERVICE_URL = process.env.LOGGING_SERVICE_URL || '';
 const AUTH_BACKEND_URL = process.env.AUTH_BACKEND_URL || 'http://auth-microservice:3370';
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'), { index: 'index.html' }));
-
 /**
- * Proxy /auth to backend (for local dev without nginx; on prod nginx routes /auth to backend)
+ * Proxy /auth to backend (must be before express.json() so POST body is not consumed and is forwarded)
+ * For local dev without nginx; on prod nginx sends all to frontend, frontend proxies /auth to backend.
+ * Use app.use to reliably match /auth, /auth/, /auth/login, /auth/validate, etc.
  */
-app.all('/auth/*', (req, res) => {
-  const fullUrl = AUTH_BACKEND_URL.replace(/\/$/, '') + req.url;
+app.use('/auth', (req, res) => {
+  const pathSuffix = req.url === '/' || req.url === '' ? '' : req.url;
+  const fullUrl = AUTH_BACKEND_URL.replace(/\/$/, '') + '/auth' + pathSuffix;
   const client = fullUrl.startsWith('https') ? https : http;
   const proxy = client.request(fullUrl, { method: req.method, headers: req.headers }, (upstream) => {
     res.status(upstream.statusCode);
@@ -32,6 +32,9 @@ app.all('/auth/*', (req, res) => {
   proxy.on('error', (e) => res.status(502).json({ message: e.message }));
   req.pipe(proxy);
 });
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public'), { index: 'index.html' }));
 
 /**
  * Health for frontend container (nginx health check)

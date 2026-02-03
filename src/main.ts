@@ -9,10 +9,13 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS
+  // Enable CORS. When credentials is true, origin cannot be '*' (browser rejects).
+  // Use comma-separated CORS_ORIGIN for admin logins from logging/notifications/database-server.
+  const corsOrigin = process.env.CORS_ORIGIN?.trim() || '';
+  const origins = corsOrigin ? corsOrigin.split(',').map((o) => o.trim()).filter(Boolean) : [];
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || '*',
-    credentials: true,
+    origin: origins.length > 0 ? origins : '*',
+    credentials: origins.length > 0,
   });
 
   // Global validation pipe
