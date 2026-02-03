@@ -1,5 +1,6 @@
 services:
-  auth-microservice:
+  # Backend: auth API (service name "backend" for nginx routing)
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
@@ -41,6 +42,36 @@ services:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:${PORT:-3370}/health"]
       interval: 10s
       timeout: 10s
+      retries: 2
+
+  # Frontend: landing + admin (served at DOMAIN on prod)
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: auth-microservice-frontend-green
+    ports:
+      - "${FRONTEND_PORT_GREEN:-3381}:3380"
+    env_file:
+      - .env
+    environment:
+      - PORT=3380
+      - LOGGING_SERVICE_URL=${LOGGING_SERVICE_URL}
+      - AUTH_BACKEND_URL=http://auth-microservice-green:${PORT:-3370}
+    networks:
+      - nginx-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3380/health"]
+      interval: 10s
+      timeout: 5s
       retries: 2
 
 networks:

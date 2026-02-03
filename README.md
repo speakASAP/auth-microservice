@@ -34,22 +34,44 @@ This service is **production-ready** and should **NOT** be modified directly.
 - **Password Hashing**: bcrypt
 - **Logging**: External centralized logging microservice with local file fallback
 
+## Web Interface
+
+A web UI is included for potential customers and admins:
+
+- **Landing page** – At `https://${DOMAIN}` (or `http://localhost:3380` when running only the frontend). Describes features and links to the admin panel.
+- **Admin panel** – At `https://${DOMAIN}/admin`. Login with any auth-microservice user (email/password). After login you see:
+  - **Service status** – Auth backend health and logging service status.
+  - **Recent activity** – Recent log entries for `auth-microservice` from the logging service (if `LOGGING_SERVICE_URL` is set).
+
+The frontend is served by the `frontend` container; nginx-microservice routes `/` and `/admin` to it and `/auth`, `/health` to the backend. Deploy with:
+
+```bash
+./scripts/deploy.sh
+# or from nginx-microservice: ./scripts/blue-green/deploy-smart.sh auth-microservice
+```
+
+SSL uses **Let's Encrypt** (not self-signed): the deploy flow creates a temporary certificate if needed, then requests a real certificate. Ensure `CERTBOT_EMAIL` is set in `nginx-microservice/.env` for first-time certificate request.
+
+The web app lives in `web/` (Express server + static files). Env: `DOMAIN`, `FRONTEND_URL`, `FRONTEND_PORT*`, `LOGGING_SERVICE_URL` (optional, for stats).
+
+**Testing admin panel**: Create a test user with `./scripts/create-test-user.sh` (backend must be running). Then open `https://${DOMAIN}/admin` (or `http://localhost:3380/admin` when running frontend locally) and sign in with the test user (default: `test@example.com` / `testpassword123`, or set `TEST_EMAIL` / `TEST_PASSWORD` in `.env`).
+
 ## API Endpoints
 
 ## 🔌 Port Configuration
 
-**Port Range**: 33xx (shared microservices)
+**Port Range**: 33xx (reserved for auth-microservice)
 
 | Service | Host Port (Blue) | Host Port (Green) | Container Port | .env Variable | Description |
-|---------|------------------|-------------------|----------------|---------------|-------------|
-| **Auth Service** | `${PORT:-3370}` | `3371` | `${PORT:-3370}` | `PORT` (auth-microservice/.env) | Authentication service |
+| ------- | ---------------- | ----------------- | -------------- | ------------- | ----------- |
+| **Auth backend** | `${PORT:-3370}` | `3371` | `${PORT:-3370}` | `PORT` | Authentication API |
+| **Web frontend** | `${FRONTEND_PORT_BLUE:-3380}` | `${FRONTEND_PORT_GREEN:-3381}` | `3380` | `FRONTEND_PORT*` | Landing + admin panel |
 
 **Note**:
 
 - All ports are configured in `auth-microservice/.env`. The values shown are defaults.
-- Blue and green deployments use different host ports (${PORT:-3370}/3371) but same container port (${PORT:-3370})
-- All ports are exposed on `127.0.0.1` only (localhost) for security
-- External access is provided via nginx-microservice reverse proxy at the domain configured in `DOMAIN` environment variable
+- Blue and green use different host ports for backend (3370/3371) and frontend (3380/3381); container ports are fixed.
+- Ports are exposed on localhost only; external access is via nginx-microservice at `https://${DOMAIN}`.
 
 ### Base URLs
 
@@ -1757,16 +1779,16 @@ git clone <repository-url>
 cd auth-microservice
 ```
 
-2. Create `.env` file with production values (see Environment Variables section)
+1. Create `.env` file with production values (see Environment Variables section)
 
-3. Initialize database:
+2. Initialize database:
 
 ```bash
 # Create auth database on shared database-server
 docker exec db-server-postgres psql -U dbadmin -d postgres -c 'CREATE DATABASE auth;'
 ```
 
-3. Pull latest code and deploy:
+1. Pull latest code and deploy:
 
 ```bash
 # Pull latest code

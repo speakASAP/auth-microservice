@@ -3,10 +3,12 @@
 # Usage: ./scripts/deploy.sh
 #
 # This script deploys the auth-microservice application to production using the
-# nginx-microservice blue/green deployment system.
+# nginx-microservice blue/green deployment system (deploy-smart.sh).
 #
-# The script automatically detects the nginx-microservice location and
-# calls the deploy-smart.sh script to perform the deployment.
+# SSL: Certificates are Let's Encrypt (not self-signed). The deploy flow creates
+# a temporary self-signed cert if none exists, then requests a real certificate.
+# Set CERTBOT_EMAIL in nginx-microservice/.env for first-time certificate request.
+# Manual request: cd nginx-microservice && docker compose run --rm certbot /scripts/request-cert.sh DOMAIN EMAIL
 
 set -e
 
@@ -264,6 +266,9 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     echo "Check the status with:"
     echo "  cd $NGINX_MICROSERVICE_PATH"
     echo "  ./scripts/status-all-services.sh"
+    echo ""
+    echo "SSL: If the site still shows a temporary certificate, request Let's Encrypt:"
+    echo "  cd $NGINX_MICROSERVICE_PATH && docker compose run --rm certbot /scripts/request-cert.sh \$(grep DOMAIN $PROJECT_ROOT/.env | cut -d= -f2) \${CERTBOT_EMAIL:-admin@example.com}"
     exit 0
 else
     TOTAL_DURATION_FORMATTED=$(awk "BEGIN {printf \"%.2f\", $TOTAL_DURATION}")

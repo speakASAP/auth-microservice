@@ -1,4 +1,5 @@
 services:
+  # Auth API backend (local dev; blue/green use service name "backend" for nginx)
   auth-microservice:
     build:
       context: .
@@ -40,6 +41,35 @@ services:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:${PORT:-3370}/health"]
       interval: 10s
       timeout: 10s
+      retries: 2
+
+  # Frontend: landing + admin panel (served at DOMAIN from .env on prod)
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: auth-microservice-frontend
+    ports:
+      - "${FRONTEND_PORT:-3380}:3380"
+    env_file:
+      - .env
+    environment:
+      - PORT=3380
+      - LOGGING_SERVICE_URL=${LOGGING_SERVICE_URL}
+      - AUTH_BACKEND_URL=http://auth-microservice:${PORT:-3370}
+    networks:
+      - nginx-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3380/health"]
+      interval: 10s
+      timeout: 5s
       retries: 2
 
 networks:

@@ -1,0 +1,16 @@
+{
+  "name": "auth-microservice-web",
+  "version": "1.0.0",
+  "description": "Landing and admin panel for auth-microservice",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
