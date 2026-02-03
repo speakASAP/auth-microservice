@@ -43,9 +43,24 @@
     logsLoading = document.getElementById('logs-loading');
     logsContent = document.getElementById('logs-content');
     logsEmpty = document.getElementById('logs-empty');
+
+    /* Attach Sign in button first so click always works even if rest of init fails */
+    if (loginBtn) {
+      loginBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        doLoginFromForm();
+      });
+    }
+    if (loginForm) {
+      loginForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        doLoginFromForm();
+      });
+    }
     if (!loginForm || !loginBtn) return;
 
   function showError(el, msg) {
+    if (!el) return;
     el.textContent = msg || '';
     el.classList.toggle('hidden', !msg);
   }
@@ -69,16 +84,16 @@
   }
 
   function showView(loggedIn) {
-    loginView.classList.toggle('hidden', loggedIn);
-    dashboardView.classList.toggle('hidden', !loggedIn);
+    if (loginView) loginView.classList.toggle('hidden', loggedIn);
+    if (dashboardView) dashboardView.classList.toggle('hidden', !loggedIn);
     if (loggedIn) {
-      userEmailEl.textContent = sessionStorage.getItem('auth_admin_email') || 'User';
+      if (userEmailEl) userEmailEl.textContent = sessionStorage.getItem('auth_admin_email') || 'User';
       loadDashboard();
     }
   }
 
   async function login(email, password) {
-    loginBtn.disabled = true;
+    if (loginBtn) loginBtn.disabled = true;
     showError(loginError, '');
     try {
       const res = await fetch('/auth/login', {
@@ -97,7 +112,7 @@
     } catch (e) {
       showError(loginError, 'Network error. Check backend is reachable.');
     } finally {
-      loginBtn.disabled = false;
+      if (loginBtn) loginBtn.disabled = false;
     }
   }
 
@@ -187,17 +202,12 @@
     if (!emailEl || !passwordEl) return;
     const email = emailEl.value.trim();
     const password = passwordEl.value;
-    if (email && password) login(email, password);
+    if (!email || !password) {
+      showError(loginError, 'Please enter email and password.');
+      return;
+    }
+    login(email, password);
   }
-
-    loginForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      doLoginFromForm();
-    });
-    loginBtn.addEventListener('click', function (e) {
-      e.preventDefault();
-      doLoginFromForm();
-    });
 
     if (logoutLink) {
       logoutLink.addEventListener('click', function (e) {
