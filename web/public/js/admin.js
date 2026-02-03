@@ -1,23 +1,49 @@
 /**
  * Admin panel: login via /auth (same-origin), then show health + stats.
  * Tokens stored in sessionStorage; /auth/* is proxied by nginx to backend.
+ * NEVER use credentials in URLs (no ?email=...&password=...). Strip them if present.
  */
 (function () {
   const STORAGE_ACCESS = 'auth_admin_access';
   const STORAGE_REFRESH = 'auth_admin_refresh';
 
-  const loginView = document.getElementById('login-view');
-  const dashboardView = document.getElementById('dashboard-view');
-  const loginForm = document.getElementById('login-form');
-  const loginError = document.getElementById('login-error');
-  const loginBtn = document.getElementById('login-btn');
-  const userEmailEl = document.getElementById('user-email');
-  const logoutLink = document.getElementById('logout-link');
-  const backendStatusEl = document.getElementById('backend-status');
-  const loggingStatusEl = document.getElementById('logging-status');
-  const logsLoading = document.getElementById('logs-loading');
-  const logsContent = document.getElementById('logs-content');
-  const logsEmpty = document.getElementById('logs-empty');
+  /** Strip credential params from URL and replace history so they are never stored or logged. */
+  function stripCredentialParamsFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const credKeys = ['email', 'password', 'token', 'accessToken', 'refreshToken'];
+    let changed = false;
+    credKeys.forEach(function (k) {
+      if (params.has(k)) {
+        params.delete(k);
+        changed = true;
+      }
+    });
+    if (changed) {
+      const clean = params.toString() ? '?' + params.toString() : '';
+      const url = window.location.pathname + clean + window.location.hash;
+      window.history.replaceState(null, '', url);
+    }
+  }
+
+  let loginView, dashboardView, loginForm, loginError, loginBtn, userEmailEl, logoutLink;
+  let backendStatusEl, loggingStatusEl, logsLoading, logsContent, logsEmpty;
+
+  function init() {
+    stripCredentialParamsFromUrl();
+
+    loginView = document.getElementById('login-view');
+    dashboardView = document.getElementById('dashboard-view');
+    loginForm = document.getElementById('login-form');
+    loginError = document.getElementById('login-error');
+    loginBtn = document.getElementById('login-btn');
+    userEmailEl = document.getElementById('user-email');
+    logoutLink = document.getElementById('logout-link');
+    backendStatusEl = document.getElementById('backend-status');
+    loggingStatusEl = document.getElementById('logging-status');
+    logsLoading = document.getElementById('logs-loading');
+    logsContent = document.getElementById('logs-content');
+    logsEmpty = document.getElementById('logs-empty');
+    if (!loginForm || !loginBtn) return;
 
   function showError(el, msg) {
     el.textContent = msg || '';
@@ -151,23 +177,43 @@
     return div.innerHTML;
   }
 
-  loginForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
+  function doLoginFromForm() {
+    const emailEl = document.getElementById('email');
+    const passwordEl = document.getElementById('password');
+    if (!emailEl || !passwordEl) return;
+    const email = emailEl.value.trim();
+    const password = passwordEl.value;
     if (email && password) login(email, password);
-  });
+  }
 
-  logoutLink.addEventListener('click', function (e) {
-    e.preventDefault();
-    clearToken();
-    sessionStorage.removeItem('auth_admin_email');
-    showView(false);
-  });
+    loginForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      doLoginFromForm();
+    });
+    loginBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      doLoginFromForm();
+    });
 
-  if (isLoggedIn()) {
-    showView(true);
+    if (logoutLink) {
+      logoutLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        clearToken();
+        sessionStorage.removeItem('auth_admin_email');
+        showView(false);
+      });
+    }
+
+    if (isLoggedIn()) {
+      showView(true);
+    } else {
+      showView(false);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    showView(false);
+    init();
   }
 })();
