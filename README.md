@@ -50,13 +50,7 @@ The frontend is served by the `frontend` container; nginx-microservice routes `/
 # or from nginx-microservice: ./scripts/blue-green/deploy-smart.sh auth-microservice
 ```
 
-**If https://${DOMAIN} returns 404**: The nginx service registry was likely created before the frontend existed (only backend in registry). Remove the registry and redeploy so it is recreated with both `backend` and `frontend` from the current compose:
-
-```bash
-# On prod (e.g. ssh statex)
-rm -f ~/nginx-microservice/service-registry/auth-microservice.json
-cd ~/auth-microservice && ./scripts/deploy.sh
-```
+**Registry is recreated every deploy**: `./scripts/deploy.sh` removes the nginx service registry for auth-microservice before calling deploy-smart.sh, so the registry is always recreated from the current docker-compose (backend + frontend). This ensures nginx gets `location /` for the frontend. No manual registry removal needed.
 
 SSL uses **Let's Encrypt** (not self-signed): the deploy flow creates a temporary certificate if needed, then requests a real certificate. Ensure `CERTBOT_EMAIL` is set in `nginx-microservice/.env` for first-time certificate request.
 

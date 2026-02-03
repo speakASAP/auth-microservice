@@ -170,6 +170,14 @@ print_phase_summary() {
     echo ""
 }
 
+# Remove service registry so deploy-smart.sh recreates it from current compose (backend + frontend).
+# Otherwise an old registry (e.g. backend-only) would be reused and nginx would never get location / for frontend.
+REGISTRY_FILE="${NGINX_MICROSERVICE_PATH}/service-registry/${SERVICE_NAME}.json"
+if [ -f "$REGISTRY_FILE" ]; then
+    log_with_timestamp "Removing existing registry so it is recreated from current docker-compose (backend + frontend)"
+    rm -f "$REGISTRY_FILE"
+fi
+
 # Change to nginx-microservice directory and run deployment
 start_phase "Pre-deployment Setup"
 log_with_timestamp "Starting blue/green deployment..."
