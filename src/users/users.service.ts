@@ -50,5 +50,24 @@ export class UsersService {
     await this.userRepository.update(id, { password: hashedPassword });
     return this.findById(id);
   }
+
+  async findAll(): Promise<User[]> {
+    return this.userRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.userRepository.delete(id);
+  }
+
+  async toggleActive(id: string): Promise<User> {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    await this.userRepository.update(id, { isActive: !user.isActive });
+    return this.findById(id);
+  }
 }
 
