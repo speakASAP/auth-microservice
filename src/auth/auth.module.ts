@@ -8,6 +8,7 @@ import { PassportModule } from '@nestjs/passport';
 import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
+import { AdminUsersController } from './admin-users.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { UsersModule } from '../users/users.module';
@@ -28,7 +29,7 @@ import { PasswordResetToken } from './entities/password-reset-token.entity';
       },
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AdminUsersController],
   providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })

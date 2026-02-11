@@ -28,6 +28,8 @@
   let loginView, dashboardView, loginForm, loginError, loginBtn, userEmailEl, logoutLink;
   let backendStatusEl, loggingStatusEl, logsLoading, logsContent, logsEmpty;
   let passwordChangeForm, passwordChangeBtn, passwordError, passwordSuccess;
+  let usersLoading, usersContent, usersEmpty, createUserBtn;
+  let userModal, userModalTitle, userModalClose, userForm, userSaveBtn, userCancelBtn, userError;
 
   function init() {
     stripCredentialParamsFromUrl();
@@ -48,6 +50,17 @@
     passwordChangeBtn = document.getElementById('password-change-btn');
     passwordError = document.getElementById('password-error');
     passwordSuccess = document.getElementById('password-success');
+    usersLoading = document.getElementById('users-loading');
+    usersContent = document.getElementById('users-content');
+    usersEmpty = document.getElementById('users-empty');
+    createUserBtn = document.getElementById('create-user-btn');
+    userModal = document.getElementById('user-modal');
+    userModalTitle = document.getElementById('user-modal-title');
+    userModalClose = document.getElementById('user-modal-close');
+    userForm = document.getElementById('user-form');
+    userSaveBtn = document.getElementById('user-save-btn');
+    userCancelBtn = document.getElementById('user-cancel-btn');
+    userError = document.getElementById('user-error');
 
     /* Attach Sign in button first so click always works even if rest of init fails */
     if (loginBtn) {
@@ -83,6 +96,41 @@
       passwordChangeForm.addEventListener('submit', function (e) {
         e.preventDefault();
         doPasswordChange();
+      });
+    }
+
+    if (createUserBtn) {
+      createUserBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        openUserModal();
+      });
+    }
+
+    if (userModalClose) {
+      userModalClose.addEventListener('click', function (e) {
+        e.preventDefault();
+        closeUserModal();
+      });
+    }
+
+    if (userCancelBtn) {
+      userCancelBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        closeUserModal();
+      });
+    }
+
+    if (userSaveBtn) {
+      userSaveBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        saveUser();
+      });
+    }
+
+    if (userForm) {
+      userForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        saveUser();
       });
     }
 
@@ -129,6 +177,7 @@
     if (loggedIn) {
       if (userEmailEl) userEmailEl.textContent = sessionStorage.getItem('auth_admin_email') || 'User';
       loadDashboard();
+      loadUsers();
     }
   }
 
@@ -314,6 +363,312 @@
       showError(passwordError, 'Network error. Check backend is reachable.');
     } finally {
       if (passwordChangeBtn) passwordChangeBtn.disabled = false;
+    }
+  }
+
+  // User Management Functions
+  async function loadUsers() {
+    if (!usersLoading || !usersContent || !usersEmpty) return;
+
+    if (usersLoading) usersLoading.classList.remove('hidden');
+    if (usersContent) usersContent.classList.add('hidden');
+    if (usersEmpty) usersEmpty.classList.add('hidden');
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        if (usersLoading) usersLoading.classList.add('hidden');
+        return;
+      }
+
+      const res = await fetch('/auth/admin/users', {
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (usersLoading) usersLoading.classList.add('hidden');
+        if (usersEmpty) {
+          usersEmpty.textContent = 'Error loading users: ' + (data.message || 'Unknown error');
+          usersEmpty.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (usersLoading) usersLoading.classList.add('hidden');
+
+      if (data.success && data.users && data.users.length > 0) {
+        renderUsers(data.users);
+        if (usersContent) usersContent.classList.remove('hidden');
+        if (usersEmpty) usersEmpty.classList.add('hidden');
+      } else {
+        if (usersContent) usersContent.classList.add('hidden');
+        if (usersEmpty) usersEmpty.classList.remove('hidden');
+      }
+    } catch (e) {
+      if (usersLoading) usersLoading.classList.add('hidden');
+      if (usersContent) usersContent.classList.add('hidden');
+      if (usersEmpty) {
+        usersEmpty.textContent = 'Network error loading users';
+        usersEmpty.classList.remove('hidden');
+      }
+    }
+  }
+
+  function renderUsers(users) {
+    if (!usersContent) return;
+
+    const table = document.createElement('table');
+    table.className = 'users-table';
+    table.innerHTML = '<thead><tr><th>Email</th><th>Name</th><th>Phone</th><th>Status</th><th>Verified</th><th>Created</th><th>Actions</th></tr></thead><tbody></tbody>';
+    const tbody = table.querySelector('tbody');
+
+    users.forEach(function (user) {
+      const tr = document.createElement('tr');
+      const createdDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—';
+      const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || '—';
+      const statusClass = user.isActive ? 'status-active' : 'status-inactive';
+      const statusText = user.isActive ? 'Active' : 'Inactive';
+
+      tr.innerHTML =
+        '<td>' + escapeHtml(user.email || '—') + '</td>' +
+        '<td>' + escapeHtml(name) + '</td>' +
+        '<td>' + escapeHtml(user.phone || '—') + '</td>' +
+        '<td class="' + statusClass + '">' + escapeHtml(statusText) + '</td>' +
+        '<td>' + (user.isVerified ? '✓' : '—') + '</td>' +
+        '<td>' + escapeHtml(createdDate) + '</td>' +
+        '<td class="actions">' +
+        '<button type="button" class="btn btn-small" data-action="edit" data-id="' + escapeHtml(user.id) + '">Edit</button>' +
+        '<button type="button" class="btn btn-small btn-secondary" data-action="toggle" data-id="' + escapeHtml(user.id) + '" data-active="' + user.isActive + '">' +
+        (user.isActive ? 'Deactivate' : 'Activate') +
+        '</button>' +
+        '<button type="button" class="btn btn-small btn-secondary" data-action="delete" data-id="' + escapeHtml(user.id) + '" style="color: var(--error);">Delete</button>' +
+        '</td>';
+
+      tbody.appendChild(tr);
+    });
+
+    // Attach event listeners
+    tbody.querySelectorAll('[data-action="edit"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const userId = btn.getAttribute('data-id');
+        openUserModal(userId);
+      });
+    });
+
+    tbody.querySelectorAll('[data-action="toggle"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const userId = btn.getAttribute('data-id');
+        toggleUserActive(userId);
+      });
+    });
+
+    tbody.querySelectorAll('[data-action="delete"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const userId = btn.getAttribute('data-id');
+        if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+          deleteUser(userId);
+        }
+      });
+    });
+
+    usersContent.innerHTML = '';
+    usersContent.appendChild(table);
+  }
+
+  function openUserModal(userId) {
+    if (!userModal || !userModalTitle || !userForm) return;
+
+    if (userId) {
+      userModalTitle.textContent = 'Edit User';
+      document.getElementById('password-label-note').textContent = '(leave empty to keep current)';
+      loadUserForEdit(userId);
+    } else {
+      userModalTitle.textContent = 'Create User';
+      document.getElementById('password-label-note').textContent = '';
+      resetUserForm();
+    }
+
+    userModal.classList.remove('hidden');
+  }
+
+  function closeUserModal() {
+    if (userModal) userModal.classList.add('hidden');
+    resetUserForm();
+  }
+
+  function resetUserForm() {
+    if (!userForm) return;
+    userForm.reset();
+    document.getElementById('user-id').value = '';
+    document.getElementById('user-isActive').checked = true;
+    document.getElementById('user-isVerified').checked = false;
+    showError(userError, '');
+  }
+
+  async function loadUserForEdit(userId) {
+    try {
+      const token = getAccessToken();
+      if (!token) return;
+
+      const res = await fetch('/auth/admin/users/' + encodeURIComponent(userId), {
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success && data.user) {
+        const user = data.user;
+        document.getElementById('user-id').value = user.id;
+        document.getElementById('user-email').value = user.email || '';
+        document.getElementById('user-password').value = '';
+        document.getElementById('user-firstName').value = user.firstName || '';
+        document.getElementById('user-lastName').value = user.lastName || '';
+        document.getElementById('user-phone').value = user.phone || '';
+        document.getElementById('user-isActive').checked = user.isActive !== false;
+        document.getElementById('user-isVerified').checked = user.isVerified === true;
+      } else {
+        showError(userError, data.message || 'Failed to load user');
+      }
+    } catch (e) {
+      showError(userError, 'Network error loading user');
+    }
+  }
+
+  async function saveUser() {
+    if (!userForm || !userSaveBtn) return;
+
+    const userId = document.getElementById('user-id').value;
+    const email = document.getElementById('user-email').value.trim();
+    const password = document.getElementById('user-password').value;
+    const firstName = document.getElementById('user-firstName').value.trim();
+    const lastName = document.getElementById('user-lastName').value.trim();
+    const phone = document.getElementById('user-phone').value.trim();
+    const isActive = document.getElementById('user-isActive').checked;
+    const isVerified = document.getElementById('user-isVerified').checked;
+
+    showError(userError, '');
+
+    if (!email) {
+      showError(userError, 'Email is required');
+      return;
+    }
+
+    if (!userId && !password) {
+      showError(userError, 'Password is required for new users');
+      return;
+    }
+
+    userSaveBtn.disabled = true;
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        showError(userError, 'Not authenticated. Please log in again.');
+        return;
+      }
+
+      const userData = {
+        email: email,
+        firstName: firstName || undefined,
+        lastName: lastName || undefined,
+        phone: phone || undefined,
+        isActive: isActive,
+        isVerified: isVerified
+      };
+
+      if (password) {
+        userData.password = password;
+      }
+
+      const url = userId
+        ? '/auth/admin/users/' + encodeURIComponent(userId)
+        : '/auth/admin/users';
+      const method = userId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(userData)
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        showError(userError, data.message || 'Failed to save user');
+        return;
+      }
+
+      closeUserModal();
+      loadUsers();
+    } catch (e) {
+      showError(userError, 'Network error saving user');
+    } finally {
+      userSaveBtn.disabled = false;
+    }
+  }
+
+  async function deleteUser(userId) {
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        alert('Not authenticated. Please log in again.');
+        return;
+      }
+
+      const res = await fetch('/auth/admin/users/' + encodeURIComponent(userId), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        alert('Failed to delete user: ' + (data.message || 'Unknown error'));
+        return;
+      }
+
+      loadUsers();
+    } catch (e) {
+      alert('Network error deleting user');
+    }
+  }
+
+  async function toggleUserActive(userId) {
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        alert('Not authenticated. Please log in again.');
+        return;
+      }
+
+      const res = await fetch('/auth/admin/users/' + encodeURIComponent(userId) + '/toggle-active', {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        alert('Failed to toggle user status: ' + (data.message || 'Unknown error'));
+        return;
+      }
+
+      loadUsers();
+    } catch (e) {
+      alert('Network error toggling user status');
     }
   }
 
