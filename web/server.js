@@ -46,8 +46,9 @@ app.get('/health', (req, res) => {
 /**
  * Proxy stats from logging service (auth-related logs)
  * Only if LOGGING_SERVICE_URL is set; otherwise return empty/placeholder.
+ * Exposed on both /api/stats (for local/dev) and /admin-api/stats (for admin UI behind nginx).
  */
-app.get('/api/stats', async (req, res) => {
+app.get(['/api/stats', '/admin-api/stats'], async (req, res) => {
   if (!LOGGING_SERVICE_URL) {
     return res.json({
       success: true,
@@ -98,8 +99,9 @@ app.get('/api/stats', async (req, res) => {
 
 /**
  * Proxy health from auth backend (for admin dashboard)
+ * Exposed on both /api/health-backend (for local/dev) and /admin-api/health-backend (for admin UI behind nginx).
  */
-app.get('/api/health-backend', async (req, res) => {
+app.get(['/api/health-backend', '/admin-api/health-backend'], async (req, res) => {
   try {
     const url = `${AUTH_BACKEND_URL.replace(/\/$/, '')}/health`;
     const client = url.startsWith('https') ? https : http;

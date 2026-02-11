@@ -27,6 +27,7 @@
 
   let loginView, dashboardView, loginForm, loginError, loginBtn, userEmailEl, logoutLink;
   let backendStatusEl, loggingStatusEl, logsLoading, logsContent, logsEmpty;
+  let passwordChangeForm, passwordChangeBtn, passwordError, passwordSuccess;
 
   function init() {
     stripCredentialParamsFromUrl();
@@ -43,6 +44,10 @@
     logsLoading = document.getElementById('logs-loading');
     logsContent = document.getElementById('logs-content');
     logsEmpty = document.getElementById('logs-empty');
+    passwordChangeForm = document.getElementById('password-change-form');
+    passwordChangeBtn = document.getElementById('password-change-btn');
+    passwordError = document.getElementById('password-error');
+    passwordSuccess = document.getElementById('password-success');
 
     /* Attach Sign in button first so click always works even if rest of init fails */
     if (loginBtn) {
@@ -59,7 +64,42 @@
     }
     if (!loginForm || !loginBtn) return;
 
+    if (logoutLink) {
+      logoutLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        clearToken();
+        sessionStorage.removeItem('auth_admin_email');
+        showView(false);
+      });
+    }
+
+    if (passwordChangeBtn) {
+      passwordChangeBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        doPasswordChange();
+      });
+    }
+    if (passwordChangeForm) {
+      passwordChangeForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        doPasswordChange();
+      });
+    }
+
+    if (isLoggedIn()) {
+      showView(true);
+    } else {
+      showView(false);
+    }
+  }
+
   function showError(el, msg) {
+    if (!el) return;
+    el.textContent = msg || '';
+    el.classList.toggle('hidden', !msg);
+  }
+
+  function showSuccess(el, msg) {
     if (!el) return;
     el.textContent = msg || '';
     el.classList.toggle('hidden', !msg);
@@ -124,7 +164,7 @@
     loggingStatusEl.classList.remove('ok', 'error');
 
     try {
-      const healthRes = await fetch('/api/health-backend');
+      const healthRes = await fetch('/admin-api/health-backend');
       const health = await healthRes.json().catch(() => ({}));
       if (healthRes.ok && health.status === 'ok') {
         backendStatusEl.textContent = 'OK';
@@ -139,7 +179,7 @@
     }
 
     try {
-      const statsRes = await fetch('/api/stats?service=auth-microservice&limit=30');
+      const statsRes = await fetch('/admin-api/stats?service=auth-microservice&limit=30');
       const stats = await statsRes.json().catch(() => ({}));
       if (statsRes.ok && stats.success) {
         if (stats.source === 'logging' && stats.data && stats.data.length > 0) {
@@ -209,19 +249,71 @@
     login(email, password);
   }
 
-    if (logoutLink) {
-      logoutLink.addEventListener('click', function (e) {
-        e.preventDefault();
-        clearToken();
-        sessionStorage.removeItem('auth_admin_email');
-        showView(false);
-      });
+  async function doPasswordChange() {
+    const currentPasswordEl = document.getElementById('current-password');
+    const newPasswordEl = document.getElementById('new-password');
+    const confirmPasswordEl = document.getElementById('confirm-password');
+
+    if (!currentPasswordEl || !newPasswordEl || !confirmPasswordEl) return;
+
+    const currentPassword = currentPasswordEl.value;
+    const newPassword = newPasswordEl.value;
+    const confirmPassword = confirmPasswordEl.value;
+
+    showError(passwordError, '');
+    showSuccess(passwordSuccess, '');
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      showError(passwordError, 'Please fill in all fields.');
+      return;
     }
 
-    if (isLoggedIn()) {
-      showView(true);
-    } else {
-      showView(false);
+    if (newPassword.length < 8) {
+      showError(passwordError, 'New password must be at least 8 characters long.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showError(passwordError, 'New passwords do not match.');
+      return;
+    }
+
+    if (passwordChangeBtn) passwordChangeBtn.disabled = true;
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        showError(passwordError, 'Not authenticated. Please log in again.');
+        return;
+      }
+
+      const res = await fetch('/auth/password-change', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          currentPassword: currentPassword,
+          newPassword: newPassword
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        showError(passwordError, data.message || 'Password change failed');
+        return;
+      }
+
+      showSuccess(passwordSuccess, 'Password changed successfully');
+      currentPasswordEl.value = '';
+      newPasswordEl.value = '';
+      confirmPasswordEl.value = '';
+    } catch (e) {
+      showError(passwordError, 'Network error. Check backend is reachable.');
+    } finally {
+      if (passwordChangeBtn) passwordChangeBtn.disabled = false;
     }
   }
 
