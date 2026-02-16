@@ -37,7 +37,11 @@ fi
 
 # Get test credentials from environment or use defaults
 TEST_EMAIL="${TEST_EMAIL:-test@example.com}"
-TEST_PASSWORD="${TEST_PASSWORD:-testpassword123}"
+TEST_PASSWORD="${TEST_PASSWORD:-}"
+if [ -z "$TEST_PASSWORD" ]; then
+  echo "❌ TEST_PASSWORD is not set. Set it in auth-microservice/.env"
+  exit 1
+fi
 
 echo "Test Configuration:"
 echo "  Email: ${TEST_EMAIL}"

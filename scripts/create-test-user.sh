@@ -35,9 +35,13 @@ else
   fi
 fi
 
-# Get test credentials from environment or use defaults
+# Get test credentials from .env (no default password; keep password only in .env)
 TEST_EMAIL="${TEST_EMAIL:-test@example.com}"
-TEST_PASSWORD="${TEST_PASSWORD:-testpassword123}"
+TEST_PASSWORD="${TEST_PASSWORD:-}"
+if [ -z "$TEST_PASSWORD" ]; then
+  echo "❌ TEST_PASSWORD is not set. Set it in auth-microservice/.env (do not commit the value to docs)."
+  exit 1
+fi
 TEST_FIRST_NAME="${TEST_FIRST_NAME:-Test}"
 TEST_LAST_NAME="${TEST_LAST_NAME:-User}"
 

@@ -56,7 +56,7 @@ SSL uses **Let's Encrypt** (not self-signed): the deploy flow creates a temporar
 
 The web app lives in `web/` (Express server + static files). Env: `DOMAIN`, `FRONTEND_URL`, `FRONTEND_PORT*`, `LOGGING_SERVICE_URL` (optional, for stats).
 
-**Testing admin panel**: Create a test user with `./scripts/create-test-user.sh` (backend must be running). Then open `https://${DOMAIN}/admin` (or `http://localhost:3380/admin` when running frontend locally) and sign in with the test user (default: `test@example.com` / `testpassword123`, or set `TEST_EMAIL` / `TEST_PASSWORD` in `.env`).
+**Testing admin panel**: Create a test user with `./scripts/create-test-user.sh` (backend must be running). Set `TEST_EMAIL` and `TEST_PASSWORD` in `.env` (password only in .env, not in docs). Then open `https://${DOMAIN}/admin` (or `http://localhost:3380/admin` when running frontend locally) and sign in with those credentials.
 
 ## API Endpoints
 
@@ -1445,7 +1445,7 @@ import { authServiceClient } from './auth-service-client';
 
 describe('Auth Service Integration', () => {
   const testEmail = `test-${Date.now()}@example.com`;
-  const testPassword = 'testpassword123';
+  const testPassword = process.env.TEST_PASSWORD || 'min-6-chars-placeholder';
   let accessToken: string;
   let refreshToken: string;
 
@@ -1535,7 +1535,7 @@ describe('Auth Service Integration', () => {
    - Verify service is not overloaded
 
 5. **CORS Errors**
-   - Set CORS_ORIGIN in auth-microservice `.env` to a comma-separated list of allowed origins (e.g. https://auth.statex.cz,https://logging.statex.cz,https://notifications.statex.cz,https://database-server.statex.cz). Required for admin logins from logging/notifications/database-server; when credentials are used, origin cannot be `*`.
+   - Set CORS_ORIGIN in auth-microservice `.env` to a comma-separated list of allowed origins (e.g. <https://auth.statex.cz,https://logging.statex.cz,https://notifications.statex.cz,https://database-server.statex.cz>). Required for admin logins from logging/notifications/database-server; when credentials are used, origin cannot be `*`.
    - Ensure each frontend origin is listed in CORS_ORIGIN
 
 ---
