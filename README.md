@@ -50,7 +50,7 @@ The frontend is served by the `frontend` container; nginx-microservice routes `/
 # or from nginx-microservice: ./scripts/blue-green/deploy-smart.sh auth-microservice
 ```
 
-**Registry is recreated every deploy**: `./scripts/deploy.sh` removes the nginx service registry for auth-microservice before calling deploy-smart.sh, so the registry is always recreated from the current docker-compose (backend + frontend). This ensures nginx gets `location /` for the frontend. No manual registry removal needed.
+**Registry is driven by this repo**: Do not edit `nginx-microservice/service-registry/auth-microservice.json` directly. It is managed by `nginx-microservice/scripts/blue-green/deploy-smart.sh`, which creates it from **docker-compose.blue.yml** / **docker-compose.green.yml** (if missing) and updates it from **nginx/nginx-api-routes.conf**. Deploy via `./scripts/deploy.sh` (which calls deploy-smart.sh).
 
 SSL uses **Let's Encrypt** (not self-signed): the deploy flow creates a temporary certificate if needed, then requests a real certificate. Ensure `CERTBOT_EMAIL` is set in `nginx-microservice/.env` for first-time certificate request.
 

@@ -180,30 +180,7 @@ print_phase_summary() {
     echo ""
 }
 
-# Remove service registry so deploy-smart.sh recreates it from current compose (backend + frontend).
-# Otherwise an old registry (e.g. backend-only) would be reused and nginx would never get location / for frontend.
-REGISTRY_FILE="${NGINX_MICROSERVICE_PATH}/service-registry/${SERVICE_NAME}.json"
-if [ -f "$REGISTRY_FILE" ]; then
-    log_with_timestamp "Removing existing registry so it is recreated from current docker-compose (backend + frontend)"
-    rm -f "$REGISTRY_FILE"
-fi
-
-# Remove nginx blue/green configs for this domain so they are regenerated from the new registry.
-# Otherwise "configs already exist" skips regeneration and we keep backend-only config (no location / for frontend).
-if [ -f "$PROJECT_ROOT/.env" ]; then
-    set -a
-    # shellcheck source=../.env
-    source "$PROJECT_ROOT/.env" 2>/dev/null || true
-    set +a
-fi
-DEPLOY_DOMAIN="${DOMAIN:-auth.statex.cz}"
-NGINX_BLUE_GREEN_DIR="${NGINX_MICROSERVICE_PATH}/nginx/conf.d/blue-green"
-for f in "${NGINX_BLUE_GREEN_DIR}/${DEPLOY_DOMAIN}.blue.conf" "${NGINX_BLUE_GREEN_DIR}/${DEPLOY_DOMAIN}.green.conf"; do
-    if [ -f "$f" ]; then
-        log_with_timestamp "Removing $f so it is regenerated with frontend"
-        rm -f "$f"
-    fi
-done
+# deploy-smart.sh manages the service registry (create from compose if missing, update ports/routes/health from compose and nginx-api-routes.conf).
 
 # Blue/green health checks expect backend to listen on 3370 inside the container. Validate .env.
 PORT_VAL="${PORT:-3370}"
