@@ -192,18 +192,19 @@ if [ "$PORT_VAL" != "3370" ]; then
     exit 1
 fi
 
-# Stop any running auth-microservice containers so ports are free before prepare starts new color.
-# (Prepare script stops "old" color by project; stopping by name ensures our ports are released.)
+# Stop and remove any auth-microservice containers so ports are free before prepare starts new color.
+# (Prepare script stops "old" color by project; removing by name ensures ports are fully released.)
 AUTH_CONTAINERS="auth-microservice-blue auth-microservice-frontend-blue auth-microservice-green auth-microservice-frontend-green"
-STOPPED_ANY=
+REMOVED_ANY=
 for c in $AUTH_CONTAINERS; do
-    if docker ps -q -f "name=^${c}$" 2>/dev/null | grep -q .; then
-        echo -e "${BLUE}Stopping $c to free ports...${NC}"
+    if docker ps -aq -f "name=^${c}$" 2>/dev/null | grep -q .; then
+        echo -e "${BLUE}Removing $c to free ports...${NC}"
         docker stop "$c" 2>/dev/null || true
-        STOPPED_ANY=1
+        docker rm -f "$c" 2>/dev/null || true
+        REMOVED_ANY=1
     fi
 done
-if [ -n "$STOPPED_ANY" ]; then
+if [ -n "$REMOVED_ANY" ]; then
     sleep 2
 fi
 
