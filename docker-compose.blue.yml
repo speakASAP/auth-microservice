@@ -1,5 +1,5 @@
 services:
-  # Backend: auth API (service name "backend" for nginx routing)
+  # Backend: container_name must end with -blue or -green (nginx-microservice deploy-smart.sh / prepare-green-smart.sh expect {container_name_base}-{color})
   backend:
     build:
       context: .
@@ -46,7 +46,7 @@ services:
       timeout: 10s
       retries: 2
 
-  # Frontend: landing + admin (served at DOMAIN on prod)
+  # Frontend: container_name must end with -blue or -green (nginx-microservice prepare-green-smart.sh expects {container_name_base}-{color}; registry is derived from this)
   frontend:
     build:
       context: ./web
@@ -79,4 +79,3 @@ services:
 networks:
   nginx-network:
     external: true
-

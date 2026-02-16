@@ -52,6 +52,8 @@ The frontend is served by the `frontend` container; nginx-microservice routes `/
 
 **Registry is driven by this repo**: Do not edit `nginx-microservice/service-registry/auth-microservice.json` directly. It is managed by `nginx-microservice/scripts/blue-green/deploy-smart.sh`, which creates it from **docker-compose.blue.yml** / **docker-compose.green.yml** (if missing) and updates it from **nginx/nginx-api-routes.conf**. Deploy via `./scripts/deploy.sh` (which calls deploy-smart.sh).
 
+**Container naming (blue/green)**: `deploy-smart.sh` and `prepare-green-smart.sh` expect container names to end with `-blue` or `-green`; the registry's `container_name_base` is derived by stripping that suffix (see nginx-microservice `scripts/blue-green/utils.sh` and docs e.g. `docs/BLUE_GREEN_DEPLOYMENT.md`). Compose must use `auth-microservice-blue` / `auth-microservice-green` (backend) and `auth-microservice-frontend-blue` / `auth-microservice-frontend-green` (frontend).
+
 SSL uses **Let's Encrypt** (not self-signed): the deploy flow creates a temporary certificate if needed, then requests a real certificate. Ensure `CERTBOT_EMAIL` is set in `nginx-microservice/.env` for first-time certificate request.
 
 The web app lives in `web/` (Express server + static files). Env: `DOMAIN`, `FRONTEND_URL`, `FRONTEND_PORT*`, `LOGGING_SERVICE_URL` (optional, for stats).
