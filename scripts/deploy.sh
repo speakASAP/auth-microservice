@@ -194,7 +194,7 @@ fi
 
 # Stop any running auth-microservice containers so ports are free before prepare starts new color.
 # (Prepare script stops "old" color by project; stopping by name ensures our ports are released.)
-AUTH_CONTAINERS="auth-microservice-blue auth-microservice-blue-frontend auth-microservice-green auth-microservice-green-frontend"
+AUTH_CONTAINERS="auth-microservice-blue auth-microservice-frontend-blue auth-microservice-green auth-microservice-frontend-green"
 STOPPED_ANY=
 for c in $AUTH_CONTAINERS; do
     if docker ps -q -f "name=^${c}$" 2>/dev/null | grep -q .; then

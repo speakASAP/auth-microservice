@@ -51,7 +51,7 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-    container_name: auth-microservice-blue-frontend
+    container_name: auth-microservice-frontend-blue
     ports:
       - "${FRONTEND_PORT_BLUE:-3380}:3380"
     env_file:

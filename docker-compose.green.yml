@@ -51,7 +51,7 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-    container_name: auth-microservice-green-frontend
+    container_name: auth-microservice-frontend-green
     ports:
       - "${FRONTEND_PORT_GREEN:-3381}:3380"
     env_file:
