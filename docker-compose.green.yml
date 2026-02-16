@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: auth-microservice-green
     ports:
-      - "3371:${PORT:-3370}"
+      - "${BACKEND_PORT_GREEN:-3371}:${PORT:-3370}"
     env_file:
       - .env
     environment:
@@ -59,7 +59,7 @@ services:
     environment:
       - PORT=3380
       - LOGGING_SERVICE_URL=${LOGGING_SERVICE_URL}
-      - AUTH_BACKEND_URL=http://auth-microservice-green:${PORT:-3370}
+      - AUTH_BACKEND_URL=http://${BACKEND_CONTAINER_NAME_GREEN:-auth-microservice-green}:${PORT:-3370}
     networks:
       - nginx-network
     deploy:
