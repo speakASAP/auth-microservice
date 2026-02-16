@@ -50,11 +50,11 @@ services:
       dockerfile: Dockerfile
     container_name: auth-microservice-frontend
     ports:
-      - "${FRONTEND_PORT:-3380}:3380"
+      - "${FRONTEND_PORT:-3372}:3372"
     env_file:
       - .env
     environment:
-      - PORT=3380
+      - PORT=3372
       - LOGGING_SERVICE_URL=${LOGGING_SERVICE_URL}
       - AUTH_BACKEND_URL=http://auth-microservice:${PORT:-3370}
     networks:
@@ -67,7 +67,7 @@ services:
           memory: 64M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3380/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3372/health"]
       interval: 10s
       timeout: 5s
       retries: 2

@@ -10,7 +10,7 @@ COPY server.js ./
 COPY public ./public
 
 ENV NODE_ENV=production
-ENV PORT=3380
-EXPOSE 3380
+ENV PORT=3372
+EXPOSE 3372
 
 CMD ["node", "server.js"]

@@ -9,7 +9,7 @@ const http = require('http');
 const https = require('https');
 
 const app = express();
-const PORT = process.env.PORT || 3380;
+const PORT = process.env.PORT || 3372;
 
 // Optional: proxy to logging service for stats (internal URL from env)
 const LOGGING_SERVICE_URL = process.env.LOGGING_SERVICE_URL || '';

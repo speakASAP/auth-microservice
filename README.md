@@ -38,7 +38,7 @@ This service is **production-ready** and should **NOT** be modified directly.
 
 A web UI is included for potential customers and admins:
 
-- **Landing page** – At `https://${DOMAIN}` (or `http://localhost:3380` when running only the frontend). Describes features and links to the admin panel.
+- **Landing page** – At `https://${DOMAIN}` (or `http://localhost:3372` when running only the frontend). Describes features and links to the admin panel.
 - **Admin panel** – At `https://${DOMAIN}/admin`. Login with any auth-microservice user (email/password). After login you see:
   - **Service status** – Auth backend health and logging service status.
   - **Recent activity** – Recent log entries for `auth-microservice` from the logging service (if `LOGGING_SERVICE_URL` is set).
@@ -58,7 +58,7 @@ SSL uses **Let's Encrypt** (not self-signed): the deploy flow creates a temporar
 
 The web app lives in `web/` (Express server + static files). Env: `DOMAIN`, `FRONTEND_URL`, `FRONTEND_PORT*`, `LOGGING_SERVICE_URL` (optional, for stats).
 
-**Testing admin panel**: Create a test user with `./scripts/create-test-user.sh` (backend must be running). Set `TEST_EMAIL` and `TEST_PASSWORD` in `.env` (password only in .env, not in docs). Then open `https://${DOMAIN}/admin` (or `http://localhost:3380/admin` when running frontend locally) and sign in with those credentials.
+**Testing admin panel**: Create a test user with `./scripts/create-test-user.sh` (backend must be running). Set `TEST_EMAIL` and `TEST_PASSWORD` in `.env` (password only in .env, not in docs). Then open `https://${DOMAIN}/admin` (or `http://localhost:3372/admin` when running frontend locally) and sign in with those credentials.
 
 ## API Endpoints
 
@@ -69,12 +69,12 @@ The web app lives in `web/` (Express server + static files). Env: `DOMAIN`, `FRO
 | Service | Host Port (Blue) | Host Port (Green) | Container Port | .env Variable | Description |
 | ------- | ---------------- | ----------------- | -------------- | ------------- | ----------- |
 | **Auth backend** | `${PORT:-3370}` | `3371` | `${PORT:-3370}` | `PORT` | Authentication API |
-| **Web frontend** | `${FRONTEND_PORT_BLUE:-3380}` | `${FRONTEND_PORT_GREEN:-3381}` | `3380` | `FRONTEND_PORT*` | Landing + admin panel |
+| **Web frontend** | `${FRONTEND_PORT_BLUE:-3372}` | `${FRONTEND_PORT_GREEN:-3373}` | `3372` | `FRONTEND_PORT*` | Landing + admin panel |
 
 **Note**:
 
 - All ports are configured in `auth-microservice/.env`. The values shown are defaults.
-- Blue and green use different host ports for backend (3370/3371) and frontend (3380/3381); container ports are fixed.
+- Blue and green use different host ports for backend (3370/3371) and frontend (3372/3373); container ports are fixed.
 - Ports are exposed on localhost only; external access is via nginx-microservice at `https://${DOMAIN}`.
 - **PORT must be 3370** (or unset) so the backend listens on 3370 inside the container; the green health check expects this. Do not set `PORT=3371`.
 
