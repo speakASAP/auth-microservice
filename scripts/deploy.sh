@@ -37,7 +37,7 @@ if [ -d ".git" ] && [ "${SKIP_DEPLOY_SYNC}" != "1" ]; then
 fi
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     auth-microservice Application - Production Deployment            ║${NC}"
+echo -e "${BLUE}║     auth-microservice Application - Production Deployment  ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -295,8 +295,8 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     print_phase_summary 2>&1
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║     ✅ Deployment completed successfully!                 ║${NC}"
-    echo -e "${GREEN}║     Total deployment time: ${TOTAL_DURATION_FORMATTED}s              ║${NC}"
+    echo -e "${GREEN}║      ✅ Deployment completed successfully!                 ║${NC}"
+    echo -e "${GREEN}║      Total deployment time: ${TOTAL_DURATION_FORMATTED}s   ║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "The auth-microservice application has been deployed using blue/green deployment."
@@ -311,13 +311,13 @@ else
     TOTAL_DURATION_FORMATTED=$(awk "BEGIN {printf \"%.2f\", $TOTAL_DURATION}")
     echo ""
     echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
-    echo -e "${RED}❌ Deployment failed!${NC}"
+    echo -e "${RED}   ❌ Deployment failed!${NC}"
     echo -e "${RED}   Failed after: ${TOTAL_DURATION_FORMATTED}s${NC}"
     echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
     print_phase_summary
     echo ""
     echo -e "${RED}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}║     ❌ Deployment failed!                                  ║${NC}"
+    echo -e "${RED}║                  ❌ Deployment failed!                     ║${NC}"
     echo -e "${RED}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Please check the error messages above and:"
