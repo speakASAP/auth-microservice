@@ -26,7 +26,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Deploy only code from repository: sync with remote (discard local changes on server)
-if [ -d ".git" ]; then
+# Skip sync when SKIP_DEPLOY_SYNC=1 (e.g. local commit not yet pushed)
+if [ -d ".git" ] && [ "${SKIP_DEPLOY_SYNC}" != "1" ]; then
     echo -e "${BLUE}Syncing with remote repository...${NC}"
     git fetch origin
     BRANCH=$(git rev-parse --abbrev-ref HEAD)
