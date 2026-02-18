@@ -17,7 +17,7 @@ import { UserRole } from '../../src/user-roles/entities/user-role.entity';
       host: process.env.DB_HOST || 'db-server-postgres',
       port: parseInt(process.env.DB_PORT || '5432', 10),
       username: process.env.DB_USER || 'dbadmin',
-      password: process.env.DB_PASSWORD || '',
+      password: typeof process.env.DB_PASSWORD === 'string' ? process.env.DB_PASSWORD : '',
       database: process.env.DB_NAME || 'auth',
       entities: [User, PasswordResetToken, Application, Role, UserRole],
       synchronize: process.env.DB_SYNC === 'true',

@@ -4,7 +4,14 @@
  * Initializes RBAC system with applications, roles, and initial user assignments
  *
  * Usage: ts-node scripts/seed-rbac.ts [--admin-email=your@email.com]
+ * Run from auth-microservice dir. For local DB use: DB_HOST=127.0.0.1 ./scripts/seed-rbac.sh ...
  */
+
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load .env from auth-microservice root so DB credentials are available before Nest bootstraps
+config({ path: resolve(__dirname, '..', '.env') });
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
