@@ -5,6 +5,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { ApplicationsModule } from './applications/applications.module';
+import { AdminModule } from './admin/admin.module';
 import { HealthController } from './health/health.controller';
 import { InfoController } from './info/info.controller';
 import { DatabaseModule } from '../shared/database/database.module';
@@ -19,6 +21,8 @@ import { LoggerModule } from '../shared/logger/logger.module';
     DatabaseModule,
     LoggerModule,
     AuthModule,
+    ApplicationsModule,
+    AdminModule,
   ],
   controllers: [HealthController, InfoController],
   providers: [],

@@ -9,6 +9,7 @@ import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
+import { RolesService } from '../roles/roles.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
@@ -27,6 +28,7 @@ export class AuthService {
 
   constructor(
     private readonly usersService: UsersService,
+    private readonly rolesService: RolesService,
     private readonly jwtService: JwtService,
     private readonly logger: LoggerService,
     private readonly httpService: HttpService,
@@ -116,9 +118,16 @@ export class AuthService {
         throw new UnauthorizedException('Invalid token');
       }
 
+      // Get user roles
+      const roles = await this.rolesService.getUserRoles(user.id);
+
       this.logger.log(`Token validated successfully for user: ${user.email}`, 'AuthService');
 
-      return this.sanitizeUser(user);
+      const sanitizedUser = this.sanitizeUser(user);
+      return {
+        ...sanitizedUser,
+        roles,
+      };
     } catch (error) {
       this.logger.error(`Token validation failed: ${error.message}`, error.stack, 'AuthService');
       throw new UnauthorizedException('Invalid token');
@@ -161,7 +170,20 @@ export class AuthService {
   }
 
   private async generateTokens(userId: string) {
-    const payload = { sub: userId };
+    // Get user and roles
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const roles = await this.rolesService.getUserRoles(userId);
+
+    const payload = {
+      sub: userId,
+      email: user.email,
+      type: user.userType || 'end_user',
+      roles,
+    };
 
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: process.env.JWT_EXPIRES_IN || '7d',

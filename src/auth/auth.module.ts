@@ -11,13 +11,16 @@ import { AuthController } from './auth.controller';
 import { AdminUsersController } from './admin-users.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { RolesGuard } from './guards/roles.guard';
 import { UsersModule } from '../users/users.module';
+import { RolesModule } from '../roles/roles.module';
 import { LoggerModule } from '../../shared/logger/logger.module';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 
 @Module({
   imports: [
     UsersModule,
+    RolesModule,
     LoggerModule,
     PassportModule,
     HttpModule,
@@ -30,8 +33,8 @@ import { PasswordResetToken } from './entities/password-reset-token.entity';
     }),
   ],
   controllers: [AuthController, AdminUsersController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  providers: [AuthService, JwtStrategy, RolesGuard],
+  exports: [AuthService, RolesGuard, JwtModule],
 })
 export class AuthModule {}
 

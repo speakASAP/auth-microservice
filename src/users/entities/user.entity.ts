@@ -49,6 +49,9 @@ export class User {
   @Column({ default: false })
   isVerified: boolean;
 
+  @Column({ type: 'varchar', length: 50, default: 'end_user' })
+  userType: string; // 'end_user' | 'staff' | 'service' | 'admin'
+
   @Column({ type: 'timestamp', nullable: true })
   lastActivity: Date;
 
