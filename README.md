@@ -543,6 +543,8 @@ The project includes management scripts in the `scripts/` directory:
 - `scripts/start.sh` - Start the service with Docker Compose
 - `scripts/stop.sh` - Stop the service
 - `scripts/status.sh` - Check service status and health
+- `scripts/seed-rbac.sh` - Seed RBAC (applications, roles, assign superadmin); see [RBAC testing](#rbac-testing-checklist) below
+- `scripts/test-rbac-checklist.sh` - Run RBAC testing checklist (tokens, guards, admin API); see [RBAC testing](#rbac-testing-checklist) below
 
 Usage:
 
@@ -558,6 +560,31 @@ Usage:
 ```
 
 **Note**: These scripts are for local development. Production deployments use the blue/green deployment system via nginx-microservice.
+
+#### RBAC testing checklist
+
+To sign off RBAC (tokens, guards, role assignment), use:
+
+1. **Seed** (creates applications, roles, and optionally assigns `global:superadmin` to a user):
+
+   ```bash
+   # Local DB
+   DB_HOST=127.0.0.1 ./scripts/seed-rbac.sh --admin-email=your@email.com
+   ```
+
+2. **Automated checklist** (requires backend running and `TEST_EMAIL` / `TEST_PASSWORD` in `.env`; for admin tests the user must have `global:superadmin` from step 1):
+
+   ```bash
+   ./scripts/test-rbac-checklist.sh
+   ```
+
+   To run against the local backend instead of `AUTH_URL` from `.env`:
+
+   ```bash
+   AUTH_URL=http://localhost:3370 ./scripts/test-rbac-checklist.sh
+   ```
+
+   The script checks: service health, login and JWT payload `roles` array, `/auth/validate` returning `user.roles`, GET `/auth/admin/applications` and `/auth/admin/roles` with Bearer token (200), and GET without token (401). Full checklist details: `docs/RBAC_IMPLEMENTATION_STATUS.md`.
 
 ## Integration Guide
 
