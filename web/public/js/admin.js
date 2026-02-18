@@ -30,6 +30,7 @@
   let passwordChangeForm, passwordChangeBtn, passwordError, passwordSuccess;
   let usersLoading, usersContent, usersEmpty, createUserBtn;
   let userModal, userModalTitle, userModalClose, userForm, userSaveBtn, userCancelBtn, userError;
+  let tokenDisplay, showTokenBtn, copyTokenBtn, tokenSuccess;
 
   function init() {
     stripCredentialParamsFromUrl();
@@ -61,6 +62,10 @@
     userSaveBtn = document.getElementById('user-save-btn');
     userCancelBtn = document.getElementById('user-cancel-btn');
     userError = document.getElementById('user-error');
+    tokenDisplay = document.getElementById('token-display');
+    showTokenBtn = document.getElementById('show-token-btn');
+    copyTokenBtn = document.getElementById('copy-token-btn');
+    tokenSuccess = document.getElementById('token-success');
 
     /* Attach Sign in button first so click always works even if rest of init fails */
     if (loginBtn) {
@@ -134,6 +139,20 @@
       });
     }
 
+    if (showTokenBtn) {
+      showTokenBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        toggleTokenVisibility();
+      });
+    }
+
+    if (copyTokenBtn) {
+      copyTokenBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        copyTokenToClipboard();
+      });
+    }
+
     if (isLoggedIn()) {
       showView(true);
     } else {
@@ -178,6 +197,12 @@
       if (userEmailEl) userEmailEl.textContent = sessionStorage.getItem('auth_admin_email') || 'User';
       loadDashboard();
       loadUsers();
+      updateTokenDisplay();
+    } else {
+      if (tokenDisplay) tokenDisplay.value = '';
+      if (showTokenBtn) showTokenBtn.textContent = 'Show Token';
+      if (copyTokenBtn) copyTokenBtn.style.display = 'none';
+      if (tokenDisplay) tokenDisplay.type = 'password';
     }
   }
 
@@ -669,6 +694,64 @@
       loadUsers();
     } catch (e) {
       alert('Network error toggling user status');
+    }
+  }
+
+  function updateTokenDisplay() {
+    if (!tokenDisplay) return;
+    const token = getAccessToken();
+    if (token) {
+      tokenDisplay.value = token;
+    } else {
+      tokenDisplay.value = '';
+    }
+  }
+
+  function toggleTokenVisibility() {
+    if (!tokenDisplay || !showTokenBtn) return;
+    const isPassword = tokenDisplay.type === 'password';
+    tokenDisplay.type = isPassword ? 'text' : 'password';
+    showTokenBtn.textContent = isPassword ? 'Hide Token' : 'Show Token';
+    if (copyTokenBtn) {
+      copyTokenBtn.style.display = isPassword ? 'inline-block' : 'none';
+    }
+    if (tokenSuccess) {
+      tokenSuccess.classList.add('hidden');
+    }
+  }
+
+  async function copyTokenToClipboard() {
+    if (!tokenDisplay) return;
+    const token = tokenDisplay.value;
+    if (!token) {
+      alert('No token available');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(token);
+      if (tokenSuccess) {
+        tokenSuccess.textContent = 'Token copied to clipboard!';
+        tokenSuccess.classList.remove('hidden');
+        setTimeout(function () {
+          if (tokenSuccess) tokenSuccess.classList.add('hidden');
+        }, 3000);
+      }
+    } catch (e) {
+      tokenDisplay.select();
+      tokenDisplay.setSelectionRange(0, 99999);
+      try {
+        document.execCommand('copy');
+        if (tokenSuccess) {
+          tokenSuccess.textContent = 'Token copied to clipboard!';
+          tokenSuccess.classList.remove('hidden');
+          setTimeout(function () {
+            if (tokenSuccess) tokenSuccess.classList.add('hidden');
+          }, 3000);
+        }
+      } catch (err) {
+        alert('Failed to copy token. Please select and copy manually.');
+      }
     }
   }
 
