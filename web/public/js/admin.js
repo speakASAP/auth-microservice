@@ -40,7 +40,7 @@
     loginForm = document.getElementById('login-form');
     loginError = document.getElementById('login-error');
     loginBtn = document.getElementById('login-btn');
-    userEmailEl = document.getElementById('user-email');
+    userEmailEl = document.getElementById('header-user-email');
     logoutLink = document.getElementById('logout-link');
     backendStatusEl = document.getElementById('backend-status');
     loggingStatusEl = document.getElementById('logging-status');
@@ -550,7 +550,7 @@
       if (res.ok && data.success && data.user) {
         const user = data.user;
         document.getElementById('user-id').value = user.id;
-        document.getElementById('user-email').value = user.email || '';
+        document.getElementById('user-form-email').value = user.email || '';
         document.getElementById('user-password').value = '';
         document.getElementById('user-firstName').value = user.firstName || '';
         document.getElementById('user-lastName').value = user.lastName || '';
@@ -569,7 +569,7 @@
     if (!userForm || !userSaveBtn) return;
 
     const userId = document.getElementById('user-id').value;
-    const email = document.getElementById('user-email').value.trim();
+    const email = document.getElementById('user-form-email').value.trim();
     const password = document.getElementById('user-password').value;
     const firstName = document.getElementById('user-firstName').value.trim();
     const lastName = document.getElementById('user-lastName').value.trim();
