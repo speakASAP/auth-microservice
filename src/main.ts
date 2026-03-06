@@ -10,13 +10,52 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS. When credentials is true, origin cannot be '*' (browser rejects).
-  // Use comma-separated CORS_ORIGIN for admin logins from logging/notifications/database-server.
+  // CORS_ORIGIN supports:
+  // - Explicit origins: https://logging.alfares.cz,https://notifications.alfares.cz
+  // - Wildcard domains: *.alfares.cz,*.statex.cz (any subdomain of these)
   const corsOrigin = process.env.CORS_ORIGIN?.trim() || '';
-  const origins = corsOrigin ? corsOrigin.split(',').map((o) => o.trim()).filter(Boolean) : [];
-  app.enableCors({
-    origin: origins.length > 0 ? origins : '*',
-    credentials: origins.length > 0,
-  });
+  const originEntries = corsOrigin
+    ? corsOrigin.split(',').map((o) => o.trim()).filter(Boolean)
+    : [];
+
+  if (originEntries.length === 0) {
+    app.enableCors({
+      origin: '*',
+      credentials: false,
+    });
+  } else {
+    const exactOrigins = originEntries.filter((entry) => !entry.startsWith('*.'));
+    const wildcardSuffixes = originEntries
+      .filter((entry) => entry.startsWith('*.'))
+      .map((entry) => entry.substring(1)); // ".alfares.cz" from "*.alfares.cz"
+
+    app.enableCors({
+      origin: (origin, callback) => {
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+
+        if (exactOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        try {
+          const url = new URL(origin);
+          const hostname = url.hostname;
+          const allowed = wildcardSuffixes.some((suffix) => {
+            const trimmed = suffix.startsWith('.') ? suffix.slice(1) : suffix;
+            return hostname === trimmed || hostname.endsWith(`.${trimmed}`);
+          });
+          callback(null, allowed);
+        } catch {
+          callback(null, false);
+        }
+      },
+      credentials: true,
+    });
+  }
 
   // Global validation pipe
   app.useGlobalPipes(
