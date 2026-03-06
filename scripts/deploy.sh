@@ -55,7 +55,7 @@ if [ -d ".git" ] && [ "${SKIP_DEPLOY_SYNC}" != "1" ]; then
 fi
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     auth-microservice Application - Production Deployment  ║${NC}"
+echo -e "${BLUE}║          auth-microservice - Production Deployment         ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -72,12 +72,12 @@ if [ -d "/home/statex/nginx-microservice" ]; then
     NGINX_MICROSERVICE_PATH="/home/statex/nginx-microservice"
 elif [ -d "/home/alfares/nginx-microservice" ]; then
     NGINX_MICROSERVICE_PATH="/home/alfares/nginx-microservice"
+elif [ -d "/home/belunga/nginx-microservice" ]; then
+    NGINX_MICROSERVICE_PATH="/home/belunga/nginx-microservice"
 elif [ -d "$HOME/nginx-microservice" ]; then
     NGINX_MICROSERVICE_PATH="$HOME/nginx-microservice"
-# Check if nginx-microservice is a sibling directory (for local dev)
 elif [ -d "$(dirname "$PROJECT_ROOT")/nginx-microservice" ]; then
     NGINX_MICROSERVICE_PATH="$(dirname "$PROJECT_ROOT")/nginx-microservice"
-# Check if nginx-microservice is in the same directory as beauty
 elif [ -d "$PROJECT_ROOT/../nginx-microservice" ]; then
     NGINX_MICROSERVICE_PATH="$(cd "$PROJECT_ROOT/../nginx-microservice" && pwd)"
 fi
@@ -89,6 +89,7 @@ if [ -z "$NGINX_MICROSERVICE_PATH" ] || [ ! -d "$NGINX_MICROSERVICE_PATH" ]; the
     echo "Please ensure nginx-microservice is installed in one of these locations:"
     echo "  - /home/statex/nginx-microservice"
     echo "  - /home/alfares/nginx-microservice"
+    echo "  - /home/belunga/nginx-microservice"
     echo "  - $HOME/nginx-microservice"
     echo "  - $(dirname "$PROJECT_ROOT")/nginx-microservice (sibling directory)"
     echo ""
@@ -315,8 +316,8 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     print_phase_summary 2>&1
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║  ✅ ${DISPLAY_NAME} deployment completed successfully!               ║${NC}"
-    echo -e "${GREEN}║      Total deployment time: ${TOTAL_DURATION_FORMATTED}s                        ║${NC}"
+    echo -e "${GREEN}║     ✅ auth-microservice deployment completed successfully!          ║${NC}"
+    echo -e "${GREEN}║      Total deployment time: ${TOTAL_DURATION_FORMATTED}s   ║${NC}"
     echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "The auth-microservice application has been deployed using blue/green deployment."
@@ -331,13 +332,13 @@ else
     TOTAL_DURATION_FORMATTED=$(awk "BEGIN {printf \"%.2f\", $TOTAL_DURATION}")
     echo ""
     echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
-    echo -e "${RED}   ❌ ${DISPLAY_NAME} deployment failed!${NC}"
+    echo -e "${RED}   ❌ auth-microservice deployment failed!${NC}"
     echo -e "${RED}   Failed after: ${TOTAL_DURATION_FORMATTED}s${NC}"
     echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
     print_phase_summary
     echo ""
     echo -e "${RED}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}║  ❌ ${DISPLAY_NAME} deployment failed!                                ║${NC}"
+    echo -e "${RED}║               ❌ auth-microservice deployment failed!                ║${NC}"
     echo -e "${RED}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Please check the error messages above and:"
