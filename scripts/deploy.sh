@@ -302,10 +302,10 @@ START_TIME=$(get_timestamp_seconds)
             health_check_started=2
         fi
     done
-    exit ${PIPESTATUS[0]}
 }
 
-DEPLOY_EXIT_CODE=$?
+# Pipeline's left side (deploy script) exit code; PIPESTATUS[0] in main shell is correct
+DEPLOY_EXIT_CODE=${PIPESTATUS[0]}
 END_TIME=$(get_timestamp_seconds)
 TOTAL_DURATION=$(awk "BEGIN {printf \"%.2f\", $END_TIME - $START_TIME}")
 
