@@ -219,21 +219,10 @@ if [ "$PORT_VAL" != "3370" ]; then
     exit 1
 fi
 
-# Stop and remove any auth-microservice containers so ports are free before prepare starts new color.
-# (Prepare script stops "old" color by project; removing by name ensures ports are fully released.)
-AUTH_CONTAINERS="auth-microservice-blue auth-microservice-frontend-blue auth-microservice-green auth-microservice-frontend-green"
-REMOVED_ANY=
-for c in $AUTH_CONTAINERS; do
-    if docker ps -aq -f "name=^${c}$" 2>/dev/null | grep -q .; then
-        echo -e "${BLUE}Removing $c to free ports...${NC}"
-        docker stop "$c" >/dev/null 2>&1 || true
-        docker rm -f "$c" >/dev/null 2>&1 || true
-        REMOVED_ANY=1
-    fi
-done
-if [ -n "$REMOVED_ANY" ]; then
-    sleep 2
-fi
+# Blue/green: do NOT stop/remove containers here. Keep current (e.g. blue) running until
+# deploy-smart.sh has started the new color (green), passed health checks, and switched traffic.
+# prepare-green-smart.sh stops only the OLD color when needed; outage = brief switch, not full deploy.
+# (Auth uses different host ports for blue/green: 3370 vs 3371, so both can run in parallel.)
 
 # Change to nginx-microservice directory and run deployment
 start_phase "Pre-deployment Setup"
