@@ -6,6 +6,15 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
+process.on('uncaughtException', (err) => {
+  // eslint-disable-next-line no-console
+  console.error('uncaughtException', err?.message, err?.stack);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  // eslint-disable-next-line no-console
+  console.error('unhandledRejection', reason);
+});
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 

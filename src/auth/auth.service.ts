@@ -108,35 +108,56 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    // Find user
-    const user = await this.usersService.findByEmail(loginDto.email);
-    if (!user) {
-      this.logger.warn(`Login attempt with non-existent email: ${loginDto.email}`, 'AuthService');
+    try {
+      const user = await this.usersService.findByEmail(loginDto.email);
+      if (!user) {
+        this.logger.warn(`Login attempt with non-existent email: ${loginDto.email}`, 'AuthService');
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      if (!user.password) {
+        this.logger.warn(`Login attempt for user without password (contact-based): ${loginDto.email}`, 'AuthService');
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      if (!/^\$2[aby]\$\d{2}\$.+/.test(user.password)) {
+        this.logger.warn(`Login attempt for user with invalid password hash format: ${loginDto.email}`, 'AuthService');
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      let isPasswordValid = false;
+      try {
+        isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+      } catch (err) {
+        this.logger.warn(
+          `Password check failed for ${loginDto.email}: ${(err as Error).message}`,
+          'AuthService',
+        );
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      if (!isPasswordValid) {
+        this.logger.warn(`Login attempt with invalid password for: ${loginDto.email}`, 'AuthService');
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      if (!user.isActive) {
+        this.logger.warn(`Login attempt for inactive user: ${loginDto.email}`, 'AuthService');
+        throw new UnauthorizedException('User account is inactive');
+      }
+
+      const tokens = await this.generateTokens(user.id, 'password');
+      this.logger.log(`User logged in successfully: ${user.email}`, 'AuthService');
+      return {
+        user: this.sanitizeUser(user),
+        ...tokens,
+      };
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
+      this.logger.error(
+        `Login error for ${loginDto.email}: ${(err as Error).message}`,
+        (err as Error).stack,
+        'AuthService',
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
-
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
-    if (!isPasswordValid) {
-      this.logger.warn(`Login attempt with invalid password for: ${loginDto.email}`, 'AuthService');
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    // Check if user is active
-    if (!user.isActive) {
-      this.logger.warn(`Login attempt for inactive user: ${loginDto.email}`, 'AuthService');
-      throw new UnauthorizedException('User account is inactive');
-    }
-
-    // Generate tokens
-    const tokens = await this.generateTokens(user.id, 'password');
-
-    this.logger.log(`User logged in successfully: ${user.email}`, 'AuthService');
-
-    return {
-      user: this.sanitizeUser(user),
-      ...tokens,
-    };
   }
 
   async validateToken(token: string) {
