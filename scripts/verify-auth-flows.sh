@@ -59,7 +59,7 @@ RESP=$(curl -s -w "\n%{http_code}" -X POST "${AUTH_URL}/auth/magic-link/request"
   -d "{\"email\":\"verify-test-$(date +%s)@example.com\",\"return_url\":\"${RETURN_URL}\",\"state\":\"verify-script\"}")
 CODE=$(echo "$RESP" | tail -n1)
 BODY=$(echo "$RESP" | head -n -1)
-if [ "$CODE" = "200" ] && echo "$BODY" | grep -q '"success":true'; then
+if { [ "$CODE" = "200" ] || [ "$CODE" = "201" ]; } && echo "$BODY" | grep -q '"success":true'; then
   echo "OK"; PASS=$((PASS+1))
 else
   echo "FAIL (HTTP $CODE)"; FAIL=$((FAIL+1))
