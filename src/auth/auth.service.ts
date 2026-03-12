@@ -504,26 +504,32 @@ export class AuthService {
       token,
     )}&return_url=${encodeURIComponent(validReturnUrl)}`;
 
-    try {
-      await firstValueFrom(
-        this.httpService.post(`${this.notificationsServiceUrl}/notifications/send`, {
-          channel: 'email',
-          type: 'custom',
-          recipient: dto.email,
-          subject: 'Your sign-in link',
-          message: `Click the following link to sign in: ${verifyUrl}\n\nThis link will expire in ${this.magicLinkTtlMinutes} minutes.`,
-        }),
-      );
-      const durationMs = Date.now() - startedAt;
-      this.logger.log(
-        `Magic link requested and email sent for ${dto.email} client_id=${dto.client_id || ''} duration_ms=${durationMs}`,
-        'AuthService',
-      );
-    } catch (error) {
-      const durationMs = Date.now() - startedAt;
-      this.logger.error(
-        `Failed to send magic link email for ${dto.email} client_id=${dto.client_id || ''} duration_ms=${durationMs}`,
-        (error as Error).stack,
+    const durationMs = Date.now() - startedAt;
+    if (this.notificationsServiceUrl) {
+      try {
+        await firstValueFrom(
+          this.httpService.post(`${this.notificationsServiceUrl}/notifications/send`, {
+            channel: 'email',
+            type: 'custom',
+            recipient: dto.email,
+            subject: 'Your sign-in link',
+            message: `Click the following link to sign in: ${verifyUrl}\n\nThis link will expire in ${this.magicLinkTtlMinutes} minutes.`,
+          }),
+        );
+        this.logger.log(
+          `Magic link requested and email sent for ${dto.email} client_id=${dto.client_id || ''} duration_ms=${durationMs}`,
+          'AuthService',
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to send magic link email for ${dto.email} client_id=${dto.client_id || ''} duration_ms=${durationMs}`,
+          (error as Error).stack,
+          'AuthService',
+        );
+      }
+    } else {
+      this.logger.warn(
+        `Magic link created for ${dto.email} but NOTIFICATIONS_SERVICE_URL not set; email not sent. duration_ms=${durationMs}`,
         'AuthService',
       );
     }
@@ -534,10 +540,17 @@ export class AuthService {
   async verifyMagicLink(dto: MagicLinkVerifyDto, res: Response) {
     const startedAt = Date.now();
 
-    const token = await this.magicLinkTokenRepository.findOne({
-      where: { token: dto.token, used: false },
-      relations: ['user'],
-    });
+    let token: MagicLinkToken | null = null;
+    try {
+      token = await this.magicLinkTokenRepository.findOne({
+        where: { token: dto.token, used: false },
+        relations: ['user'],
+      });
+    } catch (err) {
+      this.logger.error(`Magic link verify lookup failed: ${(err as Error).message}`, (err as Error).stack, 'AuthService');
+      this.renderSafeError(res, 'Invalid or expired magic link.');
+      return;
+    }
 
     if (!token) {
       this.renderSafeError(res, 'Invalid or expired magic link.');
