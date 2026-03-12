@@ -14,6 +14,18 @@ const PORT = process.env.PORT || 3372;
 // Optional: proxy to logging service for stats (internal URL from env)
 const LOGGING_SERVICE_URL = process.env.LOGGING_SERVICE_URL || '';
 const AUTH_BACKEND_URL = process.env.AUTH_BACKEND_URL || 'http://auth-microservice:3370';
+const PROXY_AUTH_TIMEOUT_MS = parseInt(process.env.PROXY_AUTH_TIMEOUT_MS || '30000', 10);
+
+// Parse backend host from AUTH_BACKEND_URL for Host header (backend may require it)
+function getBackendHost() {
+  try {
+    const u = new URL(AUTH_BACKEND_URL);
+    return u.hostname + (u.port ? ':' + u.port : '');
+  } catch {
+    return 'localhost:3370';
+  }
+}
+const BACKEND_HOST = getBackendHost();
 
 /**
  * Proxy /auth to backend (must be before express.json() so POST body is not consumed and is forwarded)
@@ -24,12 +36,21 @@ app.use('/auth', (req, res) => {
   const pathSuffix = req.url === '/' || req.url === '' ? '' : req.url;
   const fullUrl = AUTH_BACKEND_URL.replace(/\/$/, '') + '/auth' + pathSuffix;
   const client = fullUrl.startsWith('https') ? https : http;
-  const proxy = client.request(fullUrl, { method: req.method, headers: req.headers }, (upstream) => {
+  const headers = { ...req.headers, host: BACKEND_HOST };
+  const proxy = client.request(fullUrl, { method: req.method, headers }, (upstream) => {
+    if (res.headersSent) return;
     res.status(upstream.statusCode);
     Object.keys(upstream.headers).forEach((k) => res.setHeader(k, upstream.headers[k]));
     upstream.pipe(res);
   });
-  proxy.on('error', (e) => res.status(502).json({ message: e.message }));
+  proxy.setTimeout(PROXY_AUTH_TIMEOUT_MS, () => {
+    proxy.destroy();
+    if (!res.headersSent) res.status(502).json({ message: 'Backend timeout' });
+  });
+  proxy.on('error', (e) => {
+    console.error('[auth proxy]', e.code || e.message, fullUrl);
+    if (!res.headersSent) res.status(502).json({ message: e.message });
+  });
   req.pipe(proxy);
 });
 
