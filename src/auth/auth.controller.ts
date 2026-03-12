@@ -9,7 +9,10 @@ import {
   Body,
   UseGuards,
   Request,
+  Query,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -20,6 +23,8 @@ import { PasswordResetConfirmDto } from './dto/password-reset-confirm.dto';
 import { PasswordChangeDto } from './dto/password-change.dto';
 import { ContactRegisterDto } from './dto/contact-register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
+import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -76,6 +81,33 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async getProfile(@Request() req) {
     return { user: req.user };
+  }
+
+  @Post('magic-link/request')
+  async requestMagicLink(@Body() dto: MagicLinkRequestDto, @Request() req) {
+    return this.authService.requestMagicLink(dto, req.ip);
+  }
+
+  @Get('magic-link/verify')
+  async verifyMagicLink(@Query() query: MagicLinkVerifyDto, @Res() res: Response) {
+    await this.authService.verifyMagicLink(query, res);
+  }
+
+  @Get('oauth/:provider')
+  async oauthInit(
+    @Request() req,
+    @Res() res: Response,
+  ) {
+    const url = await this.authService.oauthInit(req.params.provider, req.query, req.ip);
+    res.redirect(url);
+  }
+
+  @Get('oauth/callback/:provider')
+  async oauthCallback(
+    @Request() req,
+    @Res() res: Response,
+  ) {
+    await this.authService.oauthCallback(req.params.provider, req.query, res);
   }
 }
 

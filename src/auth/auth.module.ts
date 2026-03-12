@@ -16,6 +16,7 @@ import { UsersModule } from '../users/users.module';
 import { RolesModule } from '../roles/roles.module';
 import { LoggerModule } from '../../shared/logger/logger.module';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
+import { MagicLinkToken } from './entities/magic-link-token.entity';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { PasswordResetToken } from './entities/password-reset-token.entity';
     LoggerModule,
     PassportModule,
     HttpModule,
-    TypeOrmModule.forFeature([PasswordResetToken]),
+    TypeOrmModule.forFeature([PasswordResetToken, MagicLinkToken]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default-secret',
       signOptions: {

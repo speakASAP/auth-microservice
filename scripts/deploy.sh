@@ -136,7 +136,6 @@ get_timestamp_seconds() {
 
 log_with_timestamp() {
     local message="[$(get_timestamp)] $1"
-    echo "$message" >&2
     echo "$message"
 }
 
@@ -227,8 +226,8 @@ REMOVED_ANY=
 for c in $AUTH_CONTAINERS; do
     if docker ps -aq -f "name=^${c}$" 2>/dev/null | grep -q .; then
         echo -e "${BLUE}Removing $c to free ports...${NC}"
-        docker stop "$c" 2>/dev/null || true
-        docker rm -f "$c" 2>/dev/null || true
+        docker stop "$c" >/dev/null 2>&1 || true
+        docker rm -f "$c" >/dev/null 2>&1 || true
         REMOVED_ANY=1
     fi
 done
