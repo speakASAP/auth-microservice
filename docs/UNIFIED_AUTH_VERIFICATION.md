@@ -209,7 +209,7 @@ https://statex.local/auth/callback#access_token=...&refresh_token=...&expires_at
 https://<DOMAIN>/auth/oauth/callback/google?code=FAKE&state=invalid
 ```
 
-  - **Expected:** safe HTML error page, HTTP `400`, no redirect, no tokens.
+- **Expected:** safe HTML error page, HTTP `400`, no redirect, no tokens.
 
 - **Stale state**:
   - Use a real state value twice (e.g. capture it from logs and re-call callback).
@@ -320,4 +320,3 @@ If all boxes are checked, the backend portion of **Sync B (Phase 1)** is ready f
 **OAuth (Google) end-to-end:** Init redirects correctly to Google. Full flow (login with Google → callback → redirect with fragment) must be done in browser: open `https://<DOMAIN>/auth/oauth/google?return_url=<allowlisted>&state=xyz`, complete Google sign-in, then confirm redirect to `return_url#access_token=...&auth_method=google`.
 
 **Fix applied:** `auth.service.ts` — in `verifyMagicLink`, wrap token lookup in try/catch so DB/errors return 400 HTML instead of 500.
-

@@ -72,7 +72,7 @@ This report validates completion of Phase 0 (Sync A) and Phase 1 (Sync B — bac
 
 | Check | Result | Evidence |
 | ----- | ------ | -------- |
-| `AUTH_ALLOWED_REDIRECT_ORIGINS` read from configuration (no hardcoded origins) | **PASS** | `auth.service.ts`: `process.env.AUTH_ALLOWED_REDIRECT_ORIGINS || ''`; split/trim/filter into `allowedRedirectOrigins`. |
+| `AUTH_ALLOWED_REDIRECT_ORIGINS` read from configuration (no hardcoded origins) | **PASS** | `auth.service.ts`: `process.env.AUTH_ALLOWED_REDIRECT_ORIGINS ''`; split/trim/filter into `allowedRedirectOrigins`. |
 | `return_url` validation used in magic-link and OAuth; invalid URLs never get redirects/tokens | **PASS** | `validateReturnUrl()` used in `requestMagicLink`, `verifyMagicLink`, `oauthInit`. Invalid/HTTP/non-allowlisted → `BadRequestException` or safe error page. |
 | JWTs from `POST /auth/login`, magic-link verify, OAuth callback include `auth_method` | **PASS** | Login: `generateTokens(user.id, 'password')`; magic-link: `'magic_link'`; OAuth: `provider`; refresh preserves `(payload as any).auth_method \|\| 'password'`. |
 | No hardcoded secrets, URLs, or timeouts introduced | **PASS** | OAuth URLs have env overrides (`GOOGLE_OAUTH_AUTH_URL`, etc.); client ID/secret from env; TTL and rate limits from env. |

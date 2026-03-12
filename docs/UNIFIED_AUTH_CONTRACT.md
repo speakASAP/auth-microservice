@@ -195,4 +195,3 @@ A Validator Agent for Sync A (Auth) must check:
 5. No conflicting auth contracts are defined elsewhere.
 
 Only after this checklist passes can Sync A be considered satisfied for the auth side.
-

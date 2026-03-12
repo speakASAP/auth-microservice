@@ -1,4 +1,4 @@
-## Phase 1 — Auth Backend & UI: Implementation + Validator Prompts
+# Phase 1 — Auth Backend & UI: Implementation + Validator Prompts
 
 This file contains **copy‑paste–ready prompts** for Phase 1 (Sync B) of the auth refactor:
 
@@ -308,31 +308,32 @@ Your goal is to verify that the unified auth UI matches UX and contract requirem
      - Password login asks only for email + password.
 
 3. **Flow Wiring**
+  For each action:
 
-For each action:
-
-- Social buttons:
-  - Inspect that click leads to `/auth/oauth/:provider` with correct query params.
-- Magic link:
-  - Submission sends POST to `/auth/magic-link/request` with `email`, `return_url`, etc.
-- Password login:
-  - Submission uses the documented login endpoint.
+    Social buttons:
+    - Inspect that click leads to `/auth/oauth/:provider` with correct query params.
+    Magic link:
+    - Submission sends POST to `/auth/magic-link/request` with `email`, `return_url`, etc.
+    Password login:
+    - Submission uses the documented login endpoint.
 
 4. **Parameter propagation**
-   - Confirm `return_url`, `client_id`, and `state`:
-     - Are read from the URL.
-     - Are propagated to backend calls / redirects as per contract.
+   Confirm `return_url`, `client_id`, and `state`:
+
+    - Are read from the URL.
+    - Are propagated to backend calls / redirects as per contract.
 
 5. **Error Handling**
-   - Observe behavior for:
+   Observe behavior for:
+
      - Invalid login (password).
      - Magic link errors or rate limiting.
      - Invalid `return_url` (ensure user sees a safe error and no redirect loop).
 
 6. **Quality & Consistency**
-   - Verify UI matches principles in the auth master prompt:
+   Verify UI matches principles in the auth master prompt:
      - Modern, low‑friction, centralized.
-   - Ensure no app‑specific fields or flows are incorrectly included.
+   Ensure no app‑specific fields or flows are incorrectly included.
 
 ### Decision
 
@@ -342,4 +343,3 @@ For each action:
 - **Reject** otherwise, with:
   - A clear list of missing or incorrect behaviors/components.
   - Guidance to the Frontend Auth UI Implementation Agent for what to fix before re‑validation.
-
