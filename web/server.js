@@ -28,30 +28,40 @@ function getBackendHost() {
 const BACKEND_HOST = getBackendHost();
 
 /**
- * Proxy /auth to backend (must be before express.json() so POST body is not consumed and is forwarded)
- * For local dev without nginx; on prod nginx sends all to frontend, frontend proxies /auth to backend.
- * Use app.use to reliably match /auth, /auth/, /auth/login, /auth/validate, etc.
+ * Proxy /auth to backend. Buffer full request body then send so backend receives
+ * complete request (avoids ECONNRESET when streaming body from nginx).
+ * Must be before express.json() so body is not consumed by other middleware.
  */
 app.use('/auth', (req, res) => {
   const pathSuffix = req.url === '/' || req.url === '' ? '' : req.url;
   const fullUrl = AUTH_BACKEND_URL.replace(/\/$/, '') + '/auth' + pathSuffix;
-  const client = fullUrl.startsWith('https') ? https : http;
-  const headers = { ...req.headers, host: BACKEND_HOST };
-  const proxy = client.request(fullUrl, { method: req.method, headers }, (upstream) => {
-    if (res.headersSent) return;
-    res.status(upstream.statusCode);
-    Object.keys(upstream.headers).forEach((k) => res.setHeader(k, upstream.headers[k]));
-    upstream.pipe(res);
+  const chunks = [];
+  req.on('data', (chunk) => chunks.push(chunk));
+  req.on('end', () => {
+    const body = Buffer.concat(chunks);
+    const client = fullUrl.startsWith('https') ? https : http;
+    const headers = { ...req.headers, host: BACKEND_HOST };
+    if (body.length > 0 && !headers['content-length']) headers['content-length'] = body.length;
+    const proxy = client.request(fullUrl, { method: req.method, headers }, (upstream) => {
+      if (res.headersSent) return;
+      res.status(upstream.statusCode);
+      Object.keys(upstream.headers).forEach((k) => res.setHeader(k, upstream.headers[k]));
+      upstream.pipe(res);
+    });
+    proxy.setTimeout(PROXY_AUTH_TIMEOUT_MS, () => {
+      proxy.destroy();
+      if (!res.headersSent) res.status(502).json({ message: 'Backend timeout' });
+    });
+    proxy.on('error', (e) => {
+      console.error('[auth proxy]', e.code || e.message, fullUrl);
+      if (!res.headersSent) res.status(502).json({ message: e.message });
+    });
+    proxy.end(body);
   });
-  proxy.setTimeout(PROXY_AUTH_TIMEOUT_MS, () => {
-    proxy.destroy();
-    if (!res.headersSent) res.status(502).json({ message: 'Backend timeout' });
-  });
-  proxy.on('error', (e) => {
-    console.error('[auth proxy]', e.code || e.message, fullUrl);
+  req.on('error', (e) => {
+    console.error('[auth proxy] request error', e.message);
     if (!res.headersSent) res.status(502).json({ message: e.message });
   });
-  req.pipe(proxy);
 });
 
 app.use(express.json());
