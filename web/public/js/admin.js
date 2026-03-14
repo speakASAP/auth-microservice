@@ -209,15 +209,26 @@
   async function login(email, password) {
     if (loginBtn) loginBtn.disabled = true;
     showError(loginError, '');
-    try {
+    const doLogin = async () => {
       const res = await fetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
       const data = await res.json().catch(() => ({}));
+      return { res, data };
+    };
+    try {
+      let result = await doLogin();
+      if (result.res.status === 502 && result.data.message && result.data.message.includes('hang up')) {
+        showError(loginError, 'Backend busy, retrying...');
+        await new Promise(r => setTimeout(r, 1500));
+        result = await doLogin();
+      }
+      const { res, data } = result;
       if (!res.ok) {
-        showError(loginError, data.message || 'Login failed');
+        const msg = res.status === 502 ? (data.message || 'Auth backend unavailable (502). Check auth-microservice backend logs.') : (data.message || 'Login failed');
+        showError(loginError, msg);
         return;
       }
       setToken(data.accessToken, data.refreshToken);

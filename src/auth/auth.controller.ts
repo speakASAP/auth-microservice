@@ -12,6 +12,7 @@ import {
   Query,
   Res,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
@@ -29,6 +30,8 @@ import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
@@ -38,6 +41,7 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
+    this.logger.log(`Login attempt for ${loginDto?.email ?? 'unknown'}`, 'AuthController');
     try {
       return await this.authService.login(loginDto);
     } catch (err) {
