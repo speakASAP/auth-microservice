@@ -6,6 +6,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+import { MagicLinkToken } from '../auth/entities/magic-link-token.entity';
+import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
+import { UserRole } from '../user-roles/entities/user-role.entity';
 
 @Injectable()
 export class UsersService {
@@ -58,7 +61,13 @@ export class UsersService {
   }
 
   async delete(id: string): Promise<void> {
-    await this.userRepository.delete(id);
+    const manager = this.userRepository.manager;
+    await manager.transaction(async (tx) => {
+      await tx.delete(MagicLinkToken, { userId: id });
+      await tx.delete(PasswordResetToken, { userId: id });
+      await tx.delete(UserRole, { userId: id });
+      await tx.delete(User, id);
+    });
   }
 
   async toggleActive(id: string): Promise<User> {
