@@ -15,6 +15,7 @@ import { JwtService } from '@nestjs/jwt';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
+import * as bcryptjs from 'bcryptjs';
 import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
 import { RolesService } from '../roles/roles.service';
@@ -125,7 +126,7 @@ export class AuthService {
 
       let isPasswordValid = false;
       try {
-        isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+        isPasswordValid = await bcryptjs.compare(loginDto.password, user.password);
       } catch (err) {
         this.logger.warn(
           `Password check failed for ${loginDto.email}: ${(err as Error).message}`,
