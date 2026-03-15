@@ -544,6 +544,7 @@ The project includes management scripts in the `scripts/` directory:
 - `scripts/stop.sh` - Stop the service
 - `scripts/status.sh` - Check service status and health
 - `scripts/seed-rbac.sh` - Seed RBAC (applications, roles, assign superadmin); see [RBAC testing](#rbac-testing-checklist) below
+- `scripts/assign-role-by-email.sh` - Assign a role to a user by email (no admin UI); see [Assign role by email](#assign-role-by-email) below
 - `scripts/test-rbac-checklist.sh` - Run RBAC testing checklist (tokens, guards, admin API); see [RBAC testing](#rbac-testing-checklist) below
 
 Usage:
@@ -572,7 +573,16 @@ To sign off RBAC (tokens, guards, role assignment), use:
    DB_HOST=127.0.0.1 ./scripts/seed-rbac.sh --admin-email=your@email.com
    ```
 
-2. **Automated checklist** (requires backend running and `TEST_EMAIL` / `TEST_PASSWORD` in `.env`; for admin tests the user must have `global:superadmin` from step 1):
+2. **Assign role by email** (when the admin UI has no role management): assign `global:superadmin` or `app:shop-assistant:admin` to a user without using the web UI:
+
+   ```bash
+   ./scripts/assign-role-by-email.sh --email=test@example.com --role=global:superadmin
+   ./scripts/assign-role-by-email.sh --email=test@example.com --role=app:shop-assistant:admin
+   ```
+
+   Run from auth-microservice root; ensure seed has been run first so applications and roles exist.
+
+3. **Automated checklist** (requires backend running and `TEST_EMAIL` / `TEST_PASSWORD` in `.env`; for admin tests the user must have `global:superadmin` from step 1 or 2):
 
    ```bash
    ./scripts/test-rbac-checklist.sh
