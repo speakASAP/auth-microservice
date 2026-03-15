@@ -31,6 +31,9 @@
   let usersLoading, usersContent, usersEmpty, createUserBtn;
   let userModal, userModalTitle, userModalClose, userForm, userSaveBtn, userCancelBtn, userError;
   let tokenDisplay, showTokenBtn, copyTokenBtn, tokenSuccess;
+  let applicationsLoading, applicationsContent, applicationsEmpty;
+  let rolesUserSelect, rolesRefreshBtn, userRolesPlaceholder, userRolesLoading, userRolesContent;
+  let cachedUsers = [];
 
   function init() {
     stripCredentialParamsFromUrl();
@@ -66,6 +69,14 @@
     showTokenBtn = document.getElementById('show-token-btn');
     copyTokenBtn = document.getElementById('copy-token-btn');
     tokenSuccess = document.getElementById('token-success');
+    applicationsLoading = document.getElementById('applications-loading');
+    applicationsContent = document.getElementById('applications-content');
+    applicationsEmpty = document.getElementById('applications-empty');
+    rolesUserSelect = document.getElementById('roles-user-select');
+    rolesRefreshBtn = document.getElementById('roles-refresh-btn');
+    userRolesPlaceholder = document.getElementById('user-roles-placeholder');
+    userRolesLoading = document.getElementById('user-roles-loading');
+    userRolesContent = document.getElementById('user-roles-content');
 
     /* Attach Sign in button first so click always works even if rest of init fails */
     if (loginBtn) {
@@ -153,6 +164,25 @@
       });
     }
 
+    if (rolesUserSelect) {
+      rolesUserSelect.addEventListener('change', function () {
+        const userId = rolesUserSelect.value;
+        if (userId) {
+          loadUserRoles(userId);
+        } else {
+          showUserRolesPlaceholder();
+        }
+      });
+    }
+
+    if (rolesRefreshBtn) {
+      rolesRefreshBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        const userId = rolesUserSelect && rolesUserSelect.value;
+        if (userId) loadUserRoles(userId);
+      });
+    }
+
     if (isLoggedIn()) {
       showView(true);
     } else {
@@ -197,6 +227,7 @@
       if (userEmailEl) userEmailEl.textContent = sessionStorage.getItem('auth_admin_email') || 'User';
       loadDashboard();
       loadUsers();
+      loadApplications();
       updateTokenDisplay();
     } else {
       if (tokenDisplay) tokenDisplay.value = '';
@@ -437,12 +468,16 @@
       if (usersLoading) usersLoading.classList.add('hidden');
 
       if (data.success && data.users && data.users.length > 0) {
+        cachedUsers = data.users;
         renderUsers(data.users);
+        populateRolesUserSelect(data.users);
         if (usersContent) usersContent.classList.remove('hidden');
         if (usersEmpty) usersEmpty.classList.add('hidden');
       } else {
+        cachedUsers = [];
         if (usersContent) usersContent.classList.add('hidden');
         if (usersEmpty) usersEmpty.classList.remove('hidden');
+        populateRolesUserSelect([]);
       }
     } catch (e) {
       if (usersLoading) usersLoading.classList.add('hidden');
@@ -451,7 +486,205 @@
         usersEmpty.textContent = 'Network error loading users';
         usersEmpty.classList.remove('hidden');
       }
+      cachedUsers = [];
+      populateRolesUserSelect([]);
     }
+  }
+
+  function populateRolesUserSelect(users) {
+    if (!rolesUserSelect) return;
+    const current = rolesUserSelect.value;
+    rolesUserSelect.innerHTML = '<option value="">— Select user —</option>';
+    (users || []).forEach(function (u) {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = u.email || u.id;
+      if (u.id === current) opt.selected = true;
+      rolesUserSelect.appendChild(opt);
+    });
+    if (current && rolesUserSelect.value === current) {
+      loadUserRoles(current);
+    } else {
+      showUserRolesPlaceholder();
+    }
+  }
+
+  async function loadApplications() {
+    if (!applicationsLoading || !applicationsContent || !applicationsEmpty) return;
+
+    applicationsLoading.classList.remove('hidden');
+    applicationsContent.classList.add('hidden');
+    applicationsEmpty.classList.add('hidden');
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        applicationsLoading.classList.add('hidden');
+        return;
+      }
+
+      const res = await fetch('/auth/admin/applications', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        applicationsLoading.classList.add('hidden');
+        applicationsEmpty.textContent = 'Error loading applications: ' + (data.message || 'Unknown error');
+        applicationsEmpty.classList.remove('hidden');
+        return;
+      }
+
+      applicationsLoading.classList.add('hidden');
+
+      if (Array.isArray(data) && data.length > 0) {
+        renderApplications(data);
+        applicationsContent.classList.remove('hidden');
+        applicationsEmpty.classList.remove('hidden');
+      } else {
+        applicationsContent.classList.add('hidden');
+        applicationsEmpty.classList.remove('hidden');
+      }
+    } catch (e) {
+      applicationsLoading.classList.add('hidden');
+      applicationsContent.classList.add('hidden');
+      applicationsEmpty.textContent = 'Network error loading applications';
+      applicationsEmpty.classList.remove('hidden');
+    }
+  }
+
+  function renderApplications(apps) {
+    if (!applicationsContent) return;
+
+    const table = document.createElement('table');
+    table.className = 'users-table';
+    table.innerHTML = '<thead><tr><th>Name</th><th>Display name</th><th>Type</th><th>Domain</th><th>Description</th><th>Active</th></tr></thead><tbody></tbody>';
+    const tbody = table.querySelector('tbody');
+
+    apps.forEach(function (app) {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + escapeHtml(app.name || '—') + '</td>' +
+        '<td>' + escapeHtml(app.displayName || '—') + '</td>' +
+        '<td>' + escapeHtml(app.type || '—') + '</td>' +
+        '<td>' + escapeHtml(app.domain || '—') + '</td>' +
+        '<td>' + escapeHtml((app.description || '').substring(0, 80)) + (app.description && app.description.length > 80 ? '…' : '') + '</td>' +
+        '<td>' + (app.isActive !== false ? 'Yes' : 'No') + '</td>';
+      tbody.appendChild(tr);
+    });
+
+    applicationsContent.innerHTML = '';
+    applicationsContent.appendChild(table);
+  }
+
+  function showUserRolesPlaceholder() {
+    if (userRolesPlaceholder) {
+      userRolesPlaceholder.textContent = 'Select a user to see their roles.';
+      userRolesPlaceholder.style.display = 'block';
+    }
+    if (userRolesLoading) userRolesLoading.classList.add('hidden');
+    if (userRolesContent) {
+      userRolesContent.classList.add('hidden');
+      userRolesContent.innerHTML = '';
+    }
+  }
+
+  async function loadUserRoles(userId) {
+    if (!userId || !userRolesContent || !userRolesLoading || !userRolesPlaceholder) return;
+
+    userRolesPlaceholder.style.display = 'none';
+    userRolesLoading.classList.remove('hidden');
+    userRolesContent.classList.add('hidden');
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        showUserRolesPlaceholder();
+        return;
+      }
+
+      const res = await fetch('/auth/admin/users/' + encodeURIComponent(userId) + '/roles', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      userRolesLoading.classList.add('hidden');
+
+      if (!res.ok) {
+        if (userRolesPlaceholder) {
+          userRolesPlaceholder.textContent = 'Error: ' + (data.message || 'Failed to load roles');
+          userRolesPlaceholder.style.display = 'block';
+        }
+        return;
+      }
+
+      const roles = data.roles || [];
+      renderUserRoles(userId, roles);
+      userRolesContent.classList.remove('hidden');
+    } catch (e) {
+      userRolesLoading.classList.add('hidden');
+      if (userRolesPlaceholder) {
+        userRolesPlaceholder.textContent = 'Network error loading roles';
+        userRolesPlaceholder.style.display = 'block';
+      }
+    }
+  }
+
+  function renderUserRoles(userId, roles) {
+    if (!userRolesContent) return;
+
+    const globalRoles = [];
+    const appRoles = {};
+
+    roles.forEach(function (r) {
+      if (typeof r !== 'string') return;
+      if (r.indexOf('global:') === 0) {
+        globalRoles.push(r.substring(7));
+      } else if (r.indexOf('app:') === 0) {
+        const rest = r.substring(4);
+        const colon = rest.indexOf(':');
+        if (colon > 0) {
+          const appName = rest.substring(0, colon);
+          const roleName = rest.substring(colon + 1);
+          if (!appRoles[appName]) appRoles[appName] = [];
+          appRoles[appName].push(roleName);
+        }
+      }
+    });
+
+    const user = cachedUsers.find(function (u) { return u.id === userId; });
+    const userEmail = user ? user.email : userId;
+
+    let html = '<p style="margin-bottom: 1rem;"><strong>' + escapeHtml(userEmail) + '</strong></p>';
+
+    if (globalRoles.length > 0) {
+      html += '<p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Global roles</p>';
+      html += '<ul style="margin: 0 0 1rem 1.5rem;">';
+      globalRoles.forEach(function (name) {
+        html += '<li><code>global:' + escapeHtml(name) + '</code></li>';
+      });
+      html += '</ul>';
+    }
+
+    const appNames = Object.keys(appRoles).sort();
+    if (appNames.length > 0) {
+      html += '<p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Per-application roles</p>';
+      html += '<ul style="margin: 0 0 0 1.5rem;">';
+      appNames.forEach(function (appName) {
+        appRoles[appName].forEach(function (roleName) {
+          html += '<li><code>app:' + escapeHtml(appName) + ':' + escapeHtml(roleName) + '</code></li>';
+        });
+      });
+      html += '</ul>';
+    }
+
+    if (globalRoles.length === 0 && appNames.length === 0) {
+      html += '<p style="color: var(--muted);">No roles assigned. Use <code>./scripts/assign-role-by-email.sh --email=… --role=global:superadmin</code> (or <code>app:shop-assistant:admin</code>) to assign.</p>';
+    }
+
+    userRolesContent.innerHTML = html;
   }
 
   function renderUsers(users) {
@@ -481,6 +714,7 @@
         '<button type="button" class="btn btn-small btn-secondary" data-action="toggle" data-id="' + escapeHtml(user.id) + '" data-active="' + user.isActive + '">' +
         (user.isActive ? 'Deactivate' : 'Activate') +
         '</button>' +
+        '<button type="button" class="btn btn-small btn-secondary" data-action="roles" data-id="' + escapeHtml(user.id) + '">Roles</button>' +
         '<button type="button" class="btn btn-small btn-secondary" data-action="delete" data-id="' + escapeHtml(user.id) + '" style="color: var(--error);">Delete</button>' +
         '</td>';
 
@@ -499,6 +733,17 @@
       btn.addEventListener('click', function () {
         const userId = btn.getAttribute('data-id');
         toggleUserActive(userId);
+      });
+    });
+
+    tbody.querySelectorAll('[data-action="roles"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const userId = btn.getAttribute('data-id');
+        if (rolesUserSelect) {
+          rolesUserSelect.value = userId;
+          loadUserRoles(userId);
+          document.querySelector('#user-roles-container') && document.querySelector('#user-roles-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       });
     });
 
