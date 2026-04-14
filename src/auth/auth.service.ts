@@ -58,9 +58,9 @@ export class AuthService {
     @InjectRepository(MagicLinkToken)
     private readonly magicLinkTokenRepository: Repository<MagicLinkToken>,
   ) {
-    this.notificationsServiceUrl = process.env.NOTIFICATIONS_SERVICE_URL || '';
+    this.notificationsServiceUrl = process.env.NOTIFICATION_SERVICE_URL || '';
     if (!this.notificationsServiceUrl) {
-      this.logger.warn('NOTIFICATIONS_SERVICE_URL is not set. Email notifications will not work.', 'AuthService');
+      this.logger.warn('NOTIFICATION_SERVICE_URL is not set. Email notifications will not work.', 'AuthService');
     }
 
     this.magicLinkTtlMinutes = Number(process.env.AUTH_MAGIC_LINK_TTL_MINUTES || '15');
@@ -551,7 +551,7 @@ export class AuthService {
       }
     } else {
       this.logger.warn(
-        `Magic link created for ${dto.email} but NOTIFICATIONS_SERVICE_URL not set; email not sent. duration_ms=${durationMs}`,
+        `Magic link created for ${dto.email} but NOTIFICATION_SERVICE_URL not set; email not sent. duration_ms=${durationMs}`,
         'AuthService',
       );
     }

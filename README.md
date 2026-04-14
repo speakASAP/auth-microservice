@@ -79,7 +79,7 @@ The web app lives in `web/` (Express server + static files). Env: `DOMAIN`, `FRO
 - **PORT must be 3370** (or unset) so the backend listens on 3370 inside the container; the green health check expects this. Do not set `PORT=3371`.
 
 **Troubleshooting: "Port 3370 is not listening" (e.g. on sgipreal)**  
-If green deployment fails with this message, the backend container is running but the app inside is not binding to 3370 (often a startup crash). On the server run: `docker logs auth-microservice-green`. Typical causes: wrong or missing `PORT=3370` in `.env`, DB unreachable (`DB_HOST` / network), missing `JWT_SECRET`, or `NOTIFICATIONS_SERVICE_URL` / `LOGGING_SERVICE_URL` unreachable. Fix `.env` and ensure required services are reachable from that host, then redeploy.
+If green deployment fails with this message, the backend container is running but the app inside is not binding to 3370 (often a startup crash). On the server run: `docker logs auth-microservice-green`. Typical causes: wrong or missing `PORT=3370` in `.env`, DB unreachable (`DB_HOST` / network), missing `JWT_SECRET`, or `NOTIFICATION_SERVICE_URL` / `LOGGING_SERVICE_URL` unreachable. Fix `.env` and ensure required services are reachable from that host, then redeploy.
 
 ### Base URLs
 
@@ -507,7 +507,7 @@ JWT_REFRESH_EXPIRES_IN=30d
 LOGGING_SERVICE_URL=
 
 # Notifications (Shared) - For password reset emails
-NOTIFICATIONS_SERVICE_URL=
+NOTIFICATION_SERVICE_URL=
 
 # Service Domain - Used by nginx-microservice for auto-registry (required for correct domain detection)
 DOMAIN=
