@@ -55,7 +55,7 @@ Then re-run the magic link request (step 3) and verify (step 4).
 ## 1. Environment & Configuration
 
 - **Verify `.env`** (no secrets in `.env.example`):
-  - `DOMAIN` is set (e.g. `auth.statex.cz` or local domain).
+  - `DOMAIN` is set (e.g. `auth.alfares.cz` or local domain).
   - `AUTH_ALLOWED_REDIRECT_ORIGINS` includes at least one HTTPS origin you control (e.g. `https://statex.local`).
   - Magic link:
     - `AUTH_MAGIC_LINK_TTL_MINUTES`

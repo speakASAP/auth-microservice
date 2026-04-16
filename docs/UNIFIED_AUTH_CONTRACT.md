@@ -9,7 +9,7 @@ It is part of **Phase 0 / Sync A — Global Contracts & Architecture** in
 
 ## 1. Entry URLs and Parameters
 
-All applications must invoke auth via these entry points on the auth domain (production example: `https://auth.statex.cz`).
+All applications must invoke auth via these entry points on the auth domain (production example: `https://auth.alfares.cz`).
 
 ### 1.1 Login
 

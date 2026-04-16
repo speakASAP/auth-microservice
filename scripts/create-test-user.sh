@@ -20,7 +20,7 @@ else
   echo "⚠ No .env file found"
 fi
 
-# AUTH_URL: use if set (e.g. https://auth.statex.cz on prod); otherwise try localhost
+# AUTH_URL: use if set (e.g. https://auth.alfares.cz on prod); otherwise try localhost
 PORT=${PORT:-3370}
 if [ -n "$AUTH_URL" ]; then
   AUTH_URL="${AUTH_URL%/}"
@@ -62,7 +62,7 @@ if curl -s -f --connect-timeout 5 "${AUTH_URL}/health" > /dev/null 2>&1; then
   echo ""
 else
   echo "❌ Service is not responding at ${AUTH_URL}"
-  echo "   On prod, set AUTH_URL=https://\${DOMAIN} in .env (e.g. https://auth.statex.cz) or ensure backend is running."
+  echo "   On prod, set AUTH_URL=https://\${DOMAIN} in .env (e.g. https://auth.alfares.cz) or ensure backend is running."
   echo "   Locally: ./scripts/start.sh"
   exit 1
 fi
@@ -82,7 +82,7 @@ if echo "$EXISTING_USER" | grep -q "accessToken"; then
   echo "User details:"
   echo "$EXISTING_USER" | jq . 2>/dev/null || echo "$EXISTING_USER"
   echo ""
-  echo "Admin panel: https://${DOMAIN:-auth.statex.cz}/admin (login with the credentials above)"
+  echo "Admin panel: https://${DOMAIN:-auth.alfares.cz}/admin (login with the credentials above)"
   exit 0
 fi
 
@@ -148,7 +148,7 @@ if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
     echo "  Token (first 50 chars): ${ACCESS_TOKEN:0:50}..."
   fi
   echo ""
-  echo "Admin panel: https://${DOMAIN:-auth.statex.cz}/admin — login with ${TEST_EMAIL}"
+  echo "Admin panel: https://${DOMAIN:-auth.alfares.cz}/admin — login with ${TEST_EMAIL}"
 elif [ "$HTTP_CODE" = "409" ]; then
   echo "⚠ User already exists (this is OK)"
   echo "   Try logging in with the credentials"
@@ -168,7 +168,7 @@ else
       if echo "DELETE FROM user_roles WHERE \"userId\" IN (SELECT id FROM users WHERE email = '${TEST_EMAIL}'); DELETE FROM users WHERE email = '${TEST_EMAIL}'; INSERT INTO users (id, email, password, \"firstName\", \"lastName\", \"isActive\", \"isVerified\", \"userType\") VALUES (uuid_generate_v4(), '${TEST_EMAIL}', '${HASH_ESC}', '${TEST_FIRST_NAME:-Test}', '${TEST_LAST_NAME:-User}', true, false, 'end_user');" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "${DB_PORT:-5432}" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -q 2>/dev/null; then
         echo "✓ Test user created/updated in database."
         echo "  Login with ${TEST_EMAIL} and your TEST_PASSWORD from .env"
-        echo "  Admin panel: https://${DOMAIN:-auth.statex.cz}/admin"
+        echo "  Admin panel: https://${DOMAIN:-auth.alfares.cz}/admin"
       else
         echo "   Database insert failed (check DB_* and that psql can connect)."
         exit 1

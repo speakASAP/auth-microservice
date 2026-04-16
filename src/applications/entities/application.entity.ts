@@ -42,7 +42,7 @@ export class Application {
   type: ApplicationType; // 'user_facing' | 'internal' | 'infrastructure'
 
   @Column({ nullable: true })
-  domain: string; // e.g., 'shop-assistant.statex.cz'
+  domain: string; // e.g., 'shop-assistant.alfares.cz'
 
   @Column({ type: 'text', nullable: true })
   description: string;

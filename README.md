@@ -521,7 +521,7 @@ LOGS_VOLUME_PATH=
 # Service Configuration
 PORT=3370  # Configured in auth-microservice/.env (default: 3370)
 NODE_ENV=production
-CORS_ORIGIN=https://auth.statex.cz,https://logging.statex.cz,https://notifications.statex.cz,https://database-server.statex.cz  # comma-separated for admin logins from other domains
+CORS_ORIGIN=https://auth.alfares.cz,https://logging.alfares.cz,https://notifications.alfares.cz,https://database-server.alfares.cz  # comma-separated for admin logins from other domains
 ```
 
 ## Running the Service
@@ -659,7 +659,7 @@ Add the following environment variables to your service/application:
 # For internal Docker network access:
 AUTH_SERVICE_URL=http://auth-microservice:3370
 # For external HTTPS access:
-AUTH_SERVICE_URL=https://auth.statex.cz
+AUTH_SERVICE_URL=https://auth.alfares.cz
 
 # JWT Configuration (if validating tokens locally)
 # IMPORTANT: Must match the JWT_SECRET in auth-microservice/.env
@@ -1574,7 +1574,7 @@ describe('Auth Service Integration', () => {
    - Verify service is not overloaded
 
 5. **CORS Errors**
-   - Set CORS_ORIGIN in auth-microservice `.env` to a comma-separated list of allowed origins (e.g. <https://auth.statex.cz,https://logging.statex.cz,https://notifications.statex.cz,https://database-server.statex.cz>). Required for admin logins from logging/notifications/database-server; when credentials are used, origin cannot be `*`.
+   - Set CORS_ORIGIN in auth-microservice `.env` to a comma-separated list of allowed origins (e.g. <https://auth.alfares.cz,https://loggingalfares.czcz,https://notificationalfares.cz.cz,https://database-servalfares.czs.cz>). Required for admin logins from logging/notifications/database-server; when credentials are used, origin cannot be `*`.
    - Ensure each frontend origin is listed in CORS_ORIGIN
 
 ---
@@ -1813,7 +1813,7 @@ The service is registered in `nginx-microservice/service-registry/auth-microserv
 
 ### Production Server Setup
 
-**Production checklist:** Set `CORS_ORIGIN` in `.env` to a comma-separated list of allowed origins (e.g. `https://auth.statex.cz,https://logging.statex.cz,https://notifications.statex.cz,https://database-server.statex.cz`) so admin logins from logging, notifications, and database-server work.
+**Production checklist:** Set `CORS_ORIGIN` in `.env` to a comma-separated list of allowed origins (e.g. `https://auth.alfares.cz,https://loggingalfares.czcz,https://notificationalfares.cz.cz,https://database-servalfares.czs.cz`) so admin logins from logging, notifications, and database-server work.
 
 #### Initial Setup
 

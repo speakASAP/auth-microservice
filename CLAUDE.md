@@ -10,7 +10,7 @@ Read this repo's `BUSINESS.md` → `SYSTEM.md` → `AGENTS.md` → `TASKS.md` �
 
 **Purpose**: Centralized JWT authentication and user management for all Statex services.  
 **Ports**: 3370 (backend API) · 3372 (frontend)  
-**Domain**: https://auth.statex.cz  
+**Domain**: https://auth.alfares.cz  
 **Stack**: NestJS · PostgreSQL · Redis · bcrypt
 
 ### Key constraints

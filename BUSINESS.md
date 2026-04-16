@@ -20,4 +20,4 @@ All applications and most microservices.
 
 - Backend port: 3370 (<http://auth-microservice:3370>)
 - Frontend port: 3372
-- Production: <https://auth.statex.cz>
+- Production: <https://auth.alfares.cz>

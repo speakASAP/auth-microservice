@@ -1,4 +1,4 @@
-## Auth Admin Panel Fix Plan (`auth.statex.cz/admin`)
+## Auth Admin Panel Fix Plan (`auth.alfares.cz/admin`)
 
 ### Goals
 
@@ -17,17 +17,17 @@
   - Confirm admin JS calls: `/api/health-backend` and `/api/stats`.
   - Confirm web server routes exist locally and on prod (`web/server.js`).
   - Verify that:
-    - `https://auth.statex.cz/health` returns backend health JSON.
-    - `https://auth.statex.cz/api/health-backend` and `/api/stats` return 404 from backend (`NestJS`), not from the web server.
+    - `https://auth.alfares.cz/health` returns backend health JSON.
+    - `https://auth.alfares.cz/api/health-backend` and `/api/stats` return 404 from backend (`NestJS`), not from the web server.
   - Root cause: **nginx routes `/api/*` to backend**, so admin calls never reach the web container.
 
 - ✅ **Confirm environment configuration**
   - Check `~/auth-microservice/.env` on prod:
-    - `DOMAIN=auth.statex.cz`
+    - `DOMAIN=auth.alfares.cz`
     - `SERVICE_NAME=auth-microservice`
     - `PORT=3370`
-    - `CORS_ORIGIN` includes `auth.statex.cz`, `logging.statex.cz`, `notifications.statex.cz`, `database-server.statex.cz`.
-    - `LOGGING_SERVICE_URL=https://logging.statex.cz`.
+    - `CORS_ORIGIN` includes `auth.alfares.cz`, `loggingalfares.czcz`, `notificationalfares.cz.cz`, `database-servalfares.czs.cz`.
+    - `LOGGING_SERVICE_URL=https://logging.alfares.cz`.
   - Conclusion: **env is correctly set**; the problem is purely routing.
 
 - [ ] **Adjust web server routing (local code)**
@@ -59,7 +59,7 @@
     - `./scripts/deploy.sh`
 
 - [ ] **Post-deploy verification**
-  - Open `https://auth.statex.cz/admin`:
+  - Open `https://auth.alfares.cz/admin`:
     - **Auth backend** status shows `OK`.
     - **Logging** status shows `OK` when logs exist, otherwise `Not configured` / `No data` but no 404 errors.
     - Recent activity table is populated when there are recent logs for `auth-microservice`.

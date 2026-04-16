@@ -21,7 +21,7 @@ async function bootstrap() {
   // Enable CORS. When credentials is true, origin cannot be '*' (browser rejects).
   // CORS_ORIGIN supports:
   // - Explicit origins: https://logging.alfares.cz,https://notifications.alfares.cz
-  // - Wildcard domains: *.alfares.cz,*.statex.cz (any subdomain of these)
+  // - Wildcard domains: *.alfares.cz,*.alfares.cz (any subdomain of these)
   const corsOrigin = process.env.CORS_ORIGIN?.trim() || '';
   const originEntries = corsOrigin
     ? corsOrigin.split(',').map((o) => o.trim()).filter(Boolean)
