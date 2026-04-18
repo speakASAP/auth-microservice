@@ -47,6 +47,45 @@ TEST_LAST_NAME="${TEST_LAST_NAME:-User}"
 # Force recreate: remove existing user from DB and insert fresh (use when login 502 or wrong password)
 FORCE_RECREATE_TEST_USER="${FORCE_RECREATE_TEST_USER:-}"
 
+hash_test_password() {
+  node -e "require('bcrypt').hash(process.env.TEST_PASSWORD, 10).then(h=>console.log(h))" 2>/dev/null
+}
+
+# bcrypt hashes contain '$'; never embed HASH in double-quoted shell SQL (shell eats $10, etc.).
+# Use psql :'var' substitution instead. Tries TCP to DB_HOST, then docker db-server-postgres.
+db_upsert_test_user() {
+  local HASH="$1"
+  local DB_NAME="${DB_NAME:-auth}"
+  local sql
+  sql=$(cat <<'EOSQL'
+DELETE FROM user_roles WHERE "userId" IN (SELECT id FROM users WHERE email = :'email');
+DELETE FROM users WHERE email = :'email';
+INSERT INTO users (id, email, password, "firstName", "lastName", "isActive", "isVerified", "userType")
+VALUES (uuid_generate_v4(), :'email', :'pwd', :'fn', :'ln', true, false, 'end_user');
+EOSQL
+)
+  local psql_vars=(
+    -v ON_ERROR_STOP=1
+    -v "email=$TEST_EMAIL"
+    -v "pwd=$HASH"
+    -v "fn=${TEST_FIRST_NAME:-Test}"
+    -v "ln=${TEST_LAST_NAME:-User}"
+  )
+
+  if command -v psql >/dev/null 2>&1; then
+    if printf '%s\n' "$sql" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "${DB_PORT:-5432}" -U "$DB_USER" -d "$DB_NAME" "${psql_vars[@]}" -f -; then
+      return 0
+    fi
+  fi
+  if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'db-server-postgres'; then
+    if printf '%s\n' "$sql" | docker exec -e PGPASSWORD="$DB_PASSWORD" -i db-server-postgres psql -U "$DB_USER" -d "$DB_NAME" "${psql_vars[@]}" -f -; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
+
 echo "Test User Configuration:"
 echo "  Email: ${TEST_EMAIL}"
 echo "  Password: [hidden]"
@@ -87,17 +126,16 @@ if echo "$EXISTING_USER" | grep -q "accessToken"; then
 fi
 
 # Force recreate in DB (when login fails with 502 or wrong hash, and we have DB access)
-if [ -n "$FORCE_RECREATE_TEST_USER" ] && [ -n "$DB_HOST" ] && [ -n "$DB_USER" ] && [ -n "$DB_PASSWORD" ] && command -v psql >/dev/null 2>&1; then
+if [ -n "$FORCE_RECREATE_TEST_USER" ] && [ -n "$DB_HOST" ] && [ -n "$DB_USER" ] && [ -n "$DB_PASSWORD" ]; then
   echo "FORCE_RECREATE_TEST_USER is set; creating/updating user in database..."
-  HASH=$(node -e "require('bcrypt').hash(process.env.TEST_PASSWORD, 10).then(h=>console.log(h))" 2>/dev/null)
+  HASH=$(hash_test_password)
   if [ -n "$HASH" ] && [ ${#HASH} -gt 50 ]; then
-    HASH_ESC="${HASH//\'/\'\'}"
-    DB_NAME="${DB_NAME:-auth}"
-    if echo "DELETE FROM user_roles WHERE \"userId\" IN (SELECT id FROM users WHERE email = '${TEST_EMAIL}'); DELETE FROM users WHERE email = '${TEST_EMAIL}'; INSERT INTO users (id, email, password, \"firstName\", \"lastName\", \"isActive\", \"isVerified\", \"userType\") VALUES (uuid_generate_v4(), '${TEST_EMAIL}', '${HASH_ESC}', '${TEST_FIRST_NAME:-Test}', '${TEST_LAST_NAME:-User}', true, false, 'end_user');" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "${DB_PORT:-5432}" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -q 2>/dev/null; then
-      echo "✓ Test user recreated in database. Try logging in again."
+    if db_upsert_test_user "$HASH"; then
+      echo "Test user recreated in database. Try logging in again."
       exit 0
     fi
   fi
+  echo "Direct DB recreate failed (install psql or ensure Docker container db-server-postgres is running)."
 fi
 
 # Register new test user (try AUTH_URL first; if 404 via https, retry direct backend - nginx may strip path)
@@ -158,27 +196,25 @@ elif [ "$HTTP_CODE" = "503" ]; then
   exit 1
 else
   echo "❌ Failed to create test user via API: HTTP ${HTTP_CODE}"
-  if [ -n "$DB_HOST" ] && [ -n "$DB_USER" ] && [ -n "$DB_PASSWORD" ] && command -v psql >/dev/null 2>&1; then
+  if [ -n "$DB_HOST" ] && [ -n "$DB_USER" ] && [ -n "$DB_PASSWORD" ]; then
     echo ""
     echo "Attempting to create user directly in database (DB_HOST=$DB_HOST)..."
-    HASH=$(node -e "require('bcrypt').hash(process.env.TEST_PASSWORD, 10).then(h=>console.log(h))" 2>/dev/null)
+    HASH=$(hash_test_password)
     if [ -n "$HASH" ] && [ ${#HASH} -gt 50 ]; then
-      HASH_ESC="${HASH//\'/\'\'}"
-      DB_NAME="${DB_NAME:-auth}"
-      if echo "DELETE FROM user_roles WHERE \"userId\" IN (SELECT id FROM users WHERE email = '${TEST_EMAIL}'); DELETE FROM users WHERE email = '${TEST_EMAIL}'; INSERT INTO users (id, email, password, \"firstName\", \"lastName\", \"isActive\", \"isVerified\", \"userType\") VALUES (uuid_generate_v4(), '${TEST_EMAIL}', '${HASH_ESC}', '${TEST_FIRST_NAME:-Test}', '${TEST_LAST_NAME:-User}', true, false, 'end_user');" | PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "${DB_PORT:-5432}" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -q 2>/dev/null; then
-        echo "✓ Test user created/updated in database."
+      if db_upsert_test_user "$HASH"; then
+        echo "Test user created/updated in database."
         echo "  Login with ${TEST_EMAIL} and your TEST_PASSWORD from .env"
         echo "  Admin panel: https://${DOMAIN:-auth.alfares.cz}/admin"
       else
-        echo "   Database insert failed (check DB_* and that psql can connect)."
+        echo "   Database insert failed (check DB_*; from host try Docker: db-server-postgres)."
         exit 1
       fi
     else
-      echo "   Could not generate bcrypt hash (run from auth-microservice with node and bcrypt)."
+      echo "   Could not generate bcrypt hash (run from auth-microservice directory with node and bcrypt)."
       exit 1
     fi
   else
-    echo "   Ensure nginx/nginx-api-routes.conf has /auth/ and redeploy, or set DB_HOST/DB_USER/DB_PASSWORD and run with psql for direct DB create."
+    echo "   Ensure nginx/nginx-api-routes.conf has /auth/ and redeploy, or set DB_HOST/DB_USER/DB_PASSWORD for direct DB create."
     exit 1
   fi
 fi
