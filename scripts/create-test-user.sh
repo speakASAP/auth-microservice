@@ -58,10 +58,17 @@ db_upsert_test_user() {
   local DB_NAME="${DB_NAME:-auth}"
   local sql
   sql=$(cat <<'EOSQL'
-DELETE FROM user_roles WHERE "userId" IN (SELECT id FROM users WHERE email = :'email');
-DELETE FROM users WHERE email = :'email';
+-- Preserve user UUID when the email already exists (e.g. prompts.owner_id, other app FKs).
+UPDATE users SET
+  password = :'pwd',
+  "firstName" = :'fn',
+  "lastName" = :'ln',
+  "isActive" = true
+WHERE email = :'email';
+
 INSERT INTO users (id, email, password, "firstName", "lastName", "isActive", "isVerified", "userType")
-VALUES (uuid_generate_v4(), :'email', :'pwd', :'fn', :'ln', true, false, 'end_user');
+SELECT uuid_generate_v4(), :'email', :'pwd', :'fn', :'ln', true, false, 'end_user'
+WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.email = :'email');
 EOSQL
 )
   local psql_vars=(
@@ -131,7 +138,7 @@ if [ -n "$FORCE_RECREATE_TEST_USER" ] && [ -n "$DB_HOST" ] && [ -n "$DB_USER" ] 
   HASH=$(hash_test_password)
   if [ -n "$HASH" ] && [ ${#HASH} -gt 50 ]; then
     if db_upsert_test_user "$HASH"; then
-      echo "Test user recreated in database. Try logging in again."
+      echo "Test user password synced in database (existing user id kept). Try logging in again."
       exit 0
     fi
   fi
@@ -202,7 +209,7 @@ else
     HASH=$(hash_test_password)
     if [ -n "$HASH" ] && [ ${#HASH} -gt 50 ]; then
       if db_upsert_test_user "$HASH"; then
-        echo "Test user created/updated in database."
+        echo "Test user password synced in database (user id preserved when email existed)."
         echo "  Login with ${TEST_EMAIL} and your TEST_PASSWORD from .env"
         echo "  Admin panel: https://${DOMAIN:-auth.alfares.cz}/admin"
       else
