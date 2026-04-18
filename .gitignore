@@ -9,4 +9,8 @@ logs
 .DS_Store
 coverage
 .nyc_output
-secrets
+# Local credentials — never commit
+secrets/
+**/client_secret*.json
+**/*.apps.googleusercontent.com.json
+k8s/secret.yaml

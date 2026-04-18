@@ -1,345 +1,134 @@
 #!/bin/bash
-# auth-microservice Application Deployment Script
-# Usage: ./scripts/deploy.sh
-#
-# This script deploys the auth-microservice application to production using the
-# nginx-microservice blue/green deployment system (deploy-smart.sh).
-#
-# SSL: Certificates are Let's Encrypt (not self-signed). The deploy flow creates
-# a temporary self-signed cert if none exists, then requests a real certificate.
-# Set CERTBOT_EMAIL in nginx-microservice/.env for first-time certificate request.
-# Manual request: cd nginx-microservice && docker compose run --rm certbot /scripts/request-cert.sh DOMAIN EMAIL
-# If the site still shows a temporary certificate after deploy, request Let's Encrypt (internal use):
-#   cd $NGINX_MICROSERVICE_PATH && docker compose run --rm certbot /scripts/request-cert.sh $(grep DOMAIN $PROJECT_ROOT/.env | cut -d= -f2) ${CERTBOT_EMAIL:-admin@example.com}
-
+# deploy.sh — Kubernetes deployment for auth-microservice
+# Usage: ./scripts/deploy.sh [image-tag]
 set -e
 
-# Get script directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-cd "$PROJECT_ROOT"
-
-# Colors for output
+# Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Load NODE_ENV from .env file to determine environment
-NODE_ENV=""
-if [ -f "$PROJECT_ROOT/.env" ]; then
-    set -a
-    # shellcheck source=/dev/null
-    source "$PROJECT_ROOT/.env" 2>/dev/null || true
-    set +a
-    NODE_ENV="${NODE_ENV:-}"
-fi
-
-# Pull from remote in production; preserve local changes (stash uncommitted if any, then reapply).
-# Only sync if NODE_ENV is set to "production"
-# Skip sync when SKIP_DEPLOY_SYNC=1 (e.g. local commit not yet pushed)
-if [ -d ".git" ] && [ "${SKIP_DEPLOY_SYNC}" != "1" ]; then
-    if [ "$NODE_ENV" = "production" ]; then
-        echo -e "${BLUE}Production environment detected (NODE_ENV=production)${NC}"
-        echo -e "${BLUE}Pulling from remote (local changes preserved)...${NC}"
-        git fetch origin
-        BRANCH=$(git rev-parse --abbrev-ref HEAD)
-        STASHED=0
-        if [ -n "$(git status --porcelain)" ]; then
-            git stash push -u -m "deploy.sh: stash before pull"
-            STASHED=1
-        fi
-        git pull origin "$BRANCH"
-        if [ "$STASHED" = "1" ]; then
-            git stash pop
-        fi
-        echo -e "${GREEN}✓ Repository updated from origin/$BRANCH (local changes preserved)${NC}"
-        echo ""
-    else
-        echo -e "${YELLOW}Development environment detected (NODE_ENV=${NODE_ENV:-not set})${NC}"
-        echo -e "${YELLOW}Skipping git sync - local changes will be preserved${NC}"
-        echo ""
-    fi
-fi
-
-echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║          Auth-microservice - Production Deployment         ║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
-echo ""
-
-# Service name and display name (first letter uppercase for messages)
 SERVICE_NAME="auth-microservice"
-DISPLAY_NAME="$(echo "${SERVICE_NAME:0:1}" | tr 'a-z' 'A-Z')${SERVICE_NAME:1}"
+NAMESPACE="statex-apps"
+REGISTRY="localhost:5000"
+IMAGE_TAG="${1:-latest}"
+IMAGE="${REGISTRY}/${SERVICE_NAME}:${IMAGE_TAG}"
 
-# Detect nginx-microservice path
-# Try common production paths first, then fallback to relative path
-NGINX_MICROSERVICE_PATH=""
+# ═══════════════════════════════════════════════════════════
+#  auth-microservice - Kubernetes Deployment
+# ═══════════════════════════════════════════════════════════
 
-# Check common production paths
-if [ -d "/home/statex/nginx-microservice" ]; then
-    NGINX_MICROSERVICE_PATH="/home/statex/nginx-microservice"
-elif [ -d "/home/alfares/nginx-microservice" ]; then
-    NGINX_MICROSERVICE_PATH="/home/alfares/nginx-microservice"
-elif [ -d "/home/belunga/nginx-microservice" ]; then
-    NGINX_MICROSERVICE_PATH="/home/belunga/nginx-microservice"
-elif [ -d "$HOME/nginx-microservice" ]; then
-    NGINX_MICROSERVICE_PATH="$HOME/nginx-microservice"
-elif [ -d "$(dirname "$PROJECT_ROOT")/nginx-microservice" ]; then
-    NGINX_MICROSERVICE_PATH="$(dirname "$PROJECT_ROOT")/nginx-microservice"
-elif [ -d "$PROJECT_ROOT/../nginx-microservice" ]; then
-    NGINX_MICROSERVICE_PATH="$(cd "$PROJECT_ROOT/../nginx-microservice" && pwd)"
+echo -e "${BLUE}"
+echo "╔════════════════════════════════════════════════════════╗"
+echo "║  ${SERVICE_NAME}"
+echo "║  Kubernetes Deployment"
+echo "╚════════════════════════════════════════════════════════╝"
+echo -e "${NC}"
+
+# ── Phase 1: Git sync (production only) ──────────────────────
+if [ "${NODE_ENV}" = "production" ]; then
+  echo -e "${YELLOW}[1/5] Syncing git...${NC}"
+  cd "$PROJECT_ROOT"
+  git fetch origin
+  git stash
+  git pull origin main
+  git stash pop || true
+  echo -e "${GREEN}✅ Git synced${NC}"
 fi
 
-# Validate nginx-microservice path
-if [ -z "$NGINX_MICROSERVICE_PATH" ] || [ ! -d "$NGINX_MICROSERVICE_PATH" ]; then
-    echo -e "${RED}❌ Error: nginx-microservice not found${NC}"
-    echo ""
-    echo "Please ensure nginx-microservice is installed in one of these locations:"
-    echo "  - /home/statex/nginx-microservice"
-    echo "  - /home/alfares/nginx-microservice"
-    echo "  - /home/belunga/nginx-microservice"
-    echo "  - $HOME/nginx-microservice"
-    echo "  - $(dirname "$PROJECT_ROOT")/nginx-microservice (sibling directory)"
-    echo ""
-    echo "Or set NGINX_MICROSERVICE_PATH environment variable:"
-    echo "  export NGINX_MICROSERVICE_PATH=/path/to/nginx-microservice"
-    exit 1
+# ── Phase 2: Build Docker image ──────────────────────────────
+echo -e "${YELLOW}[2/5] Building image: ${IMAGE}...${NC}"
+docker build -t "$IMAGE" "$PROJECT_ROOT"
+echo -e "${GREEN}✅ Image built${NC}"
+
+# ── Phase 3: Push to local registry ──────────────────────────
+echo -e "${YELLOW}[3/5] Pushing to registry...${NC}"
+docker push "$IMAGE"
+echo -e "${GREEN}✅ Image pushed: ${IMAGE}${NC}"
+
+
+# ── Phase 3b: ConfigMap + Secret from .env (credentials only in .env / K8s Secret) ──
+echo -e "${YELLOW}[3b/5] Applying ConfigMap and syncing Secret from .env...${NC}"
+CONFIGMAP_TEMPLATE="$PROJECT_ROOT/k8s/configmap.yaml.template"
+if [ ! -f "$CONFIGMAP_TEMPLATE" ]; then
+  echo -e "${RED}Missing ${CONFIGMAP_TEMPLATE}${NC}"
+  exit 1
+fi
+if [ -f "$PROJECT_ROOT/.env" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "$PROJECT_ROOT/.env"
+  set +a
+fi
+export K8S_NAMESPACE="${K8S_NAMESPACE:-statex-apps}"
+# In-cluster URLs by default (Docker .env often uses public URLs; do not reuse those here).
+export LOGGING_SERVICE_URL_FOR_K8S="${K8S_LOGGING_SERVICE_URL:-http://logging-microservice.statex-apps.svc.cluster.local:3367}"
+export NOTIFICATION_SERVICE_URL_FOR_K8S="${K8S_NOTIFICATION_SERVICE_URL:-http://host.k3s.internal:3368}"
+: "${GOOGLE_OAUTH_AUTH_URL:=https://accounts.google.com/o/oauth2/v2/auth}"
+: "${GOOGLE_OAUTH_TOKEN_URL:=https://oauth2.googleapis.com/token}"
+: "${GOOGLE_OAUTH_PROFILE_URL:=https://openidconnect.googleapis.com/v1/userinfo}"
+: "${FACEBOOK_OAUTH_AUTH_URL:=https://www.facebook.com/v12.0/dialog/oauth}"
+: "${FACEBOOK_OAUTH_TOKEN_URL:=https://graph.facebook.com/v12.0/oauth/access_token}"
+: "${FACEBOOK_OAUTH_PROFILE_URL:=https://graph.facebook.com/me?fields=id,name,email}"
+CONFIGMAP_VARS='${K8S_NAMESPACE}${NODE_ENV}${SERVICE_NAME}${DOMAIN}${PORT}${FRONTEND_PORT}${CORS_ORIGIN}${FRONTEND_URL}${AUTH_URL}${DB_HOST}${DB_PORT}${DB_USER}${DB_NAME}${DB_SYNC}${DB_AUTO_CREATE}${JWT_EXPIRES_IN}${JWT_REFRESH_EXPIRES_IN}${LOG_LEVEL}${LOGGING_SERVICE_URL_FOR_K8S}${NOTIFICATION_SERVICE_URL_FOR_K8S}${LOGS_VOLUME_PATH}${AUTH_ALLOWED_REDIRECT_ORIGINS}${AUTH_MAGIC_LINK_TTL_MINUTES}${AUTH_MAGIC_LINK_RATE_LIMIT_PER_IP}${AUTH_MAGIC_LINK_RATE_LIMIT_PER_EMAIL}${AUTH_OAUTH_INIT_RATE_LIMIT_PER_IP}${AUTH_RATE_LIMIT_WINDOW_MS}${GOOGLE_OAUTH_AUTH_URL}${GOOGLE_OAUTH_TOKEN_URL}${GOOGLE_OAUTH_PROFILE_URL}${FACEBOOK_OAUTH_AUTH_URL}${FACEBOOK_OAUTH_TOKEN_URL}${FACEBOOK_OAUTH_PROFILE_URL}'
+envsubst "${CONFIGMAP_VARS}" < "$CONFIGMAP_TEMPLATE" | kubectl apply -f -
+if [ -z "${DB_PASSWORD:-}" ] || [ -z "${JWT_SECRET:-}" ]; then
+  echo -e "${RED}DB_PASSWORD and JWT_SECRET must be set in .env to sync K8s Secret${NC}"
+  exit 1
+fi
+kubectl create secret generic auth-microservice-secret \
+  -n "${NAMESPACE}" \
+  --from-literal=DB_PASSWORD="${DB_PASSWORD}" \
+  --from-literal=JWT_SECRET="${JWT_SECRET}" \
+  --from-literal=TEST_EMAIL="${TEST_EMAIL:-}" \
+  --from-literal=TEST_PASSWORD="${TEST_PASSWORD:-}" \
+  --from-literal=GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}" \
+  --from-literal=GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}" \
+  --from-literal=FACEBOOK_CLIENT_ID="${FACEBOOK_CLIENT_ID:-}" \
+  --from-literal=FACEBOOK_CLIENT_SECRET="${FACEBOOK_CLIENT_SECRET:-}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+echo -e "${GREEN}ConfigMap / Secret applied${NC}"
+
+
+# ── Phase 4: Update K8s deployment ──────────────────────────
+echo -e "${YELLOW}[4/5] Updating K8s deployment...${NC}"
+kubectl set image deployment/${SERVICE_NAME} \
+  app="${IMAGE}" \
+  -n "${NAMESPACE}"
+kubectl rollout status deployment/${SERVICE_NAME} \
+  -n "${NAMESPACE}" \
+  --timeout=120s
+echo -e "${GREEN}✅ Rollout complete${NC}"
+
+# ── Phase 5: Health check ────────────────────────────────────
+echo -e "${YELLOW}[5/5] Verifying health...${NC}"
+POD=$(kubectl get pod -n "${NAMESPACE}" \
+  -l app=${SERVICE_NAME} \
+  -o jsonpath='{.items[0].metadata.name}')
+
+if [ -z "$POD" ]; then
+  echo -e "${RED}❌ No pod found for ${SERVICE_NAME}${NC}"
+  exit 1
 fi
 
-# Check if deploy-smart.sh exists
-DEPLOY_SCRIPT="$NGINX_MICROSERVICE_PATH/scripts/blue-green/deploy-smart.sh"
-if [ ! -f "$DEPLOY_SCRIPT" ]; then
-    echo -e "${RED}❌ Error: deploy-smart.sh not found at $DEPLOY_SCRIPT${NC}"
-    exit 1
-fi
-
-# Check if deploy-smart.sh is executable
-if [ ! -x "$DEPLOY_SCRIPT" ]; then
-    echo -e "${YELLOW}⚠️  Making deploy-smart.sh executable...${NC}"
-    chmod +x "$DEPLOY_SCRIPT"
-fi
-
-echo -e "${GREEN}✅ Found nginx-microservice at: $NGINX_MICROSERVICE_PATH${NC}"
-echo -e "${GREEN}✅ Deploying service: $SERVICE_NAME${NC}"
-echo ""
-
-# Timing and logging functions
-get_timestamp() {
-    date '+%Y-%m-%d %H:%M:%S.%3N'
+kubectl exec -n "${NAMESPACE}" "$POD" -- \
+  wget -qO- http://localhost:3370/health || {
+  echo -e "${RED}⚠️  Health check failed (service may still be starting)${NC}"
 }
+echo -e ""
 
-get_timestamp_seconds() {
-    date +%s.%N
-}
-
-log_with_timestamp() {
-    local message="[$(get_timestamp)] $1"
-    echo "$message"
-}
-
-# Phase timing tracking using temp file (works in subshells)
-PHASE_TIMING_FILE=$(mktemp /tmp/deploy-phases-XXXXXX)
-trap "rm -f $PHASE_TIMING_FILE" EXIT
-
-start_phase() {
-    local phase_name="$1"
-    local timestamp=$(get_timestamp_seconds)
-    echo "$phase_name|START|$timestamp" >> "$PHASE_TIMING_FILE"
-    local msg="⏱️  PHASE START: $phase_name"
-    echo -e "${YELLOW}$msg${NC}" >&2
-}
-
-end_phase() {
-    local phase_name="$1"
-    local timestamp=$(get_timestamp_seconds)
-    echo "$phase_name|END|$timestamp" >> "$PHASE_TIMING_FILE"
-    
-    # Calculate duration if we have start time
-    local start_line=$(grep "^${phase_name}|START|" "$PHASE_TIMING_FILE" | tail -1)
-    if [ -n "$start_line" ]; then
-        local start_time=$(echo "$start_line" | cut -d'|' -f3)
-        # Use awk for calculation (more portable than bc)
-        local duration=$(awk "BEGIN {printf \"%.2f\", $timestamp - $start_time}")
-        local msg="⏱️  PHASE END: $phase_name (duration: ${duration}s)"
-        echo -e "${GREEN}$msg${NC}" >&2
-    fi
-}
-
-print_phase_summary() {
-    # Check if file exists and has content
-    if [ ! -f "$PHASE_TIMING_FILE" ] || [ ! -s "$PHASE_TIMING_FILE" ]; then
-        echo ""
-        echo -e "${YELLOW}⚠️  No phase timing data available${NC}"
-        echo ""
-        return
-    fi
-    
-    echo ""
-    echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
-    echo -e "${BLUE}📊 DEPLOYMENT PHASE TIMING SUMMARY${NC}"
-    echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
-    
-    # Process phase timings
-    local current_phase=""
-    local start_time=""
-    local total_phase_time=0
-    
-    while IFS='|' read -r phase_name event timestamp; do
-        if [ "$event" = "START" ]; then
-            current_phase="$phase_name"
-            start_time="$timestamp"
-        elif [ "$event" = "END" ] && [ -n "$start_time" ] && [ -n "$current_phase" ]; then
-            # Use awk for calculation (more portable than bc)
-            local duration=$(awk "BEGIN {printf \"%.2f\", $timestamp - $start_time}")
-            total_phase_time=$(awk "BEGIN {printf \"%.2f\", $total_phase_time + $duration}")
-            printf "  ${GREEN}%-45s${NC} ${YELLOW}%10.2fs${NC}\n" "$phase_name:" "$duration"
-            current_phase=""
-            start_time=""
-        fi
-    done < "$PHASE_TIMING_FILE"
-    
-    if [ "$(echo "$total_phase_time > 0" | bc 2>/dev/null || echo "0")" = "1" ]; then
-        echo -e "${BLUE}────────────────────────────────────────────────────────────${NC}"
-        printf "  ${GREEN}%-45s${NC} ${YELLOW}%10.2fs${NC}\n" "Total (all phases):" "$total_phase_time"
-    fi
-    echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
-    echo ""
-}
-
-# deploy-smart.sh manages the service registry (create from compose if missing, update ports/routes/health from compose and nginx-api-routes.conf).
-
-# Blue/green health checks expect backend to listen on 3370 inside the container. Validate .env.
-PORT_VAL="${PORT:-3370}"
-if [ "$PORT_VAL" != "3370" ]; then
-    echo -e "${RED}❌ Error: PORT must be 3370 for blue/green health checks (current: ${PORT_VAL})${NC}"
-    echo "  The backend must listen on 3370 inside the container. Set PORT=3370 in auth-microservice/.env (or leave unset)."
-    echo "  On sgipreal/statex ensure .env has PORT=3370 so prepare-green health check can reach the backend."
-    exit 1
-fi
-
-# Blue/green: do NOT stop/remove containers here. Keep current (e.g. blue) running until
-# deploy-smart.sh has started the new color (green), passed health checks, and switched traffic.
-# prepare-green-smart.sh stops only the OLD color when needed; outage = brief switch, not full deploy.
-# (Auth uses different host ports for blue/green: 3370 vs 3371, so both can run in parallel.)
-
-# Change to nginx-microservice directory and run deployment
-start_phase "Pre-deployment Setup"
-log_with_timestamp "Starting blue/green deployment..."
-echo -e "${YELLOW}Starting blue/green deployment...${NC}"
-echo ""
-
-log_with_timestamp "Changing directory to: $NGINX_MICROSERVICE_PATH"
-cd "$NGINX_MICROSERVICE_PATH"
-
-log_with_timestamp "About to execute: $DEPLOY_SCRIPT $SERVICE_NAME"
-log_with_timestamp "Current directory: $(pwd)"
-log_with_timestamp "Script exists and is executable: $([ -x "$DEPLOY_SCRIPT" ] && echo 'yes' || echo 'no')"
-end_phase "Pre-deployment Setup"
-
-# Execute the deployment script with phase tracking
-log_with_timestamp "Executing deployment script now..."
-START_TIME=$(get_timestamp_seconds)
-
-# Create a wrapper to track phases from deployment script output
-# Use a named pipe or process substitution to track phases
-"$DEPLOY_SCRIPT" "$SERVICE_NAME" 2>&1 | {
-    build_started=0
-    start_containers_started=0
-    health_check_started=0
-    
-    while IFS= read -r line; do
-        # Echo the line to stdout
-        echo "$line"
-        
-        # Track phases based on deployment script output patterns
-        if echo "$line" | grep -qE "Phase 0:.*Infrastructure"; then
-            start_phase "Phase 0: Infrastructure Check"
-        elif echo "$line" | grep -qE "Phase 0 completed|✅ Phase 0 completed"; then
-            end_phase "Phase 0: Infrastructure Check"
-        elif echo "$line" | grep -qE "Phase 1:.*Preparing|Phase 1:.*Prepare"; then
-            start_phase "Phase 1: Prepare Green Deployment"
-        elif echo "$line" | grep -qE "Phase 1 completed|✅ Phase 1 completed"; then
-            end_phase "Phase 1: Prepare Green Deployment"
-        elif echo "$line" | grep -qE "Phase 2:.*Switching|Phase 2:.*Switch"; then
-            start_phase "Phase 2: Switch Traffic to Green"
-        elif echo "$line" | grep -qE "Phase 2 completed|✅ Phase 2 completed"; then
-            end_phase "Phase 2: Switch Traffic to Green"
-        elif echo "$line" | grep -qE "Phase 3:.*Monitoring|Phase 3:.*Monitor"; then
-            start_phase "Phase 3: Monitor Health"
-        elif echo "$line" | grep -qE "Phase 3 completed|✅ Phase 3 completed"; then
-            end_phase "Phase 3: Monitor Health"
-        elif echo "$line" | grep -qE "Phase 4:.*Verifying|Phase 4:.*Verify"; then
-            start_phase "Phase 4: Verify HTTPS"
-        elif echo "$line" | grep -qE "Phase 4 completed|✅ Phase 4 completed"; then
-            end_phase "Phase 4: Verify HTTPS"
-        elif echo "$line" | grep -qE "Phase 5:.*Cleaning|Phase 5:.*Cleanup"; then
-            start_phase "Phase 5: Cleanup"
-        elif echo "$line" | grep -qE "Phase 5 completed|✅ Phase 5 completed"; then
-            end_phase "Phase 5: Cleanup"
-        elif echo "$line" | grep -qE "Building containers|Image.*Building" && [ "$build_started" -eq 0 ]; then
-            start_phase "Build Containers"
-            build_started=1
-        elif echo "$line" | grep -qE "All services built|✅ All services built" && [ "$build_started" -eq 1 ]; then
-            end_phase "Build Containers"
-            build_started=2
-        elif echo "$line" | grep -qE "Starting containers|Container.*Starting" && [ "$start_containers_started" -eq 0 ]; then
-            start_phase "Start Containers"
-            start_containers_started=1
-        elif echo "$line" | grep -qE "Container.*Started|Waiting.*services to start" && [ "$start_containers_started" -eq 1 ]; then
-            end_phase "Start Containers"
-            start_containers_started=2
-        elif echo "$line" | grep -qE "Checking.*health|Health check" && [ "$health_check_started" -eq 0 ]; then
-            start_phase "Health Checks"
-            health_check_started=1
-        elif echo "$line" | grep -qE "health check passed|✅.*health" && [ "$health_check_started" -eq 1 ]; then
-            end_phase "Health Checks"
-            health_check_started=2
-        fi
-    done
-}
-
-# Pipeline's left side (deploy script) exit code; PIPESTATUS[0] in main shell is correct
-DEPLOY_EXIT_CODE=${PIPESTATUS[0]}
-END_TIME=$(get_timestamp_seconds)
-TOTAL_DURATION=$(awk "BEGIN {printf \"%.2f\", $END_TIME - $START_TIME}")
-
-# Ensure phase timing file is still accessible (don't remove it yet)
-if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
-    TOTAL_DURATION_FORMATTED=$(awk "BEGIN {printf \"%.2f\", $TOTAL_DURATION}")
-    # Print summary before final message
-    print_phase_summary 2>&1
-    echo ""
-    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║     ✅ Auth-microservice deployment completed successfully!          ║${NC}"
-    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
-    echo -e "${GREEN}Total deployment time: ${TOTAL_DURATION_FORMATTED}s${NC}"
-    echo ""
-    echo "The auth-microservice application has been deployed using blue/green deployment."
-    echo "Check the status with:"
-    echo "  cd $NGINX_MICROSERVICE_PATH"
-    echo "  ./scripts/status-all-services.sh"
-    echo ""
-    exit 0
-else
-    TOTAL_DURATION_FORMATTED=$(awk "BEGIN {printf \"%.2f\", $TOTAL_DURATION}")
-    echo ""
-    echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
-    echo -e "${RED}   ❌ Auth-microservice deployment failed!${NC}"
-    echo -e "${RED}   Failed after: ${TOTAL_DURATION_FORMATTED}s${NC}"
-    echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
-    print_phase_summary
-    echo ""
-    echo -e "${RED}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}║               ❌ Auth-microservice deployment failed!                ║${NC}"
-    echo -e "${RED}╚══════════════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    echo "Please check the error messages above and:"
-    echo "  1. Verify nginx-microservice is properly configured"
-    echo "  2. Check service registry file exists: $NGINX_MICROSERVICE_PATH/service-registry/$SERVICE_NAME.json"
-    echo "  3. Review deployment logs"
-    echo "  4. If 'Port 3370 is not listening': ensure PORT=3370 in .env, then: docker logs auth-microservice-green (backend may be failing to start: DB, JWT_SECRET, or network)."
-    echo "  5. Check service health: cd $NGINX_MICROSERVICE_PATH && ./scripts/blue-green/health-check.sh"
-    exit 1
-fi
+# ── Done ─────────────────────────────────────────────────────
+echo -e "${GREEN}"
+echo "╔════════════════════════════════════════════════════════╗"
+echo "║            ✅ Deployment successful!                   ║"
+echo "║  Service:  ${SERVICE_NAME}"
+echo "║  Image:    ${IMAGE}"
+echo "║  Namespace: ${NAMESPACE}"
+echo "║  Pods:     $(kubectl get pods -n ${NAMESPACE} -l app=${SERVICE_NAME} --no-headers | wc -l) running"
+echo "╚════════════════════════════════════════════════════════╝"
+echo -e "${NC}"

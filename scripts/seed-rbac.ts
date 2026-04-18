@@ -9,6 +9,7 @@
 
 import { config } from 'dotenv';
 import { resolve } from 'path';
+import { existsSync, readdirSync, readFileSync } from 'fs';
 
 // Load .env from auth-microservice root so DB credentials are available before Nest bootstraps
 config({ path: resolve(__dirname, '..', '.env') });
@@ -37,6 +38,9 @@ const APPLICATIONS = [
   { name: 'messenger', displayName: 'Messenger', type: ApplicationType.USER_FACING },
   { name: 'speakasap', displayName: 'SpeakASAP', type: ApplicationType.USER_FACING },
   { name: 'sgiprealestate', displayName: 'SGIP Real Estate', type: ApplicationType.USER_FACING },
+  { name: 'business-orchestrator', displayName: 'Business Orchestrator', type: ApplicationType.USER_FACING },
+  { name: 'ecosystem-console', displayName: 'Ecosystem Console', type: ApplicationType.USER_FACING },
+  { name: 'task-management', displayName: 'Task Management', type: ApplicationType.USER_FACING },
   { name: 'leads-microservice', displayName: 'Leads Microservice', type: ApplicationType.USER_FACING },
 
   // Internal microservices
@@ -48,12 +52,79 @@ const APPLICATIONS = [
   { name: 'warehouse-microservice', displayName: 'Warehouse Microservice', type: ApplicationType.INTERNAL },
   { name: 'suppliers-microservice', displayName: 'Suppliers Microservice', type: ApplicationType.INTERNAL },
   { name: 'orders-microservice', displayName: 'Orders Microservice', type: ApplicationType.INTERNAL },
+  { name: 'prompts-microservice', displayName: 'Prompts Microservice', type: ApplicationType.INTERNAL },
+  { name: 'marketing-microservice', displayName: 'Marketing Microservice', type: ApplicationType.INTERNAL },
 
   // Infrastructure services
   { name: 'auth-microservice', displayName: 'Auth Microservice', type: ApplicationType.INFRASTRUCTURE },
   { name: 'nginx-microservice', displayName: 'Nginx Microservice', type: ApplicationType.INFRASTRUCTURE },
   { name: 'database-server', displayName: 'Database Server', type: ApplicationType.INFRASTRUCTURE },
 ];
+
+type AppSeedRecord = {
+  name: string;
+  displayName: string;
+  type: ApplicationType;
+  domain?: string;
+};
+
+function toDisplayName(serviceName: string): string {
+  return serviceName
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function inferType(serviceName: string): ApplicationType {
+  if (serviceName === 'auth-microservice' || serviceName === 'nginx-microservice' || serviceName === 'database-server') {
+    return ApplicationType.INFRASTRUCTURE;
+  }
+  if (serviceName.endsWith('-microservice')) {
+    return ApplicationType.INTERNAL;
+  }
+  return ApplicationType.USER_FACING;
+}
+
+function discoverApplicationsFromRegistry(): AppSeedRecord[] {
+  const registryCandidates = [
+    process.env.NGINX_SERVICE_REGISTRY_DIR,
+    resolve(__dirname, '../../nginx-microservice/service-registry'),
+    '/home/statex/nginx-microservice/service-registry',
+    '/home/alfares/nginx-microservice/service-registry',
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  const registryDir = registryCandidates.find((candidate) => existsSync(candidate));
+  if (!registryDir) {
+    return [];
+  }
+
+  const discovered: AppSeedRecord[] = [];
+  const files = readdirSync(registryDir).filter((file) => file.endsWith('.json'));
+
+  for (const fileName of files) {
+    try {
+      const raw = readFileSync(resolve(registryDir, fileName), 'utf8');
+      const parsed = JSON.parse(raw);
+      const serviceName = String(parsed.service_name || '').trim();
+      if (!serviceName) {
+        continue;
+      }
+
+      const domain = parsed.domain ? String(parsed.domain).trim() : undefined;
+      discovered.push({
+        name: serviceName,
+        displayName: toDisplayName(serviceName),
+        type: inferType(serviceName),
+        domain,
+      });
+    } catch (error) {
+      console.warn(`Skipping invalid registry file: ${fileName}`, (error as Error).message);
+    }
+  }
+
+  return discovered;
+}
 
 // Predefined roles
 const PREDEFINED_ROLES = [
@@ -82,12 +153,34 @@ async function seedRBAC(adminEmail?: string) {
     console.log('📦 Registering applications...');
     const registeredApps: Map<string, any> = new Map();
 
+    const discoveredApps = discoverApplicationsFromRegistry();
+    const appSeedMap = new Map<string, AppSeedRecord>();
+
     for (const appDef of APPLICATIONS) {
+      appSeedMap.set(appDef.name, { ...appDef });
+    }
+    for (const discovered of discoveredApps) {
+      const existing = appSeedMap.get(discovered.name);
+      if (existing) {
+        appSeedMap.set(discovered.name, {
+          ...existing,
+          domain: discovered.domain || existing.domain,
+        });
+      } else {
+        appSeedMap.set(discovered.name, discovered);
+      }
+    }
+
+    const applicationsToSeed = Array.from(appSeedMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    console.log(`📚 Applications from static list: ${APPLICATIONS.length}, discovered from nginx registry: ${discoveredApps.length}`);
+
+    for (const appDef of applicationsToSeed) {
       try {
         const app = await applicationsService.registerOrUpdate({
           name: appDef.name,
           displayName: appDef.displayName,
           type: appDef.type,
+          domain: appDef.domain,
         });
         registeredApps.set(appDef.name, app);
         console.log(`  ✅ Registered: ${appDef.name} (${appDef.type})`);

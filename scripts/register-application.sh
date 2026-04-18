@@ -2,8 +2,8 @@
 # Application Registration Script
 # Registers an application in auth-microservice during deployment
 #
-# Usage: ./scripts/register-application.sh [service-name]
-# If service-name not provided, reads from SERVICE_NAME in .env
+# Usage: ./scripts/register-application.sh [service-name] [service-env-file]
+# If service-name not provided, reads from service env file or local .env
 
 set -e
 
@@ -20,9 +20,24 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Service name from argument or .env
 SERVICE_NAME="${1:-}"
+ARG_SERVICE_NAME="$SERVICE_NAME"
+SERVICE_ENV_FILE="${2:-${SERVICE_ENV_FILE:-}}"
+CALLER_AUTH_SERVICE_URL="${AUTH_SERVICE_URL:-}"
+
+# Load target service env file first (if provided) so DOMAIN/SERVICE_NAME come
+# from the service being registered (not from auth-microservice .env).
+if [ -n "$SERVICE_ENV_FILE" ] && [ -f "$SERVICE_ENV_FILE" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "$SERVICE_ENV_FILE" 2>/dev/null || true
+  set +a
+  if [ -n "$CALLER_AUTH_SERVICE_URL" ]; then
+    AUTH_SERVICE_URL="$CALLER_AUTH_SERVICE_URL"
+  fi
+fi
 
 if [ -z "$SERVICE_NAME" ]; then
-  # Try to read from .env
+  # Try to read from local auth .env as a last fallback
   if [ -f "$PROJECT_ROOT/.env" ]; then
     set -a
     # shellcheck source=/dev/null
@@ -30,6 +45,10 @@ if [ -z "$SERVICE_NAME" ]; then
     set +a
     SERVICE_NAME="${SERVICE_NAME:-}"
   fi
+fi
+
+if [ -n "$ARG_SERVICE_NAME" ]; then
+  SERVICE_NAME="$ARG_SERVICE_NAME"
 fi
 
 if [ -z "$SERVICE_NAME" ]; then
@@ -55,7 +74,7 @@ elif [[ "$SERVICE_NAME" == "database-server" ]]; then
   APP_TYPE="infrastructure"
 fi
 
-# Get domain from .env if available
+# Get domain from loaded service env if available
 DOMAIN="${DOMAIN:-}"
 FRONTEND_URL="${FRONTEND_URL:-}"
 
@@ -68,14 +87,23 @@ fi
 # Get display name (capitalize SERVICE_NAME)
 DISPLAY_NAME=$(echo "$SERVICE_NAME" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
 
-# Auth service URL
-AUTH_SERVICE_URL="${AUTH_SERVICE_URL:-https://auth.alfares.cz}"
+# Auth service URL (keep service metadata intact while reading local auth .env)
+AUTH_SERVICE_URL="${AUTH_SERVICE_URL:-${AUTH_URL:-https://auth.alfares.cz}}"
 if [ -f "$PROJECT_ROOT/.env" ]; then
+  ORIGINAL_SERVICE_NAME="$SERVICE_NAME"
+  ORIGINAL_DOMAIN="$DOMAIN"
+  ORIGINAL_FRONTEND_URL="$FRONTEND_URL"
+  ORIGINAL_AUTH_SERVICE_URL="$AUTH_SERVICE_URL"
+
   set -a
   # shellcheck source=/dev/null
   source "$PROJECT_ROOT/.env" 2>/dev/null || true
   set +a
-  AUTH_SERVICE_URL="${AUTH_SERVICE_URL:-https://auth.alfares.cz}"
+  AUTH_SERVICE_URL="${ORIGINAL_AUTH_SERVICE_URL:-${AUTH_URL:-https://auth.alfares.cz}}"
+
+  SERVICE_NAME="$ORIGINAL_SERVICE_NAME"
+  DOMAIN="$ORIGINAL_DOMAIN"
+  FRONTEND_URL="$ORIGINAL_FRONTEND_URL"
 fi
 
 # Check if auth-microservice is accessible
