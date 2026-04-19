@@ -52,8 +52,8 @@ docker push "$IMAGE"
 echo -e "${GREEN}✅ Image pushed: ${IMAGE}${NC}"
 
 
-# ── Phase 3b: ConfigMap + Secret from .env (credentials only in .env / K8s Secret) ──
-echo -e "${YELLOW}[3b/5] Applying ConfigMap and syncing Secret from .env...${NC}"
+# ── Phase 3b: ConfigMap + ExternalSecret (Vault-managed secrets) ──────────
+echo -e "${YELLOW}[3b/5] Applying ConfigMap and ExternalSecret...${NC}"
 CONFIGMAP_TEMPLATE="$PROJECT_ROOT/k8s/configmap.yaml.template"
 if [ ! -f "$CONFIGMAP_TEMPLATE" ]; then
   echo -e "${RED}Missing ${CONFIGMAP_TEMPLATE}${NC}"
@@ -77,22 +77,10 @@ export NOTIFICATION_SERVICE_URL_FOR_K8S="${K8S_NOTIFICATION_SERVICE_URL:-http://
 : "${FACEBOOK_OAUTH_PROFILE_URL:=https://graph.facebook.com/me?fields=id,name,email}"
 CONFIGMAP_VARS='${K8S_NAMESPACE}${NODE_ENV}${SERVICE_NAME}${DOMAIN}${PORT}${FRONTEND_PORT}${CORS_ORIGIN}${FRONTEND_URL}${AUTH_URL}${DB_HOST}${DB_PORT}${DB_USER}${DB_NAME}${DB_SYNC}${DB_AUTO_CREATE}${JWT_EXPIRES_IN}${JWT_REFRESH_EXPIRES_IN}${LOG_LEVEL}${LOGGING_SERVICE_URL_FOR_K8S}${NOTIFICATION_SERVICE_URL_FOR_K8S}${LOGS_VOLUME_PATH}${AUTH_ALLOWED_REDIRECT_ORIGINS}${AUTH_MAGIC_LINK_TTL_MINUTES}${AUTH_MAGIC_LINK_RATE_LIMIT_PER_IP}${AUTH_MAGIC_LINK_RATE_LIMIT_PER_EMAIL}${AUTH_OAUTH_INIT_RATE_LIMIT_PER_IP}${AUTH_RATE_LIMIT_WINDOW_MS}${GOOGLE_OAUTH_AUTH_URL}${GOOGLE_OAUTH_TOKEN_URL}${GOOGLE_OAUTH_PROFILE_URL}${FACEBOOK_OAUTH_AUTH_URL}${FACEBOOK_OAUTH_TOKEN_URL}${FACEBOOK_OAUTH_PROFILE_URL}'
 envsubst "${CONFIGMAP_VARS}" < "$CONFIGMAP_TEMPLATE" | kubectl apply -f -
-if [ -z "${DB_PASSWORD:-}" ] || [ -z "${JWT_SECRET:-}" ]; then
-  echo -e "${RED}DB_PASSWORD and JWT_SECRET must be set in .env to sync K8s Secret${NC}"
-  exit 1
-fi
-kubectl create secret generic auth-microservice-secret \
-  -n "${NAMESPACE}" \
-  --from-literal=DB_PASSWORD="${DB_PASSWORD}" \
-  --from-literal=JWT_SECRET="${JWT_SECRET}" \
-  --from-literal=TEST_EMAIL="${TEST_EMAIL:-}" \
-  --from-literal=TEST_PASSWORD="${TEST_PASSWORD:-}" \
-  --from-literal=GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}" \
-  --from-literal=GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}" \
-  --from-literal=FACEBOOK_CLIENT_ID="${FACEBOOK_CLIENT_ID:-}" \
-  --from-literal=FACEBOOK_CLIENT_SECRET="${FACEBOOK_CLIENT_SECRET:-}" \
-  --dry-run=client -o yaml | kubectl apply -f -
-echo -e "${GREEN}ConfigMap / Secret applied${NC}"
+
+# Secrets are managed by External Secrets Operator → Vault
+kubectl apply -f "$PROJECT_ROOT/k8s/external-secret.yaml"
+echo -e "${GREEN}ConfigMap / ExternalSecret applied (Vault-managed secrets)${NC}"
 
 
 # ── Phase 4: Update K8s deployment ──────────────────────────
