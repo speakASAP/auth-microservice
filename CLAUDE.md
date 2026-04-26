@@ -14,7 +14,8 @@ Read this repo's `BUSINESS.md` → `SYSTEM.md` → `AGENTS.md` → `TASKS.md` �
 **Stack**: NestJS · PostgreSQL · Redis · bcrypt
 
 ### Key constraints
-- Never expose or log JWT secrets — they live in `.env` only
+
+- Never expose or log JWT secrets — in K8s they come from Vault via ESO (`auth-microservice-secret` K8s Secret)
 - Password hashing: bcrypt only — no alternatives
 - No direct DB writes to the `users` table by AI agents
 - All other services authenticate through this service via JWT
