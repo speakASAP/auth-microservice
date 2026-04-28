@@ -1,3 +1,7 @@
+> **ARCHIVED** — Auth refactoring completed 2026-03-12. See [AUTH_REFACTOR_VALIDATION_REPORT.md](AUTH_REFACTOR_VALIDATION_REPORT.md) for sign-off record. This file is historical only.
+
+---
+
 ## Auth Refactor Tasks Index (Phase 0 / Sync A Focus)
 
 This index lists the main **Implementation Agents** and **Validator Agents** for the auth‑microservice refactor, starting with Phase 0 / Sync A.

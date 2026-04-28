@@ -1,5 +1,5 @@
 # Business: auth-microservice
->
+
 > ⚠️ IMMUTABLE BY AI.
 
 ## Goal
@@ -18,6 +18,6 @@ All applications and most microservices.
 
 ## SLA
 
-- Backend port: 3370 (<http://auth-microservice:3370>)
+- Backend port: 3370 ([http://auth-microservice:3370](http://auth-microservice:3370))
 - Frontend port: 3372
-- Production: <https://auth.alfares.cz>
+- Production: [https://auth.alfares.cz](https://auth.alfares.cz)

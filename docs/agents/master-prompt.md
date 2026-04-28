@@ -1,3 +1,7 @@
+> **ARCHIVED** — Auth refactoring completed 2026-03-12. See [AUTH_REFACTOR_VALIDATION_REPORT.md](AUTH_REFACTOR_VALIDATION_REPORT.md) for sign-off record. This file is historical only.
+
+---
+
 # ROLE: Lead Orchestrator Agent — Auth Microservice Refactoring (Unified Modern Auth & Registration)
 
 ## Global Coordination

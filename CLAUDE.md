@@ -1,28 +1,35 @@
 # CLAUDE.md (auth-microservice)
 
-Ecosystem defaults: sibling [`../CLAUDE.md`](../CLAUDE.md) and [`../shared/docs/PROJECT_AGENT_DOCS_STANDARD.md`](../shared/docs/PROJECT_AGENT_DOCS_STANDARD.md).
+Ecosystem defaults: [`../CLAUDE.md`](../CLAUDE.md) · [`../shared/docs/PROJECT_AGENT_DOCS_STANDARD.md`](../shared/docs/PROJECT_AGENT_DOCS_STANDARD.md)
 
-Read this repo's `BUSINESS.md` → `SYSTEM.md` → `AGENTS.md` → `TASKS.md` → `STATE.json` first.
+Read: `BUSINESS.md` → `SYSTEM.md` → `AGENTS.md` → `TASKS.md` → `STATE.json`
 
 ---
 
 ## auth-microservice
 
-**Purpose**: Centralized JWT authentication and user management for all Statex services.  
-**Ports**: 3370 (backend API) · 3372 (frontend)  
-**Domain**: https://auth.alfares.cz  
+**Purpose**: Centralized JWT authentication and user management for all Statex services.
+**Ports**: 3370 (backend API) · 3372 (frontend)
+**Domain**: [https://auth.alfares.cz](https://auth.alfares.cz)
 **Stack**: NestJS · PostgreSQL · Redis · bcrypt
 
 ### Key constraints
 
-- Never expose or log JWT secrets — in K8s they come from Vault via ESO (`auth-microservice-secret` K8s Secret)
+- Never expose or log JWT secrets — K8s Secret `auth-microservice-secret` from Vault via ESO
 - Password hashing: bcrypt only — no alternatives
 - No direct DB writes to the `users` table by AI agents
 - All other services authenticate through this service via JWT
 
+### Infrastructure refs
+
+- **Secrets**: [`../shared/docs/VAULT.md`](../shared/docs/VAULT.md) — path `secret/prod/auth-microservice`
+- **Kubernetes**: [`../shared/docs/KUBERNETES_SETUP_GUIDE.md`](../shared/docs/KUBERNETES_SETUP_GUIDE.md) — Phase A ✅
+- **Deploy standard**: [`../shared/docs/DEPLOY_STANDARD.md`](../shared/docs/DEPLOY_STANDARD.md)
+
 ### Quick ops
+
 ```bash
 curl http://auth-microservice:3370/health
-docker compose logs -f
+kubectl logs -n statex-apps -l app=auth-microservice -f
 ./scripts/deploy.sh
 ```
