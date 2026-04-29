@@ -90,7 +90,7 @@ function discoverApplicationsFromRegistry(): AppSeedRecord[] {
   const registryCandidates = [
     process.env.NGINX_SERVICE_REGISTRY_DIR,
     resolve(__dirname, '../../nginx-microservice/service-registry'),
-    '/home/statex/nginx-microservice/service-registry',
+    '~/Documents/Github/nginx-microservice/service-registry',
     '/home/alfares/nginx-microservice/service-registry',
   ].filter((candidate): candidate is string => Boolean(candidate));
 

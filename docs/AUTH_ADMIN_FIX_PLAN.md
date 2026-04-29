@@ -51,7 +51,7 @@
   - On local dev:
     - Review changes, run linters/tests if available.
     - Commit and push from `auth-microservice` (user action, no auto-commit).
-  - On prod (`ssh statex`):
+  - On prod (`ssh alfares`):
     - `cd ~/auth-microservice`
     - (Optional) `cp .env .env.bak.$(date +%Y%m%d)` – env already correct.
     - `./scripts/deploy.sh`
