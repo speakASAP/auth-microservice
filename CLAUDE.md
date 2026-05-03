@@ -1,8 +1,6 @@
 # CLAUDE.md (auth-microservice)
 
-Ecosystem defaults: [`../CLAUDE.md`](../CLAUDE.md) · [`../shared/docs/PROJECT_AGENT_DOCS_STANDARD.md`](../shared/docs/PROJECT_AGENT_DOCS_STANDARD.md)
-
-Read: `BUSINESS.md` → `SYSTEM.md` → `AGENTS.md` → `TASKS.md` → `STATE.json`
+→ Ecosystem: [../shared/CLAUDE.md](../shared/CLAUDE.md) | Reading order: `BUSINESS.md` → `SYSTEM.md` → `AGENTS.md` → `TASKS.md` → `STATE.json`
 
 ---
 
@@ -26,10 +24,4 @@ Read: `BUSINESS.md` → `SYSTEM.md` → `AGENTS.md` → `TASKS.md` → `STATE.js
 - **Kubernetes**: [`../shared/docs/KUBERNETES_SETUP_GUIDE.md`](../shared/docs/KUBERNETES_SETUP_GUIDE.md) — Phase A ✅
 - **Deploy standard**: [`../shared/docs/DEPLOY_STANDARD.md`](../shared/docs/DEPLOY_STANDARD.md)
 
-### Quick ops
-
-```bash
-curl http://auth-microservice:3370/health
-kubectl logs -n statex-apps -l app=auth-microservice -f
-./scripts/deploy.sh
-```
+**Ops**: `curl http://auth-microservice:3370/health` · `kubectl logs -n statex-apps -l app=auth-microservice -f` · `./scripts/deploy.sh`
