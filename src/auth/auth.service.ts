@@ -796,6 +796,10 @@ export class AuthService {
     return sanitized;
   }
 
+  validateReturnUrlForClient(returnUrl: string): string {
+    return this.validateReturnUrl(returnUrl);
+  }
+
   private validateReturnUrl(returnUrl: string): string {
     let url: URL;
     try {

@@ -115,5 +115,11 @@ export class AuthController {
   ) {
     await this.authService.oauthCallback(req.params.provider, req.query, res);
   }
+
+  @Get('validate-return-url')
+  validateReturnUrl(@Query('return_url') returnUrl: string) {
+    const validReturnUrl = this.authService.validateReturnUrlForClient(returnUrl || '');
+    return { valid: true, return_url: validReturnUrl };
+  }
 }
 

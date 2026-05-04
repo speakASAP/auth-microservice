@@ -3,48 +3,189 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Auth Service – Centralized Authentication</title>
+  <title>Auth Service</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <div class="container">
-    <header class="landing-header">
-      <h1>Auth Service</h1>
-      <p>Centralized authentication for your microservices</p>
-    </header>
+    <div class="login-box">
+      <h2 id="auth-title">Sign in</h2>
+      <p id="auth-subtitle" style="margin: 0 0 1rem 0; color: var(--muted);">Continue with your account</p>
 
-    <section class="landing-hero">
-      <h2>Secure authentication, one API</h2>
-      <p>JWT-based auth, user registration, login, password reset, and contact-based flows. Integrate once and use across all your apps.</p>
-    </section>
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+        <button id="tab-login" type="button" class="btn btn-secondary" style="flex: 1;">Login</button>
+        <button id="tab-register" type="button" class="btn btn-secondary" style="flex: 1;">Register</button>
+      </div>
 
-    <section class="landing-features">
-      <div class="feature-card">
-        <h3>User registration & login</h3>
-        <p>Email/password and contact-based registration with JWT access and refresh tokens.</p>
-      </div>
-      <div class="feature-card">
-        <h3>Token validation</h3>
-        <p>Validate and refresh tokens from any service on your network.</p>
-      </div>
-      <div class="feature-card">
-        <h3>Password reset</h3>
-        <p>Request and confirm password reset with email notifications.</p>
-      </div>
-      <div class="feature-card">
-        <h3>PostgreSQL & logging</h3>
-        <p>Stored in your DB; all events sent to your centralized logging service.</p>
-      </div>
-    </section>
+      <form id="auth-form">
+        <div id="name-row" style="display: none; gap: 0.5rem;">
+          <div class="form-group" style="flex: 1;">
+            <label for="firstName">First name</label>
+            <input id="firstName" name="firstName" type="text" autocomplete="given-name">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="lastName">Last name</label>
+            <input id="lastName" name="lastName" type="text" autocomplete="family-name">
+          </div>
+        </div>
 
-    <section class="landing-cta">
-      <a href="/admin" class="btn">Admin panel</a>
-      <a href="https://github.com/speakASAP/auth-microservice" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Documentation</a>
-    </section>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" required autocomplete="email">
+        </div>
 
-    <footer class="landing-footer">
-      Auth Microservice – Production-ready. Use the API at <code>/auth</code> for integration.
-    </footer>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" minlength="6" required autocomplete="current-password">
+        </div>
+
+        <div id="submit-error" class="error" style="display: none;"></div>
+        <button id="submit-btn" type="submit" class="btn">Continue</button>
+      </form>
+
+      <p style="margin-top: 1rem; color: var(--muted); font-size: 0.85rem;">
+        Redirect target:
+        <code id="return-url-label">(not set)</code>
+      </p>
+      <p style="margin-top: 0.25rem; color: var(--muted); font-size: 0.85rem;">
+        Need admin tools? <a href="/admin">Open admin panel</a>
+      </p>
+    </div>
   </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const initialMode = window.location.pathname === '/register' ? 'register' : 'login';
+    const returnUrlRaw = params.get('return_url') || '';
+    const state = params.get('state') || '';
+
+    const authTitle = document.getElementById('auth-title');
+    const authSubtitle = document.getElementById('auth-subtitle');
+    const nameRow = document.getElementById('name-row');
+    const form = document.getElementById('auth-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const submitError = document.getElementById('submit-error');
+    const returnUrlLabel = document.getElementById('return-url-label');
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+
+    let mode = initialMode;
+    let validatedReturnUrl = '';
+
+    function parseJwtExpiryIso(accessToken) {
+      try {
+        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        if (!payload.exp) return '';
+        return new Date(payload.exp * 1000).toISOString();
+      } catch {
+        return '';
+      }
+    }
+
+    function setError(message) {
+      if (!message) {
+        submitError.style.display = 'none';
+        submitError.textContent = '';
+        return;
+      }
+      submitError.style.display = 'block';
+      submitError.textContent = message;
+    }
+
+    function syncMode() {
+      const isRegister = mode === 'register';
+      authTitle.textContent = isRegister ? 'Create account' : 'Sign in';
+      authSubtitle.textContent = isRegister ? 'Register a new account' : 'Continue with your account';
+      nameRow.style.display = isRegister ? 'flex' : 'none';
+      submitBtn.textContent = isRegister ? 'Register' : 'Login';
+      tabLogin.classList.toggle('btn-secondary', isRegister);
+      tabRegister.classList.toggle('btn-secondary', !isRegister);
+    }
+
+    function gotoMode(nextMode) {
+      mode = nextMode;
+      const targetPath = nextMode === 'register' ? '/register' : '/login';
+      window.history.replaceState(null, '', targetPath + window.location.search);
+      syncMode();
+    }
+
+    async function validateReturnUrl() {
+      if (!returnUrlRaw) {
+        setError('Missing required query parameter: return_url');
+        submitBtn.disabled = true;
+        return;
+      }
+
+      try {
+        const response = await fetch('/auth/validate-return-url?return_url=' + encodeURIComponent(returnUrlRaw));
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({ message: 'Invalid return_url' }));
+          throw new Error(body.message || 'Invalid return_url');
+        }
+        const data = await response.json();
+        validatedReturnUrl = data.return_url;
+        returnUrlLabel.textContent = validatedReturnUrl;
+      } catch (error) {
+        setError(error.message || 'Invalid return_url');
+        submitBtn.disabled = true;
+      }
+    }
+
+    async function submitAuth(event) {
+      event.preventDefault();
+      setError('');
+      if (!validatedReturnUrl) {
+        setError('Invalid return_url');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const firstName = document.getElementById('firstName').value.trim();
+      const lastName = document.getElementById('lastName').value.trim();
+
+      const endpoint = mode === 'register' ? '/auth/register' : '/auth/login';
+      const payload = mode === 'register'
+        ? { email, password, firstName: firstName || undefined, lastName: lastName || undefined }
+        : { email, password };
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({ message: 'Authentication failed' }));
+          throw new Error(body.message || 'Authentication failed');
+        }
+
+        const data = await response.json();
+        if (!data.accessToken) {
+          throw new Error('Missing access token in auth response');
+        }
+
+        const expiresAt = parseJwtExpiryIso(data.accessToken);
+        const fragment = new URLSearchParams();
+        fragment.set('access_token', data.accessToken);
+        if (data.refreshToken) fragment.set('refresh_token', data.refreshToken);
+        if (expiresAt) fragment.set('expires_at', expiresAt);
+        if (state) fragment.set('state', state);
+        fragment.set('auth_method', 'password');
+        window.location.assign(validatedReturnUrl + '#' + fragment.toString());
+      } catch (error) {
+        setError(error.message || 'Authentication failed');
+        submitBtn.disabled = false;
+      }
+    }
+
+    tabLogin.addEventListener('click', () => gotoMode('login'));
+    tabRegister.addEventListener('click', () => gotoMode('register'));
+    form.addEventListener('submit', submitAuth);
+
+    syncMode();
+    validateReturnUrl();
+  </script>
 </body>
 </html>
