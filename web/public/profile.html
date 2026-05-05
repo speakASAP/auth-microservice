@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile – Auth Service</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .profile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+    .profile-header h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+    .profile-header .header-right { display: flex; align-items: center; gap: 1rem; font-size: 0.9rem; color: var(--muted); }
+    .profile-header a.logout { color: var(--muted); }
+    .profile-header a.logout:hover { color: var(--error); text-decoration: none; }
+    .profile-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      max-width: 480px;
+      margin-bottom: 1.5rem;
+    }
+    .profile-card h2 { margin: 0 0 1.25rem 0; font-size: 1rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem; }
+    .token-row { display: flex; gap: 0.5rem; align-items: flex-start; flex-wrap: wrap; }
+    .token-row input { flex: 1; min-width: 200px; padding: 0.5rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: monospace; font-size: 0.82rem; }
+    .token-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .error { color: var(--error); font-size: 0.9rem; margin-top: 0.5rem; }
+    .success { color: var(--success); font-size: 0.9rem; margin-top: 0.5rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Not authenticated -->
+  <div id="login-view" class="container hidden">
+    <div class="login-box">
+      <h2>Sign in to view your profile</h2>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password">
+        </div>
+        <div id="login-error" class="error hidden"></div>
+        <button type="submit" class="btn" style="width:100%;margin-top:0.5rem;">Sign in</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Authenticated -->
+  <div id="profile-view" class="container hidden">
+    <div class="profile-header">
+      <h1>My Profile</h1>
+      <div class="header-right">
+        <span id="header-email"></span>
+        <a href="#" id="logout-link" class="logout">Sign out</a>
+      </div>
+    </div>
+
+    <!-- Access Token -->
+    <div class="profile-card">
+      <h2>Access Token</h2>
+      <p style="color:var(--muted);font-size:0.875rem;margin:0 0 1rem 0;">Your JWT token for use in API calls across the ecosystem. Keep it secure.</p>
+      <div class="token-row">
+        <input type="password" id="token-display" readonly placeholder="Click 'Show' to reveal">
+        <div class="token-actions">
+          <button type="button" class="btn" id="show-token-btn">Show</button>
+          <button type="button" class="btn btn-secondary hidden" id="copy-token-btn">Copy</button>
+        </div>
+      </div>
+      <div id="copy-success" class="success hidden">Copied to clipboard!</div>
+    </div>
+
+    <!-- Change Password -->
+    <div class="profile-card">
+      <h2>Change Password</h2>
+      <form id="password-form">
+        <div class="form-group">
+          <label for="current-password">Current Password</label>
+          <input type="password" id="current-password" name="currentPassword" required autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label for="new-password">New Password</label>
+          <input type="password" id="new-password" name="newPassword" required autocomplete="new-password" minlength="8">
+        </div>
+        <div class="form-group">
+          <label for="confirm-password">Confirm New Password</label>
+          <input type="password" id="confirm-password" name="confirmPassword" required autocomplete="new-password" minlength="8">
+        </div>
+        <div id="password-error" class="error hidden"></div>
+        <div id="password-success" class="success hidden"></div>
+        <button type="submit" class="btn">Update Password</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/profile.js"></script>
+</body>
+</html>

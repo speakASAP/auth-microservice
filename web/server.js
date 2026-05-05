@@ -173,6 +173,10 @@ app.get(['/login', '/register'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+app.get('/profile', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'profile.html'));
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`auth-microservice-web listening on port ${PORT}`);
 });
