@@ -17,9 +17,13 @@ SERVICE_NAME="auth-microservice"
 WEB_SERVICE_NAME="auth-microservice-web"
 NAMESPACE="${K8S_NAMESPACE:-statex-apps}"
 REGISTRY="localhost:5000"
-IMAGE_TAG="${1:-latest}"
+# Unique tag forces k3s to pull (imagePullPolicy: IfNotPresent ignores :latest re-pushes)
+DEFAULT_TAG="$(cd "$PROJECT_ROOT" && git rev-parse --short HEAD 2>/dev/null || echo "build-$(date -u +%Y%m%d%H%M%S)")"
+IMAGE_TAG="${1:-$DEFAULT_TAG}"
 IMAGE="${REGISTRY}/${SERVICE_NAME}:${IMAGE_TAG}"
+IMAGE_LATEST="${REGISTRY}/${SERVICE_NAME}:latest"
 WEB_IMAGE="${REGISTRY}/${WEB_SERVICE_NAME}:${IMAGE_TAG}"
+WEB_IMAGE_LATEST="${REGISTRY}/${WEB_SERVICE_NAME}:latest"
 
 timestamp() {
   date -u +"%Y-%m-%dT%H:%M:%SZ"
@@ -61,17 +65,19 @@ fi
 
 # ── Phase 2: Build Docker images ──────────────────────────────
 log_info "[2/6] Building backend image: ${IMAGE}..."
-docker build -t "$IMAGE" "$PROJECT_ROOT"
+docker build -t "$IMAGE" -t "$IMAGE_LATEST" "$PROJECT_ROOT"
 echo -e "${GREEN}✅ Backend image built${NC}"
 
 log_info "[2b/6] Building web frontend image: ${WEB_IMAGE}..."
-docker build -t "$WEB_IMAGE" "$PROJECT_ROOT/web"
+docker build -t "$WEB_IMAGE" -t "$WEB_IMAGE_LATEST" "$PROJECT_ROOT/web"
 echo -e "${GREEN}✅ Web image built${NC}"
 
 # ── Phase 3: Push to local registry ──────────────────────────
 log_info "[3/6] Pushing images to registry..."
 docker push "$IMAGE"
+docker push "$IMAGE_LATEST"
 docker push "$WEB_IMAGE"
+docker push "$WEB_IMAGE_LATEST"
 echo -e "${GREEN}✅ Images pushed: ${IMAGE}, ${WEB_IMAGE}${NC}"
 
 
