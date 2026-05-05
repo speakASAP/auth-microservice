@@ -195,3 +195,52 @@ A Validator Agent for Sync A (Auth) must check:
 5. No conflicting auth contracts are defined elsewhere.
 
 Only after this checklist passes can Sync A be considered satisfied for the auth side.
+
+---
+
+## 8. Internal Marketing Preferences API (Trusted Services)
+
+These endpoints are for trusted internal services (for example `marketing-microservice`) and are additive.
+
+- **Auth header:** `x-internal-service-token: <INTERNAL_SERVICE_TOKEN>`
+- **Caller header:** `x-service-name: <trusted-service-name>`
+- Optional allowlist by env: `TRUSTED_INTERNAL_SERVICES=marketing-microservice,...`
+
+### 8.1 Get User Preferences
+
+- `GET /auth/internal/users/:userId/preferences`
+
+Returns:
+
+- `id`
+- `preferredChannel` (`email|telegram|whatsapp|none|null`)
+- `fallbackChannels` (`string[]|null`)
+- `perApplicationPreferences` (`object|null`)
+- `perBrandPreferences` (`object|null`)
+- `marketingConsents` (`object|null`)
+- `transactionalOnly` (`boolean|null`)
+- `unsubscribedAt` (`ISO|null`)
+- `updatedAt` (`ISO`)
+
+### 8.2 Update User Preferences
+
+- `PATCH /auth/internal/users/:userId/preferences`
+
+Body fields are optional and nullable (additive rollout):
+
+- `preferredChannel`
+- `fallbackChannels`
+- `perApplicationPreferences`
+- `perBrandPreferences`
+- `marketingConsents`
+- `transactionalOnly`
+- `unsubscribedAt`
+
+### 8.3 Unsubscribe Path
+
+- `POST /auth/internal/users/:userId/unsubscribe`
+
+Behavior:
+
+- Sets `unsubscribedAt` to current ISO timestamp.
+- Sets `transactionalOnly` to `true`.

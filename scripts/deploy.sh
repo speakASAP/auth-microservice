@@ -1,7 +1,7 @@
 #!/bin/bash
 # deploy.sh — Kubernetes deployment for auth-microservice
 # Usage: ./scripts/deploy.sh [image-tag]
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -14,10 +14,26 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 SERVICE_NAME="auth-microservice"
-NAMESPACE="statex-apps"
+NAMESPACE="${K8S_NAMESPACE:-statex-apps}"
 REGISTRY="localhost:5000"
 IMAGE_TAG="${1:-latest}"
 IMAGE="${REGISTRY}/${SERVICE_NAME}:${IMAGE_TAG}"
+
+timestamp() {
+  date -u +"%Y-%m-%dT%H:%M:%SZ"
+}
+
+log_info() {
+  echo -e "[$(timestamp)] ${BLUE}[INFO]${NC} $*"
+}
+
+log_warn() {
+  echo -e "[$(timestamp)] ${YELLOW}[WARN]${NC} $*"
+}
+
+log_error() {
+  echo -e "[$(timestamp)] ${RED}[ERROR]${NC} $*"
+}
 
 # ═══════════════════════════════════════════════════════════
 #  auth-microservice - Kubernetes Deployment
@@ -31,8 +47,8 @@ echo "╚═══════════════════════�
 echo -e "${NC}"
 
 # ── Phase 1: Git sync (production only) ──────────────────────
-if [ "${NODE_ENV}" = "production" ]; then
-  echo -e "${YELLOW}[1/5] Syncing git...${NC}"
+if [ "${NODE_ENV:-}" = "production" ]; then
+  log_info "[1/6] Syncing git..."
   cd "$PROJECT_ROOT"
   git fetch origin
   git stash
@@ -42,21 +58,21 @@ if [ "${NODE_ENV}" = "production" ]; then
 fi
 
 # ── Phase 2: Build Docker image ──────────────────────────────
-echo -e "${YELLOW}[2/5] Building image: ${IMAGE}...${NC}"
+log_info "[2/6] Building image: ${IMAGE}..."
 docker build -t "$IMAGE" "$PROJECT_ROOT"
 echo -e "${GREEN}✅ Image built${NC}"
 
 # ── Phase 3: Push to local registry ──────────────────────────
-echo -e "${YELLOW}[3/5] Pushing to registry...${NC}"
+log_info "[3/6] Pushing image to registry..."
 docker push "$IMAGE"
 echo -e "${GREEN}✅ Image pushed: ${IMAGE}${NC}"
 
 
 # ── Phase 3b: ConfigMap + ExternalSecret (Vault-managed secrets) ──────────
-echo -e "${YELLOW}[3b/5] Applying ConfigMap and ExternalSecret...${NC}"
+log_info "[3b/6] Applying ConfigMap and ExternalSecret..."
 CONFIGMAP_TEMPLATE="$PROJECT_ROOT/k8s/configmap.yaml.template"
 if [ ! -f "$CONFIGMAP_TEMPLATE" ]; then
-  echo -e "${RED}Missing ${CONFIGMAP_TEMPLATE}${NC}"
+  log_error "Missing ${CONFIGMAP_TEMPLATE}"
   exit 1
 fi
 if [ -f "$PROJECT_ROOT/.env" ]; then
@@ -65,7 +81,7 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
   source "$PROJECT_ROOT/.env"
   set +a
 fi
-export K8S_NAMESPACE="${K8S_NAMESPACE:-statex-apps}"
+export K8S_NAMESPACE="${NAMESPACE}"
 # In-cluster URLs by default (Docker .env often uses public URLs; do not reuse those here).
 export LOGGING_SERVICE_URL_FOR_K8S="${K8S_LOGGING_SERVICE_URL:-http://logging-microservice.statex-apps.svc.cluster.local:3367}"
 export NOTIFICATION_SERVICE_URL_FOR_K8S="${K8S_NOTIFICATION_SERVICE_URL:-http://host.k3s.internal:3368}"
@@ -82,9 +98,30 @@ envsubst "${CONFIGMAP_VARS}" < "$CONFIGMAP_TEMPLATE" | kubectl apply -f -
 kubectl apply -f "$PROJECT_ROOT/k8s/external-secret.yaml"
 echo -e "${GREEN}ConfigMap / ExternalSecret applied (Vault-managed secrets)${NC}"
 
+# ── Phase 3c: Apply deployment manifests (drift-safe) ──────────────────────
+log_info "[3c/6] Applying Kubernetes manifests (deployment/service/ingress)..."
+kubectl apply -f "$PROJECT_ROOT/k8s/deployment.yaml" -n "${NAMESPACE}"
+kubectl apply -f "$PROJECT_ROOT/k8s/service.yaml" -n "${NAMESPACE}"
+kubectl apply -f "$PROJECT_ROOT/k8s/ingress.yaml" -n "${NAMESPACE}"
+echo -e "${GREEN}✅ Manifests applied${NC}"
+
+# ── Phase 3d: Validate ESO/Secret status (do not hide root causes) ─────────
+log_info "[3d/6] Validating Vault ExternalSecret status..."
+if ! kubectl get clustersecretstore vault-backend -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' | rg -q "^True$"; then
+  log_error "ClusterSecretStore 'vault-backend' is not Ready."
+  kubectl get clustersecretstore vault-backend -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' || true
+  echo
+  exit 1
+fi
+if ! kubectl get externalsecret auth-microservice-secret -n "${NAMESPACE}" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' | rg -q "^True$"; then
+  log_error "ExternalSecret 'auth-microservice-secret' is not Ready."
+  kubectl describe externalsecret auth-microservice-secret -n "${NAMESPACE}" || true
+  exit 1
+fi
+echo -e "${GREEN}✅ Vault ExternalSecret is Ready${NC}"
 
 # ── Phase 4: Update K8s deployment ──────────────────────────
-echo -e "${YELLOW}[4/5] Updating K8s deployment...${NC}"
+log_info "[4/6] Updating K8s deployment image..."
 kubectl set image deployment/${SERVICE_NAME} \
   app="${IMAGE}" \
   -n "${NAMESPACE}"
@@ -94,23 +131,24 @@ kubectl rollout status deployment/${SERVICE_NAME} \
 echo -e "${GREEN}✅ Rollout complete${NC}"
 
 # ── Phase 5: Health check ────────────────────────────────────
-echo -e "${YELLOW}[5/5] Verifying health...${NC}"
+log_info "[5/6] Verifying pod health..."
 POD=$(kubectl get pod -n "${NAMESPACE}" \
   -l app=${SERVICE_NAME} \
   -o jsonpath='{.items[0].metadata.name}')
 
 if [ -z "$POD" ]; then
-  echo -e "${RED}❌ No pod found for ${SERVICE_NAME}${NC}"
+  log_error "No pod found for ${SERVICE_NAME}"
   exit 1
 fi
 
 kubectl exec -n "${NAMESPACE}" "$POD" -- \
   wget -qO- http://localhost:3370/health || {
-  echo -e "${RED}⚠️  Health check failed (service may still be starting)${NC}"
+  log_warn "Health check failed (service may still be starting)."
 }
 echo -e ""
 
 # ── Done ─────────────────────────────────────────────────────
+log_info "[6/6] Deployment workflow complete."
 echo -e "${GREEN}"
 echo "╔════════════════════════════════════════════════════════╗"
 echo "║            ✅ Deployment successful!                   ║"

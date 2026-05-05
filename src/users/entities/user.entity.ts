@@ -55,6 +55,27 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   lastActivity: Date;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  preferredChannel: string | null;
+
+  @Column({ type: 'text', array: true, nullable: true })
+  fallbackChannels: string[] | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  perApplicationPreferences: Record<string, unknown> | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  perBrandPreferences: Record<string, unknown> | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  marketingConsents: Record<string, unknown> | null;
+
+  @Column({ type: 'boolean', nullable: true })
+  transactionalOnly: boolean | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  unsubscribedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

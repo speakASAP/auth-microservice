@@ -4,7 +4,9 @@
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { join } from 'path';
 
 process.on('uncaughtException', (err) => {
   // eslint-disable-next-line no-console
@@ -16,7 +18,18 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const expressApp = app.getHttpAdapter().getInstance();
+  const webPublicPath = join(process.cwd(), 'web', 'public');
+
+  // Serve public landing/admin assets from the same backend process in Kubernetes.
+  app.useStaticAssets(webPublicPath, { index: 'index.html' });
+  expressApp.get(['/login', '/register'], (_req, res) => {
+    res.sendFile(join(webPublicPath, 'index.html'));
+  });
+  expressApp.get('/admin', (_req, res) => {
+    res.sendFile(join(webPublicPath, 'admin.html'));
+  });
 
   // Enable CORS. When credentials is true, origin cannot be '*' (browser rejects).
   // CORS_ORIGIN supports:

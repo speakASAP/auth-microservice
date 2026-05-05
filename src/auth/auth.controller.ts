@@ -6,6 +6,8 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
+  Param,
   Body,
   UseGuards,
   Request,
@@ -26,6 +28,8 @@ import { ContactRegisterDto } from './dto/contact-register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
+import { InternalServiceGuard } from './guards/internal-service.guard';
+import { UpdateUserMarketingPreferencesDto } from './dto/update-user-marketing-preferences.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -120,6 +124,27 @@ export class AuthController {
   validateReturnUrl(@Query('return_url') returnUrl: string) {
     const validReturnUrl = this.authService.validateReturnUrlForClient(returnUrl || '');
     return { valid: true, return_url: validReturnUrl };
+  }
+
+  @Get('internal/users/:userId/preferences')
+  @UseGuards(InternalServiceGuard)
+  async getUserPreferences(@Param('userId') userId: string) {
+    return this.authService.getUserMarketingPreferences(userId);
+  }
+
+  @Patch('internal/users/:userId/preferences')
+  @UseGuards(InternalServiceGuard)
+  async updateUserPreferences(
+    @Param('userId') userId: string,
+    @Body() dto: UpdateUserMarketingPreferencesDto,
+  ) {
+    return this.authService.updateUserMarketingPreferences(userId, dto);
+  }
+
+  @Post('internal/users/:userId/unsubscribe')
+  @UseGuards(InternalServiceGuard)
+  async unsubscribeUser(@Param('userId') userId: string) {
+    return this.authService.unsubscribeUser(userId);
   }
 }
 

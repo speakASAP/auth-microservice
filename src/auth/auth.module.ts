@@ -12,6 +12,7 @@ import { AdminUsersController } from './admin-users.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
+import { InternalServiceGuard } from './guards/internal-service.guard';
 import { UsersModule } from '../users/users.module';
 import { RolesModule } from '../roles/roles.module';
 import { LoggerModule } from '../../shared/logger/logger.module';
@@ -34,7 +35,7 @@ import { MagicLinkToken } from './entities/magic-link-token.entity';
     }),
   ],
   controllers: [AuthController, AdminUsersController],
-  providers: [AuthService, JwtStrategy, RolesGuard],
+  providers: [AuthService, JwtStrategy, RolesGuard, InternalServiceGuard],
   exports: [AuthService, RolesGuard, JwtModule],
 })
 export class AuthModule {}

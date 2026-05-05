@@ -33,6 +33,7 @@ import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { MagicLinkToken } from './entities/magic-link-token.entity';
 import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
+import { UpdateUserMarketingPreferencesDto } from './dto/update-user-marketing-preferences.dto';
 import { Response } from 'express';
 
 @Injectable()
@@ -482,6 +483,48 @@ export class AuthService {
       user: this.sanitizeUser(user),
       sessionId: sessionToken,
     };
+  }
+
+  async getUserMarketingPreferences(userId: string) {
+    const startedAt = Date.now();
+    const prefs = await this.usersService.getMarketingPreferences(userId);
+    if (!prefs) {
+      throw new NotFoundException('User not found');
+    }
+    this.logger.log(
+      `Internal preferences read for user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`,
+      'AuthService',
+    );
+    return prefs;
+  }
+
+  async updateUserMarketingPreferences(userId: string, dto: UpdateUserMarketingPreferencesDto) {
+    const startedAt = Date.now();
+    const user = await this.usersService.updateMarketingPreferences(userId, dto);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    this.logger.log(
+      `Internal preferences updated for user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`,
+      'AuthService',
+    );
+    return this.sanitizeUser(user);
+  }
+
+  async unsubscribeUser(userId: string) {
+    const startedAt = Date.now();
+    const user = await this.usersService.updateMarketingPreferences(userId, {
+      unsubscribedAt: new Date().toISOString(),
+      transactionalOnly: true,
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    this.logger.log(
+      `User unsubscribed via internal API user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`,
+      'AuthService',
+    );
+    return { userId, unsubscribedAt: user.unsubscribedAt };
   }
 
   async requestMagicLink(dto: MagicLinkRequestDto, ip: string) {
