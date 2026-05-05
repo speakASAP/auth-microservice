@@ -14,10 +14,12 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 SERVICE_NAME="auth-microservice"
+WEB_SERVICE_NAME="auth-microservice-web"
 NAMESPACE="${K8S_NAMESPACE:-statex-apps}"
 REGISTRY="localhost:5000"
 IMAGE_TAG="${1:-latest}"
 IMAGE="${REGISTRY}/${SERVICE_NAME}:${IMAGE_TAG}"
+WEB_IMAGE="${REGISTRY}/${WEB_SERVICE_NAME}:${IMAGE_TAG}"
 
 timestamp() {
   date -u +"%Y-%m-%dT%H:%M:%SZ"
@@ -57,15 +59,20 @@ if [ "${NODE_ENV:-}" = "production" ]; then
   echo -e "${GREEN}✅ Git synced${NC}"
 fi
 
-# ── Phase 2: Build Docker image ──────────────────────────────
-log_info "[2/6] Building image: ${IMAGE}..."
+# ── Phase 2: Build Docker images ──────────────────────────────
+log_info "[2/6] Building backend image: ${IMAGE}..."
 docker build -t "$IMAGE" "$PROJECT_ROOT"
-echo -e "${GREEN}✅ Image built${NC}"
+echo -e "${GREEN}✅ Backend image built${NC}"
+
+log_info "[2b/6] Building web frontend image: ${WEB_IMAGE}..."
+docker build -t "$WEB_IMAGE" "$PROJECT_ROOT/web"
+echo -e "${GREEN}✅ Web image built${NC}"
 
 # ── Phase 3: Push to local registry ──────────────────────────
-log_info "[3/6] Pushing image to registry..."
+log_info "[3/6] Pushing images to registry..."
 docker push "$IMAGE"
-echo -e "${GREEN}✅ Image pushed: ${IMAGE}${NC}"
+docker push "$WEB_IMAGE"
+echo -e "${GREEN}✅ Images pushed: ${IMAGE}, ${WEB_IMAGE}${NC}"
 
 
 # ── Phase 3b: ConfigMap + ExternalSecret (Vault-managed secrets) ──────────
@@ -102,6 +109,8 @@ echo -e "${GREEN}ConfigMap / ExternalSecret applied (Vault-managed secrets)${NC}
 log_info "[3c/6] Applying Kubernetes manifests (deployment/service/ingress)..."
 kubectl apply -f "$PROJECT_ROOT/k8s/deployment.yaml" -n "${NAMESPACE}"
 kubectl apply -f "$PROJECT_ROOT/k8s/service.yaml" -n "${NAMESPACE}"
+kubectl apply -f "$PROJECT_ROOT/k8s/deployment-web.yaml" -n "${NAMESPACE}"
+kubectl apply -f "$PROJECT_ROOT/k8s/service-web.yaml" -n "${NAMESPACE}"
 kubectl apply -f "$PROJECT_ROOT/k8s/ingress.yaml" -n "${NAMESPACE}"
 echo -e "${GREEN}✅ Manifests applied${NC}"
 
@@ -120,14 +129,12 @@ if ! kubectl get externalsecret auth-microservice-secret -n "${NAMESPACE}" -o js
 fi
 echo -e "${GREEN}✅ Vault ExternalSecret is Ready${NC}"
 
-# ── Phase 4: Update K8s deployment ──────────────────────────
-log_info "[4/6] Updating K8s deployment image..."
-kubectl set image deployment/${SERVICE_NAME} \
-  app="${IMAGE}" \
-  -n "${NAMESPACE}"
-kubectl rollout status deployment/${SERVICE_NAME} \
-  -n "${NAMESPACE}" \
-  --timeout=120s
+# ── Phase 4: Update K8s deployments ──────────────────────────
+log_info "[4/6] Updating K8s deployment images..."
+kubectl set image deployment/${SERVICE_NAME} app="${IMAGE}" -n "${NAMESPACE}"
+kubectl set image deployment/${WEB_SERVICE_NAME} app="${WEB_IMAGE}" -n "${NAMESPACE}"
+kubectl rollout status deployment/${SERVICE_NAME} -n "${NAMESPACE}" --timeout=120s
+kubectl rollout status deployment/${WEB_SERVICE_NAME} -n "${NAMESPACE}" --timeout=120s
 echo -e "${GREEN}✅ Rollout complete${NC}"
 
 # ── Phase 5: Health check ────────────────────────────────────

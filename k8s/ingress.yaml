@@ -18,10 +18,26 @@ spec:
     - host: auth.alfares.cz
       http:
         paths:
-          - path: /
+          # API backend — NestJS on 3370
+          - path: /auth
             pathType: Prefix
             backend:
               service:
                 name: auth-microservice
                 port:
                   number: 3370
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-microservice
+                port:
+                  number: 3370
+          # Web frontend (login/register/admin UI) — Express on 3372
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-microservice-web
+                port:
+                  number: 3372
