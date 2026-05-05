@@ -244,3 +244,12 @@ Behavior:
 
 - Sets `unsubscribedAt` to current ISO timestamp.
 - Sets `transactionalOnly` to `true`.
+
+---
+
+## 9. Ownership Boundaries (Auth vs Marketing vs Leads)
+
+- `auth-microservice` is the source of truth for registered-user preference and consent state.
+- `marketing-microservice` may read/update auth-owned fields only via internal auth APIs in section 8.
+- `marketing-microservice` must not directly mutate auth storage and must not own registered-user preference records.
+- Lead preference/consent ownership stays in `leads-microservice`; auth does not become owner for lead records.

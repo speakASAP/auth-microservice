@@ -26,6 +26,14 @@ Centralized JWT authentication and user management for all Statex services.
 - Password reset via notifications-microservice
 - RBAC, OAuth, magic link
 - Admin panel at `/admin` · create test user: `./scripts/create-test-user.sh`
+- Marketing preference ownership for registered users (preferred channel, fallback channels, consent/unsubscribe fields)
+
+## Marketing Preferences Ownership
+
+- Auth is the source of truth for registered-user communication preferences and consent flags.
+- Marketing-microservice may read/update those fields only through auth APIs; no direct DB ownership bypass.
+- Leads-microservice remains the source of truth for non-registered contacts.
+- Notifications-microservice remains the only outbound sending layer.
 
 ## Infrastructure
 
