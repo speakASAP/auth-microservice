@@ -18,7 +18,7 @@
 ## Prod: statex (ssh statex, ~/ = /home/statex)
 
 | Repo | CORS | Auth URL | Issue / fix |
-|------|------|----------|-------------|
+| ---- | ---- | -------- | ----------- |
 | **auth-microservice** | CORS_ORIGIN=* | PORT=3370 | **Fix:** Set `CORS_ORIGIN=https://auth.alfares.cz,https://loggingalfares.czcz,https://notificationalfares.cz.cz,https://database-servalfares.czs.cz` then recreate backend. |
 | logging-microservice | CORS_ORIGIN=* | AUTH_SERVICE_URL=<https://auth.alfares.cz> | OK. |
 | notifications-microservice | CORS_ORIGIN=* | AUTH_SERVICE_URL=<http://auth-microservice:3370>, AUTH_SERVICE_PUBLIC_URL=<https://auth.alfares.cz> | OK. |
