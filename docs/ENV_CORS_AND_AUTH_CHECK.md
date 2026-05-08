@@ -11,9 +11,7 @@
 
 ## Production CORS_ORIGIN (statex)
 
-```
-https://auth.alfares.cz,https://logging.alfares.cz,https://notifications.alfares.cz,https://database-server.alfares.cz
-```
+<https://auth.alfares.cz,https://logging.alfares.cz,https://notifications.alfares.cz,https://database-server.alfares.cz>
 
 ## Port Reference
 
