@@ -18,6 +18,8 @@
 - No direct DB writes to the `users` table by AI agents
 - All other services authenticate through this service via JWT
 
+### Infrastructure refs
+
 - **Secrets**: [`../shared/docs/VAULT.md`](../shared/docs/VAULT.md) — path `secret/prod/auth-microservice`
 - **Kubernetes**: [`../shared/docs/KUBERNETES_SETUP_GUIDE.md`](../shared/docs/KUBERNETES_SETUP_GUIDE.md) — Phase A ✅
 - **Deploy standard**: [`../shared/docs/DEPLOY_STANDARD.md`](../shared/docs/DEPLOY_STANDARD.md)
