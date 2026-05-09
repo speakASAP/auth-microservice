@@ -79,7 +79,6 @@ docker push "$WEB_IMAGE"
 docker push "$WEB_IMAGE_LATEST"
 echo -e "${GREEN}✅ Images pushed: ${IMAGE}, ${WEB_IMAGE}${NC}"
 
-
 # ── Phase 3b: ConfigMap + ExternalSecret (Vault-managed secrets) ──────────
 log_info "[3b/6] Applying ConfigMap and ExternalSecret..."
 CONFIGMAP_TEMPLATE="$PROJECT_ROOT/k8s/configmap.yaml.template"
