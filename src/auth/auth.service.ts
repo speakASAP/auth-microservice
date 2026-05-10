@@ -527,6 +527,38 @@ export class AuthService {
     return { userId, unsubscribedAt: user.unsubscribedAt };
   }
 
+  async createMagicLinkToken(email: string, returnUrl: string): Promise<string> {
+    const validReturnUrl = this.validateReturnUrl(returnUrl);
+
+    let user = await this.usersService.findByEmail(email);
+    if (!user) {
+      user = await this.usersService.create({ email, isActive: true, isVerified: false });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + this.magicLinkTtlMinutes * 60 * 1000);
+
+    const magicToken = this.magicLinkTokenRepository.create({
+      userId: user.id,
+      email,
+      token,
+      returnUrl: validReturnUrl,
+      clientId: null,
+      state: null,
+      expiresAt,
+      used: false,
+    });
+    await this.magicLinkTokenRepository.save(magicToken);
+
+    const domain = process.env.DOMAIN;
+    const baseUrl = domain ? `https://${domain}` : process.env.FRONTEND_URL;
+    if (!baseUrl) {
+      throw new BadRequestException('Magic link base URL is not configured');
+    }
+
+    return `${baseUrl}/auth/magic-link/verify?token=${encodeURIComponent(token)}&return_url=${encodeURIComponent(validReturnUrl)}`;
+  }
+
   async requestMagicLink(dto: MagicLinkRequestDto, ip: string) {
     const startedAt = Date.now();
     this.checkRateLimit(`magic_link:ip:${ip}`, this.magicLinkRateLimitPerIp);

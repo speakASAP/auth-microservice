@@ -146,5 +146,12 @@ export class AuthController {
   async unsubscribeUser(@Param('userId') userId: string) {
     return this.authService.unsubscribeUser(userId);
   }
+
+  @Post('internal/magic-link/token')
+  @UseGuards(InternalServiceGuard)
+  async createMagicLinkToken(@Body() body: { email: string; return_url: string }) {
+    const verifyUrl = await this.authService.createMagicLinkToken(body.email, body.return_url);
+    return { verifyUrl };
+  }
 }
 
