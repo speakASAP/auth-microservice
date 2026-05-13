@@ -95,7 +95,7 @@ fi
 export K8S_NAMESPACE="${NAMESPACE}"
 # In-cluster URLs by default (Docker .env often uses public URLs; do not reuse those here).
 export LOGGING_SERVICE_URL_FOR_K8S="${K8S_LOGGING_SERVICE_URL:-http://logging-microservice.statex-apps.svc.cluster.local:3367}"
-export NOTIFICATION_SERVICE_URL_FOR_K8S="${K8S_NOTIFICATION_SERVICE_URL:-http://host.k3s.internal:3368}"
+export NOTIFICATION_SERVICE_URL_FOR_K8S="${K8S_NOTIFICATION_SERVICE_URL:-http://notifications-microservice.statex-apps.svc.cluster.local:3368}"
 : "${GOOGLE_OAUTH_AUTH_URL:=https://accounts.google.com/o/oauth2/v2/auth}"
 : "${GOOGLE_OAUTH_TOKEN_URL:=https://oauth2.googleapis.com/token}"
 : "${GOOGLE_OAUTH_PROFILE_URL:=https://openidconnect.googleapis.com/v1/userinfo}"

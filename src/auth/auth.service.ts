@@ -39,6 +39,7 @@ import { Response } from 'express';
 @Injectable()
 export class AuthService {
   private readonly notificationsServiceUrl: string;
+  private readonly notificationServiceToken: string;
   private readonly magicLinkTtlMinutes: number;
   private readonly magicLinkRateLimitPerIp: number;
   private readonly magicLinkRateLimitPerEmail: number;
@@ -62,6 +63,10 @@ export class AuthService {
     this.notificationsServiceUrl = process.env.NOTIFICATION_SERVICE_URL || '';
     if (!this.notificationsServiceUrl) {
       this.logger.warn('NOTIFICATION_SERVICE_URL is not set. Email notifications will not work.', 'AuthService');
+    }
+    this.notificationServiceToken = process.env.NOTIFICATION_SERVICE_TOKEN || '';
+    if (!this.notificationServiceToken) {
+      this.logger.warn('NOTIFICATION_SERVICE_TOKEN is not set. Notification requests will be rejected with 401.', 'AuthService');
     }
 
     this.magicLinkTtlMinutes = Number(process.env.AUTH_MAGIC_LINK_TTL_MINUTES || '15');
@@ -290,13 +295,17 @@ export class AuthService {
     const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
     try {
       await firstValueFrom(
-        this.httpService.post(`${this.notificationsServiceUrl}/notifications/send`, {
-          channel: 'email',
-          type: 'custom',
-          recipient: user.email,
-          subject: 'Password Reset Request',
-          message: `Click the following link to reset your password: ${resetUrl}\n\nThis link will expire in 1 hour.`,
-        }),
+        this.httpService.post(
+          `${this.notificationsServiceUrl}/notifications/send`,
+          {
+            channel: 'email',
+            type: 'custom',
+            recipient: user.email,
+            subject: 'Password Reset Request',
+            message: `Click the following link to reset your password: ${resetUrl}\n\nThis link will expire in 1 hour.`,
+          },
+          { headers: { Authorization: `Bearer ${this.notificationServiceToken}` } },
+        ),
       );
       this.logger.log(`Password reset email sent to: ${user.email}`, 'AuthService');
     } catch (error) {
@@ -625,13 +634,17 @@ export class AuthService {
     if (this.notificationsServiceUrl) {
       try {
         await firstValueFrom(
-          this.httpService.post(`${this.notificationsServiceUrl}/notifications/send`, {
-            channel: 'email',
-            type: 'custom',
-            recipient: dto.email,
-            subject: 'Your sign-in link',
-            message: `Click the following link to sign in: ${verifyUrl}\n\nThis link will expire in ${this.magicLinkTtlMinutes} minutes.`,
-          }),
+          this.httpService.post(
+            `${this.notificationsServiceUrl}/notifications/send`,
+            {
+              channel: 'email',
+              type: 'custom',
+              recipient: dto.email,
+              subject: 'Your sign-in link',
+              message: `Click the following link to sign in: ${verifyUrl}\n\nThis link will expire in ${this.magicLinkTtlMinutes} minutes.`,
+            },
+            { headers: { Authorization: `Bearer ${this.notificationServiceToken}` } },
+          ),
         );
         this.logger.log(
           `Magic link requested and email sent for ${dto.email} client_id=${dto.client_id || ''} duration_ms=${durationMs}`,
