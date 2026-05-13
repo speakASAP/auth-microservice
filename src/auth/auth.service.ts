@@ -359,6 +359,23 @@ export class AuthService {
     return { message: 'Password changed successfully' };
   }
 
+  async setInitialPassword(userId: string, newPassword: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.password) {
+      throw new BadRequestException('Password already set — use change password instead');
+    }
+    if (!newPassword || newPassword.length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters');
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.usersService.updatePassword(userId, hashedPassword);
+    this.logger.log(`Initial password set for user: ${user.email}`, 'AuthService');
+    return { message: 'Password set successfully' };
+  }
+
   async registerContact(contactRegisterDto: ContactRegisterDto) {
     // Check if user already exists by contact info
     let existingUser: User | null = null;
@@ -527,7 +544,7 @@ export class AuthService {
     return { userId, unsubscribedAt: user.unsubscribedAt };
   }
 
-  async createMagicLinkToken(email: string, returnUrl: string): Promise<string> {
+  async createMagicLinkToken(email: string, returnUrl: string): Promise<{ verifyUrl: string; userId: string }> {
     const validReturnUrl = this.validateReturnUrl(returnUrl);
 
     let user = await this.usersService.findByEmail(email);
@@ -556,7 +573,10 @@ export class AuthService {
       throw new BadRequestException('Magic link base URL is not configured');
     }
 
-    return `${baseUrl}/auth/magic-link/verify?token=${encodeURIComponent(token)}&return_url=${encodeURIComponent(validReturnUrl)}`;
+    return {
+      verifyUrl: `${baseUrl}/auth/magic-link/verify?token=${encodeURIComponent(token)}&return_url=${encodeURIComponent(validReturnUrl)}`,
+      userId: user.id,
+    };
   }
 
   async requestMagicLink(dto: MagicLinkRequestDto, ip: string) {
@@ -989,6 +1009,11 @@ export class AuthService {
       throw new BadRequestException('DOMAIN is not configured for OAuth.');
     }
     return `https://${domain}/auth/oauth/callback/${encodeURIComponent(provider)}`;
+  }
+
+  async checkEmailExists(email: string): Promise<boolean> {
+    const user = await this.usersService.findByEmail(email.toLowerCase().trim());
+    return !!user;
   }
 }
 

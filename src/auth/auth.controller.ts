@@ -77,6 +77,12 @@ export class AuthController {
     return this.authService.changePassword(req.user.id, passwordChangeDto);
   }
 
+  @Post('password-set')
+  @UseGuards(JwtAuthGuard)
+  async setInitialPassword(@Request() req, @Body() body: { newPassword: string }) {
+    return this.authService.setInitialPassword(req.user.id, body.newPassword);
+  }
+
   @Post('register-contact')
   async registerContact(@Body() contactRegisterDto: ContactRegisterDto) {
     return this.authService.registerContact(contactRegisterDto);
@@ -150,8 +156,16 @@ export class AuthController {
   @Post('internal/magic-link/token')
   @UseGuards(InternalServiceGuard)
   async createMagicLinkToken(@Body() body: { email: string; return_url: string }) {
-    const verifyUrl = await this.authService.createMagicLinkToken(body.email, body.return_url);
-    return { verifyUrl };
+    return this.authService.createMagicLinkToken(body.email, body.return_url);
   }
+
+  @Get('internal/check-email')
+  @UseGuards(InternalServiceGuard)
+  async checkEmail(@Query('email') email: string) {
+    if (!email) return { exists: false };
+    const exists = await this.authService.checkEmailExists(email);
+    return { exists };
+  }
+
 }
 

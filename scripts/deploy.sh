@@ -17,8 +17,8 @@ SERVICE_NAME="auth-microservice"
 WEB_SERVICE_NAME="auth-microservice-web"
 NAMESPACE="${K8S_NAMESPACE:-statex-apps}"
 REGISTRY="localhost:5000"
-# Unique tag forces k3s to pull (imagePullPolicy: IfNotPresent ignores :latest re-pushes)
-DEFAULT_TAG="$(cd "$PROJECT_ROOT" && git rev-parse --short HEAD 2>/dev/null || echo "build-$(date -u +%Y%m%d%H%M%S)")"
+# Always use timestamp so k3s pulls fresh image (same git hash across deploys skips pull)
+DEFAULT_TAG="$(cd "$PROJECT_ROOT" && git rev-parse --short HEAD 2>/dev/null || echo "build")-$(date -u +%Y%m%d%H%M%S)"
 IMAGE_TAG="${1:-$DEFAULT_TAG}"
 IMAGE="${REGISTRY}/${SERVICE_NAME}:${IMAGE_TAG}"
 IMAGE_LATEST="${REGISTRY}/${SERVICE_NAME}:latest"
@@ -64,7 +64,7 @@ fi
 
 # ── Phase 2: Build Docker images ──────────────────────────────
 log_info "[2/6] Building backend image: ${IMAGE}..."
-docker build -t "$IMAGE" -t "$IMAGE_LATEST" "$PROJECT_ROOT"
+docker build --no-cache -t "$IMAGE" -t "$IMAGE_LATEST" "$PROJECT_ROOT"
 echo -e "${GREEN}✅ Backend image built${NC}"
 
 log_info "[2b/6] Building web frontend image: ${WEB_IMAGE}..."
@@ -143,6 +143,7 @@ echo -e "${GREEN}✅ Rollout complete${NC}"
 
 # ── Phase 5: Health check ────────────────────────────────────
 log_info "[5/6] Verifying pod health..."
+sleep 3
 POD=$(kubectl get pod -n "${NAMESPACE}" \
   -l app=${SERVICE_NAME} \
   -o jsonpath='{.items[0].metadata.name}')
@@ -153,7 +154,7 @@ if [ -z "$POD" ]; then
 fi
 
 kubectl exec -n "${NAMESPACE}" "$POD" -- \
-  wget -qO- http://localhost:3370/health || {
+  node -e "require('http').get('http://localhost:3370/health',(r)=>{let b='';r.on('data',d=>b+=d);r.on('end',()=>{process.stdout.write(b+'\n')})}).on('error',()=>process.exit(1))" || {
   log_warn "Health check failed (service may still be starting)."
 }
 echo -e ""
