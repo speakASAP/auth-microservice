@@ -633,6 +633,7 @@ export class AuthService {
     const durationMs = Date.now() - startedAt;
     if (this.notificationsServiceUrl) {
       try {
+        const fromDomain = process.env.DOMAIN || 'strilkove.cz';
         await firstValueFrom(
           this.httpService.post(
             `${this.notificationsServiceUrl}/notifications/send`,
@@ -640,8 +641,10 @@ export class AuthService {
               channel: 'email',
               type: 'custom',
               recipient: dto.email,
-              subject: 'Your sign-in link',
-              message: `Click the following link to sign in: ${verifyUrl}\n\nThis link will expire in ${this.magicLinkTtlMinutes} minutes.`,
+              subject: 'Přihlašovací odkaz',
+              message: this.buildMagicLinkHtml(verifyUrl, fromDomain, this.magicLinkTtlMinutes),
+              contentType: 'text/html',
+              fromName: fromDomain,
             },
             { headers: { Authorization: `Bearer ${this.notificationServiceToken}` } },
           ),
@@ -944,6 +947,45 @@ export class AuthService {
     res.status(400).send(
       `<html><body><h1>Authentication error</h1><p>${message}</p></body></html>`,
     );
+  }
+
+  private buildMagicLinkHtml(verifyUrl: string, domain: string, ttlMinutes: number): string {
+    const BG_URL = 'https://speakasap.com/static/big_brother/assets/bg.png';
+    const BLUE = '#1E88E5';
+    const LIGHT_BLUE = '#BBDEFB';
+    const CARD_BG = '#F5F5F5';
+
+    return `<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Přihlašovací odkaz</title></head>
+<body style="margin:0;padding:0;background-color:${LIGHT_BLUE};background-image:url('${BG_URL}');background-size:cover;background-position:center;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td align="center" style="padding:40px 16px;">
+    <table width="100%" style="max-width:640px;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.12);" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="background:${BLUE};padding:24px 32px;">
+        <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:20px;font-weight:bold;">${domain}</a>
+      </td></tr>
+      <tr><td style="background:${CARD_BG};padding:32px;">
+        <h2 style="margin:0 0 16px;color:#212121;font-size:22px;">Přihlaste se jedním kliknutím</h2>
+        <div style="border-left:4px solid ${BLUE};background:#E3F2FD;padding:16px 20px;border-radius:4px;margin-bottom:24px;">
+          <p style="margin:0;color:#1565C0;font-size:15px;">Kliknutím na tlačítko níže se přihlásíte do svého účtu. Odkaz je platný <strong>${ttlMinutes} minut</strong>.</p>
+        </div>
+        <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 24px;">
+          <tr><td align="center" style="border-radius:6px;background:${BLUE};">
+            <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;color:#fff;font-size:16px;font-weight:bold;text-decoration:none;border-radius:6px;">Přihlásit se</a>
+          </td></tr>
+        </table>
+        <p style="color:#757575;font-size:13px;margin:0;">Pokud tlačítko nefunguje, zkopírujte tento odkaz do prohlížeče:<br><a href="${verifyUrl}" style="color:${BLUE};word-break:break-all;">${verifyUrl}</a></p>
+        <p style="color:#9E9E9E;font-size:12px;margin:16px 0 0;">Pokud jste tento e-mail neočekávali, můžete ho ignorovat.</p>
+      </td></tr>
+      <tr><td style="background:${BLUE};padding:16px 32px;text-align:center;">
+        <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:13px;">${domain}</a>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
   }
 
   private checkRateLimit(key: string, limit: number): void {

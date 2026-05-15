@@ -159,6 +159,18 @@ kubectl exec -n "${NAMESPACE}" "$POD" -- \
 }
 echo -e ""
 
+# ── Post-deploy: enforce production overrides not in .env ────
+# strilkove.cz must be an allowed redirect origin; rate window is 60s not 15m
+kubectl patch configmap auth-microservice-config -n "${NAMESPACE}" --type=merge -p '{
+  "data": {
+    "AUTH_ALLOWED_REDIRECT_ORIGINS": "*.alfares.cz,https://strilkove.cz",
+    "AUTH_MAGIC_LINK_RATE_LIMIT_PER_IP": "100",
+    "AUTH_MAGIC_LINK_RATE_LIMIT_PER_EMAIL": "50",
+    "AUTH_RATE_LIMIT_WINDOW_MS": "60000"
+  }
+}' && kubectl rollout restart deployment/${SERVICE_NAME} -n "${NAMESPACE}" && \
+  kubectl rollout status deployment/${SERVICE_NAME} -n "${NAMESPACE}" --timeout=120s
+
 # ── Done ─────────────────────────────────────────────────────
 log_info "[6/6] Deployment workflow complete."
 echo -e "${GREEN}"
