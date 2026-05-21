@@ -16,5 +16,10 @@ export class MagicLinkRequestDto {
   @IsOptional()
   @IsString()
   state?: string;
+
+  /** Domain shown in email header/footer (e.g. strilkove.cz). Caller sets this from their own Vault DOMAIN var. Falls back to auth-service DOMAIN env if omitted. */
+  @IsOptional()
+  @IsString()
+  app_domain?: string;
 }
 

@@ -633,7 +633,10 @@ export class AuthService {
     const durationMs = Date.now() - startedAt;
     if (this.notificationsServiceUrl) {
       try {
-        const fromDomain = process.env.DOMAIN || 'strilkove.cz';
+        const fromDomain = dto.app_domain || process.env.DOMAIN || '';
+        if (!fromDomain) {
+          this.logger.warn(`Magic link email: app_domain not provided and DOMAIN env is unset for ${dto.email}`, 'AuthService');
+        }
         await firstValueFrom(
           this.httpService.post(
             `${this.notificationsServiceUrl}/notifications/send`,
