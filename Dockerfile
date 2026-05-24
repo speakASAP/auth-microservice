@@ -33,6 +33,9 @@ COPY --from=builder /app/web ./web
 # Expose port (default: 3370, configured via PORT env var)
 EXPOSE ${PORT:-3370}
 
+HEALTHCHECK --interval=10s --timeout=10s --retries=2 \
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3370) + '/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+
 # Start application
 CMD ["node", "dist/src/main.js"]
 
