@@ -13,6 +13,12 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+# shellcheck disable=SC1091
+source "$(dirname "$PROJECT_ROOT")/shared/scripts/load-deploy-phase-timing.sh" "$PROJECT_ROOT" 2>/dev/null \
+  || source "$HOME/Documents/Github/shared/scripts/load-deploy-phase-timing.sh" "$PROJECT_ROOT" \
+  || { echo "Error: deploy timing library not found" >&2; exit 1; }
+deploy_timing_init "auth-microservice"
+
 SERVICE_NAME="auth-microservice"
 WEB_SERVICE_NAME="auth-microservice-web"
 NAMESPACE="${K8S_NAMESPACE:-statex-apps}"
@@ -51,36 +57,41 @@ echo "║        auth-microservice - Kubernetes Deployment       ║"
 echo "╚════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
-# ── Phase 1: Git sync (production only) ──────────────────────
 if [ "${NODE_ENV:-}" = "production" ]; then
-  log_info "[1/6] Syncing git..."
+  deploy_timing_phase_start "Git sync"
+  log_info "Syncing git..."
   cd "$PROJECT_ROOT"
   git fetch origin
   git stash
   git pull origin main
   git stash pop || true
   echo -e "${GREEN}✅ Git synced${NC}"
+  deploy_timing_phase_end "Git sync"
 fi
 
-# ── Phase 2: Build Docker images ──────────────────────────────
-log_info "[2/6] Building backend image: ${IMAGE}..."
+deploy_timing_phase_start "Build backend image"
+log_info "Building backend image: ${IMAGE}..."
 docker build --no-cache -t "$IMAGE" -t "$IMAGE_LATEST" "$PROJECT_ROOT"
 echo -e "${GREEN}✅ Backend image built${NC}"
+deploy_timing_phase_end "Build backend image"
 
-log_info "[2b/6] Building web frontend image: ${WEB_IMAGE}..."
+deploy_timing_phase_start "Build web image"
+log_info "Building web frontend image: ${WEB_IMAGE}..."
 docker build -t "$WEB_IMAGE" -t "$WEB_IMAGE_LATEST" "$PROJECT_ROOT/web"
 echo -e "${GREEN}✅ Web image built${NC}"
+deploy_timing_phase_end "Build web image"
 
-# ── Phase 3: Push to local registry ──────────────────────────
-log_info "[3/6] Pushing images to registry..."
+deploy_timing_phase_start "Push images"
+log_info "Pushing images to registry..."
 docker push "$IMAGE"
 docker push "$IMAGE_LATEST"
 docker push "$WEB_IMAGE"
 docker push "$WEB_IMAGE_LATEST"
 echo -e "${GREEN}✅ Images pushed: ${IMAGE}, ${WEB_IMAGE}${NC}"
+deploy_timing_phase_end "Push images"
 
-# ── Phase 3b: ConfigMap + ExternalSecret (Vault-managed secrets) ──────────
-log_info "[3b/6] Applying ConfigMap and ExternalSecret..."
+deploy_timing_phase_start "Apply ConfigMap and ExternalSecret"
+log_info "Applying ConfigMap and ExternalSecret..."
 CONFIGMAP_TEMPLATE="$PROJECT_ROOT/k8s/configmap.yaml.template"
 if [ ! -f "$CONFIGMAP_TEMPLATE" ]; then
   log_error "Missing ${CONFIGMAP_TEMPLATE}"
@@ -108,18 +119,20 @@ envsubst "${CONFIGMAP_VARS}" < "$CONFIGMAP_TEMPLATE" | kubectl apply -f -
 # Secrets are managed by External Secrets Operator → Vault
 kubectl apply -f "$PROJECT_ROOT/k8s/external-secret.yaml"
 echo -e "${GREEN}ConfigMap / ExternalSecret applied (Vault-managed secrets)${NC}"
+deploy_timing_phase_end "Apply ConfigMap and ExternalSecret"
 
-# ── Phase 3c: Apply deployment manifests (drift-safe) ──────────────────────
-log_info "[3c/6] Applying Kubernetes manifests (deployment/service/ingress)..."
+deploy_timing_phase_start "Apply Kubernetes manifests"
+log_info "Applying Kubernetes manifests (deployment/service/ingress)..."
 kubectl apply -f "$PROJECT_ROOT/k8s/deployment.yaml" -n "${NAMESPACE}"
 kubectl apply -f "$PROJECT_ROOT/k8s/service.yaml" -n "${NAMESPACE}"
 kubectl apply -f "$PROJECT_ROOT/k8s/deployment-web.yaml" -n "${NAMESPACE}"
 kubectl apply -f "$PROJECT_ROOT/k8s/service-web.yaml" -n "${NAMESPACE}"
 kubectl apply -f "$PROJECT_ROOT/k8s/ingress.yaml" -n "${NAMESPACE}"
 echo -e "${GREEN}✅ Manifests applied${NC}"
+deploy_timing_phase_end "Apply Kubernetes manifests"
 
-# ── Phase 3d: Validate ESO/Secret status (do not hide root causes) ─────────
-log_info "[3d/6] Validating Vault ExternalSecret status..."
+deploy_timing_phase_start "Validate ExternalSecret"
+log_info "Validating Vault ExternalSecret status..."
 if ! kubectl get clustersecretstore vault-backend -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' | rg -q "^True$"; then
   log_error "ClusterSecretStore 'vault-backend' is not Ready."
   kubectl get clustersecretstore vault-backend -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' || true
@@ -132,17 +145,19 @@ if ! kubectl get externalsecret auth-microservice-secret -n "${NAMESPACE}" -o js
   exit 1
 fi
 echo -e "${GREEN}✅ Vault ExternalSecret is Ready${NC}"
+deploy_timing_phase_end "Validate ExternalSecret"
 
-# ── Phase 4: Update K8s deployments ──────────────────────────
-log_info "[4/6] Updating K8s deployment images..."
+deploy_timing_phase_start "Update deployments and rollout"
+log_info "Updating K8s deployment images..."
 kubectl set image deployment/${SERVICE_NAME} app="${IMAGE}" -n "${NAMESPACE}"
 kubectl set image deployment/${WEB_SERVICE_NAME} app="${WEB_IMAGE}" -n "${NAMESPACE}"
-kubectl rollout status deployment/${SERVICE_NAME} -n "${NAMESPACE}" --timeout=120s
-kubectl rollout status deployment/${WEB_SERVICE_NAME} -n "${NAMESPACE}" --timeout=120s
+deploy_timing_k8s_rollout_wait kubectl "$SERVICE_NAME" "$NAMESPACE"
+deploy_timing_k8s_rollout_wait kubectl "$WEB_SERVICE_NAME" "$NAMESPACE" "120s" "app=${WEB_SERVICE_NAME}"
 echo -e "${GREEN}✅ Rollout complete${NC}"
+deploy_timing_phase_end "Update deployments and rollout"
 
-# ── Phase 5: Health check ────────────────────────────────────
-log_info "[5/6] Verifying pod health..."
+deploy_timing_phase_start "Health check"
+log_info "Verifying pod health..."
 sleep 3
 POD=$(kubectl get pod -n "${NAMESPACE}" \
   -l app=${SERVICE_NAME} \
@@ -158,9 +173,9 @@ kubectl exec -n "${NAMESPACE}" "$POD" -- \
   log_warn "Health check failed (service may still be starting)."
 }
 echo -e ""
+deploy_timing_phase_end "Health check"
 
-# ── Post-deploy: enforce production overrides not in .env ────
-# strilkove.cz must be an allowed redirect origin; rate window is 60s not 15m
+deploy_timing_phase_start "Post-deploy config patch"
 kubectl patch configmap auth-microservice-config -n "${NAMESPACE}" --type=merge -p '{
   "data": {
     "AUTH_ALLOWED_REDIRECT_ORIGINS": "*.alfares.cz,https://strilkove.cz",
@@ -169,15 +184,12 @@ kubectl patch configmap auth-microservice-config -n "${NAMESPACE}" --type=merge 
     "AUTH_RATE_LIMIT_WINDOW_MS": "60000"
   }
 }' && kubectl rollout restart deployment/${SERVICE_NAME} -n "${NAMESPACE}" && \
-  kubectl rollout status deployment/${SERVICE_NAME} -n "${NAMESPACE}" --timeout=120s
+  deploy_timing_k8s_rollout_wait kubectl "$SERVICE_NAME" "$NAMESPACE"
+deploy_timing_phase_end "Post-deploy config patch"
 
-# ── Done ─────────────────────────────────────────────────────
-log_info "[6/6] Deployment workflow complete."
-echo -e "${GREEN}"
-echo "╔════════════════════════════════════════════════════════╗"
-echo "║       ✅ Auth Microservice Deployment successful!      ║"
-echo "╚════════════════════════════════════════════════════════╝"
+deploy_timing_finish_success "Auth Microservice"
 echo "Image:    ${IMAGE}"
 echo "Namespace: ${NAMESPACE}"
 echo "Pods:     $(kubectl get pods -n ${NAMESPACE} -l app=${SERVICE_NAME} --no-headers | wc -l) running"
-echo -e "${NC}"
+DEPLOY_TIMING_FINISHED=1
+exit 0
