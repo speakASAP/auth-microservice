@@ -38,7 +38,7 @@ const APPLICATIONS = [
   { name: 'messenger', displayName: 'Messenger', type: ApplicationType.USER_FACING },
   { name: 'speakasap', displayName: 'SpeakASAP', type: ApplicationType.USER_FACING },
   { name: 'sgiprealestate', displayName: 'SGIP Real Estate', type: ApplicationType.USER_FACING },
-  { name: 'business-orchestrator', displayName: 'Business Orchestrator', type: ApplicationType.USER_FACING },
+  { name: 'runlayer', displayName: 'RunLayer', type: ApplicationType.USER_FACING },
   { name: 'ecosystem-console', displayName: 'Ecosystem Console', type: ApplicationType.USER_FACING },
   { name: 'task-management', displayName: 'Task Management', type: ApplicationType.USER_FACING },
   { name: 'leads-microservice', displayName: 'Leads Microservice', type: ApplicationType.USER_FACING },
