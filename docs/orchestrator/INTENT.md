@@ -26,3 +26,12 @@ Before any change, ask:
 - Does this preserve existing JWT/RBAC contracts for consuming services?
 - Is the change observable and verifiable without direct user-table writes?
 
+## Immutable Intent Boundary
+
+AI agents may clarify, summarize, or link this intent, but must not weaken it. Human owner approval is required before changing:
+
+- Auth's ownership of identity, credentials, token issuance, token validation, RBAC claims, OAuth, magic links, registered-user preferences, consent flags, or internal service-authentication contracts.
+- Auth's non-ownership of catalog, warehouse, orders, payment, leads for non-registered contacts, marketing campaign execution, notification sending, logging storage, database infrastructure, and gateway routing.
+- The rule that secrets, passwords, JWTs, refresh tokens, OAuth tokens, magic-link tokens, password-reset tokens, and internal-service tokens must not be placed in docs, logs, URLs, frontend bundles, prompts, examples, tests, or reports.
+
+If implementation pressure conflicts with this section, stop coding and record the conflict in `docs/orchestrator/STATUS.md`.

@@ -15,16 +15,50 @@ Auth exists to provide one trusted identity, login, JWT, refresh-token, RBAC, OA
 - Admin-facing token handling must minimize exposure: allow copying only for authenticated admins, do not put tokens in URLs, and keep tokens masked unless the user explicitly reveals them.
 - Production changes must be verified before deployment; no direct database writes to user tables by agents.
 
+## State-Driven Orchestrator Workflow
+
+Auth follows the same master-agent pattern as Goalkeeper. One orchestrator agent owns continuation, goal selection, plan decomposition, worker coordination, validation, and status updates.
+
+Continuation is driven by repository state, not chat history:
+
+- `docs/IMPLEMENTATION_STATE.md` is the current checkpoint and next-action source.
+- `docs/IMPLEMENTATION_ORCHESTRATOR.md` is the master session prompt.
+- `implementation-goals/README.md` is the executable goal index.
+- `implementation-goals/templates/*` define execution plans, context packages, coding prompts, and validation reports.
+- `docs/orchestrator/STATUS.md` remains the dated evidence log for completed chunks.
+
 ## Required Workflow For Every Session
 
-1. Read `BUSINESS.md`, `SYSTEM.md`, `TASKS.md`, and this orchestrator pack.
+1. Read `AGENTS.md`, `TASKS.md`, `STATE.json`, `docs/IMPLEMENTATION_STATE.md`, `docs/IMPLEMENTATION_ORCHESTRATOR.md`, `implementation-goals/README.md`, stable contract docs, and this orchestrator pack. If `BUSINESS.md`, `SYSTEM.md`, or `README.md` exist, read them too.
 2. Query docs-rag-microservice for ecosystem architecture or contract context before reading broad source trees.
-3. Identify the earliest active or pending goal in `docs/orchestrator/GOALS.md`, unless the owner explicitly selects another goal.
+3. Identify the active goal from `docs/IMPLEMENTATION_STATE.md`; otherwise identify the earliest active or pending goal in `docs/orchestrator/GOALS.md`, unless the owner explicitly selects another goal.
 4. Restate the preserved intent and ownership boundary affected by the selected goal.
-5. Implement the smallest complete chunk that satisfies the goal acceptance criteria.
-6. Run the verification commands named by the goal.
-7. Append dated evidence to `docs/orchestrator/STATUS.md`.
-8. Leave the next unfinished chunk clearly named.
+5. Build the bounded context package in `docs/orchestrator/CONTEXT_PACKAGE.md` or the selected `implementation-goals/` context package.
+6. Confirm applicable invariants in `docs/orchestrator/PROJECT_INVARIANTS.md`.
+7. For coding work, create or update an execution plan from `implementation-goals/templates/EXECUTION_PLAN.md` or `docs/orchestrator/EXECUTION_PLAN.md` before editing code.
+8. Run the pre-coding gate in `docs/orchestrator/PRE_CODING_GATE.md`.
+9. Implement the smallest complete chunk that satisfies the goal acceptance criteria.
+10. Run the verification commands named by the goal and readiness gates.
+11. Append dated evidence to `docs/orchestrator/STATUS.md`.
+12. Update compressed continuation state in `docs/IMPLEMENTATION_STATE.md`.
+13. Leave the next unfinished chunk clearly named.
+
+## Intent Preservation System Mapping
+
+Auth uses a compact service-local IPS pack instead of duplicating the full company IPS directory tree. The mapping is:
+
+| IPS layer | Auth source of truth |
+| --- | --- |
+| Constitution and immutable intent | `docs/orchestrator/INTENT.md` |
+| Business and task backlog | `TASKS.md`, `docs/orchestrator/GOALS.md`, `implementation-goals/README.md` |
+| System and contract model | `docs/UNIFIED_AUTH_CONTRACT.md`, `docs/ENV_CORS_AND_AUTH_CHECK.md` |
+| Project invariants | `docs/orchestrator/PROJECT_INVARIANTS.md` |
+| Execution plan | `docs/orchestrator/EXECUTION_PLAN.md`, `implementation-goals/templates/EXECUTION_PLAN.md` |
+| Context package | `docs/orchestrator/CONTEXT_PACKAGE.md`, `implementation-goals/templates/CONTEXT_PACKAGE.md` |
+| Coding prompts | `docs/orchestrator/PROMPTS.md`, `implementation-goals/templates/CODING_PROMPT.md` |
+| Validation and readiness evidence | `docs/orchestrator/STATUS.md`, `docs/orchestrator/READINESS_GATES.md`, `implementation-goals/templates/VALIDATION_REPORT.md` |
+
+Code generation from vague intent is not allowed. A task must have upstream traceability, invariant impact, sensitive-data classification, contract impact, validation plan, and gate decision before coding starts.
 
 ## Completion Standard
 
@@ -35,4 +69,4 @@ A goal is complete only when:
 - `npm run build` passes when backend TypeScript changes are made.
 - Frontend changes are checked with syntax/runtime validation and deployed UI verification when deployment is requested.
 - Any changed auth/security behavior has a test or direct API verification note.
-
+- The pre-coding and readiness checks have pass evidence or a documented owner-approved exception.

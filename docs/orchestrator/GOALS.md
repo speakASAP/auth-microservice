@@ -75,3 +75,62 @@ Acceptance criteria:
 - Auth events include service, operation, identifier, outcome, and duration where appropriate.
 - Sensitive values are redacted or absent.
 - Verification evidence is recorded.
+
+## Goal 5 - Goalkeeper-Style Orchestrator Workflow
+
+Status: done
+
+Intent: Auth implementation work must be organized like Goalkeeper: a single master orchestrator coordinates goals, plans, workers, validation, status, and continuation from repository state.
+
+Chunks:
+
+- [x] 5.1 Add state-driven continuation docs: `docs/IMPLEMENTATION_ORCHESTRATOR.md` and `docs/IMPLEMENTATION_STATE.md`.
+- [x] 5.2 Add `implementation-goals/` with a goal index, completed goal records, next ready backlog goal, and execution templates.
+- [x] 5.3 Update `AGENTS.md` and the existing Auth orchestrator pack to use the Goalkeeper-style master-agent workflow.
+- [x] 5.4 Record validation evidence and next action.
+
+Acceptance criteria:
+
+- A future session can continue with `AUTH ORCHESTRATOR: continue implementation`.
+- The next action can be selected from `docs/IMPLEMENTATION_STATE.md` without asking the owner.
+- Execution plan, context package, coding prompt, and validation report templates exist.
+- The workflow preserves Auth ownership and secret-safety rules.
+
+## Goal 6 - RBAC Consuming Services Audit
+
+Status: pending
+
+Intent: Auth role authority and consumer RBAC enforcement must be audited across consuming services without duplicating identity ownership or breaking JWT/RBAC contracts.
+
+Chunks:
+
+- [ ] 6.1 Query DocsRAG for RBAC and consuming-service contract context.
+- [ ] 6.2 Identify consumers that validate Auth JWTs or roles.
+- [ ] 6.3 Compare consumer expectations with `docs/UNIFIED_AUTH_CONTRACT.md`.
+- [ ] 6.4 Record findings and split remediation into owner-approvable chunks.
+
+Acceptance criteria:
+
+- Audit report names inspected services or panels.
+- Findings distinguish Auth-owned role assignment from consumer-owned enforcement.
+- JWT/RBAC compatibility risks are evidence-backed.
+- No secrets or production user data are recorded.
+
+## Goal 7 - IPS Documentation Compliance Update
+
+Status: done
+
+Intent: Auth documentation must comply with the company Intent Preservation System while preserving the compact Auth-local orchestration structure.
+
+Chunks:
+
+- [x] 7.1 Review company IPS standards and templates from `/Users/Sergej.Stasok/Documents/Gitlab/intent-preservation-system`.
+- [x] 7.2 Add Auth-local invariants, pre-coding gate, context package, execution-plan frame, and readiness gates.
+- [x] 7.3 Update existing Auth orchestrator, state, and prompt docs so future coding is blocked until IPS checks are complete.
+- [x] 7.4 Run documentation presence, missing-marker, and secret-pattern scans.
+
+Acceptance criteria:
+
+- Future coding chunks require upstream traceability, invariant review, sensitive-data classification, contract impact review, context package, execution plan, pre-coding gate, readiness checks, and status evidence.
+- Auth ownership and non-ownership boundaries remain unchanged.
+- Documentation-only verification passes locally.

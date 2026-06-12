@@ -1,5 +1,73 @@
 # Auth Orchestrator Status
 
+## 2026-06-12 - IPS Documentation Compliance Update
+
+Current focus:
+
+- Owner-selected documentation update: implement the company intent-preservation-system approach in this Auth project.
+- Runtime code changes: none.
+
+Source context:
+
+- Reviewed Auth orchestrator pack, implementation state docs, unified Auth contract docs, goal templates, and Goal 06 RBAC audit instructions.
+- Reviewed company IPS source at `/Users/Sergej.Stasok/Documents/Gitlab/intent-preservation-system`, including documentation completeness, operational gate, project invariants, execution-plan, context-package, task, and readiness-gate templates.
+- DocsRAG was not queried for this documentation-only local workflow update because no service JWT was available in the session and the task did not require new ecosystem architecture facts beyond existing local source-of-truth docs.
+
+Implementation evidence:
+
+- Added `docs/orchestrator/PROJECT_INVARIANTS.md` with Auth-specific invariant IDs for ownership, non-ownership boundaries, contract compatibility, sensitive-data handling, hosted Auth, evidence, and DocsRAG usage.
+- Added `docs/orchestrator/PRE_CODING_GATE.md` defining required inputs, gate checklist, documentation scans, runtime checks, DocsRAG rule, and pass/fail policy.
+- Added `docs/orchestrator/CONTEXT_PACKAGE.md` defining target-task selection, included/excluded documents, Auth constraints, allowed/forbidden changes, prompt source, and validation instructions.
+- Added `docs/orchestrator/EXECUTION_PLAN.md` defining the reusable Auth execution-plan frame with traceability, invariant, sensitive-data, contract, replay/idempotency, scope, test, validation, rollback, and completion sections.
+- Added `docs/orchestrator/READINESS_GATES.md` defining integration, deployment, and documentation-only readiness evidence.
+- Updated `AGENTS.md`, `docs/IMPLEMENTATION_ORCHESTRATOR.md`, `docs/IMPLEMENTATION_STATE.md`, `docs/orchestrator/MASTER_PROMPT.md`, `docs/orchestrator/INTENT.md`, `docs/orchestrator/PLAN.md`, and `docs/orchestrator/PROMPTS.md` so future coding must pass context, invariant, sensitive-data, contract, validation, pre-coding, and readiness checks.
+
+Verification evidence:
+
+- Documentation file presence check passed: `find docs/orchestrator -maxdepth 1 -type f -name '*.md' -print` lists `PROJECT_INVARIANTS.md`, `PRE_CODING_GATE.md`, `CONTEXT_PACKAGE.md`, `EXECUTION_PLAN.md`, `READINESS_GATES.md`, and the existing orchestrator files.
+- Missing-marker scan passed with no matches: `rg '\[(MISSING|UNKNOWN):' docs/orchestrator AGENTS.md TASKS.md docs/UNIFIED_AUTH_CONTRACT.md docs/UNIFIED_AUTH_VERIFICATION.md docs/ENV_CORS_AND_AUTH_CHECK.md`.
+- Secret-pattern scan passed with no matches: `rg -n "Authorization: Bearer ...|(access_token|client_secret|password|private_key) assignment pattern" docs AGENTS.md TASKS.md`.
+- `git diff -- AGENTS.md docs/IMPLEMENTATION_ORCHESTRATOR.md docs/IMPLEMENTATION_STATE.md docs/orchestrator` produced no tracked-file diff because this local snapshot is currently untracked; changes were verified by file content and scans instead.
+
+Next unfinished chunks:
+
+- No runtime implementation chunk selected. Next owner-selected item remains Goal 06 - RBAC Consuming Services Audit.
+
+## 2026-06-12 - Goal 5 Goalkeeper-Style Orchestrator Workflow
+
+Current focus:
+
+- Goal 5 - Goalkeeper-Style Orchestrator Workflow: done.
+- Next focus: owner selection. Suggested next goal: Goal 6 - RBAC Consuming Services Audit.
+
+Goalkeeper reference evidence:
+
+- Reviewed `/Users/Sergej.Stasok/Documents/Gitlab/goalkeeper/AGENTS.md`.
+- Reviewed `/Users/Sergej.Stasok/Documents/Gitlab/goalkeeper/docs/IMPLEMENTATION_STATE.md`.
+- Reviewed `/Users/Sergej.Stasok/Documents/Gitlab/goalkeeper/docs/IMPLEMENTATION_ORCHESTRATOR.md`.
+- Reviewed `/Users/Sergej.Stasok/Documents/Gitlab/goalkeeper/implementation-goals/README.md`.
+- Reviewed Goalkeeper execution, context package, coding prompt, and validation report templates.
+
+Implementation evidence:
+
+- Added `docs/IMPLEMENTATION_ORCHESTRATOR.md` as the Auth master-agent prompt.
+- Added `docs/IMPLEMENTATION_STATE.md` as the state-driven continuation checkpoint.
+- Added `implementation-goals/README.md`.
+- Added completed goal files for Goals 1-5 and ready backlog goal file for Goal 6.
+- Added `implementation-goals/templates/EXECUTION_PLAN.md`, `CONTEXT_PACKAGE.md`, `CODING_PROMPT.md`, and `VALIDATION_REPORT.md`.
+- Updated `AGENTS.md` with the `AUTH ORCHESTRATOR: continue implementation` command, required reading, core intent, and orchestrator duties.
+- Updated `MASTER_PROMPT.md`, `GOALS.md`, `PLAN.md`, and `PROMPTS.md` to route future work through `docs/IMPLEMENTATION_STATE.md`.
+
+Verification evidence:
+
+- Documentation file presence and cross-reference scan passed locally.
+- No runtime Auth source files, frontend files, deployment scripts, or production configuration were changed.
+- `README.md`, `BUSINESS.md`, and `SYSTEM.md` are not present in this local snapshot; the new docs instruct future sessions to read them if restored.
+
+Next unfinished chunks:
+
+- Goal 6: RBAC Consuming Services Audit, pending owner selection.
+
 ## 2026-06-12
 
 Current focus:
