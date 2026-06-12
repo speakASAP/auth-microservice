@@ -274,8 +274,11 @@ async function upsertMapping(
         "normalizedEmail" = EXCLUDED."normalizedEmail",
         status = EXCLUDED.status,
         reason = EXCLUDED.reason,
-        "legacyPasswordHash" = EXCLUDED."legacyPasswordHash",
-        "legacyPasswordMigratedAt" = EXCLUDED."legacyPasswordMigratedAt",
+        "legacyPasswordHash" = CASE
+          WHEN legacy_identity_mappings."legacyPasswordMigratedAt" IS NULL THEN EXCLUDED."legacyPasswordHash"
+          ELSE legacy_identity_mappings."legacyPasswordHash"
+        END,
+        "legacyPasswordMigratedAt" = legacy_identity_mappings."legacyPasswordMigratedAt",
         "sourceSnapshot" = EXCLUDED."sourceSnapshot",
         "updatedAt" = now()
     `,
