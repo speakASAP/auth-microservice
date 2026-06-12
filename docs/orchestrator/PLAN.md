@@ -29,11 +29,11 @@ The coordinator agent must:
 
 ## Active Work
 
-Goal 4 - Auth Observability And Safety Checks.
+No active goal.
 
 Current chunk:
 
-- Review logs for login, refresh, password reset, magic link, OAuth, admin user management, and role changes.
+- Backlog is clear except broader RBAC audit in `TASKS.md`.
 
 ## Verification Commands
 
@@ -55,4 +55,4 @@ POST /retrieval/agent-context
 
 ## Next Goal Selection
 
-Continue Goal 4 unless the owner explicitly chooses another goal.
+Select the next owner-approved backlog item.

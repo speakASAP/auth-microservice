@@ -80,6 +80,52 @@ Next unfinished chunks:
 
 - Goal 4: review Auth-sensitive logs for login, refresh, password reset, magic link, OAuth, admin user management, and role changes.
 
+## 2026-06-12 - Goal 4 Auth Observability And Safety Checks
+
+Current focus:
+
+- Goal 4 - Auth Observability And Safety Checks: done.
+- Next focus: owner selection. Remaining broad backlog item: RBAC roles audit across consuming services.
+
+DocsRAG evidence:
+
+- Queried DocsRAG for `auth-microservice observability logging redaction login refresh password reset magic link OAuth admin users role changes sensitive tokens`.
+- Retrieved source headings included: `Features`, `Business: auth-microservice`, `Active Work`, `Preserved Intent`, `Goal 4 - Auth Observability And Safety Checks`, `Non-Negotiable Boundaries`, and `Client Responsibilities`.
+- DocsRAG confirmed the contract rule that applications and Auth must not log tokens, password reset tokens, magic-link tokens, OAuth tokens, client secrets, or JWT secrets.
+
+Review evidence:
+
+- Reviewed current log statements in `src/auth/auth.service.ts`, `src/auth/admin-users.controller.ts`, `src/admin/admin-roles.controller.ts`, `src/roles/roles.service.ts`, and `shared/logger/logger.service.ts`.
+- Found that production logging had no centralized redaction layer before this change.
+- Found and removed a risky OAuth error log that serialized provider token response bodies.
+
+Implementation evidence:
+
+- Added `LoggerService.redactSensitive()` and applied it to central logging payloads, local log files, and development console output.
+- Redaction covers JWTs, bearer headers, token/password/client-secret query parameters, and JSON-like sensitive fields.
+- Added structured audit fields for login, registration, token validation, refresh, password reset, password change/set, magic-link request/verify, OAuth init/callback, admin user management, and RBAC role assignment/removal.
+- Added `shared/logger/logger.service.spec.ts` regression coverage for JWT, bearer, token URL, password, OAuth token, and client-secret redaction.
+
+Verification evidence:
+
+- Remote focused test passed: `npm test -- --runTestsByPath shared/logger/logger.service.spec.ts`.
+- Remote full test suite passed: `3` suites, `6` tests.
+- Remote `npm run build` passed.
+- Static scan returned no direct logger references to provider token response bodies, reset URLs, verify URLs, token DTOs, refresh/access token variables, or `JSON.stringify(tokenResponse.data)`.
+- Ran `./scripts/deploy.sh`; deployment completed successfully in `194.14s`.
+- Deployment image tag: `localhost:5000/auth-microservice:af00816-20260612095714`.
+- Deploy health check returned `{"success":true,"status":"ok","service":"auth-microservice"}`.
+- `curl -I -H 'Cache-Control: no-cache' https://auth.alfares.cz/admin` returned HTTP `200`.
+- Production failed-login probe returned HTTP `401` in `0.349419s`.
+- Production pod check showed two backend pods running image `localhost:5000/auth-microservice:af00816-20260612095714`, both ready with restart count `0`.
+- Pod log file contained `[AuthAudit] service=auth-microservice operation=login outcome=failure identifier=codex-observability-check@example.invalid reason=invalid_credentials duration_ms=78`.
+- The probe password `not-a-real-password` did not appear in the matched production audit log output.
+- Triggered DocsRAG ingestion for `auth-microservice`; job `7cd50a90-3493-44b5-81d2-69cb00c2694b` completed successfully with `20/20` chunks processed.
+
+Next unfinished chunks:
+
+- No active orchestrator goal remains. Suggested next owner-selected item: audit RBAC roles across consuming services.
+
 ## 2026-06-12 - Admin Users List Production Fix
 
 Current focus:

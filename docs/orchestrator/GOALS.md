@@ -60,15 +60,15 @@ Acceptance criteria:
 
 ## Goal 4 - Auth Observability And Safety Checks
 
-Status: pending
+Status: done
 
 Intent: Auth-sensitive flows must be observable without leaking credentials.
 
 Chunks:
 
-- Review logs for login, refresh, password reset, magic link, OAuth, admin user management, and role changes.
-- Add missing structured metadata where safe.
-- Add regression checks that logs do not include passwords, JWTs, reset tokens, magic-link tokens, OAuth tokens, or secrets.
+- [x] Review logs for login, refresh, password reset, magic link, OAuth, admin user management, and role changes.
+- [x] Add missing structured metadata where safe.
+- [x] Add regression checks that logs do not include passwords, JWTs, reset tokens, magic-link tokens, OAuth tokens, or secrets.
 
 Acceptance criteria:
 
