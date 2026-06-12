@@ -34,6 +34,9 @@
   let applicationsLoading, applicationsContent, applicationsEmpty;
   let rolesUserSelect, rolesRefreshBtn, userRolesPlaceholder, userRolesLoading, userRolesContent;
   let cachedUsers = [];
+  let usersOffset = 0;
+  let usersLimit = 100;
+  let usersTotal = 0;
 
   function init() {
     stripCredentialParamsFromUrl();
@@ -434,8 +437,12 @@
   }
 
   // User Management Functions
-  async function loadUsers() {
+  async function loadUsers(offset) {
     if (!usersLoading || !usersContent || !usersEmpty) return;
+
+    if (typeof offset === 'number' && Number.isFinite(offset)) {
+      usersOffset = Math.max(0, offset);
+    }
 
     if (usersLoading) usersLoading.classList.remove('hidden');
     if (usersContent) usersContent.classList.add('hidden');
@@ -448,7 +455,11 @@
         return;
       }
 
-      const res = await fetch('/auth/admin/users', {
+      const params = new URLSearchParams({
+        limit: String(usersLimit),
+        offset: String(usersOffset)
+      });
+      const res = await fetch('/auth/admin/users?' + params.toString(), {
         headers: {
           'Authorization': 'Bearer ' + token
         }
@@ -469,14 +480,21 @@
 
       if (data.success && data.users && data.users.length > 0) {
         cachedUsers = data.users;
+        usersLimit = Number.isFinite(Number(data.limit)) ? Number(data.limit) : usersLimit;
+        usersOffset = Number.isFinite(Number(data.offset)) ? Number(data.offset) : usersOffset;
+        usersTotal = Number.isFinite(Number(data.count)) ? Number(data.count) : data.users.length;
         renderUsers(data.users);
         populateRolesUserSelect(data.users);
         if (usersContent) usersContent.classList.remove('hidden');
         if (usersEmpty) usersEmpty.classList.add('hidden');
       } else {
         cachedUsers = [];
+        usersTotal = Number.isFinite(Number(data.count)) ? Number(data.count) : 0;
         if (usersContent) usersContent.classList.add('hidden');
-        if (usersEmpty) usersEmpty.classList.remove('hidden');
+        if (usersEmpty) {
+          usersEmpty.textContent = usersTotal > 0 ? 'No users found on this page.' : 'No users found.';
+          usersEmpty.classList.remove('hidden');
+        }
         populateRolesUserSelect([]);
       }
     } catch (e) {
@@ -758,6 +776,40 @@
 
     usersContent.innerHTML = '';
     usersContent.appendChild(table);
+    usersContent.appendChild(renderUsersPagination(users.length));
+  }
+
+  function renderUsersPagination(visibleCount) {
+    const controls = document.createElement('div');
+    controls.className = 'users-pagination';
+
+    const start = usersTotal === 0 ? 0 : usersOffset + 1;
+    const end = Math.min(usersOffset + visibleCount, usersTotal || usersOffset + visibleCount);
+    const summary = document.createElement('span');
+    summary.textContent = 'Showing ' + start + '-' + end + (usersTotal ? ' of ' + usersTotal : '');
+
+    const prevBtn = document.createElement('button');
+    prevBtn.type = 'button';
+    prevBtn.className = 'btn btn-small btn-secondary';
+    prevBtn.textContent = 'Previous';
+    prevBtn.disabled = usersOffset <= 0;
+    prevBtn.addEventListener('click', function () {
+      loadUsers(Math.max(0, usersOffset - usersLimit));
+    });
+
+    const nextBtn = document.createElement('button');
+    nextBtn.type = 'button';
+    nextBtn.className = 'btn btn-small btn-secondary';
+    nextBtn.textContent = 'Next';
+    nextBtn.disabled = usersTotal > 0 ? usersOffset + visibleCount >= usersTotal : visibleCount < usersLimit;
+    nextBtn.addEventListener('click', function () {
+      loadUsers(usersOffset + usersLimit);
+    });
+
+    controls.appendChild(summary);
+    controls.appendChild(prevBtn);
+    controls.appendChild(nextBtn);
+    return controls;
   }
 
   function openUserModal(userId) {

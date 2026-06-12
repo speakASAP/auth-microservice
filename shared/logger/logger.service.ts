@@ -32,6 +32,25 @@ export class LoggerService implements NestLoggerService {
     return now.toISOString();
   }
 
+  static redactSensitive(value: string): string {
+    return value
+      .replace(/\beyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '[REDACTED_JWT]')
+      .replace(
+        /((?:access_token|refresh_token|accessToken|refreshToken|token|code|client_secret|clientSecret|password)=)[^&#\s]+/gi,
+        '$1[REDACTED]',
+      )
+      .replace(
+        /("(?:access_token|refresh_token|accessToken|refreshToken|token|code|client_secret|clientSecret|password|authorization|x-internal-service-token)"\s*:\s*")[^"]*(")/gi,
+        '$1[REDACTED]$2',
+      )
+      .replace(/\b(Authorization:\s*Bearer\s+)[^\s]+/gi, '$1[REDACTED]')
+      .replace(/\b(Bearer\s+)eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '$1[REDACTED_JWT]');
+  }
+
+  private redact(value?: string): string | undefined {
+    return value === undefined ? undefined : LoggerService.redactSensitive(value);
+  }
+
   /**
    * Send log to external logging microservice (non-blocking)
    * Falls back to local logging if service is unavailable
@@ -49,16 +68,20 @@ export class LoggerService implements NestLoggerService {
 
     try {
       const metadata: Record<string, unknown> = {};
-      if (context) {
-        metadata.context = context;
+      const safeContext = this.redact(context);
+      const safeTrace = this.redact(trace);
+      const safeMessage = this.redact(message) || '';
+
+      if (safeContext) {
+        metadata.context = safeContext;
       }
-      if (trace) {
-        metadata.trace = trace;
+      if (safeTrace) {
+        metadata.trace = safeTrace;
       }
 
       const logPayload = {
         level,
-        message,
+        message: safeMessage,
         service: this.serviceName,
         timestamp: new Date().toISOString(),
         ...(Object.keys(metadata).length > 0 && { metadata }),
@@ -94,7 +117,9 @@ export class LoggerService implements NestLoggerService {
    */
   private writeLog(level: string, message: string, context?: string) {
     const timestamp = this.formatTimestamp();
-    const logLine = `[${timestamp}] [${level.toUpperCase()}]${context ? ` [${context}]` : ''} ${message}\n`;
+    const safeContext = this.redact(context);
+    const safeMessage = this.redact(message) || '';
+    const logLine = `[${timestamp}] [${level.toUpperCase()}]${safeContext ? ` [${safeContext}]` : ''} ${safeMessage}\n`;
     const logFile = path.join(this.logDir, `${level}.log`);
     const allLogFile = path.join(this.logDir, 'all.log');
 
@@ -109,64 +134,76 @@ export class LoggerService implements NestLoggerService {
   }
 
   log(message: string, context?: string) {
+    const safeMessage = this.redact(message) || '';
+    const safeContext = this.redact(context);
+
     // Send to external logging service (non-blocking)
-    this.sendToLoggingService('info', message, context).catch(() => {
+    this.sendToLoggingService('info', safeMessage, safeContext).catch(() => {
       // Error already handled in sendToLoggingService
     });
 
     // Always write to local files as fallback
-    this.writeLog('info', message, context);
+    this.writeLog('info', safeMessage, safeContext);
 
     if (process.env.NODE_ENV === 'development') {
       // eslint-disable-next-line no-console
-      console.log(message, context || '');
+      console.log(safeMessage, safeContext || '');
     }
   }
 
   error(message: string, trace?: string, context?: string) {
-    const fullMessage = `${message}${trace ? `\n${trace}` : ''}`;
+    const safeMessage = this.redact(message) || '';
+    const safeTrace = this.redact(trace);
+    const safeContext = this.redact(context);
+    const fullMessage = `${safeMessage}${safeTrace ? `\n${safeTrace}` : ''}`;
 
     // Send to external logging service (non-blocking)
-    this.sendToLoggingService('error', message, context, trace).catch(() => {
+    this.sendToLoggingService('error', safeMessage, safeContext, safeTrace).catch(() => {
       // Error already handled in sendToLoggingService
     });
 
     // Always write to local files as fallback
-    this.writeLog('error', fullMessage, context);
+    this.writeLog('error', fullMessage, safeContext);
 
     if (process.env.NODE_ENV === 'development') {
       // eslint-disable-next-line no-console
-      console.error(message, trace || '', context || '');
+      console.error(safeMessage, safeTrace || '', safeContext || '');
     }
   }
 
   warn(message: string, context?: string) {
+    const safeMessage = this.redact(message) || '';
+    const safeContext = this.redact(context);
+
     // Send to external logging service (non-blocking)
-    this.sendToLoggingService('warn', message, context).catch(() => {
+    this.sendToLoggingService('warn', safeMessage, safeContext).catch(() => {
       // Error already handled in sendToLoggingService
     });
 
     // Always write to local files as fallback
-    this.writeLog('warn', message, context);
+    this.writeLog('warn', safeMessage, safeContext);
 
     if (process.env.NODE_ENV === 'development') {
       // eslint-disable-next-line no-console
-      console.warn(message, context || '');
+      console.warn(safeMessage, safeContext || '');
     }
   }
 
   debug(message: string, context?: string) {
+    const safeMessage = this.redact(message) || '';
+    const safeContext = this.redact(context);
+
     // Send to external logging service (non-blocking)
-    this.sendToLoggingService('debug', message, context).catch(() => {
+    this.sendToLoggingService('debug', safeMessage, safeContext).catch(() => {
       // Error already handled in sendToLoggingService
     });
 
     // Always write to local files as fallback
-    this.writeLog('debug', message, context);
+    this.writeLog('debug', safeMessage, safeContext);
 
     if (process.env.NODE_ENV === 'development') {
       // eslint-disable-next-line no-console
-      console.debug(message, context || '');
+      console.debug(safeMessage, safeContext || '');
     }
   }
 
@@ -174,4 +211,3 @@ export class LoggerService implements NestLoggerService {
     this.debug(message, context);
   }
 }
-

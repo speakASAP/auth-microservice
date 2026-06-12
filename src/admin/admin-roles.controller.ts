@@ -57,9 +57,10 @@ export class AdminRolesController {
   async removeRole(
     @Param('userId') userId: string,
     @Param('roleId') roleId: string,
+    @CurrentUser() currentUser: any,
     @Body() body?: { applicationId?: string },
   ) {
-    await this.rolesService.removeRoleFromUser(userId, roleId, body?.applicationId);
+    await this.rolesService.removeRoleFromUser(userId, roleId, body?.applicationId, currentUser.id);
     return { message: 'Role removed successfully' };
   }
 }

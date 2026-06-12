@@ -84,11 +84,43 @@ export class AuthService {
       .filter((o) => o.length > 0);
   }
 
+  private audit(
+    level: 'info' | 'warn' | 'error',
+    operation: string,
+    outcome: string,
+    details: Record<string, string | number | boolean | undefined | null> = {},
+    trace?: string,
+  ): void {
+    const fields: Record<string, string | number | boolean | undefined | null> = {
+      service: 'auth-microservice',
+      operation,
+      outcome,
+      ...details,
+    };
+    const message = Object.entries(fields)
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => `${key}=${String(value).replace(/\s+/g, '_')}`)
+      .join(' ');
+
+    if (level === 'error') {
+      this.logger.error(message, trace, 'AuthAudit');
+    } else if (level === 'warn') {
+      this.logger.warn(message, 'AuthAudit');
+    } else {
+      this.logger.log(message, 'AuthAudit');
+    }
+  }
+
   async register(registerDto: RegisterDto) {
+    const startedAt = Date.now();
     // Check if user already exists
     const existingUser = await this.usersService.findByEmail(registerDto.email);
     if (existingUser) {
-      this.logger.warn(`Registration attempt with existing email: ${registerDto.email}`, 'AuthService');
+      this.audit('warn', 'register', 'failure', {
+        identifier: registerDto.email,
+        reason: 'email_exists',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new ConflictException('User with this email already exists');
     }
 
@@ -109,7 +141,12 @@ export class AuthService {
     // Generate tokens
     const tokens = await this.generateTokens(user.id, 'password');
 
-    this.logger.log(`User registered successfully: ${user.email}`, 'AuthService');
+    this.audit('info', 'register', 'success', {
+      identifier: user.email,
+      user_id: user.id,
+      auth_method: 'password',
+      duration_ms: Date.now() - startedAt,
+    });
 
     return {
       user: this.sanitizeUser(user),
@@ -118,6 +155,7 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
+    const startedAt = Date.now();
     try {
       let user = await this.usersService.findByEmail(loginDto.email);
       let authenticatedVia = 'password';
@@ -132,10 +170,11 @@ export class AuthService {
               authenticatedVia = 'legacy_password';
             }
           } catch (err) {
-            this.logger.warn(
-              `Password check failed for ${loginDto.email}: ${(err as Error).message}`,
-              'AuthService',
-            );
+            this.audit('warn', 'login', 'password_check_error', {
+              identifier: loginDto.email,
+              reason: (err as Error).message,
+              duration_ms: Date.now() - startedAt,
+            });
             user = await this.tryLegacyPasswordLogin(loginDto.email, loginDto.password);
             authenticatedVia = 'legacy_password';
           }
@@ -149,33 +188,48 @@ export class AuthService {
       }
 
       if (!user) {
-        this.logger.warn(`Login attempt with invalid credentials: ${loginDto.email}`, 'AuthService');
+        this.audit('warn', 'login', 'failure', {
+          identifier: loginDto.email,
+          reason: 'invalid_credentials',
+          duration_ms: Date.now() - startedAt,
+        });
         throw new UnauthorizedException('Invalid credentials');
       }
 
       if (!user.isActive) {
-        this.logger.warn(`Login attempt for inactive user: ${loginDto.email}`, 'AuthService');
+        this.audit('warn', 'login', 'failure', {
+          identifier: loginDto.email,
+          user_id: user.id,
+          reason: 'inactive_user',
+          duration_ms: Date.now() - startedAt,
+        });
         throw new UnauthorizedException('User account is inactive');
       }
 
       const tokens = await this.generateTokens(user.id, authenticatedVia);
-      this.logger.log(`User logged in successfully: ${user.email}`, 'AuthService');
+      this.audit('info', 'login', 'success', {
+        identifier: user.email,
+        user_id: user.id,
+        auth_method: authenticatedVia,
+        duration_ms: Date.now() - startedAt,
+      });
       return {
         user: this.sanitizeUser(user),
         ...tokens,
       };
     } catch (err) {
       if (err instanceof UnauthorizedException) throw err;
-      this.logger.error(
-        `Login error for ${loginDto.email}: ${(err as Error).message}`,
-        (err as Error).stack,
-        'AuthService',
-      );
+      this.audit('error', 'login', 'failure', {
+        identifier: loginDto.email,
+        reason: (err as Error).message,
+        duration_ms: Date.now() - startedAt,
+      }, (err as Error).stack);
       throw new UnauthorizedException('Invalid credentials');
     }
   }
 
   async validateToken(token: string) {
+    const startedAt = Date.now();
     try {
       const payload = this.jwtService.verify(token, {
         secret: process.env.JWT_SECRET,
@@ -183,14 +237,23 @@ export class AuthService {
 
       const user = await this.usersService.findById(payload.sub);
       if (!user || !user.isActive) {
-        this.logger.warn(`Token validation failed: user not found or inactive`, 'AuthService');
+        this.audit('warn', 'validate_token', 'failure', {
+          user_id: payload.sub,
+          reason: 'user_not_found_or_inactive',
+          duration_ms: Date.now() - startedAt,
+        });
         throw new UnauthorizedException('Invalid token');
       }
 
       // Get user roles
       const roles = await this.rolesService.getUserRoles(user.id);
 
-      this.logger.log(`Token validated successfully for user: ${user.email}`, 'AuthService');
+      this.audit('info', 'validate_token', 'success', {
+        identifier: user.email,
+        user_id: user.id,
+        role_count: roles.length,
+        duration_ms: Date.now() - startedAt,
+      });
 
       const sanitizedUser = this.sanitizeUser(user);
       return {
@@ -198,12 +261,16 @@ export class AuthService {
         roles,
       };
     } catch (error) {
-      this.logger.error(`Token validation failed: ${error.message}`, error.stack, 'AuthService');
+      this.audit('error', 'validate_token', 'failure', {
+        reason: error.message,
+        duration_ms: Date.now() - startedAt,
+      }, error.stack);
       throw new UnauthorizedException('Invalid token');
     }
   }
 
   async refreshToken(refreshToken: string) {
+    const startedAt = Date.now();
     try {
       const payload = this.jwtService.verify(refreshToken, {
         secret: process.env.JWT_SECRET,
@@ -211,21 +278,33 @@ export class AuthService {
 
       const user = await this.usersService.findById(payload.sub);
       if (!user || !user.isActive) {
-        this.logger.warn(`Refresh token validation failed: user not found or inactive`, 'AuthService');
+        this.audit('warn', 'refresh_token', 'failure', {
+          user_id: payload.sub,
+          reason: 'user_not_found_or_inactive',
+          duration_ms: Date.now() - startedAt,
+        });
         throw new UnauthorizedException('Invalid refresh token');
       }
 
       // Generate new tokens
       const tokens = await this.generateTokens(user.id, (payload as any).auth_method || 'password');
 
-      this.logger.log(`Token refreshed successfully for user: ${user.email}`, 'AuthService');
+      this.audit('info', 'refresh_token', 'success', {
+        identifier: user.email,
+        user_id: user.id,
+        auth_method: (payload as any).auth_method || 'password',
+        duration_ms: Date.now() - startedAt,
+      });
 
       return {
         user: this.sanitizeUser(user),
         ...tokens,
       };
     } catch (error) {
-      this.logger.error(`Refresh token validation failed: ${error.message}`, error.stack, 'AuthService');
+      this.audit('error', 'refresh_token', 'failure', {
+        reason: error.message,
+        duration_ms: Date.now() - startedAt,
+      }, error.stack);
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
@@ -336,10 +415,14 @@ export class AuthService {
   }
 
   async requestPasswordReset(passwordResetRequestDto: PasswordResetRequestDto) {
+    const startedAt = Date.now();
     const user = await this.usersService.findByEmail(passwordResetRequestDto.email);
     if (!user) {
       // Don't reveal if user exists or not for security
-      this.logger.warn(`Password reset requested for non-existent email: ${passwordResetRequestDto.email}`, 'AuthService');
+      this.audit('warn', 'password_reset_request', 'accepted_unknown_user', {
+        identifier: passwordResetRequestDto.email,
+        duration_ms: Date.now() - startedAt,
+      });
       return { message: 'If the email exists, a password reset link has been sent.' };
     }
 
@@ -360,7 +443,12 @@ export class AuthService {
     // Send password reset email via notifications-microservice
     const frontendUrl = process.env.FRONTEND_URL;
     if (!frontendUrl) {
-      this.logger.error('FRONTEND_URL is not set. Cannot generate password reset link.', 'AuthService');
+      this.audit('error', 'password_reset_request', 'failure', {
+        identifier: user.email,
+        user_id: user.id,
+        reason: 'frontend_url_not_configured',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new BadRequestException('Frontend URL is not configured');
     }
     const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
@@ -378,9 +466,18 @@ export class AuthService {
           { headers: { Authorization: `Bearer ${this.notificationServiceToken}` } },
         ),
       );
-      this.logger.log(`Password reset email sent to: ${user.email}`, 'AuthService');
+      this.audit('info', 'password_reset_request', 'email_sent', {
+        identifier: user.email,
+        user_id: user.id,
+        duration_ms: Date.now() - startedAt,
+      });
     } catch (error) {
-      this.logger.error(`Failed to send password reset email: ${error.message}`, error.stack, 'AuthService');
+      this.audit('error', 'password_reset_request', 'email_send_failed', {
+        identifier: user.email,
+        user_id: user.id,
+        reason: error.message,
+        duration_ms: Date.now() - startedAt,
+      }, error.stack);
       // Continue even if email fails - token is still generated
     }
 
@@ -388,16 +485,26 @@ export class AuthService {
   }
 
   async confirmPasswordReset(passwordResetConfirmDto: PasswordResetConfirmDto) {
+    const startedAt = Date.now();
     const resetToken = await this.passwordResetTokenRepository.findOne({
       where: { token: passwordResetConfirmDto.token, used: false },
       relations: ['user'],
     });
 
     if (!resetToken) {
+      this.audit('warn', 'password_reset_confirm', 'failure', {
+        reason: 'invalid_or_used_token',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new BadRequestException('Invalid or expired reset token');
     }
 
     if (new Date() > resetToken.expiresAt) {
+      this.audit('warn', 'password_reset_confirm', 'failure', {
+        user_id: resetToken.userId,
+        reason: 'expired_token',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new BadRequestException('Reset token has expired');
     }
 
@@ -411,20 +518,35 @@ export class AuthService {
     resetToken.used = true;
     await this.passwordResetTokenRepository.save(resetToken);
 
-    this.logger.log(`Password reset completed for user: ${resetToken.userId}`, 'AuthService');
+    this.audit('info', 'password_reset_confirm', 'success', {
+      user_id: resetToken.userId,
+      duration_ms: Date.now() - startedAt,
+    });
 
     return { message: 'Password reset successfully' };
   }
 
   async changePassword(userId: string, passwordChangeDto: PasswordChangeDto) {
+    const startedAt = Date.now();
     const user = await this.usersService.findById(userId);
     if (!user || !user.password) {
+      this.audit('warn', 'password_change', 'failure', {
+        user_id: userId,
+        reason: 'user_not_found_or_password_not_set',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new NotFoundException('User not found or password not set');
     }
 
     // Verify current password
     const isPasswordValid = await bcrypt.compare(passwordChangeDto.currentPassword, user.password);
     if (!isPasswordValid) {
+      this.audit('warn', 'password_change', 'failure', {
+        identifier: user.email,
+        user_id: user.id,
+        reason: 'current_password_invalid',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new UnauthorizedException('Current password is incorrect');
     }
 
@@ -434,25 +556,51 @@ export class AuthService {
     // Update password
     await this.usersService.updatePassword(userId, hashedPassword);
 
-    this.logger.log(`Password changed for user: ${user.email}`, 'AuthService');
+    this.audit('info', 'password_change', 'success', {
+      identifier: user.email,
+      user_id: user.id,
+      duration_ms: Date.now() - startedAt,
+    });
 
     return { message: 'Password changed successfully' };
   }
 
   async setInitialPassword(userId: string, newPassword: string) {
+    const startedAt = Date.now();
     const user = await this.usersService.findById(userId);
     if (!user) {
+      this.audit('warn', 'password_set', 'failure', {
+        user_id: userId,
+        reason: 'user_not_found',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new NotFoundException('User not found');
     }
     if (user.password) {
+      this.audit('warn', 'password_set', 'failure', {
+        identifier: user.email,
+        user_id: user.id,
+        reason: 'password_already_set',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new BadRequestException('Password already set — use change password instead');
     }
     if (!newPassword || newPassword.length < 6) {
+      this.audit('warn', 'password_set', 'failure', {
+        identifier: user.email,
+        user_id: user.id,
+        reason: 'password_too_short',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new BadRequestException('Password must be at least 6 characters');
     }
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await this.usersService.updatePassword(userId, hashedPassword);
-    this.logger.log(`Initial password set for user: ${user.email}`, 'AuthService');
+    this.audit('info', 'password_set', 'success', {
+      identifier: user.email,
+      user_id: user.id,
+      duration_ms: Date.now() - startedAt,
+    });
     return { message: 'Password set successfully' };
   }
 
@@ -650,6 +798,11 @@ export class AuthService {
     const domain = process.env.DOMAIN;
     const baseUrl = domain ? `https://${domain}` : process.env.FRONTEND_URL;
     if (!baseUrl) {
+      this.audit('error', 'internal_magic_link_token', 'failure', {
+        identifier: email,
+        user_id: user.id,
+        reason: 'base_url_not_configured',
+      });
       throw new BadRequestException('Magic link base URL is not configured');
     }
 
@@ -693,7 +846,13 @@ export class AuthService {
     const domain = process.env.DOMAIN;
     const baseUrl = domain ? `https://${domain}` : process.env.FRONTEND_URL;
     if (!baseUrl) {
-      this.logger.error('DOMAIN or FRONTEND_URL is not set. Cannot generate magic link URL.', undefined, 'AuthService');
+      this.audit('error', 'magic_link_request', 'failure', {
+        identifier: dto.email,
+        user_id: user.id,
+        client_id: dto.client_id,
+        reason: 'base_url_not_configured',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new BadRequestException('Magic link base URL is not configured');
     }
 
@@ -706,7 +865,12 @@ export class AuthService {
       try {
         const fromDomain = dto.app_domain || process.env.DOMAIN || '';
         if (!fromDomain) {
-          this.logger.warn(`Magic link email: app_domain not provided and DOMAIN env is unset for ${dto.email}`, 'AuthService');
+          this.audit('warn', 'magic_link_request', 'missing_display_domain', {
+            identifier: dto.email,
+            user_id: user.id,
+            client_id: dto.client_id,
+            duration_ms: Date.now() - startedAt,
+          });
         }
         await firstValueFrom(
           this.httpService.post(
@@ -723,22 +887,29 @@ export class AuthService {
             { headers: { Authorization: `Bearer ${this.notificationServiceToken}` } },
           ),
         );
-        this.logger.log(
-          `Magic link requested and email sent for ${dto.email} client_id=${dto.client_id || ''} duration_ms=${durationMs}`,
-          'AuthService',
-        );
+        this.audit('info', 'magic_link_request', 'email_sent', {
+          identifier: dto.email,
+          user_id: user.id,
+          client_id: dto.client_id,
+          duration_ms: durationMs,
+        });
       } catch (error) {
-        this.logger.error(
-          `Failed to send magic link email for ${dto.email} client_id=${dto.client_id || ''} duration_ms=${durationMs}`,
-          (error as Error).stack,
-          'AuthService',
-        );
+        this.audit('error', 'magic_link_request', 'email_send_failed', {
+          identifier: dto.email,
+          user_id: user.id,
+          client_id: dto.client_id,
+          reason: (error as Error).message,
+          duration_ms: durationMs,
+        }, (error as Error).stack);
       }
     } else {
-      this.logger.warn(
-        `Magic link created for ${dto.email} but NOTIFICATION_SERVICE_URL not set; email not sent. duration_ms=${durationMs}`,
-        'AuthService',
-      );
+      this.audit('warn', 'magic_link_request', 'created_email_not_sent', {
+        identifier: dto.email,
+        user_id: user.id,
+        client_id: dto.client_id,
+        reason: 'notification_service_url_not_configured',
+        duration_ms: durationMs,
+      });
     }
 
     return { success: true };
@@ -754,17 +925,31 @@ export class AuthService {
         relations: ['user'],
       });
     } catch (err) {
-      this.logger.error(`Magic link verify lookup failed: ${(err as Error).message}`, (err as Error).stack, 'AuthService');
+      this.audit('error', 'magic_link_verify', 'failure', {
+        reason: (err as Error).message,
+        duration_ms: Date.now() - startedAt,
+      }, (err as Error).stack);
       this.renderSafeError(res, 'Invalid or expired magic link.');
       return;
     }
 
     if (!token) {
+      this.audit('warn', 'magic_link_verify', 'failure', {
+        reason: 'invalid_or_used_token',
+        duration_ms: Date.now() - startedAt,
+      });
       this.renderSafeError(res, 'Invalid or expired magic link.');
       return;
     }
 
     if (new Date() > token.expiresAt) {
+      this.audit('warn', 'magic_link_verify', 'failure', {
+        identifier: token.email,
+        user_id: token.userId,
+        client_id: token.clientId,
+        reason: 'expired_token',
+        duration_ms: Date.now() - startedAt,
+      });
       this.renderSafeError(res, 'Magic link has expired.');
       return;
     }
@@ -776,6 +961,13 @@ export class AuthService {
 
     const user = await this.usersService.findById(token.userId);
     if (!user) {
+      this.audit('warn', 'magic_link_verify', 'failure', {
+        identifier: token.email,
+        user_id: token.userId,
+        client_id: token.clientId,
+        reason: 'user_not_found',
+        duration_ms: Date.now() - startedAt,
+      });
       this.renderSafeError(res, 'User not found for magic link.');
       return;
     }
@@ -800,10 +992,12 @@ export class AuthService {
     const redirectUrl = `${finalReturnUrl}#${fragmentParts.join('&')}`;
 
     const durationMs = Date.now() - startedAt;
-    this.logger.log(
-      `Magic link verified for ${token.email} client_id=${token.clientId || ''} duration_ms=${durationMs}`,
-      'AuthService',
-    );
+    this.audit('info', 'magic_link_verify', 'success', {
+      identifier: token.email,
+      user_id: token.userId,
+      client_id: token.clientId,
+      duration_ms: durationMs,
+    });
 
     res.redirect(302, redirectUrl);
   }
@@ -842,10 +1036,11 @@ export class AuthService {
     url.searchParams.set('state', internalState);
 
     const durationMs = Date.now() - startedAt;
-    this.logger.log(
-      `OAuth init provider=${provider} client_id=${clientId || ''} duration_ms=${durationMs}`,
-      'AuthService',
-    );
+    this.audit('info', 'oauth_init', 'success', {
+      provider,
+      client_id: clientId,
+      duration_ms: durationMs,
+    });
 
     return url.toString();
   }
@@ -904,11 +1099,12 @@ export class AuthService {
         accessToken = '';
       }
       if (!accessToken) {
-        this.logger.error(
-          `OAuth callback token response missing access_token provider=${provider} body=${JSON.stringify(tokenResponse.data)}`,
-          undefined,
-          'AuthService',
-        );
+        this.audit('error', 'oauth_callback', 'failure', {
+          provider,
+          client_id: stateEntry.clientId,
+          reason: 'provider_token_response_missing_access_token',
+          duration_ms: Date.now() - startedAt,
+        });
         this.renderSafeError(res, 'OAuth authentication failed.');
         return;
       }
@@ -925,16 +1121,25 @@ export class AuthService {
     } catch (error: any) {
       const fbMessage = error?.response?.data?.error?.message || error?.response?.data?.error_description || error?.message;
       const fbCode = error?.response?.data?.error?.code;
-      this.logger.error(
-        `OAuth callback failed provider=${provider} message=${fbMessage} code=${fbCode || ''} redirect_uri=${redirectUri}`,
-        error?.stack,
-        'AuthService',
-      );
+      this.audit('error', 'oauth_callback', 'failure', {
+        provider,
+        client_id: stateEntry.clientId,
+        reason: fbMessage,
+        provider_error_code: fbCode,
+        redirect_uri: redirectUri,
+        duration_ms: Date.now() - startedAt,
+      }, error?.stack);
       this.renderSafeError(res, 'OAuth authentication failed.');
       return;
     }
 
     if (!providerEmail) {
+      this.audit('warn', 'oauth_callback', 'failure', {
+        provider,
+        client_id: stateEntry.clientId,
+        reason: 'provider_email_missing',
+        duration_ms: Date.now() - startedAt,
+      });
       this.renderSafeError(res, 'OAuth provider did not return an email address.');
       return;
     }
@@ -968,10 +1173,13 @@ export class AuthService {
     const redirectUrl = `${stateEntry.returnUrl}#${fragmentParts.join('&')}`;
 
     const durationMs = Date.now() - startedAt;
-    this.logger.log(
-      `OAuth callback successful provider=${provider} email=${providerEmail} duration_ms=${durationMs}`,
-      'AuthService',
-    );
+    this.audit('info', 'oauth_callback', 'success', {
+      provider,
+      identifier: providerEmail,
+      user_id: user.id,
+      client_id: stateEntry.clientId,
+      duration_ms: durationMs,
+    });
 
     res.redirect(302, redirectUrl);
   }

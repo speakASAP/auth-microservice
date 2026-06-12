@@ -79,3 +79,44 @@ Verification evidence:
 Next unfinished chunks:
 
 - Goal 4: review Auth-sensitive logs for login, refresh, password reset, magic link, OAuth, admin user management, and role changes.
+
+## 2026-06-12 - Admin Users List Production Fix
+
+Current focus:
+
+- Owner-selected production fix for `/admin` registered-user management section.
+- Preserved Auth ownership: the change stays inside registered Auth user management and does not move catalog, orders, marketing sending, notification, logging, gateway, or database ownership into Auth.
+
+Diagnosis evidence:
+
+- Production `/admin` users section showed `Error loading users: Unknown error`.
+- Unauthenticated `GET https://auth.alfares.cz/auth/admin/users` returned expected JSON `401 Unauthorized`, so routing existed.
+- Authenticated login with stored remote test credentials returned HTTP `201`; the old users-list request then returned Cloudflare `502`.
+- Kubernetes described the Auth container as `OOMKilled` with exit code `137` at the `512Mi` memory limit.
+- The old endpoint attempted to load all registered users with full `User` entities.
+
+Implementation evidence:
+
+- Added `UsersService.findAdminListPage(limit, offset)` with a narrow selected column set for the admin table.
+- Updated `AdminUsersController.getAllUsers` to accept bounded `limit` and `offset`, clamp `limit` to `100`, and return `count`, `limit`, and `offset`.
+- Updated `web/public/js/admin.js` to request `/auth/admin/users?limit=100&offset=0`, track pagination state, and render Previous/Next controls.
+
+Verification evidence:
+
+- Remote `node --check web/public/js/admin.js` passed.
+- Remote `npm run build` passed.
+- Ran `./scripts/deploy.sh` for the API/UI pagination change; deployment completed successfully in `199.22s`.
+- Ran `./scripts/deploy.sh` again after adding the admin JS cache-busting query; deployment completed successfully in `198.71s`.
+- Final deployment image tag: `localhost:5000/auth-microservice:af00816-20260612094806`.
+- Deploy health check returned `{"success":true,"status":"ok","service":"auth-microservice"}`.
+- Authenticated production check for `GET /auth/admin/users?limit=100&offset=0` returned HTTP `200` in `213ms` after the pagination deploy and `269ms` after the final cache-bust deploy.
+- Production users response returned `success=true`, `count=214246`, `users.length=100`, `limit=100`, and `offset=0`.
+- Returned user-list keys were limited to `createdAt,email,firstName,id,isActive,isVerified,lastName,phone,updatedAt,userType`; no password field was returned.
+- `curl -I -H 'Cache-Control: no-cache' https://auth.alfares.cz/admin` returned HTTP `200`.
+- Web pod verification showed `/app/public/admin.html` references `/js/admin.js?v=20260612094229`.
+- Web pod verification showed `/app/public/js/admin.js` fetches `/auth/admin/users` with `limit: String(usersLimit)` and `offset: String(usersOffset)`.
+- Kubernetes pod check showed image `localhost:5000/auth-microservice:af00816-20260612094806`, state `Running`, ready `True`, and restart count `0`.
+
+Next unfinished chunks:
+
+- Goal 4: review Auth-sensitive logs for login, refresh, password reset, magic link, OAuth, admin user management, and role changes.

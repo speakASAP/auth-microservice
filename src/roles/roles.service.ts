@@ -23,6 +23,23 @@ export class RolesService {
     private readonly logger: LoggerService,
   ) {}
 
+  private audit(
+    operation: string,
+    outcome: string,
+    details: Record<string, string | number | boolean | undefined | null>,
+  ): void {
+    const message = Object.entries({
+      service: 'auth-microservice',
+      operation,
+      outcome,
+      ...details,
+    })
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => `${key}=${String(value).replace(/\s+/g, '_')}`)
+      .join(' ');
+    this.logger.log(message, 'RoleAudit');
+  }
+
   async create(data: {
     name: string;
     scope: RoleScope;
@@ -152,6 +169,7 @@ export class RolesService {
     grantedBy?: string,
     expiresAt?: Date,
   ): Promise<UserRole> {
+    const startedAt = Date.now();
     // Check if assignment already exists
     const existing = await this.userRolesRepository.findOne({
       where: {
@@ -162,7 +180,14 @@ export class RolesService {
     });
 
     if (existing) {
-      this.logger.warn(`Role already assigned: user ${userId}, role ${roleId}`, 'RolesService');
+      this.audit('role_assign', 'failure', {
+        target_user_id: userId,
+        role_id: roleId,
+        application_id: applicationId,
+        actor_id: grantedBy,
+        reason: 'already_assigned',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new ConflictException('Role already assigned to user');
     }
 
@@ -175,12 +200,25 @@ export class RolesService {
     });
 
     const saved = await this.userRolesRepository.save(userRole);
-    this.logger.log(`Role assigned: user ${userId}, role ${roleId}`, 'RolesService');
+    this.audit('role_assign', 'success', {
+      target_user_id: userId,
+      role_id: roleId,
+      application_id: applicationId,
+      actor_id: grantedBy,
+      expires_at: expiresAt?.toISOString(),
+      duration_ms: Date.now() - startedAt,
+    });
 
     return saved;
   }
 
-  async removeRoleFromUser(userId: string, roleId: string, applicationId?: string): Promise<void> {
+  async removeRoleFromUser(
+    userId: string,
+    roleId: string,
+    applicationId?: string,
+    removedBy?: string,
+  ): Promise<void> {
+    const startedAt = Date.now();
     const userRole = await this.userRolesRepository.findOne({
       where: {
         userId,
@@ -190,11 +228,25 @@ export class RolesService {
     });
 
     if (!userRole) {
+      this.audit('role_remove', 'failure', {
+        target_user_id: userId,
+        role_id: roleId,
+        application_id: applicationId,
+        actor_id: removedBy,
+        reason: 'assignment_not_found',
+        duration_ms: Date.now() - startedAt,
+      });
       throw new NotFoundException('Role assignment not found');
     }
 
     await this.userRolesRepository.remove(userRole);
-    this.logger.log(`Role removed: user ${userId}, role ${roleId}`, 'RolesService');
+    this.audit('role_remove', 'success', {
+      target_user_id: userId,
+      role_id: roleId,
+      application_id: applicationId,
+      actor_id: removedBy,
+      duration_ms: Date.now() - startedAt,
+    });
   }
 
   async getUserRolesForApplication(userId: string, applicationId: string): Promise<string[]> {

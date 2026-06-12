@@ -11,6 +11,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -27,36 +28,86 @@ export class AdminUsersController {
     private readonly logger: LoggerService,
   ) {}
 
+  private audit(
+    operation: string,
+    outcome: string,
+    details: Record<string, string | number | boolean | undefined | null>,
+  ): void {
+    const message = Object.entries({
+      service: 'auth-microservice',
+      operation,
+      outcome,
+      ...details,
+    })
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => `${key}=${String(value).replace(/\s+/g, '_')}`)
+      .join(' ');
+    this.logger.log(message, 'AdminAudit');
+  }
+
   @Get()
-  async getAllUsers(@Request() req) {
-    this.logger.log(`Admin user ${req.user.email} requested user list`, 'AdminUsersController');
-    const users = await this.usersService.findAllForAdminList();
+  async getAllUsers(@Request() req, @Query('limit') limitParam?: string, @Query('offset') offsetParam?: string) {
+    const startedAt = Date.now();
+    const requestedLimit = Number.parseInt(limitParam || '100', 10);
+    const requestedOffset = Number.parseInt(offsetParam || '0', 10);
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 100;
+    const offset = Number.isFinite(requestedOffset) ? Math.max(requestedOffset, 0) : 0;
+    const [users, count] = await this.usersService.findAdminListPage(limit, offset);
+    this.audit('admin_user_list', 'success', {
+      actor: req.user.email,
+      actor_id: req.user.id,
+      count,
+      limit,
+      offset,
+      duration_ms: Date.now() - startedAt,
+    });
     return {
       success: true,
       users,
-      count: users.length,
+      count,
+      limit,
+      offset,
     };
   }
 
   @Get(':id')
   async getUser(@Param('id') id: string, @Request() req) {
-    this.logger.log(`Admin user ${req.user.email} requested user ${id}`, 'AdminUsersController');
+    const startedAt = Date.now();
     const user = await this.usersService.findById(id);
     if (!user) {
+      this.audit('admin_user_get', 'not_found', {
+        actor: req.user.email,
+        actor_id: req.user.id,
+        target_user_id: id,
+        duration_ms: Date.now() - startedAt,
+      });
       return { success: false, message: 'User not found' };
     }
     const { password, ...sanitized } = user;
+    this.audit('admin_user_get', 'success', {
+      actor: req.user.email,
+      actor_id: req.user.id,
+      target_user_id: id,
+      duration_ms: Date.now() - startedAt,
+    });
     return { success: true, user: sanitized };
   }
 
   @Post()
   async createUser(@Body() createUserDto: any, @Request() req) {
-    this.logger.log(`Admin user ${req.user.email} creating new user`, 'AdminUsersController');
+    const startedAt = Date.now();
     const { email, password, firstName, lastName, phone, isActive } = createUserDto;
 
     // Check if user already exists
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
+      this.audit('admin_user_create', 'failure', {
+        actor: req.user.email,
+        actor_id: req.user.id,
+        target_identifier: email,
+        reason: 'email_exists',
+        duration_ms: Date.now() - startedAt,
+      });
       return { success: false, message: 'User with this email already exists' };
     }
 
@@ -74,15 +125,27 @@ export class AdminUsersController {
     });
 
     const { password: _, ...sanitized } = user;
-    this.logger.log(`Admin user ${req.user.email} created user ${user.id}`, 'AdminUsersController');
+    this.audit('admin_user_create', 'success', {
+      actor: req.user.email,
+      actor_id: req.user.id,
+      target_identifier: email,
+      target_user_id: user.id,
+      duration_ms: Date.now() - startedAt,
+    });
     return { success: true, user: sanitized };
   }
 
   @Put(':id')
   async updateUser(@Param('id') id: string, @Body() updateUserDto: any, @Request() req) {
-    this.logger.log(`Admin user ${req.user.email} updating user ${id}`, 'AdminUsersController');
+    const startedAt = Date.now();
     const user = await this.usersService.findById(id);
     if (!user) {
+      this.audit('admin_user_update', 'not_found', {
+        actor: req.user.email,
+        actor_id: req.user.id,
+        target_user_id: id,
+        duration_ms: Date.now() - startedAt,
+      });
       return { success: false, message: 'User not found' };
     }
 
@@ -102,27 +165,51 @@ export class AdminUsersController {
 
     const updatedUser = await this.usersService.update(id, updateData);
     const { password: _, ...sanitized } = updatedUser;
-    this.logger.log(`Admin user ${req.user.email} updated user ${id}`, 'AdminUsersController');
+    this.audit('admin_user_update', 'success', {
+      actor: req.user.email,
+      actor_id: req.user.id,
+      target_user_id: id,
+      password_changed: Boolean(updateUserDto.password),
+      duration_ms: Date.now() - startedAt,
+    });
     return { success: true, user: sanitized };
   }
 
   @Delete(':id')
   async deleteUser(@Param('id') id: string, @Request() req) {
-    this.logger.log(`Admin user ${req.user.email} deleting user ${id}`, 'AdminUsersController');
+    const startedAt = Date.now();
     const user = await this.usersService.findById(id);
     if (!user) {
+      this.audit('admin_user_delete', 'not_found', {
+        actor: req.user.email,
+        actor_id: req.user.id,
+        target_user_id: id,
+        duration_ms: Date.now() - startedAt,
+      });
       return { success: false, message: 'User not found' };
     }
     await this.usersService.delete(id);
-    this.logger.log(`Admin user ${req.user.email} deleted user ${id}`, 'AdminUsersController');
+    this.audit('admin_user_delete', 'success', {
+      actor: req.user.email,
+      actor_id: req.user.id,
+      target_user_id: id,
+      duration_ms: Date.now() - startedAt,
+    });
     return { success: true, message: 'User deleted successfully' };
   }
 
   @Put(':id/toggle-active')
   async toggleActive(@Param('id') id: string, @Request() req) {
-    this.logger.log(`Admin user ${req.user.email} toggling active status for user ${id}`, 'AdminUsersController');
+    const startedAt = Date.now();
     const user = await this.usersService.toggleActive(id);
     const { password: _, ...sanitized } = user;
+    this.audit('admin_user_toggle_active', 'success', {
+      actor: req.user.email,
+      actor_id: req.user.id,
+      target_user_id: id,
+      is_active: user.isActive,
+      duration_ms: Date.now() - startedAt,
+    });
     return { success: true, user: sanitized };
   }
 }

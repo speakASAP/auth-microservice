@@ -66,8 +66,8 @@ export class UsersService {
     });
   }
 
-  async findAllForAdminList(): Promise<AdminUserListItem[]> {
-    return this.userRepository.find({
+  async findAdminListPage(limit: number, offset: number): Promise<[AdminUserListItem[], number]> {
+    return this.userRepository.findAndCount({
       select: {
         id: true,
         email: true,
@@ -81,6 +81,8 @@ export class UsersService {
         updatedAt: true,
       },
       order: { createdAt: 'DESC' },
+      take: limit,
+      skip: offset,
     });
   }
 
