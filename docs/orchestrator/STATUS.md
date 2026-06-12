@@ -15,6 +15,7 @@ Source context:
 
 Implementation evidence:
 
+- Added remote source-of-truth memory: all future Auth changes must be made and committed on `alfares` in `/home/ssf/Documents/Github/auth-microservice`.
 - Added `docs/orchestrator/PROJECT_INVARIANTS.md` with Auth-specific invariant IDs for ownership, non-ownership boundaries, contract compatibility, sensitive-data handling, hosted Auth, evidence, and DocsRAG usage.
 - Added `docs/orchestrator/PRE_CODING_GATE.md` defining required inputs, gate checklist, documentation scans, runtime checks, DocsRAG rule, and pass/fail policy.
 - Added `docs/orchestrator/CONTEXT_PACKAGE.md` defining target-task selection, included/excluded documents, Auth constraints, allowed/forbidden changes, prompt source, and validation instructions.
@@ -24,10 +25,10 @@ Implementation evidence:
 
 Verification evidence:
 
-- Documentation file presence check passed: `find docs/orchestrator -maxdepth 1 -type f -name '*.md' -print` lists `PROJECT_INVARIANTS.md`, `PRE_CODING_GATE.md`, `CONTEXT_PACKAGE.md`, `EXECUTION_PLAN.md`, `READINESS_GATES.md`, and the existing orchestrator files.
-- Missing-marker scan passed with no matches: `rg '\[(MISSING|UNKNOWN):' docs/orchestrator AGENTS.md TASKS.md docs/UNIFIED_AUTH_CONTRACT.md docs/UNIFIED_AUTH_VERIFICATION.md docs/ENV_CORS_AND_AUTH_CHECK.md`.
-- Secret-pattern scan passed with no matches: `rg -n "Authorization: Bearer ...|(access_token|client_secret|password|private_key) assignment pattern" docs AGENTS.md TASKS.md`.
-- `git diff -- AGENTS.md docs/IMPLEMENTATION_ORCHESTRATOR.md docs/IMPLEMENTATION_STATE.md docs/orchestrator` produced no tracked-file diff because this local snapshot is currently untracked; changes were verified by file content and scans instead.
+- Documentation file presence check passed on `alfares`: `find docs/orchestrator -maxdepth 1 -type f -name '*.md' -print` lists `PROJECT_INVARIANTS.md`, `PRE_CODING_GATE.md`, `CONTEXT_PACKAGE.md`, `EXECUTION_PLAN.md`, `READINESS_GATES.md`, and the existing orchestrator files.
+- Missing-marker scan passed on `alfares` for active docs with no matches. Reusable templates under `implementation-goals/templates/` intentionally retain placeholder markers for future agents to fill.
+- Secret-pattern scan passed on `alfares` with no matches: `rg -n "Authorization: Bearer ...|(access_token|client_secret|password|private_key) assignment pattern" docs AGENTS.md TASKS.md`.
+- Remote commit created for orchestration documentation; unrelated pre-existing remote change `scripts/bootstrap-speakasap-legacy-users.ts` was not included.
 
 Next unfinished chunks:
 
@@ -60,7 +61,7 @@ Implementation evidence:
 
 Verification evidence:
 
-- Documentation file presence and cross-reference scan passed locally.
+- Documentation file presence and cross-reference scan passed on `alfares`.
 - No runtime Auth source files, frontend files, deployment scripts, or production configuration were changed.
 - `README.md`, `BUSINESS.md`, and `SYSTEM.md` are not present in this local snapshot; the new docs instruct future sessions to read them if restored.
 

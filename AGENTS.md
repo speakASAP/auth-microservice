@@ -67,6 +67,17 @@ No catalog, warehouse, orders, payment, leads, marketing sending, notification s
 No secrets, credentials, JWTs, OAuth tokens, magic-link tokens, reset tokens, or passwords in docs, logs, prompts, reports, URLs, frontend bundles, or git.
 ```
 
+## Remote Work Rule
+
+All implementation and commit work for Auth happens on the remote server only:
+
+```text
+ssh alfares
+cd /home/ssf/Documents/Github/auth-microservice
+```
+
+Do not treat the local `/Users/Sergej.Stasok/Documents/auth` snapshot as the source of truth for future code changes. Use it only as temporary context if needed. Make code and documentation changes in `/home/ssf/Documents/Github/auth-microservice` on `alfares`, and commit completed work there.
+
 ## Orchestrator Duties
 
 1. Read `docs/IMPLEMENTATION_STATE.md`.

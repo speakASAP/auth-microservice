@@ -17,6 +17,7 @@ Coordinate Auth implementation as a repository-state-driven master agent.
 The orchestrator must:
 
 - inspect the current repository state;
+- work in `/home/ssf/Documents/Github/auth-microservice` on `alfares`;
 - read `docs/IMPLEMENTATION_STATE.md`;
 - choose the active, blocked, or next owner-approved goal;
 - preserve Auth ownership and secret-handling boundaries;
@@ -51,19 +52,32 @@ State, not chat history, drives continuation. Treat `docs/IMPLEMENTATION_STATE.m
    - `docs/orchestrator/READINESS_GATES.md`
    - `implementation-goals/README.md`
    - the selected `implementation-goals/GOAL-XX-*.md` file, when present.
-2. Run:
+2. Connect to the remote source of truth:
+   - `ssh alfares`
+   - `cd /home/ssf/Documents/Github/auth-microservice`
+3. Run:
    - `git status --short --branch`
    - `rg --files`
-3. Identify:
+4. Identify:
    - current branch;
    - completed goals;
    - active goal;
    - blockers;
    - local uncommitted changes not made by this session.
-4. Query docs-rag-microservice before broad ecosystem architecture or contract decisions.
-5. If the selected goal requires coding, create or update an execution plan from `implementation-goals/templates/EXECUTION_PLAN.md` or `docs/orchestrator/EXECUTION_PLAN.md` before editing code.
-6. Run the Auth pre-coding gate from `docs/orchestrator/PRE_CODING_GATE.md`.
-7. Define validation before editing and run the narrowest relevant check after editing.
+5. Query docs-rag-microservice before broad ecosystem architecture or contract decisions.
+6. If the selected goal requires coding, create or update an execution plan from `implementation-goals/templates/EXECUTION_PLAN.md` or `docs/orchestrator/EXECUTION_PLAN.md` before editing code.
+7. Run the Auth pre-coding gate from `docs/orchestrator/PRE_CODING_GATE.md`.
+8. Define validation before editing and run the narrowest relevant check after editing.
+
+## Remote Source Rule
+
+The remote repository is the source of truth:
+
+```text
+alfares:/home/ssf/Documents/Github/auth-microservice
+```
+
+All future code and documentation changes must be made in that remote working copy. Completed work may be committed there. The local `/Users/Sergej.Stasok/Documents/auth` folder is only a temporary context snapshot and must not be treated as authoritative.
 
 ## Goal Selection Rules
 
