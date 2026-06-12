@@ -232,7 +232,7 @@
     } else {
       if (tokenDisplay) tokenDisplay.value = '';
       if (showTokenBtn) showTokenBtn.textContent = 'Show Token';
-      if (copyTokenBtn) copyTokenBtn.style.display = 'none';
+      if (copyTokenBtn) copyTokenBtn.disabled = true;
       if (tokenDisplay) tokenDisplay.type = 'password';
     }
   }
@@ -958,8 +958,10 @@
     const token = getAccessToken();
     if (token) {
       tokenDisplay.value = token;
+      if (copyTokenBtn) copyTokenBtn.disabled = false;
     } else {
       tokenDisplay.value = '';
+      if (copyTokenBtn) copyTokenBtn.disabled = true;
     }
   }
 
@@ -968,47 +970,57 @@
     const isPassword = tokenDisplay.type === 'password';
     tokenDisplay.type = isPassword ? 'text' : 'password';
     showTokenBtn.textContent = isPassword ? 'Hide Token' : 'Show Token';
-    if (copyTokenBtn) {
-      copyTokenBtn.style.display = isPassword ? 'inline-block' : 'none';
-    }
     if (tokenSuccess) {
       tokenSuccess.classList.add('hidden');
     }
   }
 
   async function copyTokenToClipboard() {
-    if (!tokenDisplay) return;
-    const token = tokenDisplay.value;
+    const token = getAccessToken();
     if (!token) {
       alert('No token available');
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(token);
-      if (tokenSuccess) {
-        tokenSuccess.textContent = 'Token copied to clipboard!';
-        tokenSuccess.classList.remove('hidden');
-        setTimeout(function () {
-          if (tokenSuccess) tokenSuccess.classList.add('hidden');
-        }, 3000);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(token);
+      } else {
+        fallbackCopyText(token);
       }
+      showTokenCopySuccess();
     } catch (e) {
-      tokenDisplay.select();
-      tokenDisplay.setSelectionRange(0, 99999);
       try {
-        document.execCommand('copy');
-        if (tokenSuccess) {
-          tokenSuccess.textContent = 'Token copied to clipboard!';
-          tokenSuccess.classList.remove('hidden');
-          setTimeout(function () {
-            if (tokenSuccess) tokenSuccess.classList.add('hidden');
-          }, 3000);
-        }
+        fallbackCopyText(token);
+        showTokenCopySuccess();
       } catch (err) {
         alert('Failed to copy token. Please select and copy manually.');
       }
     }
+  }
+
+  function fallbackCopyText(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    if (!ok) throw new Error('execCommand copy failed');
+  }
+
+  function showTokenCopySuccess() {
+    if (!tokenSuccess) return;
+    tokenSuccess.textContent = 'Token copied to clipboard!';
+    tokenSuccess.classList.remove('hidden');
+    setTimeout(function () {
+      if (tokenSuccess) tokenSuccess.classList.add('hidden');
+    }, 3000);
   }
 
   if (document.readyState === 'loading') {

@@ -10,6 +10,7 @@ import { MagicLinkToken } from '../../src/auth/entities/magic-link-token.entity'
 import { Application } from '../../src/applications/entities/application.entity';
 import { Role } from '../../src/roles/entities/role.entity';
 import { UserRole } from '../../src/user-roles/entities/user-role.entity';
+import { LegacyIdentityMapping } from '../../src/users/entities/legacy-identity-mapping.entity';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { UserRole } from '../../src/user-roles/entities/user-role.entity';
       username: process.env.DB_USER || 'dbadmin',
       password: typeof process.env.DB_PASSWORD === 'string' ? process.env.DB_PASSWORD : '',
       database: process.env.DB_NAME || 'auth',
-      entities: [User, PasswordResetToken, MagicLinkToken, Application, Role, UserRole],
+      entities: [User, PasswordResetToken, MagicLinkToken, Application, Role, UserRole, LegacyIdentityMapping],
       synchronize: process.env.DB_SYNC === 'true',
       logging: process.env.NODE_ENV === 'development',
     }),
@@ -28,4 +29,3 @@ import { UserRole } from '../../src/user-roles/entities/user-role.entity';
   exports: [TypeOrmModule],
 })
 export class DatabaseModule {}
-
