@@ -1,5 +1,39 @@
 # Auth Orchestrator Status
 
+## 2026-06-12 - RBAC-REM-02 Consumer JWT Validation Standardization Completed
+
+Current focus:
+
+- Owner-selected remediation chunk: RBAC-REM-02 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- Runtime Auth code changes: none.
+- Consumer runtime code changes: none.
+- Deployment: not run.
+
+Decision evidence:
+
+- Default consumer pattern is `POST /auth/validate` for admin panels, browser-facing backends, lower-throughput APIs, and consumers that do not need JWT verification secret material.
+- High-throughput backend exception is an approved shared local verifier pattern, constrained to Auth-sourced verification material, expiry/signature validation, unsafe-algorithm rejection, full Auth role-string preservation, safe logging, and consumer-owned endpoint authorization.
+- Static service tokens and API keys remain separate from Auth user identity and are deferred to RBAC-REM-06.
+
+Implementation evidence:
+
+- Added `docs/CONSUMER_JWT_VALIDATION_STANDARD.md`.
+- Updated `docs/UNIFIED_AUTH_CONTRACT.md` with the consumer token validation standard.
+- Updated `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` with RBAC-REM-02 completion, consumer classification, and follow-up chunks.
+- Updated continuation and execution-plan state for RBAC-REM-02 completion.
+
+Validation evidence:
+
+- DocsRAG remained unavailable because `JWT_TOKEN` is absent in the remote shell; gate remains pass-with-exception with source-code and Auth contract evidence.
+- Missing-marker scan returned no matches for gate-critical docs.
+- Documentation secret-pattern scan returned no matches.
+- `git diff --check` passed for changed docs/state files.
+- No decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, or production user data were printed, decoded, or persisted.
+
+Next action:
+
+- Recommended next remediation chunk: RBAC-REM-03 Catalog frontend role-aware admin guard and stale comment cleanup.
+
 ## 2026-06-12 - RBAC-REM-02 Selected: Consumer JWT Validation Standardization
 
 Current focus:

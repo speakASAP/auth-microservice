@@ -22,10 +22,10 @@ AUTH ORCHESTRATOR: implement goal number 6
 
 ## Current Status
 
-- Active goal: RBAC-REM-02 Consumer JWT Validation Standardization
+- Active goal: none
 - Current wave: Wave 2 - Operational backlog
-- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review
-- Running goals: RBAC-REM-02 planning
+- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review, RBAC-REM-02 Consumer JWT Validation Standardization
+- Running goals: none
 - Blocked goals: none
 - Worker threads: none
 - Production status: `STATE.json` reports production health `ok`
@@ -100,6 +100,7 @@ Do not paste full worker logs into this file. Compress each worker result into n
 Append newest entries at the top.
 
 ```text
+2026-06-12: RBAC-REM-02 Consumer JWT Validation Standardization completed on `alfares`. Added `docs/CONSUMER_JWT_VALIDATION_STANDARD.md`; updated `docs/UNIFIED_AUTH_CONTRACT.md` and `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` to make `POST /auth/validate` the default consumer pattern and allow shared local verification only as a constrained backend exception. Validation: missing-marker scan returned no matches, documentation secret-pattern scan returned no matches, and git diff --check passed for changed docs/state files. No Auth runtime code, consumer runtime code, deployment, decoded secrets, JWTs, tokens, or production user data changed.
 2026-06-12: RBAC-REM-02 Consumer JWT Validation Standardization selected by owner on alfares. Updated execution plan and context package to standardize consumer JWT validation pattern (/auth/validate versus shared local verifier). DocsRAG unavailable because JWT_TOKEN is not set in the remote shell; planning gate passed with documented exception and existing Auth contract/RBAC audit evidence. Validation: missing-marker scan returned no matches, documentation secret-pattern scan returned no matches, and git diff --check passed for changed docs/state files. No Auth runtime code, consumer runtime code, deployment, decoded secrets, JWTs, tokens, or production user data changed.
 2026-06-12: RBAC-REM-01 Secret-Source Alignment Review completed on `alfares`. Reviewed direct JWT consumer secret-source metadata without printing or decoding secret values. Updated and committed `k8s/external-secret.yaml` in catalog (`fcb1919`), warehouse (`015cf4f`), suppliers (`c1e92d2`), orders (`e05c2c3`), and payments (`66bf990`) so `JWT_SECRET` sources from `secret/prod/auth-microservice`, matching notifications. Validation: live ExternalSecret metadata checked without values, Kubernetes Secret key names checked without decoding values, server-side dry run passed for all five manifests, diff-check passed, and consumer pre-commit hooks passed. No Auth runtime code, consumer runtime code, deployment, decoded secrets, JWTs, tokens, or production user data changed.
 2026-06-12: Goal 06 RBAC Consuming Services Audit completed on `alfares` in `/home/ssf/Documents/Github/auth-microservice`. Added `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` naming inspected consumers, Auth/RBAC validation patterns, compatibility risks, and owner-approvable remediation chunks. DocsRAG was unavailable because `JWT_TOKEN` was not set; gate passed with documented exception and remote source evidence. Validation: documentation report exists, missing-marker scan passed, secret-pattern scan passed cleanly, and `git diff --check` passed. No runtime code, consumer code, secrets, or production user data changed.
@@ -127,7 +128,7 @@ Next command:
 
 ## Open Decisions
 
-- RBAC-REM-02 is owner-selected and active: standardize the consumer JWT validation pattern (/auth/validate versus shared local verifier).
+- RBAC-REM-02 is complete. Next recommended remediation chunk: RBAC-REM-03 Catalog frontend role-aware admin guard and stale comment cleanup.
 - Production deployment remains explicit-owner-approval only.
 
 ## Next Action

@@ -2,7 +2,7 @@
 
 ## Backlog
 
-- Implement owner-selected RBAC-REM-02: standardize consumer JWT validation pattern (/auth/validate versus shared local verifier) (priority: 3)
+- Owner-select or implement next RBAC remediation chunk: RBAC-REM-03 Catalog frontend role-aware admin guard and stale comment cleanup (priority: 3)
 
 ## Completed
 
@@ -13,3 +13,4 @@
 - Added Auth observability and redaction safeguards for sensitive auth flows
 - Audited RBAC roles across consuming services
 - Completed `RBAC-REM-01` secret-source alignment review and manifest remediation for direct JWT consumers
+- Completed `RBAC-REM-02` consumer JWT validation standardization

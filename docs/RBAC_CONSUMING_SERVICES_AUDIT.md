@@ -92,12 +92,35 @@ Recommended remediation chunk: inspect logging admin backend/API authorization a
 ## Remediation Backlog
 
 1. `RBAC-REM-01`: Done 2026-06-12. Secret-source alignment for direct JWT consumers: catalog, warehouse, suppliers, orders, payments. Validated without printing or decoding secret values.
-2. `RBAC-REM-02`: Standardize consumer JWT validation pattern: `/auth/validate` versus shared local verifier.
+2. `RBAC-REM-02`: Done 2026-06-12. Standardized consumer JWT validation pattern: default to `POST /auth/validate`; allow shared local verifier only as a constrained backend exception.
 3. `RBAC-REM-03`: Catalog frontend role-aware admin guard and stale comment cleanup.
 4. `RBAC-REM-04`: SpeakASAP scoped-role normalization review.
 5. `RBAC-REM-05`: School Committee local-role contract note.
 6. `RBAC-REM-06`: Internal service-token/API-key bypass inventory and Auth boundary review.
 7. `RBAC-REM-07`: Logging admin role-enforcement verification.
+
+
+## RBAC-REM-02 Consumer JWT Validation Standardization
+
+Status: completed 2026-06-12.
+
+Decision: Auth consumers should default to `POST /auth/validate` for Auth-issued user access tokens. Direct local JWT verification remains allowed only as a high-throughput backend exception when it follows `docs/CONSUMER_JWT_VALIDATION_STANDARD.md`.
+
+Standardized classification:
+
+| Pattern | Consumers | Notes |
+| --- | --- | --- |
+| Default `POST /auth/validate` | `shop-assistant`, `runlayer`, `speakasap/api-gateway`, `school-committee`, `logging-microservice` web admin | Compatible pattern. Consumers keep authorization policy local after Auth identity validation. |
+| Shared local verifier exception | `catalog-microservice`, `warehouse-microservice`, `suppliers-microservice`, `orders-microservice`, `payments-microservice`, `notifications-microservice` | Allowed only with Auth-sourced verification secret material, expiry/signature enforcement, unsafe-algorithm rejection, and full Auth role-string preservation. |
+| Separate machine-auth review | `runlayer`, `notifications-microservice`, `payments-microservice`, `catalog-microservice` | Static service-token/API-key paths are not user RBAC and remain queued for `RBAC-REM-06`. |
+
+Implementation result:
+
+- Added `docs/CONSUMER_JWT_VALIDATION_STANDARD.md`.
+- Updated `docs/UNIFIED_AUTH_CONTRACT.md` with the consumer token validation standard.
+- No Auth runtime code, consumer runtime code, secrets, decoded tokens, production data, or deployments were changed.
+
+Follow-up chunks: `RBAC-REM-03`, `RBAC-REM-04`, `RBAC-REM-05`, `RBAC-REM-06`, and `RBAC-REM-07`.
 
 ## RBAC-REM-01 Secret-Source Alignment Review
 

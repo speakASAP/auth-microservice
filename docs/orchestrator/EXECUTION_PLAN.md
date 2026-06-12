@@ -2,11 +2,11 @@
 
 YAML metadata:
 - id: AUTH-EXECUTION-PLAN
-- status: active
+- status: done
 - owner: owner-selected
 - created: 2026-06-12
 - last_updated: 2026-06-12
-- completeness_level: planning
+- completeness_level: validated
 - upstream: docs/RBAC_CONSUMING_SERVICES_AUDIT.md, docs/orchestrator/CONTEXT_PACKAGE.md, docs/orchestrator/PROJECT_INVARIANTS.md
 - downstream: docs/orchestrator/STATUS.md
 
@@ -55,7 +55,7 @@ Forbidden evidence: decoded secret values, JWTs, refresh tokens, service tokens,
 
 ## Contract Validation Plan
 
-Contract impact: planning and documentation only until the standard is selected. No Auth API, JWT payload, RBAC role string, OAuth, magic-link, redirect, CORS, or internal-service contract change is approved by this selection alone.
+Contract impact: documentation-only standardization. No Auth API, JWT payload, RBAC role string, OAuth, magic-link, redirect, CORS, or internal-service behavior changed. The unified contract now documents that consumers should default to POST /auth/validate, with local verification allowed only as a constrained backend exception.
 
 Expected standardization output:
 
@@ -65,11 +65,14 @@ Expected standardization output:
 
 ## Scope
 
-Allowed Auth documentation files for this selection/planning chunk:
+Changed Auth documentation files for this implementation chunk:
 
 - docs/orchestrator/EXECUTION_PLAN.md
 - docs/orchestrator/CONTEXT_PACKAGE.md
 - docs/orchestrator/STATUS.md
+- docs/CONSUMER_JWT_VALIDATION_STANDARD.md
+- docs/RBAC_CONSUMING_SERVICES_AUDIT.md
+- docs/UNIFIED_AUTH_CONTRACT.md
 - docs/IMPLEMENTATION_STATE.md
 - TASKS.md
 - STATE.json
@@ -106,7 +109,7 @@ Potential future consumer implementation scope must be selected separately after
 - [x] Contract impact stated.
 - [x] Validation plan stated.
 - [x] Pre-coding gate documented as planning pass-with-exception because DocsRAG token is unavailable.
-- [ ] Standard consumer JWT validation decision documented.
-- [ ] Any approved consumer implementation chunks split and validated.
-- [ ] Verification evidence recorded.
-- [ ] Next remediation chunk named.
+- [x] Standard consumer JWT validation decision documented.
+- [x] Follow-up consumer implementation chunks split; no consumer runtime implementation approved in this chunk.
+- [x] Verification evidence recorded.
+- [x] Next remediation chunk named.

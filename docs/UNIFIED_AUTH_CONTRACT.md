@@ -103,6 +103,14 @@ Authorization: Bearer <accessToken>
 
 Services may enforce roles locally, but Auth remains the authority for role assignment and role claims.
 
+## Consumer Token Validation Standard
+
+Consumers validate Auth-issued access tokens through one of two approved patterns. The default pattern is a server-side call to `POST /auth/validate`, which verifies the token with Auth and returns the current Auth user plus Auth-owned roles.
+
+A backend service may use local JWT verification only as a high-throughput exception when it follows `docs/CONSUMER_JWT_VALIDATION_STANDARD.md`: verification material must come from the Auth secret source, expiry and signature validation must be enforced, unsafe algorithms must be rejected, and full Auth role strings must be preserved. Local verification does not make the consumer an Auth token issuer or RBAC role authority.
+
+Consumers must not mint Auth JWTs locally, validate user tokens with service-owned signing secrets, strip Auth role scopes as a generic rule, or treat static service tokens/API keys as user identity.
+
 ## OAuth Contract
 
 OAuth providers are initiated only through Auth:
