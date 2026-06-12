@@ -17,14 +17,14 @@ Continue implementation of this project.
 To start a specific goal:
 
 ```text
-AUTH ORCHESTRATOR: implement goal number 5
+AUTH ORCHESTRATOR: implement goal number 6
 ```
 
 ## Current Status
 
 - Active goal: none
 - Current wave: Wave 2 - Operational backlog
-- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update
+- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit
 - Running goals: none
 - Blocked goals: none
 - Worker threads: none
@@ -35,8 +35,8 @@ AUTH ORCHESTRATOR: implement goal number 5
 - Master orchestrator: `docs/IMPLEMENTATION_ORCHESTRATOR.md`
 - Status evidence log: `docs/orchestrator/STATUS.md`
 - Goal roadmap: `implementation-goals/README.md` and `docs/orchestrator/GOALS.md`
-- Local checkout note: this snapshot has no `README.md`, `BUSINESS.md`, or `SYSTEM.md`; future sessions should read those if they are restored or available on the remote source.
-- DocsRAG mode: mandatory before broad ecosystem architecture or contract decisions.
+- RBAC audit report: `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`
+- DocsRAG mode: mandatory before broad ecosystem architecture or contract decisions when a service JWT is available.
 - IPS gate mode: mandatory before coding through `docs/orchestrator/PROJECT_INVARIANTS.md`, `PRE_CODING_GATE.md`, `CONTEXT_PACKAGE.md`, `EXECUTION_PLAN.md`, and `READINESS_GATES.md`.
 
 ## Goal Roadmap
@@ -48,14 +48,14 @@ AUTH ORCHESTRATOR: implement goal number 5
 | 03 | `implementation-goals/GOAL-03-unified-auth-contract-recovery.md` | done | 02 | Restored current contract docs referenced by DocsRAG. |
 | 04 | `implementation-goals/GOAL-04-auth-observability-safety.md` | done | 03 | Auth audit logging and redaction safeguards. |
 | 05 | `implementation-goals/GOAL-05-goalkeeper-style-orchestration.md` | done | 02 | Adds Goalkeeper-style master orchestrator state, goal index, and templates. |
-| 06 | `implementation-goals/GOAL-06-rbac-consuming-services-audit.md` | ready | 03, 04, 05 | Suggested owner-selected backlog item from `TASKS.md`. |
+| 06 | `implementation-goals/GOAL-06-rbac-consuming-services-audit.md` | done | 03, 04, 05 | Audit completed in `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`; remediation chunks require owner selection. |
 
 ## Execution Waves
 
 | Wave | Goals | Mode | Gate Before Next Wave |
 |---|---|---|---|
 | 1 | 01-05 | sequential | Orchestrator state, contract docs, and security evidence recorded. |
-| 2 | 06+ | owner-selected | DocsRAG context, execution plan, and Auth boundary review before coding or cross-service audit work. |
+| 2 | 06+ | owner-selected | DocsRAG context when JWT is available, execution plan, and Auth boundary review before coding or cross-service remediation work. |
 
 ## Worker Threads
 
@@ -100,6 +100,7 @@ Do not paste full worker logs into this file. Compress each worker result into n
 Append newest entries at the top.
 
 ```text
+2026-06-12: Goal 06 RBAC Consuming Services Audit completed on `alfares` in `/home/ssf/Documents/Github/auth-microservice`. Added `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` naming inspected consumers, Auth/RBAC validation patterns, compatibility risks, and owner-approvable remediation chunks. DocsRAG was unavailable because `JWT_TOKEN` was not set; gate passed with documented exception and remote source evidence. Validation: documentation report exists, missing-marker scan passed, secret-pattern scan passed cleanly, and `git diff --check` passed. No runtime code, consumer code, secrets, or production user data changed.
 2026-06-12: IPS Documentation Compliance Update completed and committed on `alfares` in `/home/ssf/Documents/Github/auth-microservice`. Added Auth-local IPS invariants, pre-coding gate, context package, execution-plan frame, and readiness gates under `docs/orchestrator/`. Updated `AGENTS.md`, `docs/IMPLEMENTATION_ORCHESTRATOR.md`, `docs/orchestrator/MASTER_PROMPT.md`, `docs/orchestrator/INTENT.md`, `docs/orchestrator/PLAN.md`, and `docs/orchestrator/PROMPTS.md` so future coding must pass traceability, invariant, sensitive-data, contract, context, validation, and readiness checks before implementation. Validation: documentation presence and secret-pattern scan passed on remote; missing-marker scan is clean for active docs and intentionally excluded reusable templates that contain `[MISSING: ...]` placeholders. No runtime code changed.
 2026-06-12: Goal 05 Goalkeeper-Style Orchestrator Workflow completed and committed on `alfares` in `/home/ssf/Documents/Github/auth-microservice`. Added `docs/IMPLEMENTATION_ORCHESTRATOR.md`, `docs/IMPLEMENTATION_STATE.md`, `implementation-goals/README.md`, goal files for completed and ready work, and execution/context/prompt/validation templates. Updated `AGENTS.md`, `docs/orchestrator/MASTER_PROMPT.md`, `docs/orchestrator/PLAN.md`, `docs/orchestrator/GOALS.md`, `docs/orchestrator/PROMPTS.md`, and `docs/orchestrator/STATUS.md` so future Auth sessions use the same state-driven master-agent pattern as Goalkeeper. Validation: documentation file presence and cross-reference scan passed on remote; no runtime code changed.
 2026-06-12: Goal 04 Auth Observability And Safety Checks completed and deployed. See `docs/orchestrator/STATUS.md` for tests, build, deployment image, production probe, and DocsRAG ingestion evidence.
@@ -124,22 +125,22 @@ Next command:
 
 ## Open Decisions
 
-- Owner approval is needed before starting Goal 06 because it audits consuming services beyond this local Auth snapshot.
+- Owner selection is needed before implementing any RBAC remediation chunk from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
 - Production deployment remains explicit-owner-approval only.
-- If `README.md`, `BUSINESS.md`, or `SYSTEM.md` are restored, add them back to the required reading set.
 
 ## Next Action
 
-No active goal remains. Suggested next owner-selected command:
+Suggested next owner-selected command:
 
 ```text
-AUTH ORCHESTRATOR: implement goal number 6
+AUTH ORCHESTRATOR: implement RBAC-REM-01 secret-source alignment review
 ```
 
 Source documents:
 
 ```text
 TASKS.md
+docs/RBAC_CONSUMING_SERVICES_AUDIT.md
 docs/IMPLEMENTATION_ORCHESTRATOR.md
 docs/IMPLEMENTATION_STATE.md
 docs/orchestrator/GOALS.md

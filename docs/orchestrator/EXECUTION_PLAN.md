@@ -15,160 +15,112 @@ downstream:
   - docs/orchestrator/STATUS.md
 ```
 
-## Metadata
+## Selected Goal And Chunk
 
-This is the reusable Auth execution-plan frame. For each implementation chunk, update the selected goal, scope, contract impact, validation plan, and completion checklist before coding. Goal-specific execution plans may also be created from `implementation-goals/templates/EXECUTION_PLAN.md`.
+Goal 06 - RBAC Consuming Services Audit.
+
+Completed chunks:
+
+- 6.1 Query DocsRAG for RBAC and consuming-service contract context: attempted; blocked because `JWT_TOKEN` was not set on the remote shell.
+- 6.2 Identify consumers that validate Auth JWTs or roles: completed through remote source scans.
+- 6.3 Compare consumer expectations with `docs/UNIFIED_AUTH_CONTRACT.md`: completed in `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- 6.4 Record findings and split remediation into owner-approvable chunks: completed in the remediation backlog.
 
 ## Upstream Traceability
 
 - Original intent: `docs/orchestrator/INTENT.md`
 - Current state: `docs/IMPLEMENTATION_STATE.md`
-- Backlog and goal source: `TASKS.md`, `docs/orchestrator/GOALS.md`, `implementation-goals/README.md`
+- Backlog and goal source: `TASKS.md`, `docs/orchestrator/GOALS.md`, `implementation-goals/README.md`, `implementation-goals/GOAL-06-rbac-consuming-services-audit.md`
 - Contract source: `docs/UNIFIED_AUTH_CONTRACT.md`
-- Environment source: `docs/ENV_CORS_AND_AUTH_CHECK.md`
 - Verification source: `docs/UNIFIED_AUTH_VERIFICATION.md`
 
 ## Goal Impact
 
-Each chunk must state how it strengthens or preserves Auth as the identity and access-control authority. If a task does not affect Auth ownership, explain why it belongs in this repo before coding.
+This audit preserves Auth as the role-claim authority by checking whether consumers enforce Auth JWT roles compatibly, duplicate Auth-owned identity behavior, or rely on stale role assumptions.
 
 ## Project Invariants
 
-Evaluate all invariants from `docs/orchestrator/PROJECT_INVARIANTS.md`.
-
-Minimum required entries for every chunk:
-
-- `AUTH-INV-001`: Auth ownership preserved.
-- `AUTH-INV-002`: non-Auth domain ownership excluded.
-- `AUTH-INV-004`: sensitive data protected.
-- `AUTH-INV-006`: status evidence recorded.
-
-Add `AUTH-INV-003`, `AUTH-INV-005`, or `AUTH-INV-007` when contract, hosted-auth, or DocsRAG scope applies.
+- `AUTH-INV-001`: preserved. Auth remains identity, token, and RBAC role-claim authority.
+- `AUTH-INV-002`: preserved. Consumer domain authorization remains in consuming services.
+- `AUTH-INV-003`: reviewed. JWT/RBAC contract compatibility is the core audit subject.
+- `AUTH-INV-004`: preserved. No secrets, JWTs, service tokens, passwords, or raw production user data were recorded.
+- `AUTH-INV-005`: reviewed. Hosted Auth and `/auth/validate` usage were checked where visible.
+- `AUTH-INV-006`: preserved. Evidence is recorded in `docs/orchestrator/STATUS.md` and `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- `AUTH-INV-007`: pass-with-exception. DocsRAG could not be queried because no JWT token was available; remote source evidence was used instead.
 
 ## Sensitive-Data Handling
 
-Classification must be one of:
+Classification: `masked`.
 
-- `none`: no data-bearing examples or runtime output.
-- `synthetic`: fake values only.
-- `masked`: production-shaped values are masked before capture.
-- `sensitive`: sensitive values are involved and must not be printed, persisted, or copied into docs.
-
-Auth tasks involving passwords, JWTs, refresh tokens, OAuth tokens, magic-link tokens, password-reset tokens, internal-service tokens, client secrets, or raw production user records are sensitive by default.
+The audit references environment key names, Vault paths, role strings, file paths, and placeholder examples only. It does not include decoded secret values, real JWTs, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, or raw production user records.
 
 ## Contract Validation Plan
 
-State whether the chunk changes or validates:
+Contract impact: no Auth contract change.
 
-- API endpoint paths or response shapes.
-- JWT claims, expiry, issuer, signing, or refresh behavior.
-- RBAC roles or role claim mapping.
-- OAuth provider behavior.
-- Magic-link request or verify behavior.
-- Redirect allowlist behavior.
-- CORS behavior.
-- Internal service headers or trusted service names.
-- Registered-user preferences and consent APIs.
+Validated subjects:
 
-If none apply, state `No Auth contract change`.
-
-## Replay/Determinism Plan
-
-Auth tasks usually require idempotent validation rather than replay. State how repeated validation avoids creating duplicate users, tokens, or notifications. Use synthetic accounts and avoid direct production table writes.
+- JWT payload role claim shape from `docs/UNIFIED_AUTH_CONTRACT.md` and `src/roles/roles.service.ts`.
+- Consumer role checks against `global:*`, `app:*:*`, `internal:*:*`, and app-local roles.
+- Direct JWT verification versus `/auth/validate` usage.
+- Internal service-token/API-key bypasses as separate consumer-owned service-auth paths.
 
 ## Scope
 
-Define exact files and behavior included in the chunk. Keep scope to one goal chunk unless the owner explicitly expands it.
+Included files:
+
+- `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/IMPLEMENTATION_STATE.md`
+- `docs/orchestrator/GOALS.md`
+- `docs/orchestrator/PLAN.md`
+- `implementation-goals/README.md`
+- `implementation-goals/GOAL-06-rbac-consuming-services-audit.md`
+- `TASKS.md`
+- `STATE.json`
+
+Inspected remote consumer repositories without modification:
+
+- `catalog-microservice`
+- `warehouse-microservice`
+- `suppliers-microservice`
+- `orders-microservice`
+- `payments-microservice`
+- `notifications-microservice`
+- `shop-assistant`
+- `runlayer`
+- `speakasap`
+- `school-committee`
+- `logging-microservice`
+- `marketing-microservice`
+- `leads-microservice`
 
 ## Non-Goals
 
-Always exclude:
-
-- Moving catalog, warehouse, orders, payment, leads, marketing, notification sending, log storage, database infrastructure, or gateway ownership into Auth.
-- Printing or persisting decoded secrets.
-- Direct production user-table writes.
-- Unplanned JWT/RBAC/API breaking changes.
-
-## Files to Inspect
-
-Start with the context package. Add source files only when relevant, for example:
-
-- `src/auth/auth.service.ts`
-- `src/auth/admin-users.controller.ts`
-- `src/admin/admin-roles.controller.ts`
-- `src/roles/roles.service.ts`
-- `src/users/users.service.ts`
-- `web/public/admin.html`
-- `web/public/js/admin.js`
-
-## Files to Create
-
-Name expected new files before coding. Documentation-only IPS additions belong under `docs/orchestrator/`, `docs/IMPLEMENTATION_STATE.md`, `docs/IMPLEMENTATION_ORCHESTRATOR.md`, `TASKS.md`, `AGENTS.md`, or `implementation-goals/` unless the owner asks for a full company IPS tree.
-
-## Files to Modify
-
-Name exact files allowed for the selected chunk before coding.
-
-## Files That Must Not Be Modified
-
-Unless owner-approved for the selected task, do not modify:
-
-- Secret files or decoded K8s/Vault output.
-- Unrelated service domains.
-- Historical supersession docs under `docs/agents/` except to correct broken links.
-- Contract docs without a matching contract validation plan.
-
-## Implementation Steps
-
-1. Read the context package and selected goal.
-2. Restate intent and affected Auth boundary.
-3. Fill scope, non-goals, invariant impact, sensitive-data classification, contract impact, and validation plan.
-4. Run the pre-coding gate.
-5. Implement the smallest complete chunk.
-6. Run validation and readiness checks.
-7. Append evidence and next chunk to `docs/orchestrator/STATUS.md`.
-8. Update `docs/IMPLEMENTATION_STATE.md`.
-
-## Test Plan
-
-Use the narrowest sufficient tests. Examples:
-
-- Documentation checks for documentation-only changes.
-- `node --check web/public/js/admin.js` for admin JS changes.
-- `npm test -- --runTestsByPath <file>` for focused backend checks.
-- `npm run build` for TypeScript/backend changes.
-- Production reachability or smoke checks only when deployment is requested.
+- No consumer-service code changes.
+- No Auth runtime code changes.
+- No JWT claim-shape changes.
+- No production deployment.
+- No secret decoding or production user-table reads/writes.
 
 ## Validation Plan
 
-Validation evidence must include command, result, and relevant output summary. Do not paste secrets, tokens, passwords, or raw user data.
-
-## Gate Commands
-
-Use `docs/orchestrator/PRE_CODING_GATE.md` before coding and `docs/orchestrator/READINESS_GATES.md` before deployment or closure.
-
-## Documentation Updates
-
-Update `docs/orchestrator/STATUS.md` after every completed chunk. Update `docs/IMPLEMENTATION_STATE.md` before ending the session. Update contract docs only when the selected chunk changes or clarifies the Auth contract.
-
-## Rollback Plan
-
-For documentation-only changes, revert the changed docs. For code changes, prefer a normal Git revert or targeted patch that restores previous behavior while preserving unrelated user changes.
-
-## Agent Handoff Prompt
-
-Read the Auth orchestrator pack and contract docs. Select the active state goal, earliest active or pending goal, or owner-selected goal. Refresh the execution plan, run the pre-coding gate, implement the smallest complete chunk, validate it, and record evidence in `docs/orchestrator/STATUS.md` plus `docs/IMPLEMENTATION_STATE.md`.
+- Documentation presence check for the audit report.
+- Missing-marker scan over gate-critical docs.
+- Secret-pattern scan over docs and task files.
+- Review `git diff --check`.
 
 ## Completion Checklist
 
-- [ ] Selected goal and chunk named.
-- [ ] Intent and boundary impact stated.
-- [ ] Context package reviewed.
-- [ ] Invariants evaluated.
-- [ ] Sensitive-data classification stated.
-- [ ] Contract impact stated.
-- [ ] Validation plan stated.
-- [ ] Pre-coding gate passed or exception recorded.
-- [ ] Implementation complete.
-- [ ] Verification evidence recorded.
-- [ ] Next unfinished chunk named.
+- [x] Selected goal and chunk named.
+- [x] Intent and boundary impact stated.
+- [x] Context package reviewed.
+- [x] Invariants evaluated.
+- [x] Sensitive-data classification stated.
+- [x] Contract impact stated.
+- [x] Validation plan stated.
+- [x] Pre-coding gate passed with DocsRAG exception recorded.
+- [x] Audit report complete.
+- [x] Verification evidence recorded.
+- [x] Next owner-selectable remediation chunks named.

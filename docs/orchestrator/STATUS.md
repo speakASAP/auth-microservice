@@ -1,5 +1,51 @@
 # Auth Orchestrator Status
 
+## 2026-06-12 - Goal 06 RBAC Consuming Services Audit
+
+Current focus:
+
+- Owner-selected next task: Goal 06, RBAC audit across consuming services.
+- Runtime code changes: none.
+- Consumer service changes: none.
+
+Gate evidence:
+
+- Required Auth orchestrator, contract, environment, verification, README, BUSINESS, SYSTEM, and goal docs were read from the remote Auth source of truth.
+- DocsRAG query was attempted against `docs-rag-microservice.statex-apps.svc.cluster.local:3397`, but the remote shell did not have `JWT_TOKEN` set. Gate decision: pass-with-exception for `AUTH-INV-007`; compensating evidence came from remote source scans only.
+- Sensitive-data classification: masked. No decoded secrets, JWTs, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, or raw production user records were printed or recorded.
+
+Implementation evidence:
+
+- Added `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` with inspected consumer list, Auth contract baseline, compatibility findings, and owner-approvable remediation backlog.
+- Updated Goal 06 status in `docs/orchestrator/GOALS.md`, `implementation-goals/GOAL-06-rbac-consuming-services-audit.md`, `implementation-goals/README.md`, `TASKS.md`, `docs/orchestrator/PLAN.md`, `docs/orchestrator/EXECUTION_PLAN.md`, and `docs/IMPLEMENTATION_STATE.md`.
+- Updated `STATE.json` milestone and next focus.
+
+Source evidence summary:
+
+- Direct JWT role guards inspected in catalog, warehouse, suppliers, orders, payments, and notifications.
+- `/auth/validate` consumers inspected in shop-assistant, runlayer, speakasap, school-committee, and logging web admin.
+- K8s ExternalSecret/ConfigMap references inspected for catalog, warehouse, suppliers, orders, payments, and notifications.
+- App-local role systems identified in school-committee and SpeakASAP.
+
+Findings summary:
+
+- Direct JWT consumers generally match Auth role-string shape, but catalog, warehouse, suppliers, orders, and payments source `JWT_SECRET` from service-specific Vault paths instead of the Auth Vault path in their K8s ExternalSecret files; notifications shows the aligned pattern.
+- Catalog frontend AdminGuard contains stale text saying Auth does not support roles and only gates by authentication client-side.
+- SpeakASAP scope-stripping role normalization can collapse Auth role scopes into unscoped names.
+- School Committee uses Auth for identity validation and local DB roles for school authorization; this should remain documented as app-local authorization.
+- Runlayer, notifications, payments, and catalog have machine-auth bypass paths that need separate service-auth review.
+- Logging web admin Auth validation was found, but role enforcement was not proven in inspected web files.
+
+Validation evidence:
+
+- Documentation report created without runtime deployment.
+- Final documentation presence, missing-marker scan, secret-pattern scan, and `git diff --check` were run after edits; see latest session command output.
+
+Next action:
+
+- Owner should select one remediation chunk from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`, starting with `RBAC-REM-01` secret-source alignment review for direct JWT consumers.
+
+
 ## 2026-06-12 - IPS Documentation Compliance Update
 
 Current focus:

@@ -21,14 +21,14 @@ AUTH ORCHESTRATOR: implement goal number 6
 3. `GOAL-03-unified-auth-contract-recovery.md` - restored current Auth contract docs.
 4. `GOAL-04-auth-observability-safety.md` - auth-flow observability and redaction safeguards.
 5. `GOAL-05-goalkeeper-style-orchestration.md` - Goalkeeper-style master orchestrator state, templates, and continuation workflow.
-6. `GOAL-06-rbac-consuming-services-audit.md` - ready backlog item for RBAC role audit across consuming services.
+6. `GOAL-06-rbac-consuming-services-audit.md` - completed RBAC role audit across consuming services.
 
 ## Execution Order
 
 Safe default:
 
 ```text
-01 -> 02 -> 03 -> 04 -> 05 -> owner-selected 06
+01 -> 02 -> 03 -> 04 -> 05 -> owner-selected 06 (done)
 ```
 
 Goal 06 touches ecosystem consumers and should start only when the owner confirms scope or requests it explicitly.

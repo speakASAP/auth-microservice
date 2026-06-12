@@ -98,7 +98,7 @@ Acceptance criteria:
 
 ## Goal 6 - RBAC Consuming Services Audit
 
-Status: pending
+Status: done
 
 Intent: Auth role authority and consumer RBAC enforcement must be audited across consuming services without duplicating identity ownership or breaking JWT/RBAC contracts.
 

@@ -2,7 +2,7 @@
 
 ```yaml
 id: GOAL-06
-status: ready
+status: done
 owner: owner-selected
 depends_on:
   - GOAL-03

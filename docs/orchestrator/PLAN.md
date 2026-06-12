@@ -60,8 +60,8 @@ No active goal.
 
 Current chunk:
 
-- Goal 5 - Goalkeeper-Style Orchestrator Workflow: done.
-- Next ready goal: Goal 6 - RBAC Consuming Services Audit, pending owner selection.
+- Goal 6 - RBAC Consuming Services Audit: done.
+- Next ready goal: owner selection for RBAC remediation chunks from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
 
 ## Verification Commands
 

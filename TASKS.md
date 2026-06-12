@@ -2,7 +2,7 @@
 
 ## Backlog
 
-- Audit RBAC roles across all consuming services (priority: 3)
+- Owner-select RBAC remediation chunk from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` (priority: 3)
 
 ## Completed
 
@@ -11,3 +11,4 @@
 - Deployed Auth frontend/backend and verified DocsRAG ingestion for the orchestrator pack
 - Recovered and reconciled historical unified Auth contract docs referenced by DocsRAG
 - Added Auth observability and redaction safeguards for sensitive auth flows
+- Audited RBAC roles across consuming services
