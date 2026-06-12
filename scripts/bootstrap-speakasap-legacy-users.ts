@@ -40,7 +40,8 @@ type ApplyResult = {
   usersCreated: number;
   existingUsersMapped: number;
   mappingsUpserted: number;
-  skippedDuplicateEmail: number;
+  duplicateEmailUsersCreated: number;
+  legacyPasswordHashesStored: number;
   skippedBlankEmail: number;
 };
 
@@ -52,7 +53,7 @@ function parseArgs(argv: string[]): Args {
     jsonReport: '',
     rollbackPlan: '',
     limit: 25,
-    passwordPolicy: 'reset-only',
+    passwordPolicy: 'legacy-pbkdf2-upgrade',
     approvalNote: '',
   };
 
@@ -97,7 +98,7 @@ Environment:
   AUTH_DATABASE_URL or DATABASE_URL or DB_*             auth-microservice Postgres
 
 Policy:
-  --password-policy reset-only                          only supported policy
+  --password-policy legacy-pbkdf2-upgrade              store legacy Django hashes in mapping table and upgrade on first login
 
 Safety:
   apply requires --confirm-write and --approval-note.`);
@@ -221,10 +222,20 @@ async function ensureMappingSchema(auth: any): Promise<void> {
       "normalizedEmail" varchar NULL,
       status varchar(80) NOT NULL,
       reason text NULL,
+      "legacyPasswordHash" text NULL,
+      "legacyPasswordMigratedAt" timestamp NULL,
       "sourceSnapshot" jsonb NULL,
       "createdAt" timestamp NOT NULL DEFAULT now(),
       "updatedAt" timestamp NOT NULL DEFAULT now()
     )
+  `);
+  await auth.query(`
+    ALTER TABLE legacy_identity_mappings
+    ADD COLUMN IF NOT EXISTS "legacyPasswordHash" text NULL
+  `);
+  await auth.query(`
+    ALTER TABLE legacy_identity_mappings
+    ADD COLUMN IF NOT EXISTS "legacyPasswordMigratedAt" timestamp NULL
   `);
   await auth.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS legacy_identity_mappings_legacy_system_user_id_key
@@ -248,6 +259,7 @@ async function upsertMapping(
     normalizedEmailValue: string | null;
     status: string;
     reason: string | null;
+    legacyPasswordHash: string | null;
     snapshot: Record<string, unknown>;
   },
 ): Promise<void> {
@@ -255,13 +267,15 @@ async function upsertMapping(
     `
       INSERT INTO legacy_identity_mappings (
         id, "legacySystem", "legacyUserId", "authUserId", "normalizedEmail",
-        status, reason, "sourceSnapshot", "createdAt", "updatedAt"
-      ) VALUES ($1, 'speakasap-portal', $2, $3::uuid, $4, $5, $6, $7::jsonb, now(), now())
+        status, reason, "legacyPasswordHash", "legacyPasswordMigratedAt", "sourceSnapshot", "createdAt", "updatedAt"
+      ) VALUES ($1, 'speakasap-portal', $2, $3::uuid, $4, $5, $6, $7, NULL, $8::jsonb, now(), now())
       ON CONFLICT ("legacySystem", "legacyUserId") DO UPDATE SET
         "authUserId" = EXCLUDED."authUserId",
         "normalizedEmail" = EXCLUDED."normalizedEmail",
         status = EXCLUDED.status,
         reason = EXCLUDED.reason,
+        "legacyPasswordHash" = EXCLUDED."legacyPasswordHash",
+        "legacyPasswordMigratedAt" = EXCLUDED."legacyPasswordMigratedAt",
         "sourceSnapshot" = EXCLUDED."sourceSnapshot",
         "updatedAt" = now()
     `,
@@ -272,6 +286,7 @@ async function upsertMapping(
       values.normalizedEmailValue,
       values.status,
       values.reason,
+      values.legacyPasswordHash,
       JSON.stringify(values.snapshot),
     ],
   );
@@ -284,7 +299,8 @@ async function applyBootstrap(legacy: any, auth: any): Promise<ApplyResult> {
     usersCreated: 0,
     existingUsersMapped: 0,
     mappingsUpserted: 0,
-    skippedDuplicateEmail: 0,
+    duplicateEmailUsersCreated: 0,
+    legacyPasswordHashesStored: 0,
     skippedBlankEmail: 0,
   };
 
@@ -296,7 +312,7 @@ async function applyBootstrap(legacy: any, auth: any): Promise<ApplyResult> {
       `
         SELECT
           id, email, first_name, last_name, phone, language, country,
-          is_active, is_staff, is_superuser, last_login
+          password, is_active, is_staff, is_superuser, last_login
         FROM auth_user
         ORDER BY id
       `,
@@ -314,29 +330,21 @@ async function applyBootstrap(legacy: any, auth: any): Promise<ApplyResult> {
           normalizedEmailValue: null,
           status: 'skipped_blank_email',
           reason: 'Legacy auth_user row has no email.',
+          legacyPasswordHash: row.password || null,
           snapshot,
         });
+        if (row.password) {
+          result.legacyPasswordHashesStored += 1;
+        }
         result.skippedBlankEmail += 1;
         result.mappingsUpserted += 1;
         continue;
       }
 
-      if (duplicateEmails.has(email)) {
-        await upsertMapping(auth, {
-          legacyUserId,
-          authUserId: null,
-          normalizedEmailValue: email,
-          status: 'skipped_duplicate_email',
-          reason: 'Duplicate legacy email requires owner-reviewed merge/canonical policy.',
-          snapshot,
-        });
-        result.skippedDuplicateEmail += 1;
-        result.mappingsUpserted += 1;
-        continue;
-      }
-
-      let authUserId = emailIndex.get(email) || '';
+      const isDuplicateEmail = duplicateEmails.has(email);
+      let authUserId = isDuplicateEmail ? '' : emailIndex.get(email) || '';
       let status = 'mapped';
+      let reason = 'Mapped to existing auth user by normalized email.';
       if (authUserId) {
         result.existingUsersMapped += 1;
       } else {
@@ -350,7 +358,7 @@ async function applyBootstrap(legacy: any, auth: any): Promise<ApplyResult> {
           `,
           [
             authUserId,
-            email,
+            isDuplicateEmail ? null : email,
             row.first_name || null,
             row.last_name || null,
             row.phone || null,
@@ -358,8 +366,15 @@ async function applyBootstrap(legacy: any, auth: any): Promise<ApplyResult> {
             userTypeFor(row),
           ],
         );
-        emailIndex.set(email, authUserId);
-        status = 'created';
+        if (isDuplicateEmail) {
+          status = 'created_duplicate_email';
+          reason = 'Created with null primary email because the legacy email is shared by multiple legacy users; login resolves through legacy identity mapping.';
+          result.duplicateEmailUsersCreated += 1;
+        } else {
+          emailIndex.set(email, authUserId);
+          status = 'created';
+          reason = 'Created by SpeakASAP legacy bootstrap with Django PBKDF2 password-continuity policy.';
+        }
         result.usersCreated += 1;
       }
 
@@ -368,9 +383,13 @@ async function applyBootstrap(legacy: any, auth: any): Promise<ApplyResult> {
         authUserId,
         normalizedEmailValue: email,
         status,
-        reason: status === 'created' ? 'Created by SpeakASAP legacy bootstrap with password reset policy.' : 'Mapped to existing auth user by normalized email.',
+        reason,
+        legacyPasswordHash: row.password || null,
         snapshot,
       });
+      if (row.password) {
+        result.legacyPasswordHashesStored += 1;
+      }
       result.mappingsUpserted += 1;
     }
 
@@ -391,7 +410,7 @@ BEGIN;
 DELETE FROM users u
 USING legacy_identity_mappings m
 WHERE m."legacySystem" = 'speakasap-portal'
-  AND m.status = 'created'
+  AND m.status IN ('created', 'created_duplicate_email')
   AND m."authUserId" = u.id
   AND u.source = 'speakasap-portal';
 
@@ -545,7 +564,7 @@ async function buildReport(
         HAVING COUNT(*) > 1
       )
       SELECT
-        COUNT(*) FILTER (WHERE n.email = ANY($1))::int AS existing_target_email_matches,
+        COUNT(*) FILTER (WHERE d.email IS NULL AND n.email = ANY($1))::int AS existing_target_email_matches,
         COUNT(*) FILTER (WHERE d.email IS NULL AND NOT (n.email = ANY($1)))::int AS create_candidates,
         COUNT(*) FILTER (WHERE d.email IS NOT NULL)::int AS duplicate_email_candidates,
         (SELECT COUNT(*)::int FROM auth_user WHERE email IS NULL OR length(trim(email)) = 0) AS blank_email_skips
@@ -563,6 +582,13 @@ async function buildReport(
       WHERE email IS NOT NULL
         AND length(trim(email)) > 0
         AND lower(trim(email)) = ANY($1)
+        AND lower(trim(email)) NOT IN (
+          SELECT lower(trim(email))
+          FROM auth_user
+          WHERE email IS NOT NULL AND length(trim(email)) > 0
+          GROUP BY lower(trim(email))
+          HAVING COUNT(*) > 1
+        )
       ORDER BY id
       LIMIT $2
     `,
@@ -655,7 +681,8 @@ async function buildReport(
       createCandidates: toNumber(decisionCounts.create_candidates),
       duplicateEmailCandidates: toNumber(decisionCounts.duplicate_email_candidates),
       blankEmailSkips: toNumber(decisionCounts.blank_email_skips),
-      plannedUserWrites: toNumber(decisionCounts.create_candidates),
+      plannedUserWrites: toNumber(decisionCounts.create_candidates) + toNumber(decisionCounts.duplicate_email_candidates),
+      plannedDuplicateEmailUserWrites: toNumber(decisionCounts.duplicate_email_candidates),
       plannedMappingWrites: (
         toNumber(decisionCounts.existing_target_email_matches)
         + toNumber(decisionCounts.create_candidates)
@@ -666,7 +693,8 @@ async function buildReport(
         usersCreated: 0,
         existingUsersMapped: 0,
         mappingsUpserted: 0,
-        skippedDuplicateEmail: 0,
+        duplicateEmailUsersCreated: 0,
+        legacyPasswordHashesStored: 0,
         skippedBlankEmail: 0,
       },
       samples: {
@@ -677,10 +705,10 @@ async function buildReport(
     },
     notes: [
       args.apply
-        ? 'Apply mode executed in one transaction with reset-only password policy.'
+        ? 'Apply mode executed in one transaction with Django PBKDF2 password-continuity policy.'
         : 'Read-only report; no auth users or mapping rows were written.',
       'Password hashes are classified by family only and are never printed.',
-      'Duplicate-email rows are mapped as skipped_duplicate_email until owner-approved merge/canonical policy exists.',
+      'Duplicate legacy-email rows are created with null primary email and resolved through legacy_identity_mappings during first login.',
     ],
   };
 }
@@ -711,8 +739,8 @@ async function main(): Promise<number> {
     console.error('--apply requires --approval-note with the owner approval reference.');
     return 2;
   }
-  if (args.passwordPolicy !== 'reset-only') {
-    console.error('Only --password-policy reset-only is supported in this version.');
+  if (args.passwordPolicy !== 'legacy-pbkdf2-upgrade') {
+    console.error('Only --password-policy legacy-pbkdf2-upgrade is supported in this version.');
     return 2;
   }
 

@@ -22,6 +22,7 @@ import { User } from './user.entity';
 export enum LegacyIdentityMappingStatus {
   MAPPED = 'mapped',
   CREATED = 'created',
+  CREATED_DUPLICATE_EMAIL = 'created_duplicate_email',
   SKIPPED_DUPLICATE_EMAIL = 'skipped_duplicate_email',
   SKIPPED_BLANK_EMAIL = 'skipped_blank_email',
   SKIPPED_CONFLICT = 'skipped_conflict',
@@ -57,6 +58,12 @@ export class LegacyIdentityMapping {
 
   @Column({ type: 'text', nullable: true })
   reason: string | null;
+
+  @Column({ type: 'text', nullable: true, select: false })
+  legacyPasswordHash: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  legacyPasswordMigratedAt: Date | null;
 
   @Column({ type: 'jsonb', nullable: true })
   sourceSnapshot: Record<string, unknown> | null;

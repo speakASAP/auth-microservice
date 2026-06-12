@@ -31,6 +31,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { MagicLinkToken } from './entities/magic-link-token.entity';
+import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping.entity';
 import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
 import { UpdateUserMarketingPreferencesDto } from './dto/update-user-marketing-preferences.dto';
@@ -59,6 +60,8 @@ export class AuthService {
     private readonly passwordResetTokenRepository: Repository<PasswordResetToken>,
     @InjectRepository(MagicLinkToken)
     private readonly magicLinkTokenRepository: Repository<MagicLinkToken>,
+    @InjectRepository(LegacyIdentityMapping)
+    private readonly legacyIdentityMappingRepository: Repository<LegacyIdentityMapping>,
   ) {
     this.notificationsServiceUrl = process.env.NOTIFICATION_SERVICE_URL || '';
     if (!this.notificationsServiceUrl) {
@@ -116,32 +119,37 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     try {
-      const user = await this.usersService.findByEmail(loginDto.email);
-      if (!user) {
-        this.logger.warn(`Login attempt with non-existent email: ${loginDto.email}`, 'AuthService');
-        throw new UnauthorizedException('Invalid credentials');
-      }
-      if (!user.password) {
-        this.logger.warn(`Login attempt for user without password (contact-based): ${loginDto.email}`, 'AuthService');
-        throw new UnauthorizedException('Invalid credentials');
-      }
-      if (!/^\$2[aby]\$\d{2}\$.+/.test(user.password)) {
-        this.logger.warn(`Login attempt for user with invalid password hash format: ${loginDto.email}`, 'AuthService');
-        throw new UnauthorizedException('Invalid credentials');
+      let user = await this.usersService.findByEmail(loginDto.email);
+      let authenticatedVia = 'password';
+
+      if (user) {
+        const isBcryptPassword = Boolean(user.password && /^\$2[aby]\$\d{2}\$.+/.test(user.password));
+        if (isBcryptPassword) {
+          try {
+            const isPasswordValid = await bcryptjs.compare(loginDto.password, user.password);
+            if (!isPasswordValid) {
+              user = await this.tryLegacyPasswordLogin(loginDto.email, loginDto.password);
+              authenticatedVia = 'legacy_password';
+            }
+          } catch (err) {
+            this.logger.warn(
+              `Password check failed for ${loginDto.email}: ${(err as Error).message}`,
+              'AuthService',
+            );
+            user = await this.tryLegacyPasswordLogin(loginDto.email, loginDto.password);
+            authenticatedVia = 'legacy_password';
+          }
+        } else {
+          user = await this.tryLegacyPasswordLogin(loginDto.email, loginDto.password);
+          authenticatedVia = 'legacy_password';
+        }
+      } else {
+        user = await this.tryLegacyPasswordLogin(loginDto.email, loginDto.password);
+        authenticatedVia = 'legacy_password';
       }
 
-      let isPasswordValid = false;
-      try {
-        isPasswordValid = await bcryptjs.compare(loginDto.password, user.password);
-      } catch (err) {
-        this.logger.warn(
-          `Password check failed for ${loginDto.email}: ${(err as Error).message}`,
-          'AuthService',
-        );
-        throw new UnauthorizedException('Invalid credentials');
-      }
-      if (!isPasswordValid) {
-        this.logger.warn(`Login attempt with invalid password for: ${loginDto.email}`, 'AuthService');
+      if (!user) {
+        this.logger.warn(`Login attempt with invalid credentials: ${loginDto.email}`, 'AuthService');
         throw new UnauthorizedException('Invalid credentials');
       }
 
@@ -150,7 +158,7 @@ export class AuthService {
         throw new UnauthorizedException('User account is inactive');
       }
 
-      const tokens = await this.generateTokens(user.id, 'password');
+      const tokens = await this.generateTokens(user.id, authenticatedVia);
       this.logger.log(`User logged in successfully: ${user.email}`, 'AuthService');
       return {
         user: this.sanitizeUser(user),
@@ -228,6 +236,69 @@ export class AuthService {
       return null;
     }
     return user;
+  }
+
+  private async tryLegacyPasswordLogin(email: string, password: string): Promise<User | null> {
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    if (!normalizedEmail || !password) {
+      return null;
+    }
+
+    const mappings = await this.legacyIdentityMappingRepository
+      .createQueryBuilder('mapping')
+      .addSelect('mapping.legacyPasswordHash')
+      .where('mapping.legacySystem = :legacySystem', { legacySystem: 'speakasap-portal' })
+      .andWhere('mapping.normalizedEmail = :normalizedEmail', { normalizedEmail })
+      .andWhere('mapping.authUserId IS NOT NULL')
+      .orderBy('mapping.legacyUserId', 'ASC')
+      .getMany();
+
+    for (const mapping of mappings) {
+      const user = await this.usersService.findById(mapping.authUserId);
+      if (!user || !user.isActive) {
+        continue;
+      }
+
+      if (user.password && /^\$2[aby]\$\d{2}\$.+/.test(user.password)) {
+        try {
+          if (await bcryptjs.compare(password, user.password)) {
+            return user;
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      if (mapping.legacyPasswordHash && this.verifyDjangoPassword(password, mapping.legacyPasswordHash)) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await this.usersService.updatePassword(user.id, hashedPassword);
+        await this.legacyIdentityMappingRepository.update(mapping.id, {
+          legacyPasswordHash: null,
+          legacyPasswordMigratedAt: new Date(),
+        });
+        return this.usersService.findById(user.id);
+      }
+    }
+
+    return null;
+  }
+
+  private verifyDjangoPassword(password: string, encoded: string): boolean {
+    if (!encoded || encoded.startsWith('!')) {
+      return false;
+    }
+    const parts = encoded.split('$');
+    if (parts.length !== 4 || parts[0] !== 'pbkdf2_sha256') {
+      return false;
+    }
+    const iterations = Number(parts[1]);
+    const salt = parts[2];
+    const expected = Buffer.from(parts[3], 'base64');
+    if (!Number.isFinite(iterations) || iterations <= 0 || !salt || expected.length === 0) {
+      return false;
+    }
+    const actual = crypto.pbkdf2Sync(password, salt, iterations, expected.length, 'sha256');
+    return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
   }
 
   private async generateTokens(userId: string, authMethod: string) {
@@ -1074,4 +1145,3 @@ export class AuthService {
     return !!user;
   }
 }
-

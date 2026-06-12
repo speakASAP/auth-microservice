@@ -18,6 +18,7 @@ import { RolesModule } from '../roles/roles.module';
 import { LoggerModule } from '../../shared/logger/logger.module';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { MagicLinkToken } from './entities/magic-link-token.entity';
+import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping.entity';
 
 @Module({
   imports: [
@@ -26,7 +27,7 @@ import { MagicLinkToken } from './entities/magic-link-token.entity';
     LoggerModule,
     PassportModule,
     HttpModule,
-    TypeOrmModule.forFeature([PasswordResetToken, MagicLinkToken]),
+    TypeOrmModule.forFeature([PasswordResetToken, MagicLinkToken, LegacyIdentityMapping]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default-secret',
       signOptions: {
@@ -39,4 +40,3 @@ import { MagicLinkToken } from './entities/magic-link-token.entity';
   exports: [AuthService, RolesGuard, JwtModule],
 })
 export class AuthModule {}
-
