@@ -42,15 +42,15 @@ Acceptance criteria:
 
 ## Goal 3 - Unified Auth Contract Recovery
 
-Status: pending
+Status: done
 
 Intent: Auth contract docs indexed in DocsRAG must be restored or reconciled with the live repo.
 
 Chunks:
 
-- Locate historical `docs/UNIFIED_AUTH_CONTRACT.md`, `docs/ENV_CORS_AND_AUTH_CHECK.md`, and `docs/agents/*` from DocsRAG snapshot or git history.
-- Restore current contract docs if they are still authoritative, or document what replaced them.
-- Verify login, refresh, validate, OAuth, magic-link, redirect, CORS, and RBAC contract sections.
+- [x] Locate historical `docs/UNIFIED_AUTH_CONTRACT.md`, `docs/ENV_CORS_AND_AUTH_CHECK.md`, and `docs/agents/*` from DocsRAG snapshot or git history.
+- [x] Restore current contract docs if they are still authoritative, or document what replaced them.
+- [x] Verify login, refresh, validate, OAuth, magic-link, redirect, CORS, and RBAC contract sections.
 
 Acceptance criteria:
 

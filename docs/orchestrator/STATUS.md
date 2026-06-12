@@ -39,3 +39,43 @@ Implementation evidence:
 Next unfinished chunks:
 
 - Goal 3: locate or reconcile historical unified Auth contract docs currently referenced by DocsRAG.
+
+## 2026-06-12 - Goal 3 Contract Recovery
+
+Current focus:
+
+- Goal 3 - Unified Auth Contract Recovery: done.
+- Next focus: Goal 4 - Auth Observability And Safety Checks.
+
+DocsRAG evidence:
+
+- Queried DocsRAG from the `docs-rag-microservice` pod using an in-memory service JWT with issuer `docs-rag-microservice`; no token or secret value was printed or persisted.
+- DocsRAG returned historical references to `auth-microservice/docs/UNIFIED_AUTH_CONTRACT.md`, `docs/ENV_CORS_AND_AUTH_CHECK.md`, `docs/UNIFIED_AUTH_VERIFICATION.md`, and `docs/agents/*`.
+- Retrieved source headings included: `Deliverables (All Required, No "Optional Later" Bucket)`, `Inputs (read first)`, `Success Criteria`, `Related Documentation`, `Core Design Principles`, `Input Artifacts (Source of Truth)`, `1. Centralized Login/Registration Form (Hosted Only in Auth-Microservice)`, and `Task Group A0.1 - Unified Auth Contract (Auth Unified Contract Validator)`.
+
+Git history evidence:
+
+- `git log --all --name-only` confirmed historical files: `docs/UNIFIED_AUTH_CONTRACT.md`, `docs/ENV_CORS_AND_AUTH_CHECK.md`, `docs/UNIFIED_AUTH_VERIFICATION.md`, and `docs/agents/{master-prompt.md,AUTH_PHASE1_IMPLEMENTATION_AND_VALIDATION.md,AUTH_REFACTOR_TASKS_INDEX.md,AUTH_REFACTOR_VALIDATION_REPORT.md}`.
+- Commit `3338638 chore: remove obsolete documentation and command files` removed the historical docs.
+- The current `README.md` still linked to `docs/UNIFIED_AUTH_CONTRACT.md`, making the missing contract path an active stale reference.
+
+Implementation evidence:
+
+- Restored `docs/UNIFIED_AUTH_CONTRACT.md` as the current authoritative contract for hosted entry points, core API endpoints, JWT shape, OAuth, magic links, redirect allowlist, CORS, internal service auth, registered-user preferences, and client responsibilities.
+- Restored `docs/ENV_CORS_AND_AUTH_CHECK.md` with current K8s/Vault-managed CORS and Auth URL behavior.
+- Restored `docs/UNIFIED_AUTH_VERIFICATION.md` with static, reachability, contract, redirect-safety, and secret-safety checks.
+- Added supersession stubs under `docs/agents/` so historical DocsRAG references resolve but point future agents to `docs/orchestrator/*` and the restored contract docs.
+
+Verification evidence:
+
+- Remote `test -f` check passed for restored contract, CORS, verification, and historical agent paths.
+- Remote route inspection found current Auth controller endpoints for login, register, validate, refresh, OAuth, magic-link, redirect validation, internal preferences, and internal magic-link/check-email.
+- Secret-pattern scan across restored docs returned no matches for inline JWTs, secret assignments, internal-service tokens, notification tokens, or password-value patterns.
+- Local trailing-whitespace scan across restored docs returned no matches.
+- Triggered DocsRAG ingestion for `auth-microservice`; job `cee8c6d9-1db8-43e9-a3af-cc9d0746df04` completed successfully with `20/20` chunks processed.
+- Post-ingestion DocsRAG retrieval for the current unified Auth contract returned `auth-microservice/docs/UNIFIED_AUTH_CONTRACT.md` and `auth-microservice/docs/ENV_CORS_AND_AUTH_CHECK.md` from the current repo.
+- Remote `git status --short` showed unrelated pre-existing modified files `src/auth/admin-users.controller.ts` and `src/users/users.service.ts`; this chunk did not edit them.
+
+Next unfinished chunks:
+
+- Goal 4: review Auth-sensitive logs for login, refresh, password reset, magic link, OAuth, admin user management, and role changes.

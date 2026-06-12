@@ -30,13 +30,10 @@ export class AdminUsersController {
   @Get()
   async getAllUsers(@Request() req) {
     this.logger.log(`Admin user ${req.user.email} requested user list`, 'AdminUsersController');
-    const users = await this.usersService.findAll();
+    const users = await this.usersService.findAllForAdminList();
     return {
       success: true,
-      users: users.map((user) => {
-        const { password, ...sanitized } = user;
-        return sanitized;
-      }),
+      users,
       count: users.length,
     };
   }

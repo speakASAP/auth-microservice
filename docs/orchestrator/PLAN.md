@@ -29,11 +29,11 @@ The coordinator agent must:
 
 ## Active Work
 
-Goal 3 - Unified Auth Contract Recovery.
+Goal 4 - Auth Observability And Safety Checks.
 
 Current chunk:
 
-- Locate historical `docs/UNIFIED_AUTH_CONTRACT.md`, `docs/ENV_CORS_AND_AUTH_CHECK.md`, and `docs/agents/*` from DocsRAG snapshot or git history.
+- Review logs for login, refresh, password reset, magic link, OAuth, admin user management, and role changes.
 
 ## Verification Commands
 
@@ -55,4 +55,4 @@ POST /retrieval/agent-context
 
 ## Next Goal Selection
 
-After Goal 3 is verified, continue to Goal 4 unless the owner explicitly chooses another goal.
+Continue Goal 4 unless the owner explicitly chooses another goal.

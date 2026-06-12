@@ -11,6 +11,11 @@ import { PasswordResetToken } from '../auth/entities/password-reset-token.entity
 import { UserRole } from '../user-roles/entities/user-role.entity';
 import { UpdateUserMarketingPreferencesDto } from '../auth/dto/update-user-marketing-preferences.dto';
 
+export type AdminUserListItem = Pick<
+  User,
+  'id' | 'email' | 'firstName' | 'lastName' | 'phone' | 'isActive' | 'isVerified' | 'userType' | 'createdAt' | 'updatedAt'
+>;
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -57,6 +62,24 @@ export class UsersService {
 
   async findAll(): Promise<User[]> {
     return this.userRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findAllForAdminList(): Promise<AdminUserListItem[]> {
+    return this.userRepository.find({
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        isActive: true,
+        isVerified: true,
+        userType: true,
+        createdAt: true,
+        updatedAt: true,
+      },
       order: { createdAt: 'DESC' },
     });
   }
@@ -124,4 +147,3 @@ export class UsersService {
     return this.findById(userId);
   }
 }
-
