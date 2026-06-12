@@ -43,6 +43,7 @@ type ApplyResult = {
   duplicateEmailUsersCreated: number;
   legacyPasswordHashesStored: number;
   skippedBlankEmail: number;
+  skippedExistingMappings: number;
 };
 
 function parseArgs(argv: string[]): Args {
@@ -212,6 +213,18 @@ async function duplicateLegacyEmails(legacy: any): Promise<Set<string>> {
   return new Set(rows.map((row) => row.email).filter(Boolean));
 }
 
+async function existingLegacyMappingIds(auth: any): Promise<Set<number>> {
+  const rows = await many(
+    auth,
+    `
+      SELECT "legacyUserId"::int AS legacy_user_id
+      FROM legacy_identity_mappings
+      WHERE "legacySystem" = 'speakasap-portal'
+    `,
+  );
+  return new Set(rows.map((row) => Number(row.legacy_user_id)));
+}
+
 async function ensureMappingSchema(auth: any): Promise<void> {
   await auth.query(`
     CREATE TABLE IF NOT EXISTS legacy_identity_mappings (
@@ -305,11 +318,13 @@ async function applyBootstrap(legacy: any, auth: any): Promise<ApplyResult> {
     duplicateEmailUsersCreated: 0,
     legacyPasswordHashesStored: 0,
     skippedBlankEmail: 0,
+    skippedExistingMappings: 0,
   };
 
   await auth.query('BEGIN');
   try {
     await ensureMappingSchema(auth);
+    const existingMappingIds = await existingLegacyMappingIds(auth);
     const sourceRows = await many(
       legacy,
       `
@@ -323,6 +338,10 @@ async function applyBootstrap(legacy: any, auth: any): Promise<ApplyResult> {
 
     for (const row of sourceRows) {
       const legacyUserId = Number(row.id);
+      if (existingMappingIds.has(legacyUserId)) {
+        result.skippedExistingMappings += 1;
+        continue;
+      }
       const email = normalizedEmail(row.email);
       const snapshot = sourceSnapshot(row);
 
@@ -699,6 +718,7 @@ async function buildReport(
         duplicateEmailUsersCreated: 0,
         legacyPasswordHashesStored: 0,
         skippedBlankEmail: 0,
+        skippedExistingMappings: 0,
       },
       samples: {
         existingTargetEmailMatches: existingTargetMatchSamples.map(sampleRow),
