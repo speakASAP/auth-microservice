@@ -1,5 +1,38 @@
 # Auth Orchestrator Status
 
+## 2026-06-12 - RBAC-REM-02 Selected: Consumer JWT Validation Standardization
+
+Current focus:
+
+- Owner-selected remediation chunk: RBAC-REM-02 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- Objective: standardize when consumers use POST /auth/validate versus an approved shared local verifier for Auth-issued JWTs.
+- Runtime Auth code changes: none in this selection/planning update.
+- Consumer runtime code changes: none in this selection/planning update.
+- Deployment: not run.
+
+Gate evidence:
+
+- Required Auth orchestrator, contract, environment, verification, IPS, goal, and audit docs were read from the remote Auth source of truth.
+- JWT_TOKEN is absent in the remote shell, so DocsRAG retrieval cannot be authenticated. Gate decision for this planning update: pass-with-exception for AUTH-INV-007, with compensating evidence from existing Auth contract docs and the completed RBAC consuming-services audit.
+- Sensitive-data classification: masked. No decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, or production user data were printed, decoded, or persisted.
+
+Planning evidence:
+
+- Updated docs/orchestrator/EXECUTION_PLAN.md for RBAC-REM-02.
+- Updated docs/orchestrator/CONTEXT_PACKAGE.md target task to the owner-selected chunk.
+- Updated continuation state so the next Auth orchestrator session resumes at RBAC-REM-02.
+
+Validation evidence:
+
+- Missing-marker scan returned no matches for gate-critical docs.
+- Documentation secret-pattern scan returned no matches.
+- git diff --check passed for STATE.json, TASKS.md, docs/IMPLEMENTATION_STATE.md, and the changed orchestrator docs.
+- Unrelated pre-existing dirty files remain untouched: .env.example and k8s/external-secret.yaml.
+
+Next action:
+
+- Implement RBAC-REM-02 decision documentation: choose the default consumer JWT validation standard and split any consumer code changes into separately approved implementation chunks.
+
 ## 2026-06-12 - RBAC-REM-01 Secret-Source Alignment Review
 
 Current focus:

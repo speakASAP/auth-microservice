@@ -2,7 +2,7 @@
 
 ## Backlog
 
-- Owner-select next RBAC remediation chunk from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`; suggested next chunk is `RBAC-REM-02` standardize consumer JWT validation pattern (priority: 3)
+- Implement owner-selected RBAC-REM-02: standardize consumer JWT validation pattern (/auth/validate versus shared local verifier) (priority: 3)
 
 ## Completed
 

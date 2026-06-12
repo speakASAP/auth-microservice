@@ -17,9 +17,11 @@ downstream:
 
 ## Target Task
 
-Default target: the active goal in `docs/IMPLEMENTATION_STATE.md`, then the earliest `active` or `pending` goal in `docs/orchestrator/GOALS.md`, then the first ready owner-selected goal in `implementation-goals/README.md`.
+Current owner-selected target: RBAC-REM-02 - standardize consumer JWT validation pattern (/auth/validate versus shared local verifier).
 
-When the owner selects another task, record the selected goal, chunk, and reason in `docs/orchestrator/STATUS.md` before implementation.
+Default fallback target: the active goal in `docs/IMPLEMENTATION_STATE.md`, then the earliest `active` or `pending` goal in `docs/orchestrator/GOALS.md`, then the first ready owner-selected goal in `implementation-goals/README.md`.
+
+Owner selection reason: RBAC-REM-01 is complete; `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` names RBAC-REM-02 as the next remediation chunk to reduce consumer JWT validation drift while preserving Auth ownership boundaries.
 
 ## Upstream Traceability
 
