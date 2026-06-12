@@ -91,13 +91,51 @@ Recommended remediation chunk: inspect logging admin backend/API authorization a
 
 ## Remediation Backlog
 
-1. `RBAC-REM-01`: Secret-source alignment for direct JWT consumers: catalog, warehouse, suppliers, orders, payments. Validate without printing secret values.
+1. `RBAC-REM-01`: Done 2026-06-12. Secret-source alignment for direct JWT consumers: catalog, warehouse, suppliers, orders, payments. Validated without printing or decoding secret values.
 2. `RBAC-REM-02`: Standardize consumer JWT validation pattern: `/auth/validate` versus shared local verifier.
 3. `RBAC-REM-03`: Catalog frontend role-aware admin guard and stale comment cleanup.
 4. `RBAC-REM-04`: SpeakASAP scoped-role normalization review.
 5. `RBAC-REM-05`: School Committee local-role contract note.
 6. `RBAC-REM-06`: Internal service-token/API-key bypass inventory and Auth boundary review.
 7. `RBAC-REM-07`: Logging admin role-enforcement verification.
+
+## RBAC-REM-01 Secret-Source Alignment Review
+
+Status: completed 2026-06-12.
+
+Scope: direct JWT consumers that verify Auth-issued JWTs from the local `JWT_SECRET` environment key: `catalog-microservice`, `warehouse-microservice`, `suppliers-microservice`, `orders-microservice`, and `payments-microservice`.
+
+Review evidence:
+
+| Consumer | Before source path | Remediated source path | Commit | Validation |
+| --- | --- | --- | --- | --- |
+| `catalog-microservice` | `secret/prod/catalog-microservice` | `secret/prod/auth-microservice` | `fcb1919` | server-side dry run passed |
+| `warehouse-microservice` | `secret/prod/warehouse-microservice` | `secret/prod/auth-microservice` | `015cf4f` | server-side dry run passed |
+| `suppliers-microservice` | `secret/prod/suppliers-microservice` | `secret/prod/auth-microservice` | `c1e92d2` | server-side dry run passed |
+| `orders-microservice` | `secret/prod/orders-microservice` | `secret/prod/auth-microservice` | `e05c2c3` | server-side dry run passed |
+| `payments-microservice` | `secret/prod/payments-microservice` | `secret/prod/auth-microservice` | `66bf990` | server-side dry run passed |
+
+Changes made:
+
+- Updated only `k8s/external-secret.yaml` in each target consumer repository.
+- Kept the consumer runtime environment key as `JWT_SECRET`.
+- Changed only the ExternalSecret `remoteRef.key` for `JWT_SECRET` to `secret/prod/auth-microservice`.
+- Left other service-owned secret keys on their service-specific Vault paths.
+- Did not deploy or apply live changes.
+
+Validation evidence:
+
+- Live ExternalSecret metadata was checked with `kubectl get externalsecret` jsonpath output for `secretKey`, `remoteRef.key`, and `remoteRef.property`; no secret values were printed.
+- Live Kubernetes Secret key names were checked with `kubectl get secret -o json | jq '.data | keys'`; no values were decoded or printed.
+- `kubectl apply --dry-run=server -f k8s/external-secret.yaml` passed for all five target manifests.
+- `git diff --check -- k8s/external-secret.yaml` passed for all five target manifests.
+- Consumer repository pre-commit hooks passed for all five commits.
+
+Residual notes:
+
+- Source manifests are committed but not deployed by this session. Final live metadata showed catalog already aligned, while warehouse, suppliers, orders, and payments still used their previous source paths; those remaining live changes require consumer deployment or GitOps sync.
+- `orders-microservice` had pre-existing uncommitted changes in `k8s/external-secret.yaml` for `JWT_TOKEN`; only the RBAC-REM-01 `JWT_SECRET` source-path hunk was staged and committed.
+- `suppliers-microservice`, `orders-microservice`, and `payments-microservice` still have unrelated dirty worktree files from other sessions; those were not staged or committed here.
 
 ## Intent Compliance
 

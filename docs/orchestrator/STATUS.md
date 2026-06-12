@@ -1,5 +1,51 @@
 # Auth Orchestrator Status
 
+## 2026-06-12 - RBAC-REM-01 Secret-Source Alignment Review
+
+Current focus:
+
+- Owner-selected remediation chunk: `RBAC-REM-01` from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- Runtime Auth code changes: none.
+- Consumer runtime code changes: none.
+- Consumer manifest changes: `k8s/external-secret.yaml` only in catalog, warehouse, suppliers, orders, and payments.
+- Deployment: not run.
+
+Gate evidence:
+
+- Required Auth orchestrator, contract, environment, verification, README, BUSINESS, SYSTEM, state, and audit docs were read from the remote Auth source of truth.
+- DocsRAG was unavailable because `JWT_TOKEN` was absent in the remote shell. Gate decision: pass-with-exception for `AUTH-INV-007` with compensating remote source and Kubernetes metadata evidence.
+- Sensitive-data classification: masked. Only secret key names, Vault path names, source file paths, and commit IDs were recorded. No secret values, JWTs, tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, or production user data were printed, decoded, or persisted.
+
+Review evidence:
+
+- Live ExternalSecret metadata before remediation mapped `JWT_SECRET` to service-specific Vault paths for catalog, warehouse, suppliers, orders, and payments.
+- `notifications-microservice` remained the positive aligned pattern with `JWT_SECRET` sourced from `secret/prod/auth-microservice`.
+- Live Kubernetes Secret key-name checks confirmed the relevant secrets expose a `JWT_SECRET` key, without decoding or printing values.
+
+Implementation evidence:
+
+- `catalog-microservice`: committed `fcb1919 Align JWT secret source with auth`.
+- `warehouse-microservice`: committed `015cf4f Align JWT secret source with auth`.
+- `suppliers-microservice`: committed `c1e92d2 Align JWT secret source with auth`.
+- `orders-microservice`: committed `e05c2c3 Align JWT secret source with auth`.
+- `payments-microservice`: committed `66bf990 Align JWT secret source with auth`.
+- Each commit changes only the `JWT_SECRET` ExternalSecret `remoteRef.key` to `secret/prod/auth-microservice` and leaves other service-owned secret keys unchanged.
+- `orders-microservice` had pre-existing adjacent `JWT_TOKEN` changes in `k8s/external-secret.yaml`; only the `JWT_SECRET` source-path hunk was staged and committed.
+
+Validation evidence:
+
+- `kubectl apply --dry-run=server -f k8s/external-secret.yaml` passed for all five target consumer manifests.
+- `git diff --check -- k8s/external-secret.yaml` passed for all five target consumer manifests.
+- Staged diff review confirmed only the intended `JWT_SECRET` source-path hunk was committed in each consumer repo.
+- Consumer repository pre-commit hooks passed for all five commits.
+- Auth documentation missing-marker, secret-pattern, and `git diff --check` checks were run after documentation updates.
+
+Residual risks and follow-ups:
+
+- Source manifests are committed but not deployed by this session. Final live metadata showed catalog already aligned, while warehouse, suppliers, orders, and payments still used their previous source paths; those remaining live changes require consumer deployment or GitOps sync.
+- `suppliers-microservice`, `orders-microservice`, and `payments-microservice` retain unrelated dirty worktree files from other sessions. Those were not staged or committed here.
+- Next remediation chunk: `RBAC-REM-02` standardize consumer JWT validation pattern (`/auth/validate` versus shared local verifier).
+
 ## 2026-06-12 - Goal 06 RBAC Consuming Services Audit
 
 Current focus:

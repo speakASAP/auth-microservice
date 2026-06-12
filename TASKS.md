@@ -2,7 +2,7 @@
 
 ## Backlog
 
-- Owner-select RBAC remediation chunk from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` (priority: 3)
+- Owner-select next RBAC remediation chunk from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`; suggested next chunk is `RBAC-REM-02` standardize consumer JWT validation pattern (priority: 3)
 
 ## Completed
 
@@ -12,3 +12,4 @@
 - Recovered and reconciled historical unified Auth contract docs referenced by DocsRAG
 - Added Auth observability and redaction safeguards for sensitive auth flows
 - Audited RBAC roles across consuming services
+- Completed `RBAC-REM-01` secret-source alignment review and manifest remediation for direct JWT consumers

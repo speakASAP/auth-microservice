@@ -8,7 +8,7 @@ created: 2026-06-12
 last_updated: 2026-06-12
 completeness_level: validated
 upstream:
-  - docs/orchestrator/GOALS.md
+  - docs/RBAC_CONSUMING_SERVICES_AUDIT.md
   - docs/orchestrator/CONTEXT_PACKAGE.md
   - docs/orchestrator/PROJECT_INVARIANTS.md
 downstream:
@@ -17,99 +17,89 @@ downstream:
 
 ## Selected Goal And Chunk
 
-Goal 06 - RBAC Consuming Services Audit.
+Owner-selected remediation chunk: `RBAC-REM-01` - secret-source alignment review for direct JWT consumers.
 
-Completed chunks:
-
-- 6.1 Query DocsRAG for RBAC and consuming-service contract context: attempted; blocked because `JWT_TOKEN` was not set on the remote shell.
-- 6.2 Identify consumers that validate Auth JWTs or roles: completed through remote source scans.
-- 6.3 Compare consumer expectations with `docs/UNIFIED_AUTH_CONTRACT.md`: completed in `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
-- 6.4 Record findings and split remediation into owner-approvable chunks: completed in the remediation backlog.
-
-## Upstream Traceability
-
-- Original intent: `docs/orchestrator/INTENT.md`
-- Current state: `docs/IMPLEMENTATION_STATE.md`
-- Backlog and goal source: `TASKS.md`, `docs/orchestrator/GOALS.md`, `implementation-goals/README.md`, `implementation-goals/GOAL-06-rbac-consuming-services-audit.md`
-- Contract source: `docs/UNIFIED_AUTH_CONTRACT.md`
-- Verification source: `docs/UNIFIED_AUTH_VERIFICATION.md`
-
-## Goal Impact
-
-This audit preserves Auth as the role-claim authority by checking whether consumers enforce Auth JWT roles compatibly, duplicate Auth-owned identity behavior, or rely on stale role assumptions.
-
-## Project Invariants
-
-- `AUTH-INV-001`: preserved. Auth remains identity, token, and RBAC role-claim authority.
-- `AUTH-INV-002`: preserved. Consumer domain authorization remains in consuming services.
-- `AUTH-INV-003`: reviewed. JWT/RBAC contract compatibility is the core audit subject.
-- `AUTH-INV-004`: preserved. No secrets, JWTs, service tokens, passwords, or raw production user data were recorded.
-- `AUTH-INV-005`: reviewed. Hosted Auth and `/auth/validate` usage were checked where visible.
-- `AUTH-INV-006`: preserved. Evidence is recorded in `docs/orchestrator/STATUS.md` and `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
-- `AUTH-INV-007`: pass-with-exception. DocsRAG could not be queried because no JWT token was available; remote source evidence was used instead.
-
-## Sensitive-Data Handling
-
-Classification: `masked`.
-
-The audit references environment key names, Vault paths, role strings, file paths, and placeholder examples only. It does not include decoded secret values, real JWTs, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, or raw production user records.
-
-## Contract Validation Plan
-
-Contract impact: no Auth contract change.
-
-Validated subjects:
-
-- JWT payload role claim shape from `docs/UNIFIED_AUTH_CONTRACT.md` and `src/roles/roles.service.ts`.
-- Consumer role checks against `global:*`, `app:*:*`, `internal:*:*`, and app-local roles.
-- Direct JWT verification versus `/auth/validate` usage.
-- Internal service-token/API-key bypasses as separate consumer-owned service-auth paths.
-
-## Scope
-
-Included files:
-
-- `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`
-- `docs/orchestrator/EXECUTION_PLAN.md`
-- `docs/orchestrator/STATUS.md`
-- `docs/IMPLEMENTATION_STATE.md`
-- `docs/orchestrator/GOALS.md`
-- `docs/orchestrator/PLAN.md`
-- `implementation-goals/README.md`
-- `implementation-goals/GOAL-06-rbac-consuming-services-audit.md`
-- `TASKS.md`
-- `STATE.json`
-
-Inspected remote consumer repositories without modification:
+Target consumers:
 
 - `catalog-microservice`
 - `warehouse-microservice`
 - `suppliers-microservice`
 - `orders-microservice`
 - `payments-microservice`
-- `notifications-microservice`
-- `shop-assistant`
-- `runlayer`
-- `speakasap`
-- `school-committee`
-- `logging-microservice`
-- `marketing-microservice`
-- `leads-microservice`
+
+## Upstream Traceability
+
+- Original intent: `docs/orchestrator/INTENT.md`
+- Current state: `docs/IMPLEMENTATION_STATE.md`
+- Audit source: `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`
+- Contract source: `docs/UNIFIED_AUTH_CONTRACT.md`
+- Verification source: `docs/UNIFIED_AUTH_VERIFICATION.md`
+- Operational source: `docs/ENV_CORS_AND_AUTH_CHECK.md`
+
+## Goal Impact
+
+This remediation keeps Auth as the JWT signing and RBAC role-claim authority while allowing direct JWT consumers to keep local verification. The consumer environment variable remains `JWT_SECRET`, but the ExternalSecret source path now points to Auth's Vault path for that verification secret.
+
+## Project Invariants
+
+- `AUTH-INV-001`: preserved. Auth remains token and RBAC role-claim authority.
+- `AUTH-INV-002`: preserved. Consumer enforcement and service-owned secrets remain in their services.
+- `AUTH-INV-003`: preserved. JWT shape and role claims are unchanged.
+- `AUTH-INV-004`: preserved. No secret values, JWTs, tokens, passwords, or production user data were printed, decoded, or recorded.
+- `AUTH-INV-005`: not changed. Hosted Auth flows are unaffected.
+- `AUTH-INV-006`: preserved. Evidence is recorded in `docs/orchestrator/STATUS.md` and `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- `AUTH-INV-007`: pass-with-exception. DocsRAG could not be queried because `JWT_TOKEN` was absent in the remote shell; compensating evidence came from remote source manifests and value-safe Kubernetes metadata checks.
+
+## Sensitive-Data Handling
+
+Classification: `masked`.
+
+Allowed evidence: key names, Vault path names, ExternalSecret source references, file paths, commit IDs, and validation command names.
+
+Forbidden evidence: decoded secret values, JWTs, refresh tokens, service tokens, API keys, passwords, OAuth tokens, magic-link tokens, reset tokens, or raw production user data.
+
+## Contract Validation Plan
+
+Contract impact: no Auth API, JWT payload, RBAC role string, OAuth, magic-link, redirect, CORS, or internal-service contract change.
+
+Consumer manifest impact: direct JWT consumers now source `JWT_SECRET` from `secret/prod/auth-microservice`, matching the positive `notifications-microservice` pattern.
+
+## Scope
+
+Changed consumer files:
+
+- `catalog-microservice/k8s/external-secret.yaml`
+- `warehouse-microservice/k8s/external-secret.yaml`
+- `suppliers-microservice/k8s/external-secret.yaml`
+- `orders-microservice/k8s/external-secret.yaml`
+- `payments-microservice/k8s/external-secret.yaml`
+
+Changed Auth documentation files:
+
+- `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/IMPLEMENTATION_STATE.md`
+- `TASKS.md`
+- `STATE.json`
 
 ## Non-Goals
 
-- No consumer-service code changes.
+- No decoded secret comparison.
+- No consumer runtime code changes.
 - No Auth runtime code changes.
 - No JWT claim-shape changes.
 - No production deployment.
-- No secret decoding or production user-table reads/writes.
+- No production user-table reads or writes.
 
 ## Validation Plan
 
-- Documentation presence check for the audit report.
-- Missing-marker scan over gate-critical docs.
-- Secret-pattern scan over docs and task files.
-- Review `git diff --check`.
+- Check live ExternalSecret `JWT_SECRET` source metadata without printing values.
+- Check live Kubernetes Secret key names without decoding values.
+- Run `kubectl apply --dry-run=server -f k8s/external-secret.yaml` for each target manifest.
+- Run `git diff --check -- k8s/external-secret.yaml` for each target manifest.
+- Verify staged diffs include only the intended `JWT_SECRET` source-path hunk.
+- Run Auth documentation missing-marker, secret-pattern, and diff checks.
 
 ## Completion Checklist
 
@@ -121,6 +111,6 @@ Inspected remote consumer repositories without modification:
 - [x] Contract impact stated.
 - [x] Validation plan stated.
 - [x] Pre-coding gate passed with DocsRAG exception recorded.
-- [x] Audit report complete.
+- [x] Consumer manifests remediated and committed.
 - [x] Verification evidence recorded.
-- [x] Next owner-selectable remediation chunks named.
+- [x] Next remediation chunk named.

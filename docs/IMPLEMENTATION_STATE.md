@@ -24,7 +24,7 @@ AUTH ORCHESTRATOR: implement goal number 6
 
 - Active goal: none
 - Current wave: Wave 2 - Operational backlog
-- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit
+- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review
 - Running goals: none
 - Blocked goals: none
 - Worker threads: none
@@ -100,6 +100,7 @@ Do not paste full worker logs into this file. Compress each worker result into n
 Append newest entries at the top.
 
 ```text
+2026-06-12: RBAC-REM-01 Secret-Source Alignment Review completed on `alfares`. Reviewed direct JWT consumer secret-source metadata without printing or decoding secret values. Updated and committed `k8s/external-secret.yaml` in catalog (`fcb1919`), warehouse (`015cf4f`), suppliers (`c1e92d2`), orders (`e05c2c3`), and payments (`66bf990`) so `JWT_SECRET` sources from `secret/prod/auth-microservice`, matching notifications. Validation: live ExternalSecret metadata checked without values, Kubernetes Secret key names checked without decoding values, server-side dry run passed for all five manifests, diff-check passed, and consumer pre-commit hooks passed. No Auth runtime code, consumer runtime code, deployment, decoded secrets, JWTs, tokens, or production user data changed.
 2026-06-12: Goal 06 RBAC Consuming Services Audit completed on `alfares` in `/home/ssf/Documents/Github/auth-microservice`. Added `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` naming inspected consumers, Auth/RBAC validation patterns, compatibility risks, and owner-approvable remediation chunks. DocsRAG was unavailable because `JWT_TOKEN` was not set; gate passed with documented exception and remote source evidence. Validation: documentation report exists, missing-marker scan passed, secret-pattern scan passed cleanly, and `git diff --check` passed. No runtime code, consumer code, secrets, or production user data changed.
 2026-06-12: IPS Documentation Compliance Update completed and committed on `alfares` in `/home/ssf/Documents/Github/auth-microservice`. Added Auth-local IPS invariants, pre-coding gate, context package, execution-plan frame, and readiness gates under `docs/orchestrator/`. Updated `AGENTS.md`, `docs/IMPLEMENTATION_ORCHESTRATOR.md`, `docs/orchestrator/MASTER_PROMPT.md`, `docs/orchestrator/INTENT.md`, `docs/orchestrator/PLAN.md`, and `docs/orchestrator/PROMPTS.md` so future coding must pass traceability, invariant, sensitive-data, contract, context, validation, and readiness checks before implementation. Validation: documentation presence and secret-pattern scan passed on remote; missing-marker scan is clean for active docs and intentionally excluded reusable templates that contain `[MISSING: ...]` placeholders. No runtime code changed.
 2026-06-12: Goal 05 Goalkeeper-Style Orchestrator Workflow completed and committed on `alfares` in `/home/ssf/Documents/Github/auth-microservice`. Added `docs/IMPLEMENTATION_ORCHESTRATOR.md`, `docs/IMPLEMENTATION_STATE.md`, `implementation-goals/README.md`, goal files for completed and ready work, and execution/context/prompt/validation templates. Updated `AGENTS.md`, `docs/orchestrator/MASTER_PROMPT.md`, `docs/orchestrator/PLAN.md`, `docs/orchestrator/GOALS.md`, `docs/orchestrator/PROMPTS.md`, and `docs/orchestrator/STATUS.md` so future Auth sessions use the same state-driven master-agent pattern as Goalkeeper. Validation: documentation file presence and cross-reference scan passed on remote; no runtime code changed.
@@ -125,7 +126,7 @@ Next command:
 
 ## Open Decisions
 
-- Owner selection is needed before implementing any RBAC remediation chunk from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- `RBAC-REM-02` remains the next recommended remediation chunk: standardize the consumer JWT validation pattern (`/auth/validate` versus shared local verifier).
 - Production deployment remains explicit-owner-approval only.
 
 ## Next Action
@@ -133,7 +134,7 @@ Next command:
 Suggested next owner-selected command:
 
 ```text
-AUTH ORCHESTRATOR: implement RBAC-REM-01 secret-source alignment review
+AUTH ORCHESTRATOR: implement RBAC-REM-02 standardize consumer JWT validation pattern
 ```
 
 Source documents:
