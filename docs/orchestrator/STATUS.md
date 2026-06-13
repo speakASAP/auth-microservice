@@ -1,5 +1,42 @@
 # Auth Orchestrator Status
 
+## 2026-06-13 - RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review Completed
+
+Current focus:
+
+- Owner-selected remediation chunk: RBAC-REM-04 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- SpeakASAP branch: `main`.
+- SpeakASAP commit: `7135483 Preserve scoped Auth roles in SpeakASAP checks`.
+- Auth runtime code changes: none.
+- Deployment: not run.
+
+DocsRAG evidence:
+
+- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
+- Retrieved shared RBAC context confirmed Auth issues JWTs with role claims and consuming services should use centralized Auth role claims.
+
+Implementation evidence:
+
+- Reviewed `speakasap/assessment-service/src/auth/normalize-roles.ts`, `assessment-service` guards, `certification-service/src/auth/roles.ts`, certification role guards, SpeakASAP RBAC docs, and Auth RBAC seed definitions.
+- Auth seeds `speakasap` as a user-facing application, so `app:speakasap:<role>` is the explicit application-scope mapping.
+- Assessment no longer strips everything after the first colon; it preserves unscoped legacy local roles, maps accepted global staff roles, maps `app:speakasap:<role>`, and ignores unrelated scoped roles.
+- Certification no longer grants access to any scoped role ending in `:manager` or `:teacher`; it uses the same explicit SpeakASAP/global mapping.
+- Pre-existing dirty SpeakASAP files were not staged. Only the two RBAC-REM-04 helper files were committed.
+
+Validation evidence:
+
+- Isolated TypeScript compile passed for `assessment-service/src/auth/normalize-roles.ts`.
+- Isolated TypeScript compile passed for `certification-service/src/auth/roles.ts`.
+- Compiled helper assertions passed for local legacy roles, `app:speakasap:*`, `global:superadmin`, and denied `internal:speakasap:*` / `app:other:*` role shapes.
+- `git diff --check -- assessment-service/src/auth/normalize-roles.ts certification-service/src/auth/roles.ts` passed.
+- SpeakASAP pre-commit checks passed for commit `7135483`.
+- Full `npm run build` was attempted in both changed services but could not complete because of pre-existing dependency state: assessment could not find `prisma` from the package script, and certification could not unlink a root-owned generated Prisma client file.
+- No Auth runtime code, JWT payload, token validation endpoint, deployment, database, decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, or production user data changed.
+
+Next action:
+
+- Recommended next remediation chunk: RBAC-REM-05 School Committee local-role contract note.
+
 ## 2026-06-13 - DocsRAG JWT Token Pickup Fixed
 
 Current focus:

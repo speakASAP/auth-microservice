@@ -17,11 +17,11 @@ downstream:
 
 ## Target Task
 
-Current owner-selected target: RBAC-REM-02 - standardize consumer JWT validation pattern (/auth/validate versus shared local verifier).
+Current owner-selected target: RBAC-REM-04 - SpeakASAP scoped-role normalization review.
 
 Default fallback target: the active goal in `docs/IMPLEMENTATION_STATE.md`, then the earliest `active` or `pending` goal in `docs/orchestrator/GOALS.md`, then the first ready owner-selected goal in `implementation-goals/README.md`.
 
-Owner selection reason: RBAC-REM-01 is complete; `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` names RBAC-REM-02 as the next remediation chunk to reduce consumer JWT validation drift while preserving Auth ownership boundaries.
+Owner selection reason: RBAC-REM-01, RBAC-REM-02, and RBAC-REM-03 are complete; the owner explicitly selected RBAC-REM-04 to remove SpeakASAP scoped-role normalization drift while preserving Auth ownership boundaries.
 
 ## Upstream Traceability
 
@@ -58,7 +58,7 @@ Read these before coding:
 - `docs/ENV_CORS_AND_AUTH_CHECK.md`
 - selected `implementation-goals/GOAL-XX-*.md`
 
-Inspect source files only after the plan names the expected files. Prefer narrow reads over broad source-tree reading.
+Inspect source files only after the plan names the expected files. Prefer narrow reads over broad source-tree reading. For RBAC-REM-04, source reads are limited to SpeakASAP auth/role helpers and nearby route-authorization references unless validation reveals a direct dependency.
 
 ## Excluded Documents
 
@@ -81,6 +81,11 @@ Do not use these as primary authority unless the owner explicitly selects histor
 ## Allowed Changes
 
 Allowed files must be named by the selected execution plan before coding. Documentation workflow changes should stay under `docs/orchestrator/`, `docs/IMPLEMENTATION_STATE.md`, `docs/IMPLEMENTATION_ORCHESTRATOR.md`, `TASKS.md`, `AGENTS.md`, or `implementation-goals/`.
+
+For RBAC-REM-04, allowed cross-service implementation files are limited to:
+
+- `/home/ssf/Documents/Github/speakasap/assessment-service/src/auth/normalize-roles.ts`
+- `/home/ssf/Documents/Github/speakasap/certification-service/src/auth/roles.ts`
 
 ## Forbidden Changes
 

@@ -94,7 +94,7 @@ Recommended remediation chunk: inspect logging admin backend/API authorization a
 1. `RBAC-REM-01`: Done 2026-06-12. Secret-source alignment for direct JWT consumers: catalog, warehouse, suppliers, orders, payments. Validated without printing or decoding secret values.
 2. `RBAC-REM-02`: Done 2026-06-12. Standardized consumer JWT validation pattern: default to `POST /auth/validate`; allow shared local verifier only as a constrained backend exception.
 3. `RBAC-REM-03`: Done 2026-06-13. Catalog frontend role-aware admin guard and stale comment cleanup committed in catalog `5f0e087`.
-4. `RBAC-REM-04`: SpeakASAP scoped-role normalization review.
+4. `RBAC-REM-04`: Done 2026-06-13. SpeakASAP scoped-role normalization review and remediation committed in SpeakASAP `7135483`.
 5. `RBAC-REM-05`: School Committee local-role contract note.
 6. `RBAC-REM-06`: Internal service-token/API-key bypass inventory and Auth boundary review.
 7. `RBAC-REM-07`: Logging admin role-enforcement verification.
@@ -130,6 +130,43 @@ Validation evidence:
 - No Auth runtime code, Catalog backend authorization code, secrets, tokens, production user data, database changes, or deployment changed.
 
 Follow-up chunk: `RBAC-REM-04` SpeakASAP scoped-role normalization review.
+
+## RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review
+
+Status: completed 2026-06-13.
+
+Scope: `speakasap/assessment-service/src/auth/normalize-roles.ts` and `speakasap/certification-service/src/auth/roles.ts`.
+
+Decision: SpeakASAP may keep legacy unscoped local roles for its own domain authorization, but Auth scoped roles must not be generically stripped. Only explicit user-facing SpeakASAP roles and accepted global staff roles should map into local SpeakASAP role names.
+
+Accepted mapping:
+
+- unscoped legacy local roles remain unchanged, for example `manager`, `teacher`, `admin`, `staff`, `super_admin`, and `superadmin`;
+- `app:speakasap:<role>` maps to local `<role>`;
+- `global:superadmin` and `global:platform_admin` map to manager/staff access where existing SpeakASAP policy treats platform staff as authorized;
+- `internal:*` roles and `app:<other-app>:<role>` do not map into SpeakASAP local user roles.
+
+Implementation evidence:
+
+- SpeakASAP commit: `7135483 Preserve scoped Auth roles in SpeakASAP checks`.
+- Assessment no longer strips everything after the first colon; unrelated scoped Auth roles are ignored.
+- Certification no longer grants manager or teacher access to any role ending in `:manager` or `:teacher`; only explicit SpeakASAP/global mappings pass.
+- Auth runtime code, JWT payload shape, Auth role assignment, and Auth token validation endpoints remain unchanged.
+
+Validation evidence:
+
+- DocsRAG retrieval from `deployment/auth-microservice` returned `HTTP 200` and confirmed current shared RBAC context: Auth issues JWTs with roles and consuming services use centralized Auth role claims.
+- Isolated TypeScript compile passed for `assessment-service/src/auth/normalize-roles.ts`.
+- Isolated TypeScript compile passed for `certification-service/src/auth/roles.ts`.
+- Compiled helper assertions passed:
+  - legacy local roles still pass;
+  - `app:speakasap:manager` and `app:speakasap:teacher` still pass;
+  - `global:superadmin` still grants staff/manager access;
+  - `internal:speakasap:manager`, `internal:speakasap:teacher`, and `app:other:manager` no longer grant SpeakASAP user-role access.
+- Full `npm run build` was attempted but could not complete because of pre-existing dependency state: assessment could not find the `prisma` command in the package script path, and certification failed to unlink a root-owned generated Prisma client file. Narrow compile and helper assertions were used as compensating validation.
+- No decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, production user data, database changes, or deployment changed.
+
+Follow-up chunk: `RBAC-REM-05` School Committee local-role contract note.
 
 ## RBAC-REM-02 Consumer JWT Validation Standardization
 

@@ -2,7 +2,7 @@
 
 ## Backlog
 
-- Owner-select or implement next RBAC remediation chunk: RBAC-REM-04 SpeakASAP scoped-role normalization review (priority: 3)
+- Owner-select or implement next RBAC remediation chunk: RBAC-REM-05 School Committee local-role contract note (priority: 3)
 
 ## Completed
 
@@ -15,3 +15,4 @@
 - Completed `RBAC-REM-01` secret-source alignment review and manifest remediation for direct JWT consumers
 - Completed `RBAC-REM-02` consumer JWT validation standardization
 - Completed `RBAC-REM-03` Catalog frontend role-aware admin guard and stale comment cleanup
+- Completed `RBAC-REM-04` SpeakASAP scoped-role normalization review

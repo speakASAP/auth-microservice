@@ -4,22 +4,17 @@ YAML metadata:
 - id: AUTH-EXECUTION-PLAN
 - status: done
 - owner: owner-selected
-- created: 2026-06-12
-- last_updated: 2026-06-12
+- created: 2026-06-13
+- last_updated: 2026-06-13
 - completeness_level: validated
 - upstream: docs/RBAC_CONSUMING_SERVICES_AUDIT.md, docs/orchestrator/CONTEXT_PACKAGE.md, docs/orchestrator/PROJECT_INVARIANTS.md
 - downstream: docs/orchestrator/STATUS.md
 
 ## Selected Goal And Chunk
 
-Owner-selected remediation chunk: RBAC-REM-02 - standardize consumer JWT validation pattern (/auth/validate versus shared local verifier).
+Owner-selected remediation chunk: RBAC-REM-04 - SpeakASAP scoped-role normalization review.
 
-Decision task: choose and document the standard Auth JWT validation pattern for consuming services, including when consumers should use the round-trip POST /auth/validate contract and when high-throughput services may use a shared local verifier backed by the centrally sourced Auth verification secret.
-
-Initial affected consumer categories:
-
-- Round-trip validation consumers: shop-assistant, runlayer, speakasap, school-committee, and logging-microservice web admin.
-- Direct local verifier consumers: catalog-microservice, warehouse-microservice, suppliers-microservice, orders-microservice, payments-microservice, and notifications-microservice.
+Decision and implementation task: review SpeakASAP role normalization in `assessment-service` and `certification-service`, then remove generic scope stripping where it can collapse Auth role scopes into unscoped application roles. Preserve legacy SpeakASAP local role names, but map Auth-owned scoped roles only when the scope is explicitly allowed for user-facing SpeakASAP authorization.
 
 ## Upstream Traceability
 
@@ -29,78 +24,82 @@ Initial affected consumer categories:
 - Contract source: docs/UNIFIED_AUTH_CONTRACT.md
 - Verification source: docs/UNIFIED_AUTH_VERIFICATION.md
 - Operational source: docs/ENV_CORS_AND_AUTH_CHECK.md
-- Owner selection: user selected RBAC-REM-02 on 2026-06-12.
+- Owner selection: user selected RBAC-REM-04 on 2026-06-13.
 
 ## Goal Impact
 
-This remediation preserves Auth as the token issuer, token validation authority, and RBAC role-claim authority while reducing drift in consumer-side JWT validation. Consumers continue to own endpoint authorization policy, but validation of Auth-issued user identity must follow one approved pattern.
+This remediation preserves Auth as the identity and RBAC role-claim authority while keeping SpeakASAP authorization policy local to SpeakASAP services. The goal is to avoid treating unrelated scoped Auth roles, especially `internal:*` service roles or another app's roles, as SpeakASAP manager/teacher/admin roles.
 
 ## Project Invariants
 
 - AUTH-INV-001: applies. Auth remains identity, JWT, and RBAC role-claim authority.
-- AUTH-INV-002: applies. Consumer endpoint authorization and service-owned policy stay in consumer services.
-- AUTH-INV-003: applies. JWT payload, roles, expiry, algorithm, and validation behavior must remain compatible or include a migration plan.
-- AUTH-INV-004: applies. No JWTs, decoded secrets, refresh tokens, service tokens, passwords, OAuth tokens, or production user data may be recorded.
-- AUTH-INV-005: applies. Consumers must not mint Auth JWTs or duplicate credential/login flows.
-- AUTH-INV-006: applies. The selected pattern and validation evidence must be recorded before closure.
-- AUTH-INV-007: pass-with-exception for initial planning. The remote shell has no JWT_TOKEN, so DocsRAG retrieval cannot run yet; compensate with existing Auth contract docs and previously audited remote source evidence until a service JWT is available.
+- AUTH-INV-002: applies. SpeakASAP endpoint authorization and education-domain policy stay in SpeakASAP.
+- AUTH-INV-003: applies. Auth JWT role strings must remain compatible; consumers must not generically strip scopes.
+- AUTH-INV-004: applies. No JWTs, decoded secrets, service tokens, passwords, OAuth tokens, or production user data may be recorded.
+- AUTH-INV-005: applies. SpeakASAP continues to validate Auth-issued tokens rather than minting tokens or hosting login.
+- AUTH-INV-006: applies. Review, changes, and validation evidence must be recorded before closure.
+- AUTH-INV-007: applies. DocsRAG is available through the Auth pod and must be queried before broad cross-service review.
 
 ## Sensitive-Data Handling
 
 Classification: masked.
 
-Allowed evidence: file paths, endpoint names, role-string shapes, environment variable names, Vault path names, commit IDs, and validation command names.
+Allowed evidence: file paths, endpoint names, role-string shapes, environment variable names, service names, commit IDs, and validation command names.
 
 Forbidden evidence: decoded secret values, JWTs, refresh tokens, service tokens, API keys, passwords, OAuth tokens, magic-link tokens, reset tokens, or raw production user data.
 
 ## Contract Validation Plan
 
-Contract impact: documentation-only standardization. No Auth API, JWT payload, RBAC role string, OAuth, magic-link, redirect, CORS, or internal-service behavior changed. The unified contract now documents that consumers should default to POST /auth/validate, with local verification allowed only as a constrained backend exception.
+Contract impact: consumer-side authorization behavior change in SpeakASAP only. No Auth API, JWT payload, token signing, OAuth, magic-link, redirect, CORS, or internal-service behavior changes.
 
-Expected standardization output:
+Expected role mapping:
 
-- Default pattern for admin panels and lower-throughput APIs: call POST /auth/validate using the in-cluster Auth URL where server-side.
-- Allowed high-throughput exception: use a shared internal local verifier package or module only when it validates Auth-issued JWTs consistently, uses centrally sourced Auth verification secret material, rejects unsafe algorithms, honors expiry, and preserves full Auth role strings.
-- Prohibited pattern: each service independently hand-rolls JWT verification assumptions or sources verification material from service-owned secret paths.
+- Preserve unscoped legacy SpeakASAP local roles such as `manager`, `teacher`, `admin`, `staff`, `super_admin`, and `superadmin`.
+- Map `app:speakasap:<role>` to the local SpeakASAP role name.
+- Map global staff roles such as `global:superadmin` and `global:platform_admin` to manager/staff access where existing policy treats platform staff as authorized.
+- Do not map `internal:*` roles or other `app:<other-app>:<role>` roles into SpeakASAP local roles.
 
 ## Scope
 
-Changed Auth documentation files for this implementation chunk:
+Allowed SpeakASAP files:
 
-- docs/orchestrator/EXECUTION_PLAN.md
-- docs/orchestrator/CONTEXT_PACKAGE.md
-- docs/orchestrator/STATUS.md
-- docs/CONSUMER_JWT_VALIDATION_STANDARD.md
-- docs/RBAC_CONSUMING_SERVICES_AUDIT.md
-- docs/UNIFIED_AUTH_CONTRACT.md
-- docs/IMPLEMENTATION_STATE.md
-- TASKS.md
-- STATE.json
+- `/home/ssf/Documents/Github/speakasap/assessment-service/src/auth/normalize-roles.ts`
+- `/home/ssf/Documents/Github/speakasap/certification-service/src/auth/roles.ts`
 
-Potential future consumer implementation scope must be selected separately after the standard is documented and validated.
+Allowed Auth documentation/state files:
+
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/orchestrator/CONTEXT_PACKAGE.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/IMPLEMENTATION_STATE.md`
+- `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`
+- `TASKS.md`
+- `STATE.json`
 
 ## Non-Goals
 
-- No decoded secret comparison.
-- No consumer runtime code changes in this selection chunk.
-- No Auth runtime code changes in this selection chunk.
-- No JWT claim-shape changes.
-- No role-string normalization changes.
-- No production deployment.
-- No production user-table reads or writes.
+- No Auth runtime code changes.
+- No Auth JWT claim-shape changes.
+- No login, OAuth, magic-link, redirect, CORS, or token-validation endpoint changes.
+- No SpeakASAP deployment.
+- No production user-data reads or writes.
+- No decoded secret, JWT, or token output.
+- No change to unrelated active SpeakASAP Goal 5.5 files.
 
 ## Validation Plan
 
-- Verify required Auth orchestrator and contract docs were read.
-- Record DocsRAG unavailable if JWT_TOKEN is absent.
-- Run documentation missing-marker scan for gate-critical docs.
+- Query DocsRAG from `deployment/auth-microservice` for SpeakASAP RBAC/scoped-role context.
+- Inspect narrow SpeakASAP auth/role files.
+- Run `npm run build` in `assessment-service`.
+- Run `npm run build` in `certification-service`.
+- Run compiled helper assertions to prove unrelated scoped roles do not grant local access while `app:speakasap:*` and accepted global staff roles still work.
+- Run `git diff --check` in changed Auth and SpeakASAP files.
+- Run documentation missing-marker scan for gate-critical Auth docs.
 - Run documentation secret-pattern scan.
-- Run git diff --check for changed documentation files.
-- Before any future code change, inspect the target consumer verifier implementation and add service-specific validation commands.
 
 ## Completion Checklist
 
-- [x] Owner selected RBAC-REM-02.
+- [x] Owner selected RBAC-REM-04.
 - [x] Selected goal and chunk named.
 - [x] Intent and boundary impact stated.
 - [x] Context package reviewed.
@@ -108,8 +107,8 @@ Potential future consumer implementation scope must be selected separately after
 - [x] Sensitive-data classification stated.
 - [x] Contract impact stated.
 - [x] Validation plan stated.
-- [x] Pre-coding gate documented as planning pass-with-exception because DocsRAG token is unavailable.
-- [x] Standard consumer JWT validation decision documented.
-- [x] Follow-up consumer implementation chunks split; no consumer runtime implementation approved in this chunk.
+- [x] DocsRAG queried successfully from the Auth pod.
+- [x] SpeakASAP role normalization review completed.
+- [x] Scoped-role remediation implemented if needed.
 - [x] Verification evidence recorded.
 - [x] Next remediation chunk named.
