@@ -2,7 +2,7 @@
 
 ## Backlog
 
-- Owner-select next Auth remediation or implementation chunk (priority: 3)
+- Owner-select next Auth remediation or implementation chunk after AUTH-ALPHA-01 (priority: 3)
 
 ## Completed
 
@@ -19,3 +19,4 @@
 - Completed `RBAC-REM-05` School Committee local-role contract note
 - Completed `RBAC-REM-06` internal service-token/API-key bypass inventory and Auth boundary review
 - Completed `RBAC-REM-07` Logging admin role-enforcement verification
+- Completed `AUTH-ALPHA-01` hosted token handoff URL normalization

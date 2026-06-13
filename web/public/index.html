@@ -92,6 +92,19 @@
       submitError.textContent = message;
     }
 
+    function buildTokenHandoffUrl(returnUrl, data, callerState) {
+      const redirectUrl = new URL(returnUrl);
+      const fragment = new URLSearchParams();
+      fragment.set('access_token', data.accessToken);
+      if (data.refreshToken) fragment.set('refresh_token', data.refreshToken);
+      const expiresAt = parseJwtExpiryIso(data.accessToken);
+      if (expiresAt) fragment.set('expires_at', expiresAt);
+      if (callerState) fragment.set('state', callerState);
+      fragment.set('auth_method', 'password');
+      redirectUrl.hash = fragment.toString();
+      return redirectUrl.toString();
+    }
+
     function syncMode() {
       const isRegister = mode === 'register';
       authTitle.textContent = isRegister ? 'Create account' : 'Sign in';
@@ -166,14 +179,7 @@
           throw new Error('Missing access token in auth response');
         }
 
-        const expiresAt = parseJwtExpiryIso(data.accessToken);
-        const fragment = new URLSearchParams();
-        fragment.set('access_token', data.accessToken);
-        if (data.refreshToken) fragment.set('refresh_token', data.refreshToken);
-        if (expiresAt) fragment.set('expires_at', expiresAt);
-        if (state) fragment.set('state', state);
-        fragment.set('auth_method', 'password');
-        window.location.assign(validatedReturnUrl + '#' + fragment.toString());
+        window.location.assign(buildTokenHandoffUrl(validatedReturnUrl, data, state));
       } catch (error) {
         setError(error.message || 'Authentication failed');
         submitBtn.disabled = false;

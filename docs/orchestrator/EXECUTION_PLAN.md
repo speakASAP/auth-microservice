@@ -7,59 +7,63 @@ YAML metadata:
 - created: 2026-06-13
 - last_updated: 2026-06-13
 - completeness_level: validated
-- upstream: docs/RBAC_CONSUMING_SERVICES_AUDIT.md, docs/orchestrator/CONTEXT_PACKAGE.md, docs/orchestrator/PROJECT_INVARIANTS.md
+- upstream: docs/IMPLEMENTATION_STATE.md, docs/orchestrator/CONTEXT_PACKAGE.md, docs/orchestrator/PROJECT_INVARIANTS.md, docs/UNIFIED_AUTH_CONTRACT.md
 - downstream: docs/orchestrator/STATUS.md
 
 ## Selected Goal And Chunk
 
-Owner-approved remediation chunk: RBAC-REM-07 - Logging admin role-enforcement verification.
+Owner-approved Auth Alpha implementation chunk: AUTH-ALPHA-01 - hosted token handoff URL normalization.
 
-Implementation task: verify Logging admin read endpoints enforce Auth roles and add a narrow guard if absent. Preserve public log ingestion compatibility while requiring an Auth-issued admin role for privileged log query/admin surfaces.
+Implementation task: normalize Auth-hosted login, OAuth, and magic-link token handoff redirects so Auth always writes access-token handoff data into the final URL fragment by replacing any pre-existing caller fragment instead of appending a second `#`.
 
 ## Upstream Traceability
 
 - Original intent: docs/orchestrator/INTENT.md
 - Current state: docs/IMPLEMENTATION_STATE.md
-- Audit source: docs/RBAC_CONSUMING_SERVICES_AUDIT.md
-- Contract source: docs/UNIFIED_AUTH_CONTRACT.md
-- Verification source: docs/UNIFIED_AUTH_VERIFICATION.md
-- Operational source: docs/ENV_CORS_AND_AUTH_CHECK.md
-- Owner approval: user requested continuing with RBAC-REM-07 on 2026-06-13.
+- Owner selection: user selected "Alpha implementation chunk" and clarified "Auth" on 2026-06-13.
+- Contract source: docs/UNIFIED_AUTH_CONTRACT.md hosted entry points, OAuth contract, magic-link contract, redirect allowlist, and client responsibilities.
+- Verification source: docs/UNIFIED_AUTH_VERIFICATION.md.
 
 ## Goal Impact
 
-This remediation preserves Auth as the identity, JWT, and RBAC role-claim authority by making Logging admin reads depend on Auth token validation plus explicit admin roles, while leaving Logging ownership of log storage and ingestion unchanged.
+This chunk strengthens Auth as the hosted login and token handoff authority. It keeps token delivery in URL fragments, preserves state handoff, and avoids malformed redirect URLs when a caller accidentally includes its own fragment in `return_url`.
 
 ## Project Invariants
 
-- AUTH-INV-001: applies. Auth remains identity, JWT, and RBAC role-claim authority.
-- AUTH-INV-002: applies. Logging remains the log-storage owner; Auth does not take over logging storage or querying.
-- AUTH-INV-003: applies. No Auth JWT/API contract change; Logging consumes `POST /auth/validate` and Auth role strings.
-- AUTH-INV-004: applies. No JWTs, decoded secrets, service tokens, passwords, OAuth tokens, or production user data may be recorded.
-- AUTH-INV-005: applies. Logging admin authentication continues to use Auth-issued tokens.
-- AUTH-INV-006: applies. Review and validation evidence must be recorded before closure.
-- AUTH-INV-007: applies. DocsRAG must be queried before cross-service contract implementation.
+- AUTH-INV-001: applies. Auth remains identity, JWT, OAuth, magic-link, and token handoff authority.
+- AUTH-INV-002: applies. No non-Auth domain ownership moves into Auth.
+- AUTH-INV-003: applies. API/JWT shape is unchanged; redirect construction is made safer while preserving fragment handoff.
+- AUTH-INV-004: applies. Tests and docs must not contain raw JWTs, refresh tokens, magic-link tokens, passwords, OAuth tokens, or secrets.
+- AUTH-INV-005: applies. Hosted Auth login/register/OAuth/magic-link flows remain the integration pattern.
+- AUTH-INV-006: applies. Evidence must be recorded before closure.
+- AUTH-INV-007: applies. DocsRAG was queried before selecting the Auth Alpha implementation surface.
 
 ## Sensitive-Data Handling
 
-Classification: masked.
+Classification: synthetic.
 
-Allowed evidence: file paths, endpoint names, header names, role shapes, environment variable names, service names, commit IDs, and validation command names.
+Allowed evidence: synthetic token strings, synthetic return URLs, route names, method names, and validation command names.
 
-Forbidden evidence: decoded secret values, JWTs, refresh tokens, service tokens, API keys, passwords, OAuth tokens, magic-link tokens, reset tokens, or raw production user data.
+Forbidden evidence: decoded production secrets, JWTs, refresh tokens, OAuth tokens, magic-link tokens, password-reset tokens, passwords, internal-service tokens, API keys, or raw production user data.
 
 ## Contract Validation Plan
 
-Contract impact: Logging consumer behavior changes for admin read endpoints only. No Auth API, JWT payload, token signing, OAuth, magic-link, redirect, CORS, or internal-service behavior changes.
+Contract impact: compatible hardening. Auth still returns tokens in the URL fragment and still validates `return_url` through the existing allowlist rules. Existing endpoint names, JWT payload, OAuth provider routes, magic-link routes, CORS behavior, and internal-service contracts are unchanged.
 
-Expected enforced boundary:
+Expected behavior:
 
-- Logging admin read requests send an Auth-issued access token in `Authorization: Bearer ...`.
-- Logging validates the token through `POST /auth/validate` using `AUTH_SERVICE_URL`.
-- Privileged log query/service listing requires one of `global:superadmin`, `app:logging-microservice:admin`, or `internal:logging-microservice:admin`.
-- Public/service log ingestion remains unchanged to avoid ecosystem-wide logging breakage.
+- Hosted email/password UI redirects to the validated return URL with a single final fragment containing handoff values.
+- OAuth callback redirects to the validated return URL with a single final fragment containing handoff values.
+- Magic-link verify redirects to the validated return URL with a single final fragment containing handoff values.
+- If a caller supplied a `return_url` with an existing fragment, Auth replaces that fragment with the token handoff fragment rather than appending another `#`.
 
 ## Scope
+
+Allowed Auth runtime files:
+
+- `src/auth/auth.service.ts`
+- `web/public/index.html`
+- `src/auth/auth-token-handoff.spec.ts`
 
 Allowed Auth documentation/state files:
 
@@ -67,42 +71,34 @@ Allowed Auth documentation/state files:
 - `docs/orchestrator/CONTEXT_PACKAGE.md`
 - `docs/orchestrator/STATUS.md`
 - `docs/IMPLEMENTATION_STATE.md`
-- `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`
+- `docs/orchestrator/GOALS.md`
 - `TASKS.md`
 - `STATE.json`
 
-Allowed Logging source changes when verification proves the guard is absent:
-
-- `/home/ssf/Documents/Github/logging-microservice/src/logs/logs.controller.ts`
-- `/home/ssf/Documents/Github/logging-microservice/src/auth/*`
-- `/home/ssf/Documents/Github/logging-microservice/web/js/auth.js`
-- `/home/ssf/Documents/Github/logging-microservice/web/js/admin.js`
-
 ## Non-Goals
 
-- No Auth runtime code changes.
-- No Auth JWT claim-shape changes.
-- No login, OAuth, magic-link, redirect, CORS, or token-validation endpoint changes.
-- No deployments.
+- No JWT payload changes.
+- No Auth endpoint path changes.
+- No OAuth provider credential or provider-scope changes.
+- No magic-link token storage changes.
+- No redirect allowlist expansion.
+- No production deployment.
 - No production user-data reads or writes.
-- No decoded secret, JWT, API-key, or token output.
-- No changes to public/service log ingestion unless owner-approved separately.
 
 ## Validation Plan
 
-- Query DocsRAG from deployment/auth-microservice for Logging admin RBAC context.
-- Inspect Logging admin frontend auth and backend log-query endpoints.
-- If guard is absent, add a narrow backend guard and frontend role check.
-- Run `npm run build` in `logging-microservice`.
-- Run syntax checks for changed frontend JS.
-- Run `git diff --check` in changed Auth documentation/state files.
-- Run `git diff --check` in changed Logging files.
-- Run documentation missing-marker scan for gate-critical Auth docs.
-- Run documentation secret-pattern scan.
+- Run DocsRAG query for Auth hosted-flow/token handoff context.
+- Add focused unit tests for token handoff URL construction.
+- Run `npm test -- --runTestsByPath src/auth/auth-token-handoff.spec.ts`.
+- Run `npm run build`.
+- Run `node --check web/public/js/admin.js`.
+- Run syntax check for the inline login page script via Node extraction.
+- Run `git diff --check` for changed Auth files.
+- Run Auth missing-marker and secret-pattern documentation scans.
 
 ## Completion Checklist
 
-- [x] Owner approved RBAC-REM-07.
+- [x] Owner selected Auth Alpha.
 - [x] Selected goal and chunk named.
 - [x] Intent and boundary impact stated.
 - [x] Context package reviewed.
@@ -111,6 +107,6 @@ Allowed Logging source changes when verification proves the guard is absent:
 - [x] Contract impact stated.
 - [x] Validation plan stated.
 - [x] DocsRAG queried successfully from the Auth pod.
-- [x] Logging admin role-enforcement verified and remediated.
+- [x] Token handoff URL normalization implemented.
 - [x] Verification evidence recorded.
-- [x] Next remediation chunk named.
+- [x] Next chunk named.

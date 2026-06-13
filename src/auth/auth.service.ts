@@ -973,23 +973,7 @@ export class AuthService {
     }
 
     const tokens = await this.generateTokens(user.id, 'magic_link');
-    const decoded = this.jwtService.decode(tokens.accessToken) as { exp?: number } | null;
-    const expiresAtIso =
-      decoded && decoded.exp ? new Date(decoded.exp * 1000).toISOString() : new Date().toISOString();
-
-    const fragmentParts = [
-      `access_token=${encodeURIComponent(tokens.accessToken)}`,
-      `refresh_token=${encodeURIComponent(tokens.refreshToken)}`,
-      `expires_at=${encodeURIComponent(expiresAtIso)}`,
-    ];
-
-    if (token.state) {
-      fragmentParts.push(`state=${encodeURIComponent(token.state)}`);
-    }
-
-    fragmentParts.push('auth_method=magic_link');
-
-    const redirectUrl = `${finalReturnUrl}#${fragmentParts.join('&')}`;
+    const redirectUrl = this.buildTokenHandoffUrl(finalReturnUrl, tokens, 'magic_link', token.state || undefined);
 
     const durationMs = Date.now() - startedAt;
     this.audit('info', 'magic_link_verify', 'success', {
@@ -1154,23 +1138,7 @@ export class AuthService {
     }
 
     const tokens = await this.generateTokens(user.id, provider);
-    const decoded = this.jwtService.decode(tokens.accessToken) as { exp?: number } | null;
-    const expiresAtIso =
-      decoded && decoded.exp ? new Date(decoded.exp * 1000).toISOString() : new Date().toISOString();
-
-    const fragmentParts = [
-      `access_token=${encodeURIComponent(tokens.accessToken)}`,
-      `refresh_token=${encodeURIComponent(tokens.refreshToken)}`,
-      `expires_at=${encodeURIComponent(expiresAtIso)}`,
-    ];
-
-    if (stateEntry.appState) {
-      fragmentParts.push(`state=${encodeURIComponent(stateEntry.appState)}`);
-    }
-
-    fragmentParts.push(`auth_method=${encodeURIComponent(provider)}`);
-
-    const redirectUrl = `${stateEntry.returnUrl}#${fragmentParts.join('&')}`;
+    const redirectUrl = this.buildTokenHandoffUrl(stateEntry.returnUrl, tokens, provider, stateEntry.appState);
 
     const durationMs = Date.now() - startedAt;
     this.audit('info', 'oauth_callback', 'success', {
@@ -1187,6 +1155,32 @@ export class AuthService {
   private sanitizeUser(user: User) {
     const { password, ...sanitized } = user;
     return sanitized;
+  }
+
+  private buildTokenHandoffUrl(
+    returnUrl: string,
+    tokens: { accessToken: string; refreshToken?: string },
+    authMethod: string,
+    state?: string,
+  ): string {
+    const redirectUrl = new URL(returnUrl);
+    const decoded = this.jwtService.decode(tokens.accessToken) as { exp?: number } | null;
+    const expiresAtIso =
+      decoded && decoded.exp ? new Date(decoded.exp * 1000).toISOString() : new Date().toISOString();
+    const fragment = new URLSearchParams();
+
+    fragment.set('access_token', tokens.accessToken);
+    if (tokens.refreshToken) {
+      fragment.set('refresh_token', tokens.refreshToken);
+    }
+    fragment.set('expires_at', expiresAtIso);
+    if (state) {
+      fragment.set('state', state);
+    }
+    fragment.set('auth_method', authMethod);
+
+    redirectUrl.hash = fragment.toString();
+    return redirectUrl.toString();
   }
 
   validateReturnUrlForClient(returnUrl: string): string {

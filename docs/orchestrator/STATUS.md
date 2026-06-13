@@ -1,5 +1,41 @@
 # Auth Orchestrator Status
 
+## 2026-06-13 - AUTH-ALPHA-01 Hosted Token Handoff URL Normalization Completed
+
+Current focus:
+
+- Owner-selected Auth Alpha implementation chunk: AUTH-ALPHA-01.
+- Auth branch: `main`.
+- Deployment: not run.
+
+DocsRAG evidence:
+
+- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
+- Retrieved current Auth context confirmed hosted Auth login/token validation and historical unified Auth flow requirements; current source-of-truth contract came from `docs/UNIFIED_AUTH_CONTRACT.md`.
+
+Implementation evidence:
+
+- Added backend `buildTokenHandoffUrl` helper in `src/auth/auth.service.ts`.
+- OAuth callback and magic-link verify now build handoff URLs through the shared helper.
+- Hosted email/password login/register UI now builds handoff URLs with `URL` plus `URLSearchParams` and replaces any caller fragment with Auth's handoff fragment.
+- Added focused unit tests in `src/auth/auth-token-handoff.spec.ts` for caller-fragment replacement and optional fragment fields.
+
+Validation evidence:
+
+- `npm test -- --runTestsByPath src/auth/auth-token-handoff.spec.ts` passed.
+- `npm run build` passed.
+- `node --check web/public/js/admin.js` passed.
+- Inline hosted login page script syntax extraction passed.
+- `git diff --check` passed for changed Auth files.
+- Auth documentation missing-marker scan returned no matches for gate-critical docs.
+- Auth documentation secret-pattern scan returned no matches.
+- No endpoint path, JWT payload, OAuth provider, magic-link token storage, CORS, redirect allowlist, deployment, database, production user data, decoded secrets, JWTs, refresh tokens, OAuth tokens, magic-link tokens, reset tokens, passwords, internal-service tokens, or API keys changed or were recorded.
+
+Next action:
+
+- Owner selection for the next Auth remediation or implementation chunk after AUTH-ALPHA-01.
+
+
 ## 2026-06-13 - RBAC-REM-07 Logging Admin Role-Enforcement Verification Completed
 
 Current focus:

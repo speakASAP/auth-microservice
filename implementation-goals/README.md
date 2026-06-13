@@ -22,6 +22,7 @@ AUTH ORCHESTRATOR: implement goal number 6
 4. `GOAL-04-auth-observability-safety.md` - auth-flow observability and redaction safeguards.
 5. `GOAL-05-goalkeeper-style-orchestration.md` - Goalkeeper-style master orchestrator state, templates, and continuation workflow.
 6. `GOAL-06-rbac-consuming-services-audit.md` - completed RBAC role audit across consuming services.
+8. `GOAL-08-auth-alpha-hosted-token-handoff.md` - completed Auth Alpha hosted token handoff URL normalization.
 
 ## Execution Order
 

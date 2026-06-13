@@ -134,3 +134,25 @@ Acceptance criteria:
 - Future coding chunks require upstream traceability, invariant review, sensitive-data classification, contract impact review, context package, execution plan, pre-coding gate, readiness checks, and status evidence.
 - Auth ownership and non-ownership boundaries remain unchanged.
 - Documentation-only verification passes locally.
+
+## Goal 8 - Auth Alpha Hosted Token Handoff URL Normalization
+
+Status: done
+
+Intent: Auth-hosted login, OAuth, and magic-link flows must construct token handoff redirects safely and consistently.
+
+Chunks:
+
+- [x] 8.1 Define Auth Alpha as hosted token handoff URL normalization.
+- [x] 8.2 Centralize backend OAuth and magic-link fragment handoff URL construction.
+- [x] 8.3 Normalize hosted email/password UI handoff URL construction.
+- [x] 8.4 Add focused tests proving existing caller fragments are replaced by Auth handoff fragments.
+
+Acceptance criteria:
+
+- Hosted login/register redirects to the validated return URL with one final token handoff fragment.
+- OAuth callback redirects to the validated return URL with one final token handoff fragment.
+- Magic-link verify redirects to the validated return URL with one final token handoff fragment.
+- Existing caller fragments do not create double-fragment handoff URLs.
+- No endpoint path, JWT payload, OAuth provider, magic-link token storage, CORS, or redirect allowlist behavior changes.
+- No secrets, JWTs, refresh tokens, magic-link tokens, OAuth tokens, reset tokens, passwords, or production user data are recorded.

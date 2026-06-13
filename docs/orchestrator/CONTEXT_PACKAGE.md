@@ -17,11 +17,11 @@ downstream:
 
 ## Target Task
 
-Current owner-approved target: RBAC-REM-07 - Logging admin role-enforcement verification.
+Current owner-approved target: AUTH-ALPHA-01 - hosted token handoff URL normalization.
 
 Default fallback target: the active goal in `docs/IMPLEMENTATION_STATE.md`, then the earliest `active` or `pending` goal in `docs/orchestrator/GOALS.md`, then the first ready owner-selected goal in `implementation-goals/README.md`.
 
-Owner approval reason: RBAC-REM-01 through RBAC-REM-06 are complete; the owner approved continuing with RBAC-REM-07 to verify and, if needed, enforce Auth role checks on Logging admin read surfaces.
+Owner approval reason: RBAC-REM-01 through RBAC-REM-07 are complete; the owner selected an Auth-local Alpha implementation chunk. Alpha is defined as the smallest Auth-owned hosted-flow hardening chunk: normalize token handoff URLs for login, OAuth, and magic-link redirects.
 
 ## Upstream Traceability
 
@@ -58,7 +58,7 @@ Read these before coding:
 - `docs/ENV_CORS_AND_AUTH_CHECK.md`
 - selected `implementation-goals/GOAL-XX-*.md`
 
-Inspect source files only after the plan names the expected files. Prefer narrow reads over broad source-tree reading. For RBAC-REM-07, source reads are limited to Logging admin frontend auth files, Logging log-query controllers/services/modules, Auth validation contract docs, and configuration files needed to confirm `AUTH_SERVICE_URL`.
+Inspect source files only after the plan names the expected files. Prefer narrow reads over broad source-tree reading. For AUTH-ALPHA-01, source reads are limited to hosted Auth login/register UI, OAuth callback, magic-link verify, return-url validation, and tests for token handoff URL construction.
 
 ## Excluded Documents
 
@@ -82,12 +82,11 @@ Do not use these as primary authority unless the owner explicitly selects histor
 
 Allowed files must be named by the selected execution plan before coding. Documentation workflow changes should stay under `docs/orchestrator/`, `docs/IMPLEMENTATION_STATE.md`, `docs/IMPLEMENTATION_ORCHESTRATOR.md`, `TASKS.md`, `AGENTS.md`, or `implementation-goals/`.
 
-For RBAC-REM-07, allowed cross-service changes are limited to Logging admin role-enforcement files if verification proves the guard is absent:
+For AUTH-ALPHA-01, allowed runtime changes are limited to Auth-hosted token handoff construction:
 
-- `/home/ssf/Documents/Github/logging-microservice/src/logs/logs.controller.ts`
-- `/home/ssf/Documents/Github/logging-microservice/src/auth/*`
-- `/home/ssf/Documents/Github/logging-microservice/web/js/auth.js`
-- `/home/ssf/Documents/Github/logging-microservice/web/js/admin.js`
+- `/home/ssf/Documents/Github/auth-microservice/src/auth/auth.service.ts`
+- `/home/ssf/Documents/Github/auth-microservice/web/public/index.html`
+- `/home/ssf/Documents/Github/auth-microservice/src/auth/*handoff*.spec.ts`
 
 Allowed Auth documentation additions and updates are limited to:
 

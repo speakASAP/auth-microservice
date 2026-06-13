@@ -5,7 +5,7 @@ Last updated: 2026-06-13.
 ## Orchestrator Command
 
 ```text
-2026-06-13: RBAC-REM-07 Logging admin role-enforcement verification completed. Logging commit 4769c51 added Auth role enforcement for logging admin read endpoints and frontend role checks while leaving log ingestion unchanged. Validation: DocsRAG HTTP 200, Logging npm run build passed, frontend JS syntax checks passed, guard assertions passed, diff-checks and Auth documentation scans passed. No Auth runtime code, JWT payload, token validation endpoint, deployment, decoded secrets, JWTs, tokens, production user data, or database changes.
+2026-06-13: AUTH-ALPHA-01 hosted token handoff URL normalization completed. Auth now builds hosted login, OAuth, and magic-link token handoff redirects with one final URL fragment, replacing caller fragments instead of appending a second #. Validation: DocsRAG HTTP 200, focused Jest handoff tests passed, npm run build passed, frontend syntax checks passed, diff-check and Auth documentation scans passed. No endpoint path, JWT payload, OAuth provider, magic-link token storage, CORS, redirect allowlist, deployment, decoded secrets, tokens, production user data, or database changes.
 AUTH ORCHESTRATOR: continue implementation
 ```
 
@@ -25,7 +25,7 @@ AUTH ORCHESTRATOR: implement goal number 6
 
 - Active goal: none
 - Current wave: Wave 2 - Operational backlog
-- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review, RBAC-REM-02 Consumer JWT Validation Standardization, RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard, RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review, RBAC-REM-05 School Committee Local-Role Contract Note, RBAC-REM-06 Internal Service-Token/API-Key Boundary Review, RBAC-REM-07 Logging Admin Role-Enforcement Verification
+- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review, RBAC-REM-02 Consumer JWT Validation Standardization, RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard, RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review, RBAC-REM-05 School Committee Local-Role Contract Note, RBAC-REM-06 Internal Service-Token/API-Key Boundary Review, RBAC-REM-07 Logging Admin Role-Enforcement Verification, AUTH-ALPHA-01 Hosted Token Handoff URL Normalization
 - Running goals: none
 - Blocked goals: none
 - Worker threads: none
@@ -50,6 +50,7 @@ AUTH ORCHESTRATOR: implement goal number 6
 | 04 | `implementation-goals/GOAL-04-auth-observability-safety.md` | done | 03 | Auth audit logging and redaction safeguards. |
 | 05 | `implementation-goals/GOAL-05-goalkeeper-style-orchestration.md` | done | 02 | Adds Goalkeeper-style master orchestrator state, goal index, and templates. |
 | 06 | `implementation-goals/GOAL-06-rbac-consuming-services-audit.md` | done | 03, 04, 05 | Audit completed in `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`; remediation chunks require owner selection. |
+| 08 | `implementation-goals/GOAL-08-auth-alpha-hosted-token-handoff.md` | done | 03, 05 | Auth Alpha hosted token handoff URL normalization completed. |
 
 ## Execution Waves
 
@@ -101,6 +102,7 @@ Do not paste full worker logs into this file. Compress each worker result into n
 Append newest entries at the top.
 
 ```text
+2026-06-13: AUTH-ALPHA-01 hosted token handoff URL normalization completed on `alfares`. Centralized backend OAuth and magic-link token handoff URL construction, updated hosted email/password UI handoff construction, and added focused tests so caller fragments are replaced by Auth's final token handoff fragment instead of creating double-fragment redirects. Validation: DocsRAG returned HTTP 200 from the Auth pod, focused Jest handoff tests passed, `npm run build` passed, frontend syntax checks passed, diff-check passed, and Auth documentation secret/missing-marker scans passed. No endpoint path, JWT payload, OAuth provider, magic-link token storage, CORS, redirect allowlist, deployment, database, production user data, decoded secret, JWT, refresh token, OAuth token, magic-link token, reset token, or password changes.
 2026-06-13: RBAC-REM-07 Logging admin role-enforcement verification completed on `alfares`. Logging commit `4769c51` added backend Auth role enforcement for `GET /api/logs/query` and `GET /api/logs/services`, left `POST /api/logs` ingestion unchanged, and added frontend admin role checks. Validation: DocsRAG returned HTTP 200 from the Auth pod, Logging `npm run build` passed, frontend JS syntax checks passed, compiled guard assertions passed, Logging diff-check passed, Auth documentation diff-check and secret/missing-marker scans passed. No Auth runtime code, Auth JWT payload, Auth token validation endpoint, Logging log-ingestion endpoint, deployment, database, production user data, decoded secret, JWT, API-key, or token changes.
 2026-06-13: RBAC-REM-06 internal service-token/API-key boundary review completed on `alfares`. Added `docs/INTERNAL_SERVICE_AUTH_BOUNDARY_REVIEW.md` documenting Auth's canonical internal-service headers, observed machine-auth paths in Catalog, Notifications, RunLayer, Payments, and Catalog-to-Warehouse availability calls, and service-local follow-ups. Updated Auth RBAC audit and continuation state. Validation: DocsRAG returned HTTP 200 from the Auth pod, git diff --check passed for changed docs/state files, and Auth missing-marker/secret-pattern scans passed. No Auth runtime code, consumer runtime code, JWT payload, token validation endpoint, deployment, database, production user data, decoded secret, JWT, API-key, or token changes.
 2026-06-13: RBAC-REM-05 School Committee local-role contract note completed on `alfares`. Added a School Committee README contract note clarifying that Auth owns identity, login, JWT issuance, refresh, password reset, and global/application RBAC claims, while School Committee owns local school roles, tenant/school scoping, and profile approval workflow after Auth identity validation. Updated Auth RBAC audit and continuation state. Validation: DocsRAG returned HTTP 200 from the Auth pod, School Committee type-check passed, git diff --check passed for changed docs/state files, and Auth missing-marker/secret-pattern scans passed. No Auth runtime code, School Committee runtime code, JWT payload, token validation endpoint, deployment, database, production user data, decoded secret, JWT, or token changes.
@@ -134,7 +136,7 @@ Next command:
 
 ## Open Decisions
 
-- RBAC-REM-07 is complete. Next remediation or implementation chunk requires owner selection.
+- AUTH-ALPHA-01 is complete. Next remediation or implementation chunk requires owner selection.
 - Production deployment remains explicit-owner-approval only.
 
 ## Next Action
@@ -153,5 +155,5 @@ docs/RBAC_CONSUMING_SERVICES_AUDIT.md
 docs/IMPLEMENTATION_ORCHESTRATOR.md
 docs/IMPLEMENTATION_STATE.md
 docs/orchestrator/GOALS.md
-implementation-goals/GOAL-06-rbac-consuming-services-audit.md
+implementation-goals/GOAL-08-auth-alpha-hosted-token-handoff.md
 ```
