@@ -85,9 +85,9 @@ Recommended remediation chunk: inventory service-token and API-key bypasses acro
 
 ### 7. Logging web admin role enforcement was not proven
 
-The inspected `logging-microservice/web/js/auth.js` authenticates and validates through Auth, but no role guard was found in the inspected web admin source. This may be handled elsewhere, but it was not proven by this audit.
+Original audit result: the inspected `logging-microservice/web/js/auth.js` authenticated and validated through Auth, but no role guard was found in the inspected web admin source.
 
-Recommended remediation chunk: inspect logging admin backend/API authorization and require `global:superadmin` or `app:logging-microservice:admin` for privileged operations.
+Remediation result: RBAC-REM-07 completed on 2026-06-13. Logging commit `4769c51` added backend role enforcement for privileged log reads and frontend admin role checks.
 
 ## Remediation Backlog
 
@@ -97,8 +97,38 @@ Recommended remediation chunk: inspect logging admin backend/API authorization a
 4. `RBAC-REM-04`: Done 2026-06-13. SpeakASAP scoped-role normalization review and remediation committed in SpeakASAP `7135483`.
 5. `RBAC-REM-05`: Done 2026-06-13. School Committee local-role contract note committed in School Committee.
 6. `RBAC-REM-06`: Done 2026-06-13. Internal service-token/API-key bypass inventory and Auth boundary review recorded in `docs/INTERNAL_SERVICE_AUTH_BOUNDARY_REVIEW.md`.
-7. `RBAC-REM-07`: Logging admin role-enforcement verification.
+7. `RBAC-REM-07`: Done 2026-06-13. Logging admin role-enforcement verification and remediation committed in Logging `4769c51`.
 
+
+
+## RBAC-REM-07 Logging Admin Role-Enforcement Verification
+
+Status: completed 2026-06-13.
+
+Scope: `logging-microservice` admin read authorization plus Auth-side audit/status updates.
+
+Verification result:
+
+- Logging backend had no guard on `GET /api/logs/query` or `GET /api/logs/services`; the browser admin UI forwarded bearer tokens but the backend did not validate roles before returning log data.
+- `POST /api/logs` remains unchanged for ecosystem log ingestion.
+
+Implementation result:
+
+- Added `src/auth/admin-role.guard.ts` in `logging-microservice`.
+- Protected `GET /api/logs/query` and `GET /api/logs/services` with Auth `/auth/validate` plus required roles.
+- Accepted roles: `global:superadmin`, `app:logging-microservice:admin`, and `internal:logging-microservice:admin`.
+- Added frontend role checks so authenticated users without a Logging admin role are logged out of the admin UI before data loads.
+- Logging commit: `4769c51 Enforce Auth roles for logging admin reads`.
+- No Auth runtime code, Auth JWT payload, Auth token validation endpoint, log ingestion endpoint, deployment, database, production user data, decoded secrets, JWTs, or tokens changed.
+
+Validation evidence:
+
+- DocsRAG retrieval from `deployment/auth-microservice` returned `HTTP 200` and included shared RBAC context that internal microservice admin access should require an admin role or `global:superadmin`.
+- `logging-microservice npm run build` passed.
+- `node --check web/js/auth.js` passed.
+- `node --check web/js/admin.js` passed.
+- Compiled guard assertions passed for missing bearer token rejection, non-admin role rejection, and `app:logging-microservice:admin` acceptance.
+- `git diff --check` passed for changed Logging files.
 
 
 ## RBAC-REM-06 Internal Service-Token/API-Key Boundary Review
@@ -116,7 +146,7 @@ Inventory result:
 - Classified observed machine-auth paths in `catalog-microservice`, `notifications-microservice`, `runlayer`, `payments-microservice`, and the Catalog-to-Warehouse availability call.
 - Identified service-local follow-ups for RunLayer service-token identity, Notifications broad bearer `SERVICE_TOKEN`, Payments `X-API-Key` production constraints, and Catalog/Warehouse availability-token contract reconciliation.
 
-Follow-up chunk: `RBAC-REM-07` Logging admin role-enforcement verification.
+Follow-up chunk: RBAC-REM-07 completed; next chunk requires owner selection.
 
 
 ## RBAC-REM-05 School Committee Local-Role Contract Note

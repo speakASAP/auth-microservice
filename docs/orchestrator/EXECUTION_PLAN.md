@@ -12,9 +12,9 @@ YAML metadata:
 
 ## Selected Goal And Chunk
 
-Owner-approved remediation chunk: RBAC-REM-06 - internal service-token/API-key bypass inventory and Auth boundary review.
+Owner-approved remediation chunk: RBAC-REM-07 - Logging admin role-enforcement verification.
 
-Documentation task: inventory consumer machine-auth paths that use static service tokens or API keys, separate them from Auth-issued user JWT/RBAC flows, and record follow-up risks without changing runtime code.
+Implementation task: verify Logging admin read endpoints enforce Auth roles and add a narrow guard if absent. Preserve public log ingestion compatibility while requiring an Auth-issued admin role for privileged log query/admin surfaces.
 
 ## Upstream Traceability
 
@@ -24,21 +24,21 @@ Documentation task: inventory consumer machine-auth paths that use static servic
 - Contract source: docs/UNIFIED_AUTH_CONTRACT.md
 - Verification source: docs/UNIFIED_AUTH_VERIFICATION.md
 - Operational source: docs/ENV_CORS_AND_AUTH_CHECK.md
-- Owner approval: user approved continuing with RBAC-REM-06 on 2026-06-13.
+- Owner approval: user requested continuing with RBAC-REM-07 on 2026-06-13.
 
 ## Goal Impact
 
-This remediation preserves Auth as the identity, JWT, and RBAC role-claim authority while clarifying that static service tokens and API keys are machine-auth credentials, not human user identity and not Auth RBAC role claims.
+This remediation preserves Auth as the identity, JWT, and RBAC role-claim authority by making Logging admin reads depend on Auth token validation plus explicit admin roles, while leaving Logging ownership of log storage and ingestion unchanged.
 
 ## Project Invariants
 
 - AUTH-INV-001: applies. Auth remains identity, JWT, and RBAC role-claim authority.
-- AUTH-INV-002: applies. Consumer machine-auth mechanisms stay in owning services and are not moved into Auth.
-- AUTH-INV-003: applies. No Auth JWT/API contract change; this documents the existing internal-service and consumer-machine-auth boundary.
+- AUTH-INV-002: applies. Logging remains the log-storage owner; Auth does not take over logging storage or querying.
+- AUTH-INV-003: applies. No Auth JWT/API contract change; Logging consumes `POST /auth/validate` and Auth role strings.
 - AUTH-INV-004: applies. No JWTs, decoded secrets, service tokens, passwords, OAuth tokens, or production user data may be recorded.
-- AUTH-INV-005: applies. User flows continue to use Auth-issued tokens; static service tokens remain non-user machine auth.
+- AUTH-INV-005: applies. Logging admin authentication continues to use Auth-issued tokens.
 - AUTH-INV-006: applies. Review and validation evidence must be recorded before closure.
-- AUTH-INV-007: applies. DocsRAG must be queried before cross-service contract documentation.
+- AUTH-INV-007: applies. DocsRAG must be queried before cross-service contract implementation.
 
 ## Sensitive-Data Handling
 
@@ -50,21 +50,16 @@ Forbidden evidence: decoded secret values, JWTs, refresh tokens, service tokens,
 
 ## Contract Validation Plan
 
-Contract impact: documentation clarification only. No Auth API, JWT payload, token signing, OAuth, magic-link, redirect, CORS, internal-service, or consumer runtime behavior changes.
+Contract impact: Logging consumer behavior changes for admin read endpoints only. No Auth API, JWT payload, token signing, OAuth, magic-link, redirect, CORS, or internal-service behavior changes.
 
-Expected documented boundary:
+Expected enforced boundary:
 
-- User requests use Auth-issued access tokens validated through `POST /auth/validate` or the approved shared local verifier exception.
-- Static service tokens and API keys authenticate services, scripts, provider callbacks, or smoke checks; they do not represent human users.
-- Machine-auth paths may create service actors and service-local permissions but must not be documented as Auth RBAC role assignment.
-- New Auth-owned internal endpoints use `x-internal-service-token` plus `x-service-name`.
-- Consumer-owned machine-auth paths must document header names, trusted callers, rotation source, and redaction rules.
+- Logging admin read requests send an Auth-issued access token in `Authorization: Bearer ...`.
+- Logging validates the token through `POST /auth/validate` using `AUTH_SERVICE_URL`.
+- Privileged log query/service listing requires one of `global:superadmin`, `app:logging-microservice:admin`, or `internal:logging-microservice:admin`.
+- Public/service log ingestion remains unchanged to avoid ecosystem-wide logging breakage.
 
 ## Scope
-
-Allowed new Auth documentation files:
-
-- `docs/INTERNAL_SERVICE_AUTH_BOUNDARY_REVIEW.md`
 
 Allowed Auth documentation/state files:
 
@@ -76,35 +71,38 @@ Allowed Auth documentation/state files:
 - `TASKS.md`
 - `STATE.json`
 
-Allowed read-only consumer source inspection:
+Allowed Logging source changes when verification proves the guard is absent:
 
-- `/home/ssf/Documents/Github/runlayer`
-- `/home/ssf/Documents/Github/notifications-microservice`
-- `/home/ssf/Documents/Github/payments-microservice`
-- `/home/ssf/Documents/Github/catalog-microservice`
-- `/home/ssf/Documents/Github/warehouse-microservice`, receiving-side check only for Catalog availability service-token compatibility.
+- `/home/ssf/Documents/Github/logging-microservice/src/logs/logs.controller.ts`
+- `/home/ssf/Documents/Github/logging-microservice/src/auth/*`
+- `/home/ssf/Documents/Github/logging-microservice/web/js/auth.js`
+- `/home/ssf/Documents/Github/logging-microservice/web/js/admin.js`
 
 ## Non-Goals
 
 - No Auth runtime code changes.
-- No consumer runtime code changes.
 - No Auth JWT claim-shape changes.
 - No login, OAuth, magic-link, redirect, CORS, or token-validation endpoint changes.
 - No deployments.
 - No production user-data reads or writes.
 - No decoded secret, JWT, API-key, or token output.
+- No changes to public/service log ingestion unless owner-approved separately.
 
 ## Validation Plan
 
-- Query DocsRAG from deployment/auth-microservice for internal service-auth and machine-auth context.
-- Inspect narrow consumer guards, clients, env-key manifests, and docs that mention service-token/API-key machine auth.
-- Run git diff --check in changed Auth documentation/state files.
+- Query DocsRAG from deployment/auth-microservice for Logging admin RBAC context.
+- Inspect Logging admin frontend auth and backend log-query endpoints.
+- If guard is absent, add a narrow backend guard and frontend role check.
+- Run `npm run build` in `logging-microservice`.
+- Run syntax checks for changed frontend JS.
+- Run `git diff --check` in changed Auth documentation/state files.
+- Run `git diff --check` in changed Logging files.
 - Run documentation missing-marker scan for gate-critical Auth docs.
 - Run documentation secret-pattern scan.
 
 ## Completion Checklist
 
-- [x] Owner approved RBAC-REM-06.
+- [x] Owner approved RBAC-REM-07.
 - [x] Selected goal and chunk named.
 - [x] Intent and boundary impact stated.
 - [x] Context package reviewed.
@@ -113,7 +111,6 @@ Allowed read-only consumer source inspection:
 - [x] Contract impact stated.
 - [x] Validation plan stated.
 - [x] DocsRAG queried successfully from the Auth pod.
-- [x] Internal service-token/API-key inventory completed.
-- [x] Boundary review and follow-up risks recorded.
+- [x] Logging admin role-enforcement verified and remediated.
 - [x] Verification evidence recorded.
 - [x] Next remediation chunk named.

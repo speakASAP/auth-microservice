@@ -1,5 +1,41 @@
 # Auth Orchestrator Status
 
+## 2026-06-13 - RBAC-REM-07 Logging Admin Role-Enforcement Verification Completed
+
+Current focus:
+
+- Owner-selected remediation chunk: RBAC-REM-07 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- Logging branch: `main`.
+- Logging commit: `4769c51 Enforce Auth roles for logging admin reads`.
+- Auth runtime code changes: none.
+- Deployment: not run.
+
+DocsRAG evidence:
+
+- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
+- Retrieved shared RBAC context included the expected pattern that internal microservice admin surfaces require an admin role or `global:superadmin` while Auth remains role authority.
+
+Implementation evidence:
+
+- Verified Logging `GET /api/logs/query` and `GET /api/logs/services` were previously unguarded backend reads, while `POST /api/logs` served ecosystem ingestion.
+- Added `logging-microservice/src/auth/admin-role.guard.ts` to validate bearer tokens through Auth `/auth/validate` and require one of `global:superadmin`, `app:logging-microservice:admin`, or `internal:logging-microservice:admin`.
+- Applied the guard only to Logging log-query and service-list endpoints; log ingestion remains unchanged.
+- Updated Logging admin frontend role checks so authenticated non-admin users are cleared from the admin UI before data loads.
+
+Validation evidence:
+
+- `logging-microservice npm run build` passed.
+- `node --check web/js/auth.js` passed.
+- `node --check web/js/admin.js` passed.
+- Compiled guard assertions passed for missing bearer token rejection, non-admin role rejection, and accepted Logging admin role.
+- `git diff --check` passed for changed Logging files.
+- No Auth runtime code, Auth JWT payload, Auth token validation endpoint, Logging log-ingestion endpoint, deployment, database, production user data, decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, or magic-link tokens changed.
+
+Next action:
+
+- Owner selection for the next Auth remediation or implementation chunk.
+
+
 ## 2026-06-13 - RBAC-REM-06 Internal Service-Token/API-Key Boundary Review Completed
 
 Current focus:
@@ -34,7 +70,7 @@ Validation evidence:
 
 Next action:
 
-- Recommended next remediation chunk: RBAC-REM-07 Logging admin role-enforcement verification.
+- RBAC-REM-07 completed later on 2026-06-13; next chunk requires owner selection.
 
 ## 2026-06-13 - RBAC-REM-05 School Committee Local-Role Contract Note Completed
 

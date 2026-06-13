@@ -2,7 +2,7 @@
 
 ## Backlog
 
-- Owner-select or implement next RBAC remediation chunk: RBAC-REM-07 Logging admin role-enforcement verification (priority: 3)
+- Owner-select next Auth remediation or implementation chunk (priority: 3)
 
 ## Completed
 
@@ -18,3 +18,4 @@
 - Completed `RBAC-REM-04` SpeakASAP scoped-role normalization review
 - Completed `RBAC-REM-05` School Committee local-role contract note
 - Completed `RBAC-REM-06` internal service-token/API-key bypass inventory and Auth boundary review
+- Completed `RBAC-REM-07` Logging admin role-enforcement verification
