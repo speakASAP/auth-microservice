@@ -1,5 +1,33 @@
 # Auth Orchestrator Status
 
+## 2026-06-13 - AUTH-ALPHA-01 And RBAC-REM-07 Production Deployment Completed
+
+Current focus:
+
+- Owner approved production deployment after Auth Alpha and Logging admin RBAC remediation.
+- Auth branch: `main` at `b540e74`.
+- Logging branch: `main` at `4769c51`.
+
+Deployment evidence:
+
+- Logging deployed image `localhost:5000/logging-microservice:4769c51`; rollout completed and in-pod health check passed.
+- Auth deployed backend image `localhost:5000/auth-microservice:b540e74-20260613062417` and web image `localhost:5000/auth-microservice-web:b540e74-20260613062417`.
+- Auth deploy applied ConfigMap, ExternalSecret, manifests, deployment images, rollout, health check, and post-deploy config patch; final rollout completed successfully.
+
+Production verification evidence:
+
+- `kubectl -n statex-apps get deploy auth-microservice auth-microservice-web logging-microservice -o wide` showed all three deployments `READY 1/1` on the expected new images.
+- `https://auth.alfares.cz/health` returned status `ok`.
+- `https://auth.alfares.cz/login` returned HTTP 200.
+- `https://auth.alfares.cz/admin` returned HTTP 200.
+- `https://logging.alfares.cz/health` returned status `ok`.
+- No decoded secrets, JWTs, refresh tokens, OAuth tokens, magic-link tokens, reset tokens, passwords, internal-service tokens, API keys, raw production user data, or database changes were recorded.
+
+Next action:
+
+- Owner selection for the next Auth remediation or implementation chunk after production deployment.
+
+
 ## 2026-06-13 - AUTH-ALPHA-01 Hosted Token Handoff URL Normalization Completed
 
 Current focus:
