@@ -23,13 +23,14 @@ AUTH ORCHESTRATOR: implement goal number 6
 5. `GOAL-05-goalkeeper-style-orchestration.md` - Goalkeeper-style master orchestrator state, templates, and continuation workflow.
 6. `GOAL-06-rbac-consuming-services-audit.md` - completed RBAC role audit across consuming services.
 8. `GOAL-08-auth-alpha-hosted-token-handoff.md` - completed Auth Alpha hosted token handoff URL normalization.
+9. `GOAL-09-auth-contract-production-smoke-verification.md` - completed production contract smoke verification after deployment.
 
 ## Execution Order
 
 Safe default:
 
 ```text
-01 -> 02 -> 03 -> 04 -> 05 -> owner-selected 06 (done)
+01 -> 02 -> 03 -> 04 -> 05 -> owner-selected 06 (done) -> owner-selected 09 (done)
 ```
 
 Goal 06 touches ecosystem consumers and should start only when the owner confirms scope or requests it explicitly.

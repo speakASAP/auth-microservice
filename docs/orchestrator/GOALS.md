@@ -156,3 +156,24 @@ Acceptance criteria:
 - Existing caller fragments do not create double-fragment handoff URLs.
 - No endpoint path, JWT payload, OAuth provider, magic-link token storage, CORS, or redirect allowlist behavior changes.
 - No secrets, JWTs, refresh tokens, magic-link tokens, OAuth tokens, reset tokens, passwords, or production user data are recorded.
+
+## Goal 9 - Auth Contract Production Smoke Verification
+
+Status: done
+
+Intent: Verify the live Auth production surface after the latest deployment without changing runtime behavior or exposing sensitive data.
+
+Chunks:
+
+- [x] 9.1 Refresh context package and execution plan for the verification task.
+- [x] 9.2 Query DocsRAG for Auth contract/verification context.
+- [x] 9.3 Run production-safe contract smoke checks.
+- [x] 9.4 Record verification evidence and continuation state.
+
+Acceptance criteria:
+
+- Production health returns ok.
+- Hosted login/register/admin entry points are reachable.
+- Synthetic invalid-token and safe redirect-validation checks behave safely.
+- Build, frontend syntax, documentation scans, and diff-check pass.
+- No runtime, deployment, database, contract, secret, token, or production user-data change is made.

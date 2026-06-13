@@ -5,7 +5,7 @@ Last updated: 2026-06-13.
 ## Orchestrator Command
 
 ```text
-2026-06-13: AUTH-ALPHA-01 hosted token handoff URL normalization completed. Auth now builds hosted login, OAuth, and magic-link token handoff redirects with one final URL fragment, replacing caller fragments instead of appending a second #. Validation: DocsRAG HTTP 200, focused Jest handoff tests passed, npm run build passed, frontend syntax checks passed, diff-check and Auth documentation scans passed. No endpoint path, JWT payload, OAuth provider, magic-link token storage, CORS, redirect allowlist, deployment, decoded secrets, tokens, production user data, or database changes.
+2026-06-13: Goal 09 Auth contract production smoke verification completed. Auth production health and hosted entry points were verified after AUTH-ALPHA-01 and RBAC-REM-07 deployment; build/syntax checks, synthetic invalid-token validation, safe redirect validation, DocsRAG, diff-check, and documentation scans passed. No runtime, deployment, contract, secret, token, database, or production user-data changes.
 AUTH ORCHESTRATOR: continue implementation
 ```
 
@@ -25,7 +25,7 @@ AUTH ORCHESTRATOR: implement goal number 6
 
 - Active goal: none
 - Current wave: Wave 2 - Operational backlog
-- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review, RBAC-REM-02 Consumer JWT Validation Standardization, RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard, RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review, RBAC-REM-05 School Committee Local-Role Contract Note, RBAC-REM-06 Internal Service-Token/API-Key Boundary Review, RBAC-REM-07 Logging Admin Role-Enforcement Verification, AUTH-ALPHA-01 Hosted Token Handoff URL Normalization
+- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review, RBAC-REM-02 Consumer JWT Validation Standardization, RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard, RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review, RBAC-REM-05 School Committee Local-Role Contract Note, RBAC-REM-06 Internal Service-Token/API-Key Boundary Review, RBAC-REM-07 Logging Admin Role-Enforcement Verification, AUTH-ALPHA-01 Hosted Token Handoff URL Normalization, 09 Auth Contract Production Smoke Verification
 - Running goals: none
 - Blocked goals: none
 - Worker threads: none
@@ -51,6 +51,7 @@ AUTH ORCHESTRATOR: implement goal number 6
 | 05 | `implementation-goals/GOAL-05-goalkeeper-style-orchestration.md` | done | 02 | Adds Goalkeeper-style master orchestrator state, goal index, and templates. |
 | 06 | `implementation-goals/GOAL-06-rbac-consuming-services-audit.md` | done | 03, 04, 05 | Audit completed in `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`; remediation chunks require owner selection. |
 | 08 | `implementation-goals/GOAL-08-auth-alpha-hosted-token-handoff.md` | done | 03, 05 | Auth Alpha hosted token handoff URL normalization completed. |
+| 09 | `implementation-goals/GOAL-09-auth-contract-production-smoke-verification.md` | done | 08 | Production contract smoke verification completed after deployment. |
 
 ## Execution Waves
 
@@ -137,7 +138,7 @@ Next command:
 
 ## Open Decisions
 
-- AUTH-ALPHA-01 and RBAC-REM-07 are deployed to production. Next remediation or implementation chunk requires owner selection.
+- Goal 09 production contract smoke verification is complete. Next remediation or implementation chunk requires owner selection.
 - Production deployment remains explicit-owner-approval only.
 
 ## Next Action

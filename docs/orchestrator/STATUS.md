@@ -1,5 +1,42 @@
 # Auth Orchestrator Status
 
+## 2026-06-13 - Goal 09 Auth Contract Production Smoke Verification Completed
+
+Current focus:
+
+- Owner-selected Goal 09: Auth contract production smoke verification after `AUTH-ALPHA-01` and `RBAC-REM-07` production deployment.
+- Auth branch: `main`.
+- Deployment: not run.
+- Runtime code changes: none.
+
+DocsRAG evidence:
+
+- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
+- Retrieved source headings included Authentication API Endpoints, Business: auth-microservice, and Post-Cutover Verification Evidence.
+
+Verification evidence:
+
+- `npm run build` passed.
+- `node --check web/public/js/admin.js` passed.
+- Inline hosted login script syntax extraction passed.
+- `https://auth.alfares.cz/health` returned HTTP 200.
+- `https://auth.alfares.cz/login` returned HTTP 200.
+- `https://auth.alfares.cz/register` returned HTTP 200.
+- `https://auth.alfares.cz/admin` returned HTTP 200.
+- Synthetic invalid `POST /auth/validate` returned HTTP 401 with a safe `valid` response summary.
+- Safe `GET /auth/validate-return-url` returned HTTP 200 with the expected HTTPS return URL.
+- Gate-critical missing-marker scan returned no matches.
+- Documentation secret-pattern scan returned no matches.
+- `git diff --check` passed.
+
+Boundary evidence:
+
+- No Auth runtime code, consumer code, endpoint, JWT payload, RBAC, OAuth, magic-link, redirect allowlist, CORS, internal-service, database, deployment, production user data, decoded secret, JWT, refresh token, OAuth token, magic-link token, reset token, password, API key, or token value changed or was recorded.
+
+Next action:
+
+- Owner selection for the next Auth remediation or implementation chunk.
+
 ## 2026-06-13 - AUTH-ALPHA-01 And RBAC-REM-07 Production Deployment Completed
 
 Current focus:
