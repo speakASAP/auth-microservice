@@ -17,11 +17,11 @@ downstream:
 
 ## Target Task
 
-Current owner-selected target: RBAC-REM-04 - SpeakASAP scoped-role normalization review.
+Current owner-selected target: RBAC-REM-05 - School Committee local-role contract note.
 
 Default fallback target: the active goal in `docs/IMPLEMENTATION_STATE.md`, then the earliest `active` or `pending` goal in `docs/orchestrator/GOALS.md`, then the first ready owner-selected goal in `implementation-goals/README.md`.
 
-Owner selection reason: RBAC-REM-01, RBAC-REM-02, and RBAC-REM-03 are complete; the owner explicitly selected RBAC-REM-04 to remove SpeakASAP scoped-role normalization drift while preserving Auth ownership boundaries.
+Owner selection reason: RBAC-REM-01 through RBAC-REM-04 are complete; the owner selected RBAC-REM-05 to document the School Committee boundary between Auth identity validation and app-local school authorization.
 
 ## Upstream Traceability
 
@@ -58,7 +58,7 @@ Read these before coding:
 - `docs/ENV_CORS_AND_AUTH_CHECK.md`
 - selected `implementation-goals/GOAL-XX-*.md`
 
-Inspect source files only after the plan names the expected files. Prefer narrow reads over broad source-tree reading. For RBAC-REM-04, source reads are limited to SpeakASAP auth/role helpers and nearby route-authorization references unless validation reveals a direct dependency.
+Inspect source files only after the plan names the expected files. Prefer narrow reads over broad source-tree reading. For RBAC-REM-05, source reads are limited to School Committee auth helpers, local role/approval model references, and the target README documentation file unless validation reveals a direct dependency.
 
 ## Excluded Documents
 
@@ -82,10 +82,9 @@ Do not use these as primary authority unless the owner explicitly selects histor
 
 Allowed files must be named by the selected execution plan before coding. Documentation workflow changes should stay under `docs/orchestrator/`, `docs/IMPLEMENTATION_STATE.md`, `docs/IMPLEMENTATION_ORCHESTRATOR.md`, `TASKS.md`, `AGENTS.md`, or `implementation-goals/`.
 
-For RBAC-REM-04, allowed cross-service implementation files are limited to:
+For RBAC-REM-05, allowed cross-service documentation files are limited to:
 
-- `/home/ssf/Documents/Github/speakasap/assessment-service/src/auth/normalize-roles.ts`
-- `/home/ssf/Documents/Github/speakasap/certification-service/src/auth/roles.ts`
+- `/home/ssf/Documents/Github/school-committee/README.md`
 
 ## Forbidden Changes
 

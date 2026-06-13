@@ -1,5 +1,38 @@
 # Auth Orchestrator Status
 
+## 2026-06-13 - RBAC-REM-05 School Committee Local-Role Contract Note Completed
+
+Current focus:
+
+- Owner-selected remediation chunk: RBAC-REM-05 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- School Committee branch: `main`.
+- Auth runtime code changes: none.
+- School Committee runtime code changes: none.
+- Deployment: not run.
+
+DocsRAG evidence:
+
+- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
+- Retrieved School Committee auth-integration context confirmed the platform must not implement authentication internally, Auth owns identity/JWT issuance/login/password reset, and the BFF validates Auth tokens through Auth.
+
+Implementation evidence:
+
+- Reviewed School Committee `README.md`, `SYSTEM.md`, `lib/auth/get-current-user.ts`, `lib/auth/validate-token.ts`, `lib/auth/require-role.ts`, `lib/auth/require-approved.ts`, and `prisma/schema.prisma` role/profile models.
+- Added a School Committee README note clarifying that Auth validates identity while School Committee owns local school roles, tenant/school scoping, and profile approval workflow.
+- Updated Auth RBAC audit and continuation docs to mark RBAC-REM-05 complete and set RBAC-REM-06 as the next remediation chunk.
+
+Validation evidence:
+
+- `git diff --check` passed for changed School Committee and Auth documentation/state files.
+- Auth documentation missing-marker scan returned no matches for gate-critical docs.
+- Auth documentation secret-pattern scan returned no matches.
+- School Committee `npm run type-check` passed.
+- No Auth runtime code, School Committee runtime code, JWT payload, token validation endpoint, deployment, database, production user data, decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, or magic-link tokens changed.
+
+Next action:
+
+- Recommended next remediation chunk: RBAC-REM-06 internal service-token/API-key bypass inventory and Auth boundary review.
+
 ## 2026-06-13 - RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review Completed
 
 Current focus:

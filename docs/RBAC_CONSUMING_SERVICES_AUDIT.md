@@ -95,10 +95,26 @@ Recommended remediation chunk: inspect logging admin backend/API authorization a
 2. `RBAC-REM-02`: Done 2026-06-12. Standardized consumer JWT validation pattern: default to `POST /auth/validate`; allow shared local verifier only as a constrained backend exception.
 3. `RBAC-REM-03`: Done 2026-06-13. Catalog frontend role-aware admin guard and stale comment cleanup committed in catalog `5f0e087`.
 4. `RBAC-REM-04`: Done 2026-06-13. SpeakASAP scoped-role normalization review and remediation committed in SpeakASAP `7135483`.
-5. `RBAC-REM-05`: School Committee local-role contract note.
+5. `RBAC-REM-05`: Done 2026-06-13. School Committee local-role contract note committed in School Committee.
 6. `RBAC-REM-06`: Internal service-token/API-key bypass inventory and Auth boundary review.
 7. `RBAC-REM-07`: Logging admin role-enforcement verification.
 
+
+
+## RBAC-REM-05 School Committee Local-Role Contract Note
+
+Status: completed 2026-06-13.
+
+Scope: `school-committee` README documentation only.
+
+Decision: School Committee delegates authentication to Auth and validates Auth-issued access tokens through `POST /auth/validate`. After identity validation, School Committee owns school-domain authorization: local roles such as `parent`, `committee`, `teacher`, `school_staff`, and `admin`, plus profile approval state and tenant/school scoping.
+
+Implementation result:
+
+- Added a School Committee README contract note that separates Auth-owned identity/JWT/RBAC claims from School Committee-owned local roles and approval workflow.
+- No Auth runtime code, School Committee runtime code, token validation endpoint, JWT payload, deployment, database, production user data, decoded secrets, JWTs, or tokens changed.
+
+Follow-up chunks: `RBAC-REM-06` and `RBAC-REM-07`.
 
 
 ## RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard
@@ -166,7 +182,7 @@ Validation evidence:
 - Full `npm run build` was attempted but could not complete because of pre-existing dependency state: assessment could not find the `prisma` command in the package script path, and certification failed to unlink a root-owned generated Prisma client file. Narrow compile and helper assertions were used as compensating validation.
 - No decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, production user data, database changes, or deployment changed.
 
-Follow-up chunk: `RBAC-REM-05` School Committee local-role contract note.
+Follow-up chunk: `RBAC-REM-06` internal service-token/API-key bypass inventory and Auth boundary review.
 
 ## RBAC-REM-02 Consumer JWT Validation Standardization
 
