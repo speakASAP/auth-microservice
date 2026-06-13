@@ -5,6 +5,7 @@ Last updated: 2026-06-12.
 ## Orchestrator Command
 
 ```text
+2026-06-13: RBAC-REM-03 Catalog frontend role-aware admin guard completed. Updated catalog-microservice AdminGuard to require Auth role claims before rendering admin surfaces and removed stale Auth role-support text. Catalog commit 5f0e087. Validation: services/frontend npm run build passed, git diff --check passed, and Catalog pre-commit checks passed. No Auth runtime code, Catalog backend authorization, deployment, decoded secrets, JWTs, tokens, production user data, or database changes.
 AUTH ORCHESTRATOR: continue implementation
 ```
 
@@ -24,7 +25,7 @@ AUTH ORCHESTRATOR: implement goal number 6
 
 - Active goal: none
 - Current wave: Wave 2 - Operational backlog
-- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review, RBAC-REM-02 Consumer JWT Validation Standardization
+- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review, RBAC-REM-02 Consumer JWT Validation Standardization, RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard
 - Running goals: none
 - Blocked goals: none
 - Worker threads: none
@@ -128,7 +129,7 @@ Next command:
 
 ## Open Decisions
 
-- RBAC-REM-02 is complete. Next recommended remediation chunk: RBAC-REM-03 Catalog frontend role-aware admin guard and stale comment cleanup.
+- RBAC-REM-03 is complete. Next recommended remediation chunk: RBAC-REM-04 SpeakASAP scoped-role normalization review.
 - Production deployment remains explicit-owner-approval only.
 
 ## Next Action

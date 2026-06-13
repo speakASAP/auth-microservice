@@ -93,12 +93,43 @@ Recommended remediation chunk: inspect logging admin backend/API authorization a
 
 1. `RBAC-REM-01`: Done 2026-06-12. Secret-source alignment for direct JWT consumers: catalog, warehouse, suppliers, orders, payments. Validated without printing or decoding secret values.
 2. `RBAC-REM-02`: Done 2026-06-12. Standardized consumer JWT validation pattern: default to `POST /auth/validate`; allow shared local verifier only as a constrained backend exception.
-3. `RBAC-REM-03`: Catalog frontend role-aware admin guard and stale comment cleanup.
+3. `RBAC-REM-03`: Done 2026-06-13. Catalog frontend role-aware admin guard and stale comment cleanup committed in catalog `5f0e087`.
 4. `RBAC-REM-04`: SpeakASAP scoped-role normalization review.
 5. `RBAC-REM-05`: School Committee local-role contract note.
 6. `RBAC-REM-06`: Internal service-token/API-key bypass inventory and Auth boundary review.
 7. `RBAC-REM-07`: Logging admin role-enforcement verification.
 
+
+
+## RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard
+
+Status: completed 2026-06-13.
+
+Scope: `catalog-microservice/services/frontend/components/AdminGuard.tsx` plus Catalog continuation docs.
+
+Decision: Catalog admin frontend surfaces should not render for every authenticated Auth user. The frontend guard now checks Auth roles before rendering admin children and removes the stale comment that said Auth does not support roles/admin flags.
+
+Accepted frontend roles:
+
+- `global:superadmin`
+- `app:catalog-microservice:admin`
+- `internal:catalog-microservice:admin`
+- `catalog:write`
+
+Implementation evidence:
+
+- Catalog commit: `5f0e087 Make catalog admin guard role aware` on `feature/catalog-goal-04-channel-readiness-model`.
+- Non-authorized authenticated users receive an access-required state and a route back to the catalog home page.
+- Backend Catalog authorization remains unchanged and continues to enforce server-side roles.
+
+Validation evidence:
+
+- `services/frontend npm run build` passed.
+- `git diff --check -- services/frontend/components/AdminGuard.tsx` passed.
+- Catalog pre-commit checks passed.
+- No Auth runtime code, Catalog backend authorization code, secrets, tokens, production user data, database changes, or deployment changed.
+
+Follow-up chunk: `RBAC-REM-04` SpeakASAP scoped-role normalization review.
 
 ## RBAC-REM-02 Consumer JWT Validation Standardization
 

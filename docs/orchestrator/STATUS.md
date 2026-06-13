@@ -1,5 +1,36 @@
 # Auth Orchestrator Status
 
+## 2026-06-13 - RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard Completed
+
+Current focus:
+
+- Owner-selected remediation chunk: RBAC-REM-03 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- Catalog branch: `feature/catalog-goal-04-channel-readiness-model`.
+- Catalog commit: `5f0e087 Make catalog admin guard role aware`.
+- Auth runtime code changes: none.
+- Catalog backend authorization changes: none.
+- Deployment: not run.
+
+Implementation evidence:
+
+- Removed stale Catalog frontend AdminGuard text that said Auth does not support roles/admin flags.
+- AdminGuard now requires one of: `global:superadmin`, `app:catalog-microservice:admin`, `internal:catalog-microservice:admin`, or `catalog:write` before rendering admin children.
+- Authenticated users without those roles see an access-required state rather than admin content.
+- Catalog continuation docs were updated with validation evidence.
+
+Validation evidence:
+
+- `services/frontend npm run build` passed.
+- `git diff --check -- services/frontend/components/AdminGuard.tsx` passed.
+- Catalog pre-commit checks passed.
+- Auth documentation `git diff --check` and secret scans are required before final Auth commit.
+- DocsRAG was unavailable because `JWT_TOKEN` is absent in the remote shell; source evidence came from Auth contract docs and Catalog source.
+- No decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, production user data, deployment, or database changes.
+
+Next action:
+
+- Recommended next remediation chunk: RBAC-REM-04 SpeakASAP scoped-role normalization review.
+
 ## 2026-06-12 - RBAC-REM-02 Consumer JWT Validation Standardization Completed
 
 Current focus:
