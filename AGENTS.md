@@ -126,6 +126,26 @@ Query the RAG service first — saves 2000-5000 tokens per query:
 - Endpoint: `POST /retrieval/agent-context` with `{"query": "...", "maxTokens": 3000}`
 - Auth: `Authorization: Bearer <JWT_TOKEN>`
 
+Remote SSH shells are not expected to export `JWT_TOKEN`. Use the running Auth pod, where
+`JWT_TOKEN` is projected from `auth-microservice-secret`, for authenticated DocsRAG queries.
+Do not print the token value.
+
+```bash
+kubectl -n statex-apps exec deployment/auth-microservice -- node -e '
+const token = process.env.JWT_TOKEN;
+if (!token) { console.error("JWT_TOKEN_ENV_MISSING"); process.exit(2); }
+fetch("http://docs-rag-microservice:3397/retrieval/agent-context", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+  body: JSON.stringify({ query: "your question here", maxTokens: 3000 })
+}).then(async (res) => {
+  console.log("HTTP " + res.status);
+  console.log(await res.text());
+  process.exit(res.ok ? 0 : 1);
+}).catch((err) => { console.error(err.message); process.exit(1); });
+'
+```
+
 N/A — infrastructure service. No AI agent coordination.
 
 ## Active Agents

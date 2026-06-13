@@ -1,5 +1,32 @@
 # Auth Orchestrator Status
 
+## 2026-06-13 - DocsRAG JWT Token Pickup Fixed
+
+Current focus:
+
+- Owner request: fix DocsRAG unavailability caused by `JWT_TOKEN` not being set in the remote SSH shell, using the same operational pattern as RunLayer and AI microservice.
+- Runtime code changes: none.
+- Deployment manifest changes: none; `k8s/external-secret.yaml` already maps `JWT_TOKEN` from `secret/prod/auth-microservice`.
+
+Implementation evidence:
+
+- Verified live `ExternalSecret` `auth-microservice-secret` maps `JWT_TOKEN` from `secret/prod/auth-microservice` property `JWT_TOKEN`.
+- Verified live Kubernetes Secret `auth-microservice-secret` contains a `JWT_TOKEN` key without printing or decoding its value.
+- Restarted `deployment/auth-microservice` so the running pod picked up the synced secret.
+- Updated `AGENTS.md` to document that remote SSH shells are not expected to export `JWT_TOKEN`; future DocsRAG queries should run from `deployment/auth-microservice` using the pod environment and must not print token values.
+
+Validation evidence:
+
+- `kubectl -n statex-apps rollout status deployment/auth-microservice --timeout=180s` passed.
+- `kubectl -n statex-apps exec deployment/auth-microservice -- sh -c "printenv JWT_TOKEN >/dev/null && echo JWT_TOKEN_ENV_PRESENT || echo JWT_TOKEN_ENV_MISSING"` returned `JWT_TOKEN_ENV_PRESENT`.
+- DocsRAG retrieval from inside `deployment/auth-microservice` returned `HTTP 200` using the pod `JWT_TOKEN` without printing the token.
+- `https://auth.alfares.cz/health` returned status `ok`.
+- No decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, production user data, database changes, or runtime code changes.
+
+Next action:
+
+- Continue with the next owner-selected Auth remediation chunk when requested.
+
 ## 2026-06-13 - RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard Completed
 
 Current focus:
