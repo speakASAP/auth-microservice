@@ -25,7 +25,7 @@ AUTH ORCHESTRATOR: implement goal number 6
 
 - Active goal: none
 - Current wave: Wave 2 - Operational backlog
-- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review, RBAC-REM-02 Consumer JWT Validation Standardization, RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard, RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review, RBAC-REM-05 School Committee Local-Role Contract Note
+- Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review, RBAC-REM-02 Consumer JWT Validation Standardization, RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard, RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review, RBAC-REM-05 School Committee Local-Role Contract Note, RBAC-REM-06 Internal Service-Token/API-Key Boundary Review
 - Running goals: none
 - Blocked goals: none
 - Worker threads: none
@@ -101,6 +101,7 @@ Do not paste full worker logs into this file. Compress each worker result into n
 Append newest entries at the top.
 
 ```text
+2026-06-13: RBAC-REM-06 internal service-token/API-key boundary review completed on `alfares`. Added `docs/INTERNAL_SERVICE_AUTH_BOUNDARY_REVIEW.md` documenting Auth's canonical internal-service headers, observed machine-auth paths in Catalog, Notifications, RunLayer, Payments, and Catalog-to-Warehouse availability calls, and service-local follow-ups. Updated Auth RBAC audit and continuation state. Validation: DocsRAG returned HTTP 200 from the Auth pod, git diff --check passed for changed docs/state files, and Auth missing-marker/secret-pattern scans passed. No Auth runtime code, consumer runtime code, JWT payload, token validation endpoint, deployment, database, production user data, decoded secret, JWT, API-key, or token changes.
 2026-06-13: RBAC-REM-05 School Committee local-role contract note completed on `alfares`. Added a School Committee README contract note clarifying that Auth owns identity, login, JWT issuance, refresh, password reset, and global/application RBAC claims, while School Committee owns local school roles, tenant/school scoping, and profile approval workflow after Auth identity validation. Updated Auth RBAC audit and continuation state. Validation: DocsRAG returned HTTP 200 from the Auth pod, School Committee type-check passed, git diff --check passed for changed docs/state files, and Auth missing-marker/secret-pattern scans passed. No Auth runtime code, School Committee runtime code, JWT payload, token validation endpoint, deployment, database, production user data, decoded secret, JWT, or token changes.
 2026-06-13: RBAC-REM-04 SpeakASAP scoped-role normalization review completed on `alfares`. Updated SpeakASAP assessment and certification role helpers so unscoped legacy local roles remain valid, `app:speakasap:<role>` maps explicitly, accepted global staff roles remain authorized, and unrelated `internal:*` or other-app scoped roles no longer collapse into SpeakASAP local manager/teacher roles. SpeakASAP commit `7135483`. Validation: DocsRAG returned HTTP 200 from the Auth pod, isolated TypeScript compile passed for both changed helpers, compiled role assertions passed for allowed and denied role shapes, SpeakASAP diff-check and pre-commit passed. Full service builds were attempted but blocked by pre-existing dependency/prisma state. No Auth runtime code, JWT payload, token validation endpoint, deployment, database, production user data, decoded secret, JWT, or token changes.
 2026-06-13: DocsRAG JWT token pickup fixed for Auth on `alfares`. Live ExternalSecret and Kubernetes Secret metadata already contained `JWT_TOKEN`; restarted `deployment/auth-microservice` so the pod picked up the synced secret. Verified pod env reports `JWT_TOKEN_ENV_PRESENT`, DocsRAG retrieval from inside `deployment/auth-microservice` returned HTTP 200 without printing the token, and external health returned status ok. Updated `AGENTS.md` with the pod-based DocsRAG query workflow because SSH shells are not expected to export `JWT_TOKEN`. No runtime code, manifest, database, production data, or secret-value changes.
@@ -132,7 +133,7 @@ Next command:
 
 ## Open Decisions
 
-- RBAC-REM-05 is complete. Next recommended remediation chunk: RBAC-REM-06 internal service-token/API-key bypass inventory and Auth boundary review.
+- RBAC-REM-06 is complete. Next recommended remediation chunk: RBAC-REM-07 Logging admin role-enforcement verification.
 - Production deployment remains explicit-owner-approval only.
 
 ## Next Action

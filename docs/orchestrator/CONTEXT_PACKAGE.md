@@ -17,11 +17,11 @@ downstream:
 
 ## Target Task
 
-Current owner-selected target: RBAC-REM-05 - School Committee local-role contract note.
+Current owner-approved target: RBAC-REM-06 - internal service-token/API-key bypass inventory and Auth boundary review.
 
 Default fallback target: the active goal in `docs/IMPLEMENTATION_STATE.md`, then the earliest `active` or `pending` goal in `docs/orchestrator/GOALS.md`, then the first ready owner-selected goal in `implementation-goals/README.md`.
 
-Owner selection reason: RBAC-REM-01 through RBAC-REM-04 are complete; the owner selected RBAC-REM-05 to document the School Committee boundary between Auth identity validation and app-local school authorization.
+Owner approval reason: RBAC-REM-01 through RBAC-REM-05 are complete; the owner approved continuing with RBAC-REM-06 to inventory machine-auth bypasses and preserve the boundary between Auth user RBAC and service-owned internal credentials.
 
 ## Upstream Traceability
 
@@ -58,7 +58,7 @@ Read these before coding:
 - `docs/ENV_CORS_AND_AUTH_CHECK.md`
 - selected `implementation-goals/GOAL-XX-*.md`
 
-Inspect source files only after the plan names the expected files. Prefer narrow reads over broad source-tree reading. For RBAC-REM-05, source reads are limited to School Committee auth helpers, local role/approval model references, and the target README documentation file unless validation reveals a direct dependency.
+Inspect source files only after the plan names the expected files. Prefer narrow reads over broad source-tree reading. For RBAC-REM-06, source reads are limited to service-token/API-key guards, clients, env-key manifests, and contract docs in RunLayer, Notifications, Payments, Catalog, and the Warehouse receiving-side availability guard.
 
 ## Excluded Documents
 
@@ -82,9 +82,24 @@ Do not use these as primary authority unless the owner explicitly selects histor
 
 Allowed files must be named by the selected execution plan before coding. Documentation workflow changes should stay under `docs/orchestrator/`, `docs/IMPLEMENTATION_STATE.md`, `docs/IMPLEMENTATION_ORCHESTRATOR.md`, `TASKS.md`, `AGENTS.md`, or `implementation-goals/`.
 
-For RBAC-REM-05, allowed cross-service documentation files are limited to:
+For RBAC-REM-06, allowed cross-service changes are none. Read-only source inspection is allowed for:
 
-- `/home/ssf/Documents/Github/school-committee/README.md`
+- `/home/ssf/Documents/Github/runlayer`
+- `/home/ssf/Documents/Github/notifications-microservice`
+- `/home/ssf/Documents/Github/payments-microservice`
+- `/home/ssf/Documents/Github/catalog-microservice`
+- `/home/ssf/Documents/Github/warehouse-microservice`
+
+Allowed Auth documentation additions and updates are limited to:
+
+- `docs/INTERNAL_SERVICE_AUTH_BOUNDARY_REVIEW.md`
+- `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/orchestrator/CONTEXT_PACKAGE.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/IMPLEMENTATION_STATE.md`
+- `TASKS.md`
+- `STATE.json`
 
 ## Forbidden Changes
 

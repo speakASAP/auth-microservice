@@ -96,9 +96,27 @@ Recommended remediation chunk: inspect logging admin backend/API authorization a
 3. `RBAC-REM-03`: Done 2026-06-13. Catalog frontend role-aware admin guard and stale comment cleanup committed in catalog `5f0e087`.
 4. `RBAC-REM-04`: Done 2026-06-13. SpeakASAP scoped-role normalization review and remediation committed in SpeakASAP `7135483`.
 5. `RBAC-REM-05`: Done 2026-06-13. School Committee local-role contract note committed in School Committee.
-6. `RBAC-REM-06`: Internal service-token/API-key bypass inventory and Auth boundary review.
+6. `RBAC-REM-06`: Done 2026-06-13. Internal service-token/API-key bypass inventory and Auth boundary review recorded in `docs/INTERNAL_SERVICE_AUTH_BOUNDARY_REVIEW.md`.
 7. `RBAC-REM-07`: Logging admin role-enforcement verification.
 
+
+
+## RBAC-REM-06 Internal Service-Token/API-Key Boundary Review
+
+Status: completed 2026-06-13.
+
+Scope: Auth-side documentation inventory only. No consumer runtime files changed.
+
+Decision: Static service tokens and API keys are machine-auth credentials. They may remain valid for service-to-service calls, provider callbacks, smoke checks, and tightly scoped internal APIs, but they are not Auth user identity and are not Auth RBAC role claims.
+
+Inventory result:
+
+- Added `docs/INTERNAL_SERVICE_AUTH_BOUNDARY_REVIEW.md`.
+- Recorded Auth's canonical internal-service header contract: `x-internal-service-token` plus `x-service-name`.
+- Classified observed machine-auth paths in `catalog-microservice`, `notifications-microservice`, `runlayer`, `payments-microservice`, and the Catalog-to-Warehouse availability call.
+- Identified service-local follow-ups for RunLayer service-token identity, Notifications broad bearer `SERVICE_TOKEN`, Payments `X-API-Key` production constraints, and Catalog/Warehouse availability-token contract reconciliation.
+
+Follow-up chunk: `RBAC-REM-07` Logging admin role-enforcement verification.
 
 
 ## RBAC-REM-05 School Committee Local-Role Contract Note
@@ -114,7 +132,7 @@ Implementation result:
 - Added a School Committee README contract note that separates Auth-owned identity/JWT/RBAC claims from School Committee-owned local roles and approval workflow.
 - No Auth runtime code, School Committee runtime code, token validation endpoint, JWT payload, deployment, database, production user data, decoded secrets, JWTs, or tokens changed.
 
-Follow-up chunks: `RBAC-REM-06` and `RBAC-REM-07`.
+Follow-up chunk: `RBAC-REM-06` completed; next chunk is `RBAC-REM-07`.
 
 
 ## RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard

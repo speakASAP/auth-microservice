@@ -1,5 +1,41 @@
 # Auth Orchestrator Status
 
+## 2026-06-13 - RBAC-REM-06 Internal Service-Token/API-Key Boundary Review Completed
+
+Current focus:
+
+- Owner-approved remediation chunk: RBAC-REM-06 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- Auth runtime code changes: none.
+- Consumer runtime code changes: none.
+- Deployment: not run.
+
+DocsRAG evidence:
+
+- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
+- Retrieved context confirmed Auth centralizes identity and JWT issuance. Machine-auth specifics were completed from source inspection.
+
+Implementation evidence:
+
+- Added `docs/INTERNAL_SERVICE_AUTH_BOUNDARY_REVIEW.md`.
+- Reviewed Auth `InternalServiceGuard`, internal Auth endpoint guards, and `docs/UNIFIED_AUTH_CONTRACT.md`.
+- Reviewed RunLayer `JwtGuard`, service-token env keys, and outbound token clients.
+- Reviewed Notifications `JwtRolesGuard`, deployment notes, and orchestrator/AI service clients.
+- Reviewed Payments `ApiKeyGuard`, `JwtRolesGuard`, controller guard usage, and key configuration docs.
+- Reviewed Catalog `CatalogAuthGuard`, internal-service header handling, and Warehouse availability client.
+- Reviewed Warehouse `JwtRolesGuard` as the receiving side for the Catalog availability call.
+- Recorded follow-ups for RunLayer static service-token identity, Notifications broad bearer `SERVICE_TOKEN`, Payments `X-API-Key` production constraints, and Catalog/Warehouse availability-token reconciliation.
+
+Validation evidence:
+
+- `git diff --check` passed for changed Auth documentation/state files.
+- Auth documentation missing-marker scan returned no matches for gate-critical docs.
+- Auth documentation secret-pattern scan returned no matches.
+- No Auth runtime code, consumer runtime code, JWT payload, token validation endpoint, deployment, database, production user data, decoded secrets, JWTs, API keys, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, or magic-link tokens changed.
+
+Next action:
+
+- Recommended next remediation chunk: RBAC-REM-07 Logging admin role-enforcement verification.
+
 ## 2026-06-13 - RBAC-REM-05 School Committee Local-Role Contract Note Completed
 
 Current focus:
