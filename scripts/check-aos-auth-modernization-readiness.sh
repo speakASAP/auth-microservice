@@ -296,7 +296,13 @@ else
   warn "kubectl not available; runtime readiness skipped"
 fi
 
-warn "Marathon live DB dry-run/backfill apply remains owner-approval gated and was not run; see marathon/docs/orchestrator/2026-06-24-marathon-auth-backfill-gate1-approval.md"
+if grep -Fq 'Final idempotent approved reconciliation apply executed with `--include-bound --limit 100`' "$MARATHON_REPO/docs/orchestrator/2026-06-24-marathon-auth-approval-record.md" \
+  && grep -Fq '`authExisting=27`' "$MARATHON_REPO/docs/orchestrator/2026-06-24-marathon-auth-approval-record.md" \
+  && grep -Fq '`participantsUpdated=0`' "$MARATHON_REPO/docs/orchestrator/2026-06-24-marathon-auth-approval-record.md"; then
+  pass "Marathon Gate 1 and reconciliation apply evidence recorded"
+else
+  warn "Marathon live DB dry-run/backfill apply evidence missing or incomplete; see marathon/docs/orchestrator/2026-06-24-marathon-auth-approval-record.md"
+fi
 warn "Real phone/email contact-code delivery smoke remains owner/test-contact gated and was not run; see auth-microservice/docs/orchestrator/2026-06-24-auth-contact-code-live-smoke-approval.md"
 
 printf "\nSummary: pass=%s warn=%s fail=%s\n" "$PASS_COUNT" "$WARN_COUNT" "$FAIL_COUNT"

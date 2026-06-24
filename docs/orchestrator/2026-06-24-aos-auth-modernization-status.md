@@ -1774,3 +1774,25 @@ Validation:
 - `bash -n scripts/check-aos-auth-modernization-readiness.sh` passed.
 - `speakasap/scripts/check-auth-validate-contract.py --json-report /tmp/speakasap-auth-validate-contract-orchestrator.json` passed.
 - `npm run check:aos-auth-readiness` passed with `pass=29 warn=2 fail=0`.
+
+
+## Orchestrator Update - 2026-06-24 Marathon Execution Evidence Readiness Gate
+
+Status: central AOS Auth readiness now recognizes documented Marathon Gate 1 and reconciliation apply evidence.
+
+Scope:
+
+- Updated only `auth-microservice/scripts/check-aos-auth-modernization-readiness.sh` and this status log.
+- Evidence source is `marathon/docs/orchestrator/2026-06-24-marathon-auth-approval-record.md`.
+
+Changes:
+
+- Replaced the stale Marathon backfill warning with a pass/fail evidence check.
+- The central check now passes only when Marathon docs record the final approved `--include-bound --limit 100` reconciliation apply, `authExisting=27`, and `participantsUpdated=0`.
+
+Validation:
+
+- `bash -n scripts/check-aos-auth-modernization-readiness.sh` passed.
+- `npm run check:aos-auth-readiness` passed with `pass=30 warn=1 fail=0`.
+- Runtime readiness confirmed Auth, Marathon, and new SpeakASAP deployments `1/1`.
+- Runtime Auth health was reachable from Marathon and SpeakASAP pods.
