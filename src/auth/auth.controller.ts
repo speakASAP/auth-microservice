@@ -28,6 +28,8 @@ import { ContactRegisterDto } from './dto/contact-register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
+import { ContactCodeRequestDto } from './dto/contact-code-request.dto';
+import { ContactCodeVerifyDto } from './dto/contact-code-verify.dto';
 import { InternalServiceGuard } from './guards/internal-service.guard';
 import { UpdateUserMarketingPreferencesDto } from './dto/update-user-marketing-preferences.dto';
 
@@ -107,6 +109,16 @@ export class AuthController {
   @Get('magic-link/verify')
   async verifyMagicLink(@Query() query: MagicLinkVerifyDto, @Res() res: Response) {
     await this.authService.verifyMagicLink(query, res);
+  }
+
+  @Post('contact-code/request')
+  async requestContactCode(@Body() dto: ContactCodeRequestDto, @Request() req) {
+    return this.authService.requestContactCode(dto, req.ip);
+  }
+
+  @Post('contact-code/verify')
+  async verifyContactCode(@Body() dto: ContactCodeVerifyDto) {
+    return this.authService.verifyContactCode(dto);
   }
 
   @Get('oauth/:provider')

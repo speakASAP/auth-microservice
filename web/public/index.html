@@ -10,7 +10,7 @@
   <div class="container">
     <div class="login-box">
       <h2 id="auth-title">Sign in</h2>
-      <p id="auth-subtitle" style="margin: 0 0 1rem 0; color: var(--muted);">Continue with your account</p>
+      <p id="auth-subtitle" style="margin: 0 0 1rem 0; color: var(--muted);">Continue with your Alfares account</p>
 
       <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
         <button id="tab-login" type="button" class="btn btn-secondary" style="flex: 1;">Login</button>
@@ -30,8 +30,13 @@
         </div>
 
         <div class="form-group">
-          <label for="email">Email</label>
-          <input id="email" name="email" type="email" required autocomplete="email">
+          <label id="identifier-label" for="identifier">Email or phone</label>
+          <input id="identifier" name="identifier" type="text" required autocomplete="username" inputmode="email">
+        </div>
+
+        <div id="phone-row" class="form-group" style="display: none;">
+          <label for="phone">Phone</label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel">
         </div>
 
         <div class="form-group">
@@ -40,8 +45,14 @@
         </div>
 
         <div id="submit-error" class="error" style="display: none;"></div>
+        <div id="submit-success" class="success" style="display: none;"></div>
         <button id="submit-btn" type="submit" class="btn">Continue</button>
       </form>
+
+      <div id="auth-links" style="margin-top: 1rem; color: var(--muted); font-size: 0.85rem;">
+        <button id="magic-link-btn" type="button" class="btn btn-secondary" style="margin-left: 0; width: 100%;">Send sign-in code</button>
+        <button id="reset-password-btn" type="button" class="btn btn-secondary" style="margin-left: 0; width: 100%;">Forgot password?</button>
+      </div>
 
       <p style="margin-top: 1rem; color: var(--muted); font-size: 0.85rem;">
         Redirect target:
@@ -58,16 +69,27 @@
     const initialMode = window.location.pathname === '/register' ? 'register' : 'login';
     const returnUrlRaw = params.get('return_url') || '';
     const state = params.get('state') || '';
+    const clientId = params.get('client_id') || '';
+    const marathonPhoneRequired = clientId === 'marathon';
 
     const authTitle = document.getElementById('auth-title');
     const authSubtitle = document.getElementById('auth-subtitle');
     const nameRow = document.getElementById('name-row');
+    const phoneRow = document.getElementById('phone-row');
+    const identifierLabel = document.getElementById('identifier-label');
+    const identifierInput = document.getElementById('identifier');
+    const phoneInput = document.getElementById('phone');
+    const passwordInput = document.getElementById('password');
     const form = document.getElementById('auth-form');
     const submitBtn = document.getElementById('submit-btn');
     const submitError = document.getElementById('submit-error');
+    const submitSuccess = document.getElementById('submit-success');
     const returnUrlLabel = document.getElementById('return-url-label');
     const tabLogin = document.getElementById('tab-login');
     const tabRegister = document.getElementById('tab-register');
+    const magicLinkBtn = document.getElementById('magic-link-btn');
+    const resetPasswordBtn = document.getElementById('reset-password-btn');
+    let contactCodeRequestedFor = '';
 
     let mode = initialMode;
     let validatedReturnUrl = '';
@@ -82,14 +104,18 @@
       }
     }
 
+    function isEmail(value) {
+      return value.includes('@');
+    }
+
     function setError(message) {
-      if (!message) {
-        submitError.style.display = 'none';
-        submitError.textContent = '';
-        return;
-      }
-      submitError.style.display = 'block';
-      submitError.textContent = message;
+      submitError.style.display = message ? 'block' : 'none';
+      submitError.textContent = message || '';
+    }
+
+    function setSuccess(message) {
+      submitSuccess.style.display = message ? 'block' : 'none';
+      submitSuccess.textContent = message || '';
     }
 
     function buildTokenHandoffUrl(returnUrl, data, callerState) {
@@ -108,15 +134,28 @@
     function syncMode() {
       const isRegister = mode === 'register';
       authTitle.textContent = isRegister ? 'Create account' : 'Sign in';
-      authSubtitle.textContent = isRegister ? 'Register a new account' : 'Continue with your account';
+      authSubtitle.textContent = isRegister
+        ? (marathonPhoneRequired ? 'Create an account for your marathon profile' : 'Create an Alfares account')
+        : 'Continue with email or phone';
       nameRow.style.display = isRegister ? 'flex' : 'none';
+      phoneRow.style.display = isRegister ? 'block' : 'none';
+      phoneInput.required = isRegister && marathonPhoneRequired;
+      identifierLabel.textContent = isRegister ? 'Email' : 'Email or phone';
+      identifierInput.type = isRegister ? 'email' : 'text';
+      identifierInput.autocomplete = isRegister ? 'email' : 'username';
+      identifierInput.inputMode = isRegister ? 'email' : 'text';
+      passwordInput.autocomplete = isRegister ? 'new-password' : 'current-password';
       submitBtn.textContent = isRegister ? 'Register' : 'Login';
+      magicLinkBtn.style.display = isRegister ? 'none' : 'block';
+      resetPasswordBtn.style.display = isRegister ? 'none' : 'block';
       tabLogin.classList.toggle('btn-secondary', isRegister);
       tabRegister.classList.toggle('btn-secondary', !isRegister);
     }
 
     function gotoMode(nextMode) {
       mode = nextMode;
+      setError('');
+      setSuccess('');
       const targetPath = nextMode === 'register' ? '/register' : '/login';
       window.history.replaceState(null, '', targetPath + window.location.search);
       syncMode();
@@ -126,6 +165,7 @@
       if (!returnUrlRaw) {
         setError('Missing required query parameter: return_url');
         submitBtn.disabled = true;
+        magicLinkBtn.disabled = true;
         return;
       }
 
@@ -141,27 +181,36 @@
       } catch (error) {
         setError(error.message || 'Invalid return_url');
         submitBtn.disabled = true;
+        magicLinkBtn.disabled = true;
       }
     }
 
     async function submitAuth(event) {
       event.preventDefault();
       setError('');
+      setSuccess('');
       if (!validatedReturnUrl) {
         setError('Invalid return_url');
         return;
       }
 
       submitBtn.disabled = true;
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
+      const identifier = identifierInput.value.trim();
+      const password = passwordInput.value;
       const firstName = document.getElementById('firstName').value.trim();
       const lastName = document.getElementById('lastName').value.trim();
+      const phone = phoneInput.value.trim();
+
+      if (mode === 'register' && marathonPhoneRequired && !phone) {
+        setError('Phone is required for marathon registration.');
+        submitBtn.disabled = false;
+        return;
+      }
 
       const endpoint = mode === 'register' ? '/auth/register' : '/auth/login';
       const payload = mode === 'register'
-        ? { email, password, firstName: firstName || undefined, lastName: lastName || undefined }
-        : { email, password };
+        ? { email: identifier, password, firstName: firstName || undefined, lastName: lastName || undefined, phone: phone || undefined }
+        : { identifier, password };
 
       try {
         const response = await fetch(endpoint, {
@@ -171,7 +220,11 @@
         });
         if (!response.ok) {
           const body = await response.json().catch(() => ({ message: 'Authentication failed' }));
-          throw new Error(body.message || 'Authentication failed');
+          const message = body.message || 'Authentication failed';
+          if (response.status === 409 && mode === 'register') {
+            throw new Error('This account already exists. Switch to Login and enter your password, or use password reset.');
+          }
+          throw new Error(message);
         }
 
         const data = await response.json();
@@ -186,8 +239,94 @@
       }
     }
 
+    async function requestMagicLink() {
+      setError('');
+      setSuccess('');
+      const identifier = identifierInput.value.trim();
+      if (!validatedReturnUrl) {
+        setError('Invalid return_url');
+        return;
+      }
+      if (!identifier) {
+        setError('Enter your email or phone first.');
+        return;
+      }
+      magicLinkBtn.disabled = true;
+      try {
+        const response = await fetch('/auth/contact-code/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier,
+            return_url: validatedReturnUrl,
+            client_id: clientId || undefined,
+            state: state || undefined,
+            app_domain: window.location.hostname,
+          }),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({ message: 'Could not request sign-in code' }));
+          throw new Error(body.message || 'Could not request sign-in code');
+        }
+        contactCodeRequestedFor = identifier;
+        const code = window.prompt('Enter the 6-digit sign-in code sent to your email or phone.');
+        if (!code) {
+          setSuccess('Sign-in code requested. Enter it when it arrives.');
+          return;
+        }
+        const verifyResponse = await fetch('/auth/contact-code/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: contactCodeRequestedFor,
+            code,
+            return_url: validatedReturnUrl,
+          }),
+        });
+        if (!verifyResponse.ok) {
+          const body = await verifyResponse.json().catch(() => ({ message: 'Invalid or expired sign-in code' }));
+          throw new Error(body.message || 'Invalid or expired sign-in code');
+        }
+        const data = await verifyResponse.json();
+        window.location.assign(data.redirectUrl || buildTokenHandoffUrl(validatedReturnUrl, data, state));
+      } catch (error) {
+        setError(error.message || 'Could not complete sign-in code flow');
+      } finally {
+        magicLinkBtn.disabled = false;
+      }
+    }
+
+    async function requestPasswordReset() {
+      setError('');
+      setSuccess('');
+      const identifier = identifierInput.value.trim();
+      if (!identifier || !isEmail(identifier)) {
+        setError('Enter your account email to reset the password.');
+        return;
+      }
+      resetPasswordBtn.disabled = true;
+      try {
+        const response = await fetch('/auth/password-reset-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: identifier }),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({ message: 'Could not request password reset' }));
+          throw new Error(body.message || 'Could not request password reset');
+        }
+        setSuccess('Password reset instructions were requested for this email.');
+      } catch (error) {
+        setError(error.message || 'Could not request password reset');
+      } finally {
+        resetPasswordBtn.disabled = false;
+      }
+    }
+
     tabLogin.addEventListener('click', () => gotoMode('login'));
     tabRegister.addEventListener('click', () => gotoMode('register'));
+    magicLinkBtn.addEventListener('click', requestMagicLink);
+    resetPasswordBtn.addEventListener('click', requestPasswordReset);
     form.addEventListener('submit', submitAuth);
 
     syncMode();

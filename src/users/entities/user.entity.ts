@@ -41,7 +41,7 @@ export class User {
   source: string; // Registration source
 
   @Column({ nullable: true })
-  sessionId: string; // Session ID for contact-based users
+  sessionId: string; // Compatibility metadata for provisioned contact users; not an auth session
 
   @Column({ default: true })
   isActive: boolean;

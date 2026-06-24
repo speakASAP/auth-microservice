@@ -34,6 +34,8 @@ import { MagicLinkToken } from './entities/magic-link-token.entity';
 import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping.entity';
 import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
+import { ContactCodeRequestDto } from './dto/contact-code-request.dto';
+import { ContactCodeVerifyDto } from './dto/contact-code-verify.dto';
 import { UpdateUserMarketingPreferencesDto } from './dto/update-user-marketing-preferences.dto';
 import { Response } from 'express';
 
@@ -46,6 +48,9 @@ export class AuthService {
   private readonly magicLinkRateLimitPerEmail: number;
   private readonly oauthInitRateLimitPerIp: number;
   private readonly rateLimitWindowMs: number;
+  private readonly contactCodeEmailChannelKey: string;
+  private readonly contactCodePhoneChannelKey: string;
+  private readonly contactCodePhoneChannel: 'whatsapp' | 'telegram' | 'sms';
   private readonly allowedRedirectOrigins: string[];
   private readonly oauthStateStore = new Map<string, { provider: string; returnUrl: string; clientId?: string; appState?: string; createdAt: number }>();
   private readonly rateLimitStore = new Map<string, { count: number; windowStart: number }>();
@@ -77,6 +82,9 @@ export class AuthService {
     this.magicLinkRateLimitPerEmail = Number(process.env.AUTH_MAGIC_LINK_RATE_LIMIT_PER_EMAIL || '10');
     this.oauthInitRateLimitPerIp = Number(process.env.AUTH_OAUTH_INIT_RATE_LIMIT_PER_IP || '60');
     this.rateLimitWindowMs = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || String(15 * 60 * 1000));
+    this.contactCodeEmailChannelKey = process.env.AUTH_CONTACT_CODE_EMAIL_CHANNEL_KEY || '';
+    this.contactCodePhoneChannelKey = process.env.AUTH_CONTACT_CODE_PHONE_CHANNEL_KEY || '';
+    this.contactCodePhoneChannel = this.resolveContactCodePhoneChannel(process.env.AUTH_CONTACT_CODE_PHONE_CHANNEL);
     const originsEnv = process.env.AUTH_ALLOWED_REDIRECT_ORIGINS || '';
     this.allowedRedirectOrigins = originsEnv
       .split(',')
@@ -391,6 +399,33 @@ export class AuthService {
       return false;
     }
     return this.normalizeContactValue(leftType, leftValue) === this.normalizeContactValue(rightType, rightValue);
+  }
+
+  private mergeProvisioningSource(
+    preferences: Record<string, unknown> | null | undefined,
+    source?: string,
+    sessionId?: string,
+  ): Record<string, unknown> | null {
+    const normalizedSource = (source || '').trim();
+    if (!normalizedSource) {
+      return preferences || null;
+    }
+
+    const current = preferences && typeof preferences === 'object' && !Array.isArray(preferences)
+      ? { ...preferences }
+      : {};
+    const currentSources =
+      current.authSources && typeof current.authSources === 'object' && !Array.isArray(current.authSources)
+        ? { ...(current.authSources as Record<string, unknown>) }
+        : {};
+
+    currentSources[normalizedSource] = {
+      source: normalizedSource,
+      provisioned: true,
+      sessionId: sessionId || null,
+    };
+    current.authSources = currentSources;
+    return current;
   }
 
   private async tryLegacyPasswordLogin(email: string, password: string): Promise<User | null> {
@@ -720,7 +755,12 @@ export class AuthService {
       existingUser.phone = existingUser.phone || primaryPhone?.value || null;
       existingUser.name = contactRegisterDto.name || existingUser.name;
       existingUser.lastActivity = new Date();
-      existingUser.source = contactRegisterDto.source || existingUser.source;
+      existingUser.source = existingUser.source || contactRegisterDto.source;
+      existingUser.perApplicationPreferences = this.mergeProvisioningSource(
+        existingUser.perApplicationPreferences,
+        contactRegisterDto.source,
+        contactRegisterDto.sessionId,
+      );
       existingUser.sessionId = contactRegisterDto.sessionId || existingUser.sessionId;
 
       const updatedUser = await this.usersService.update(existingUser.id, existingUser);
@@ -754,6 +794,7 @@ export class AuthService {
         isVerified: false,
         lastActivity: new Date(),
         source: contactRegisterDto.source,
+        perApplicationPreferences: this.mergeProvisioningSource(null, contactRegisterDto.source, contactRegisterDto.sessionId),
         sessionId: contactRegisterDto.sessionId,
       });
 
@@ -990,6 +1031,198 @@ export class AuthService {
 
     return { success: true };
   }
+
+
+  private contactCodeHash(identifier: string, code: string): string {
+    return crypto
+      .createHash('sha256')
+      .update(`${identifier}:${code}:${process.env.JWT_SECRET || 'default-secret'}`)
+      .digest('hex');
+  }
+
+  private generateContactCode(): string {
+    return String(crypto.randomInt(100000, 1000000));
+  }
+
+  private resolveContactCodePhoneChannel(value?: string): 'whatsapp' | 'telegram' | 'sms' {
+    const normalized = (value || 'whatsapp').trim().toLowerCase();
+    if (normalized === 'whatsapp' || normalized === 'telegram' || normalized === 'sms') {
+      return normalized;
+    }
+    this.audit('warn', 'contact_code_config', 'invalid_phone_channel_defaulted', {
+      reason: normalized,
+    });
+    return 'whatsapp';
+  }
+
+  private async sendContactCode(
+    contactType: 'email' | 'phone',
+    identifier: string,
+    code: string,
+    appDomain?: string,
+  ): Promise<boolean> {
+    if (!this.notificationsServiceUrl) {
+      return false;
+    }
+
+    const fromDomain = appDomain || process.env.DOMAIN || '';
+    const channel = contactType === 'phone' ? this.contactCodePhoneChannel : 'email';
+    const channelKey = contactType === 'phone' ? this.contactCodePhoneChannelKey : this.contactCodeEmailChannelKey;
+    const message = `Your Alfares sign-in code is ${code}. It expires in ${this.magicLinkTtlMinutes} minutes.`;
+    const payload: Record<string, string | undefined> = {
+      channel: channelKey ? undefined : channel,
+      channelKey: channelKey || undefined,
+      type: 'custom',
+      recipient: identifier,
+      subject: contactType === 'email' ? 'Alfares sign-in code' : undefined,
+      message,
+      contentType: contactType === 'email' ? 'text/plain' : undefined,
+      fromName: fromDomain,
+      service: 'auth-microservice',
+      purpose: 'transactional',
+    };
+
+    await firstValueFrom(
+      this.httpService.post(
+        `${this.notificationsServiceUrl}/notifications/send`,
+        payload,
+        { headers: { Authorization: `Bearer ${this.notificationServiceToken}` } },
+      ),
+    );
+    return true;
+  }
+
+  async requestContactCode(dto: ContactCodeRequestDto, ip: string) {
+    const startedAt = Date.now();
+    const rawIdentifier = this.normalizeIdentifier(dto.identifier);
+    const contactType: 'email' | 'phone' = this.isEmailIdentifier(rawIdentifier) ? 'email' : 'phone';
+    const identifier =
+      contactType === 'email' ? this.normalizeEmail(rawIdentifier) : this.normalizePhone(rawIdentifier);
+
+    if (!identifier) {
+      throw new BadRequestException('Identifier is required');
+    }
+
+    this.checkRateLimit(`contact_code:ip:${ip}`, this.magicLinkRateLimitPerIp);
+    this.checkRateLimit(`contact_code:${contactType}:${identifier}`, this.magicLinkRateLimitPerEmail);
+
+    const validReturnUrl = this.validateReturnUrl(dto.return_url);
+    const user = contactType === 'email'
+      ? await this.usersService.findByEmail(identifier)
+      : await this.usersService.findByPhone(identifier);
+
+    if (!user || !user.isActive) {
+      this.audit('warn', 'contact_code_request', 'accepted_unknown_or_inactive_user', {
+        identifier,
+        contact_type: contactType,
+        client_id: dto.client_id,
+        duration_ms: Date.now() - startedAt,
+      });
+      return { success: true, delivery: 'accepted' };
+    }
+
+    const code = this.generateContactCode();
+    const token = this.contactCodeHash(identifier, code);
+    const expiresAt = new Date(Date.now() + this.magicLinkTtlMinutes * 60 * 1000);
+    const magicToken = this.magicLinkTokenRepository.create({
+      userId: user.id,
+      email: identifier,
+      token,
+      returnUrl: validReturnUrl,
+      clientId: dto.client_id || null,
+      state: dto.state || null,
+      expiresAt,
+      used: false,
+    });
+    await this.magicLinkTokenRepository.save(magicToken);
+
+    let delivered = false;
+    try {
+      delivered = await this.sendContactCode(contactType, identifier, code, dto.app_domain);
+    } catch (error) {
+      this.audit('error', 'contact_code_request', 'delivery_failed', {
+        identifier,
+        contact_type: contactType,
+        user_id: user.id,
+        client_id: dto.client_id,
+        reason: (error as Error).message,
+        duration_ms: Date.now() - startedAt,
+      }, (error as Error).stack);
+    }
+
+    this.audit(delivered ? 'info' : 'warn', 'contact_code_request', delivered ? 'sent' : 'created_not_sent', {
+      identifier,
+      contact_type: contactType,
+      user_id: user.id,
+      client_id: dto.client_id,
+      reason: delivered ? undefined : 'notification_provider_not_configured_or_failed',
+      duration_ms: Date.now() - startedAt,
+    });
+
+    return { success: true, delivery: delivered ? 'sent' : 'accepted' };
+  }
+
+  async verifyContactCode(dto: ContactCodeVerifyDto) {
+    const startedAt = Date.now();
+    const rawIdentifier = this.normalizeIdentifier(dto.identifier);
+    const contactType: 'email' | 'phone' = this.isEmailIdentifier(rawIdentifier) ? 'email' : 'phone';
+    const identifier =
+      contactType === 'email' ? this.normalizeEmail(rawIdentifier) : this.normalizePhone(rawIdentifier);
+    const code = (dto.code || '').trim();
+
+    if (!identifier || !/^\d{6}$/.test(code)) {
+      throw new UnauthorizedException('Invalid or expired sign-in code');
+    }
+
+    const tokenHash = this.contactCodeHash(identifier, code);
+    const token = await this.magicLinkTokenRepository.findOne({
+      where: { token: tokenHash, used: false },
+      relations: ['user'],
+    });
+
+    if (!token || token.email !== identifier || new Date() > token.expiresAt) {
+      this.audit('warn', 'contact_code_verify', 'failure', {
+        identifier,
+        contact_type: contactType,
+        reason: !token ? 'invalid_or_used_code' : 'expired_or_mismatched_code',
+        duration_ms: Date.now() - startedAt,
+      });
+      throw new UnauthorizedException('Invalid or expired sign-in code');
+    }
+
+    token.used = true;
+    await this.magicLinkTokenRepository.save(token);
+
+    const user = await this.usersService.findById(token.userId);
+    if (!user || !user.isActive) {
+      this.audit('warn', 'contact_code_verify', 'failure', {
+        identifier,
+        contact_type: contactType,
+        user_id: token.userId,
+        reason: 'user_not_found_or_inactive',
+        duration_ms: Date.now() - startedAt,
+      });
+      throw new UnauthorizedException('Invalid or expired sign-in code');
+    }
+
+    const tokens = await this.generateTokens(user.id, `${contactType}_code`);
+    const finalReturnUrl = this.validateReturnUrl(dto.return_url || token.returnUrl);
+
+    this.audit('info', 'contact_code_verify', 'success', {
+      identifier,
+      contact_type: contactType,
+      user_id: user.id,
+      client_id: token.clientId,
+      duration_ms: Date.now() - startedAt,
+    });
+
+    return {
+      user: this.sanitizeUser(user),
+      ...tokens,
+      redirectUrl: this.buildTokenHandoffUrl(finalReturnUrl, tokens, `${contactType}_code`, token.state || undefined),
+    };
+  }
+
 
   async verifyMagicLink(dto: MagicLinkVerifyDto, res: Response) {
     const startedAt = Date.now();

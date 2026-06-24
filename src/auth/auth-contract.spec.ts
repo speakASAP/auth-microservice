@@ -89,6 +89,47 @@ describe('Auth identifier and contact contract', () => {
     expect(result).not.toHaveProperty('refreshToken');
   });
 
+  it('marks existing users as marathon participants without overwriting their primary source', async () => {
+    const existing = {
+      ...baseUser,
+      source: 'school-committee',
+      contactInfo: [{ type: 'email', value: 'person@example.test', isPrimary: true }],
+      perApplicationPreferences: { theme: 'default' },
+    } as any;
+    const { service, usersService } = makeService(existing);
+
+    const result = await service.registerContact({
+      name: 'Marathon User',
+      source: 'marathon',
+      sessionId: 'marathon:participant-1',
+      contactInfo: [
+        { type: 'email' as any, value: 'person@example.test', isPrimary: true },
+        { type: 'phone' as any, value: '+420 777 123 456', isPrimary: false },
+      ],
+    });
+
+    expect(usersService.update).toHaveBeenCalledWith('user-1', expect.objectContaining({
+      source: 'school-committee',
+      perApplicationPreferences: expect.objectContaining({
+        theme: 'default',
+        authSources: expect.objectContaining({
+          marathon: {
+            source: 'marathon',
+            provisioned: true,
+            sessionId: 'marathon:participant-1',
+          },
+        }),
+      }),
+    }));
+    expect(result).toMatchObject({
+      success: true,
+      userId: 'user-1',
+      authenticated: false,
+      provisioning: true,
+      isNewUser: false,
+    });
+  });
+
   it('does not convert contact login into an authenticated session without verified proof', async () => {
     const { service, usersService } = makeService();
 

@@ -1,6 +1,6 @@
 # Unified Auth Contract
 
-This document is the current Auth contract for applications and services that integrate with `auth-microservice`.
+This document is the current Auth contract for applications and services that integrate with auth-microservice. Consumer implementation details for hosted redirects, callback fragment parsing, session storage, logout, and the draft client registry are maintained in docs/HOSTED_AUTH_CONSUMER_STANDARD.md.
 
 Historical DocsRAG snapshots may reference older Phase 0/Sync A agent prompts. Those prompts are superseded by the orchestrator pack in `docs/orchestrator/`, but this contract path remains authoritative for endpoint, JWT, redirect, CORS, OAuth, magic-link, and RBAC behavior.
 
@@ -26,7 +26,7 @@ Supported auth-flow query parameters:
 - `client_id`: optional logical caller ID for logging/client-specific behavior.
 - `state`: optional opaque caller state. Callers must validate it when returned.
 
-The backend serves `/login` and `/register` from `web/public/index.html`.
+The backend serves `/login` and `/register` from `web/public/index.html`. The hosted login form submits `{ identifier, password }` to `/auth/login`, where `identifier` may be an email or phone number. The hosted register form still creates email/password accounts through `/auth/register`; when `client_id=marathon`, the form requires a phone number before submission so Marathon registrations always carry a phone contact. The hosted login surface also exposes password reset and an Auth-owned contact-code flow for email or phone. `POST /auth/contact-code/request` creates a verified-proof challenge and sends a 6-digit code through Notifications when a provider is configured; `POST /auth/contact-code/verify` consumes that proof and returns the same JWT contract plus `redirectUrl` fragment handoff. Phone delivery is centralized through Auth and Notifications; the current production default is `AUTH_CONTACT_CODE_PHONE_CHANNEL=whatsapp` because notifications-microservice does not dispatch direct SMS yet. Consumers must not implement local phone-code forms.
 
 ## Core API Endpoints
 
@@ -69,9 +69,17 @@ Email/password `register` and `login` responses include:
 
 When the identifier is an email address, Auth looks up the canonical email. When it is not an email address, Auth normalizes it as a phone number and looks in both `users.phone` and phone entries in `users.contactInfo`. Successful email and phone password login return the same `user`, `accessToken`, and `refreshToken` contract.
 
-`POST /auth/register-contact` remains a provisioning endpoint for Marathon, SpeakASAP, and similar callers. It creates or updates the Auth user and returns the canonical `userId`, `authenticated: false`, `provisioning: true`, and sanitized `user`. Any legacy `sessionId` in this response is compatibility metadata only; consumers must not treat it as an Auth JWT, refresh token, cookie session, or ecosystem authentication proof.
+`POST /auth/register-contact` remains a provisioning endpoint for Marathon, SpeakASAP, and similar callers. It creates or updates the Auth user and returns the canonical `userId`, `authenticated: false`, `provisioning: true`, and sanitized `user`. Any legacy `sessionId` in this response is compatibility metadata only; consumers must not treat it as an Auth JWT, refresh token, cookie session, or ecosystem authentication proof. For new users, `source` records the initial provisioning source. For existing users, Auth preserves the original `source` and records additional provisioning sources under `perApplicationPreferences.authSources.<source>`, for example `perApplicationPreferences.authSources.marathon`, so one central identity can belong to several Alfares applications without losing origin history.
 
-`POST /auth/login-contact` is deprecated for ecosystem authentication. It may confirm that contact data exists only after normal lookup, but it does not update activity or return `sessionId`, `accessToken`, or `refreshToken`. Consumers must use `/auth/login` with password or a verified Auth-owned passwordless flow such as email magic-link before treating the user as authenticated. Phone OTP delivery remains `[UNKNOWN: SMS/WhatsApp/Telegram provider for phone passwordless login]`.
+`POST /auth/login-contact` is deprecated for ecosystem authentication. It may confirm that contact data exists only after normal lookup, but it does not update activity or return `sessionId`, `accessToken`, or `refreshToken`. Consumers must use `/auth/login` with password or a verified Auth-owned passwordless flow such as email magic-link before treating the user as authenticated. Phone code delivery is owned by Auth through Notifications. The default live channel is `whatsapp`, and deployments may route through `AUTH_CONTACT_CODE_PHONE_CHANNEL_KEY` if the Notifications channel registry owns the policy. If the provider is not configured or delivery fails, requests are accepted and audited as `created_not_sent` rather than falling back to consumer-local login.
+
+Contact-code delivery runtime keys:
+
+| Key | Default | Purpose |
+| --- | --- | --- |
+| `AUTH_CONTACT_CODE_PHONE_CHANNEL` | `whatsapp` | Direct Notifications channel for phone identifiers. Current supported practical values are `whatsapp` or `telegram`; `sms` must not be used until notifications-microservice implements SMS dispatch. |
+| `AUTH_CONTACT_CODE_PHONE_CHANNEL_KEY` | empty | Optional Notifications channel registry key for phone code policy. When set, Auth sends `channelKey` instead of a direct channel. |
+| `AUTH_CONTACT_CODE_EMAIL_CHANNEL_KEY` | empty | Optional Notifications channel registry key for email code policy. |
 
 `POST /auth/validate` accepts:
 
@@ -161,10 +169,12 @@ Applications never talk to OAuth providers directly.
 
 ## Magic-Link Contract
 
-Public passwordless flow:
+Public passwordless flows:
 
 - `POST /auth/magic-link/request`
 - `GET /auth/magic-link/verify`
+- `POST /auth/contact-code/request`
+- `POST /auth/contact-code/verify`
 
 Request body:
 
