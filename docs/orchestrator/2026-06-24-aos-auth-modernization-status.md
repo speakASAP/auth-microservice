@@ -7,6 +7,419 @@ Orchestrator: current Codex thread `019ef8b1-a6c8-7210-97bd-36f78964a811`
 
 Modernize Alfares authentication so auth-microservice is the single identity provider with unified phone/email login, and migrate marathon plus new speakasap to use the central auth flow while preserving IPS/GDD plans in each involved repo and coordinating parallel implementation threads.
 
+## 2026-06-24 Runtime Auth Reachability And Fallback Port Wave
+
+Status: completed bounded no-secret runtime reachability check and source fallback correction; no deploy, DB, secret, production log, live login, contact-code delivery smoke, backfill, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: Auth consumers should validate users through the central in-cluster Auth service without depending on fragile or stale fallback ports.
+- Goal Impact: If a consumer is missing `AUTH_SERVICE_URL`, the fallback now matches the actual Kubernetes service port instead of timing out on `3000`.
+- System: Auth consumer runtime networking and Orders/Warehouse/Payments backend Auth validation guards.
+- Feature: Kubernetes-safe default Auth base URL and read-only in-cluster health reachability evidence.
+- Task: verify Auth service reachability from consumer pods and align newly migrated guard defaults with `http://auth-microservice:3370`.
+- Execution Plan: read-only `/health` probes from consumer deployments, then source-only fallback/doc/checker edits in Orders, Warehouse, and Payments; no token validation, login, DB, deploy, or secret access.
+- Coding Prompt: preserve `AUTH_SERVICE_URL` override support, change only stale default fallback port, and make checkers/docs prevent regression to `:3000`.
+- Code: `orders-microservice/src/auth/jwt-roles.guard.ts`, `orders-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`, `warehouse-microservice/src/auth/jwt-roles.guard.ts`, `warehouse-microservice/scripts/check-hosted-auth-contract.js`, `warehouse-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`, `payments-microservice/src/auth/jwt-roles.guard.ts`, `payments-microservice/scripts/check-hosted-auth-contract.js`, `payments-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`.
+- Validation: Orders `npm run verify:admin-operations-console` and `npm run build` passed; Warehouse focused guard spec, `npm run check:hosted-auth`, and `npm run build` passed; Payments focused guard spec, `npm run check:hosted-auth`, and `npm run build` passed; central `npm run check:aos-auth-readiness` passed with `pass=22 warn=2 fail=0`; `git diff --check` passed for touched repos.
+
+Evidence:
+- `kubectl -n statex-apps get svc auth-microservice` reports `http:3370->3370`.
+- Read-only in-cluster `/health` probes to `http://auth-microservice:3370/health` returned HTTP 200 from `marathon`, `orders-microservice`, `warehouse-microservice`, `payments-microservice`, `catalog-microservice`, `shop-assistant`, `marketing-microservice`, `speakasap-api-gateway`, and `speakasap-user`.
+- The same probe to `http://auth-microservice:3000/health` timed out, confirming `3000` is not a safe Kubernetes fallback.
+- `vault-backend` is currently `True/Valid`, so old Vault-readiness blockers are superseded by the narrower remaining runtime/login/backfill gates below.
+
+Remaining gates:
+- [MISSING: token-bearing `/auth/validate` runtime smoke with approved safe test token].
+- [MISSING: owner-approved Marathon live read-only backfill dry-run and apply].
+- [MISSING: owner-approved real phone/email contact-code delivery smoke].
+- [MISSING: approved final service identity contract for machine/service callers].
+
+## 2026-06-24 Runtime Auth Reachability Readiness Gate
+
+Status: added the previously manual Auth service-port and consumer `/health` probes to the central no-write readiness checker; no deploy, DB, secret, production log, live login, contact-code delivery smoke, backfill, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: Auth modernization readiness should prove the runtime route from consumers to central Auth, not only source/static contract shape.
+- Goal Impact: Future runs of `npm run check:aos-auth-readiness` will fail if `auth-microservice` stops exposing Kubernetes service port `3370` or if inspected consumers cannot reach Auth `/health`.
+- System: `auth-microservice` orchestration checker plus Kubernetes consumer deployments.
+- Feature: repeatable no-write runtime Auth reachability gate.
+- Task: add `auth-microservice` service-port assertion and `/health` probes from Marathon, commerce, marketing, Shop Assistant, and new SpeakASAP consumer deployments.
+- Execution Plan: update central checker only; keep probes tokenless and bounded by a 3-second timeout; no `/auth/validate` token, login, DB, secret, deploy, or contact delivery.
+- Coding Prompt: use `kubectl exec deploy/<consumer> -- node -e fetch(...)` only against `http://auth-microservice:3370/health`, fail closed on non-200 or wrong service body, and preserve owner-gated warnings.
+- Code: `auth-microservice/scripts/check-aos-auth-modernization-readiness.sh`.
+- Validation: `bash -n scripts/check-aos-auth-modernization-readiness.sh`, `git diff --check`, and central `npm run check:aos-auth-readiness` passed with `pass=24 warn=2 fail=0`.
+
+Evidence:
+- The new checker asserts `auth-microservice` Kubernetes service named port `http` equals `3370`.
+- The new checker probes Auth `/health` from `marathon`, `orders-microservice`, `warehouse-microservice`, `payments-microservice`, `catalog-microservice`, `shop-assistant`, `marketing-microservice`, `speakasap-api-gateway`, and `speakasap-user`.
+
+Remaining gates:
+- [MISSING: token-bearing `/auth/validate` runtime smoke with approved safe test token].
+- [MISSING: owner-approved Marathon live read-only backfill dry-run and apply].
+- [MISSING: owner-approved real phone/email contact-code delivery smoke].
+- [MISSING: approved final service identity contract for machine/service callers].
+
+## 2026-06-24 Service Identity Consumer Standard
+
+Status: added the central transition standard for machine/service identity; no runtime behavior, deploy, DB, secret, production log, live login, contact-code delivery smoke, backfill, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: Auth modernization should keep human identity centralized in Auth while machine/service callers remain explicit, auditable, and separate from users.
+- Goal Impact: Payments API keys, Catalog internal service tokens, SpeakASAP internal routes, and Warehouse/Orders service caller paths now have one central contract reference instead of scattered `[UNKNOWN]` service-identity notes.
+- System: Auth consumer standards and ecosystem rollout checker.
+- Feature: machine-auth standard for service actor boundaries, preferred headers, transitional exceptions, and validation evidence.
+- Task: add `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`, reference it from hosted/JWT/unified Auth docs, and require it in the ecosystem rollout docs checker.
+- Execution Plan: documentation/checker-only; do not change service-token values, runtime guards, secrets, K8s config, service JWT issuance, or consumer behavior in this slice.
+- Coding Prompt: define preferred `x-internal-service-token` plus `x-service-name`, classify existing API-key/service-token paths as machine auth rather than user RBAC, preserve user Auth `/auth/validate` migration, and require redaction evidence.
+- Code: `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`, `docs/CONSUMER_JWT_VALIDATION_STANDARD.md`, `docs/HOSTED_AUTH_CONSUMER_STANDARD.md`, `docs/UNIFIED_AUTH_CONTRACT.md`, and `scripts/check-ecosystem-hosted-auth-rollout-docs.sh`.
+- Validation: `npm run check:ecosystem-auth-rollout-docs`, `git diff --check`, and central `npm run check:aos-auth-readiness` passed with `pass=24 warn=2 fail=0`.
+
+Evidence:
+- The standard declares that machine credentials create service actors, not human users.
+- New machine paths should use `x-internal-service-token` plus `x-service-name`.
+- Existing Payments `x-api-key`, Catalog `x-internal-service-token`, SpeakASAP `x-internal-token`, and service bearer tokens are transitional machine-auth exceptions, not Auth RBAC.
+
+Remaining gates:
+- [MISSING: service-owned implementation lanes to migrate/verify each transitional machine-auth exception].
+- [MISSING: token-bearing `/auth/validate` runtime smoke with approved safe test token].
+- [MISSING: owner-approved Marathon live read-only backfill dry-run and apply].
+- [MISSING: owner-approved real phone/email contact-code delivery smoke].
+
+## 2026-06-24 Payments API-Key Service Actor Lane
+
+Status: completed the first service-owned machine-auth implementation lane for `payments-microservice`; no API-key values, provider operation, payment mutation, deploy, DB, secret, production log, live smoke, contact-code delivery, backfill, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: service credentials must remain explicit machine actors while Auth centralizes human identity.
+- Goal Impact: Payments `x-api-key` requests no longer silently bypass Auth validation without actor context; they are represented as service actors and kept separate from Auth users.
+- System: `payments-microservice` global Auth roles guard and hosted-auth static checker.
+- Feature: API-key machine-auth service actor boundary.
+- Task: attach a deterministic service actor for configured `x-api-key` callers while keeping human Bearer tokens on Auth `/auth/validate`.
+- Execution Plan: Payments guard/spec/checker/docs only; preserve existing `ApiKeyGuard` scope enforcement and do not read or change key values.
+- Coding Prompt: when a configured API key is presented, do not call Auth `/auth/validate`; attach `serviceActor` and `user` as `{ type: 'service', serviceName: 'payments-api-key', authMethod: 'api-key' }`; never trust caller-provided service names or log key values.
+- Code: `payments-microservice/src/auth/jwt-roles.guard.ts`, `payments-microservice/src/auth/jwt-roles.guard.spec.ts`, `payments-microservice/scripts/check-hosted-auth-contract.js`, and `payments-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`.
+- Validation: Payments focused guard spec, `npm run check:hosted-auth`, `npm run build`, and `git diff --check` passed.
+
+Evidence:
+- API-key callers create `request.serviceActor` with `type=service`, `serviceName=payments-api-key`, and `authMethod=api-key`.
+- API-key callers also set `request.user` to the same service actor for compatibility, but the actor is not an Auth human user and has no Auth RBAC roles.
+- Human Bearer tokens still use Auth `POST /auth/validate`; the checker fails if local JWT verification returns or service-actor markers disappear.
+
+Remaining gates:
+- [MISSING: service-owned implementation lanes for Catalog/Warehouse, Orders/Warehouse, SpeakASAP internal routes, and other transitional machine-auth exceptions].
+- [MISSING: token-bearing `/auth/validate` runtime smoke with approved safe test token].
+- [MISSING: owner-approved Marathon live read-only backfill dry-run and apply].
+- [MISSING: owner-approved real phone/email contact-code delivery smoke].
+
+## 2026-06-24 Catalog Internal Service Actor Lane
+
+Status: completed the Catalog-side machine-auth implementation lane for `x-internal-service-token`; no token values, product mutation, warehouse call, deploy, DB, secret, production log, live smoke, contact-code delivery, backfill, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: Catalog service credentials remain explicit machine actors while Auth centralizes human identity.
+- Goal Impact: Catalog internal service-token requests now expose `serviceName` and `authMethod`, and attach `request.serviceActor`, instead of only carrying generic source metadata.
+- System: `catalog-microservice` `CatalogAuthGuard` service-token path and static checker.
+- Feature: internal service-token actor shape aligned with the Auth service identity standard.
+- Task: keep `x-internal-service-token` separate from Auth Bearer validation while adding explicit service actor fields.
+- Execution Plan: Catalog guard/spec/checker/docs only; preserve token comparison, role grants, caller header behavior, and no runtime secret reads.
+- Coding Prompt: when a configured internal service token is presented, do not call Auth `/auth/validate`; attach `catalogActor` and `serviceActor` with `type=service`, `serviceName=<x-service-name|internal-service>`, and `authMethod=internal-service-token`.
+- Code: `catalog-microservice/src/auth/catalog-auth.guard.ts`, `catalog-microservice/src/auth/catalog-auth.guard.spec.ts`, `catalog-microservice/scripts/check-aos-auth-contract.js`, and `catalog-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`.
+- Validation: Catalog focused guard spec, `npm run check:aos-auth-contract`, `npm run build`, and `git diff --check` passed.
+
+Evidence:
+- Internal service-token requests set both `request.catalogActor` and `request.serviceActor`.
+- Service actors carry `serviceName` from accepted `x-service-name` or the existing `internal-service` fallback and `authMethod=internal-service-token`.
+- Human Bearer tokens still validate through Auth `POST /auth/validate` and produce `catalogActor.type=jwt` with `authMethod=auth-validate`.
+- The static checker fails if the explicit service actor markers disappear.
+
+Remaining gates:
+- [MISSING: receiving-side Warehouse service bearer-token classification for Catalog/Orders callers].
+- [MISSING: service-owned implementation lanes for Orders/Warehouse, SpeakASAP internal routes, and other transitional machine-auth exceptions].
+- [MISSING: token-bearing `/auth/validate` runtime smoke with approved safe test token].
+- [MISSING: owner-approved Marathon live read-only backfill dry-run and apply].
+- [MISSING: owner-approved real phone/email contact-code delivery smoke].
+
+## 2026-06-24 Warehouse Auth-Validated Service Actor Lane
+
+Status: completed Warehouse receiving-side classification for Auth-compatible service JWTs; no static service-token bypass, service-token values, stock/reservation/supplier mutation, deploy, DB, secret, production log, live smoke, contact-code delivery, backfill, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: Warehouse should receive service callers as explicit machine actors while Auth centralizes token validation and human identity.
+- Goal Impact: Orders/Catalog-style Warehouse service bearer tokens are now classified at the receiving guard as Auth-validated service actors when Auth returns service identity fields.
+- System: `warehouse-microservice` global Auth roles guard, authenticated actor helper type, and static checker.
+- Feature: receiving-side service actor annotation for Auth-validated bearer service tokens.
+- Task: attach `request.serviceActor` when Auth `/auth/validate` returns `serviceName`, `service`, `clientId`, or `client_id`, without adding service-local static-token bypasses.
+- Execution Plan: Warehouse guard/type/spec/checker/docs only; preserve Auth `/auth/validate` call shape, role enforcement, and mutation actor derivation.
+- Coding Prompt: human Auth users must not get `serviceActor`; Auth-validated service tokens with service identity fields must set `type=service`, `authMethod=auth-validate`, and preserve service identity variants.
+- Code: `warehouse-microservice/src/auth/jwt-roles.guard.ts`, `warehouse-microservice/src/auth/authenticated-actor.ts`, `warehouse-microservice/test/jwt-roles.guard.spec.ts`, `warehouse-microservice/scripts/check-hosted-auth-contract.js`, and `warehouse-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`.
+- Validation: Warehouse focused guard and actor specs, `npm run check:hosted-auth`, `npm run build`, and `git diff --check` passed.
+
+Evidence:
+- Human Auth users keep `request.serviceActor` unset.
+- Auth-validated service tokens with service identity fields set `request.serviceActor` with `type=service` and `authMethod=auth-validate`.
+- Warehouse still validates all bearer tokens through Auth `POST /auth/validate`; no static receiving-side service-token bypass was added.
+- Mutation actor derivation still prefers service identity claims and returns `service:<serviceName>`.
+
+Remaining gates:
+- [MISSING: Orders-side Warehouse service caller documentation/checker alignment with the Auth-compatible service JWT receiving-side contract].
+- [MISSING: SpeakASAP internal-route service actor lane].
+- [MISSING: token-bearing `/auth/validate` runtime smoke with approved safe test token].
+- [MISSING: owner-approved Marathon live read-only backfill dry-run and apply].
+- [MISSING: owner-approved real phone/email contact-code delivery smoke].
+
+## 2026-06-24 Warehouse Auth Validate Guard Wave
+
+Status: completed bounded Warehouse backend Auth validate guard migration; no deploy, DB, secret, production log, live smoke, backfill, stock mutation, provider call, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: Warehouse human/admin bearer-token validation is centralized in Auth instead of duplicated through service-local JWT secrets.
+- Goal Impact: Warehouse now asks Auth to validate active users and roles while retaining local warehouse/admin authorization decisions.
+- System: `warehouse-microservice` global `JwtRolesGuard` and Auth module.
+- Feature: server-side Auth `POST /auth/validate` token validation with role and service-identity preservation.
+- Task: replace local `JwtService`/`JWT_SECRET` user-token verification in Warehouse with Auth validation.
+- Execution Plan: Warehouse auth guard/module/spec/checker/docs only; no stock logic, reservation logic, DB, deploy, or runtime secret changes.
+- Coding Prompt: send `{ token }` to Auth `/auth/validate`, require `{ valid: true, user }`, preserve full Auth roles and service identity variants, attach request user, fail closed, and do not log tokens.
+- Code: `warehouse-microservice/src/auth/jwt-roles.guard.ts`, `warehouse-microservice/src/auth/auth.module.ts`, `warehouse-microservice/test/jwt-roles.guard.spec.ts`, `warehouse-microservice/scripts/check-hosted-auth-contract.js`, and `warehouse-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`.
+- Validation: Warehouse `npm test -- --runInBand test/jwt-roles.guard.spec.ts`, `npm run check:hosted-auth`, `npm run build`, and diff checks passed.
+
+Evidence:
+- Warehouse guard calls `AUTH_SERVICE_URL` defaulting to `http://auth-microservice:3370` and posts `{ token }` to `/auth/validate`.
+- Warehouse guard no longer imports `JwtService`, calls `jwtService.verify`, references `JWT_SECRET`, or registers `JwtModule`.
+- Warehouse guard preserves Auth role strings and service identity variants on `request.user`.
+- Warehouse checker now fails if local JWT verifier markers return or Auth `/auth/validate` markers disappear.
+
+Remaining gates:
+- [MISSING: runtime network/allowlist verification for Warehouse-to-Auth `/auth/validate` calls].
+- [MISSING: approved final service identity contract for Warehouse internal/service callers].
+- [SUPERSEDED: Vault readiness blocker] `vault-backend` is currently `True/Valid`; token-bearing `/auth/validate` smoke still needs an approved safe test token.
+
+## 2026-06-24 Orders Auth Validate Guard Wave
+
+Status: completed bounded Orders backend Auth validate guard migration; no deploy, DB, secret, production log, live smoke, backfill, order mutation, warehouse handoff mutation, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: Orders human/admin bearer-token validation is centralized in Auth instead of duplicated through service-local JWT secrets.
+- Goal Impact: Orders now asks Auth to validate active users and roles while retaining local order/admin authorization decisions.
+- System: `orders-microservice` global `JwtRolesGuard` and Auth module.
+- Feature: server-side Auth `POST /auth/validate` token validation with role preservation and fail-closed errors.
+- Task: replace local `JwtService`/`JWT_SECRET` user-token verification in Orders with Auth validation.
+- Execution Plan: Orders auth guard/module/verifier/docs only; no order lifecycle, warehouse service-token, payment-service role, DB, deploy, or runtime secret changes.
+- Coding Prompt: send `{ token }` to Auth `/auth/validate`, require `{ valid: true, user }`, preserve full Auth roles, attach request user, fail closed, and do not log tokens.
+- Code: `orders-microservice/src/auth/jwt-roles.guard.ts`, `orders-microservice/src/auth/auth.module.ts`, `orders-microservice/scripts/verify-admin-operations-console.js`, and `orders-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`.
+- Validation: Orders `npm run build`, `npm run verify:admin-operations-console`, and diff checks passed.
+
+Evidence:
+- Orders guard calls `AUTH_SERVICE_URL` defaulting to `http://auth-microservice:3370` and posts `{ token }` to `/auth/validate`.
+- Orders guard no longer imports `JwtService`, calls `jwtService.verify`, references `JWT_SECRET`, or registers `JwtModule`.
+- Orders verifier now fails if local JWT verifier markers return or Auth `/auth/validate` markers disappear.
+- Existing hosted admin UI checks still pass, including `client_id=orders-microservice`, state validation, fragment stripping, and no token-paste UI.
+
+Remaining gates:
+- [MISSING: runtime network/allowlist verification for Orders-to-Auth `/auth/validate` calls].
+- [MISSING: approved final service identity contract for Warehouse/Payments service callers].
+- [SUPERSEDED: Vault readiness blocker] `vault-backend` is currently `True/Valid`; token-bearing `/auth/validate` smoke still needs an approved safe test token.
+
+## 2026-06-24 Payments And Catalog Auth Validate Guard Wave
+
+Status: completed bounded Payments/Catalog backend Auth validate guard migration; no deploy, DB, secret, production log, live smoke, backfill, payment/provider mutation, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: human bearer-token validation is centralized in Auth instead of duplicated through service-local JWT secrets.
+- Goal Impact: Payments and Catalog now ask Auth to validate active users and roles, while each service keeps its own local authorization decisions and machine-token boundaries.
+- System: `payments-microservice` global `JwtRolesGuard`; `catalog-microservice` `CatalogAuthGuard`.
+- Feature: server-side Auth `POST /auth/validate` token validation with role preservation and fail-closed errors.
+- Task: replace local `JwtService`/HS256/`JWT_SECRET` user-token verification in Payments and Catalog with Auth validation.
+- Execution Plan: disjoint repo lanes; Payments edited auth guard/module/spec/checker/docs, Catalog edited auth guard/spec/checker/docs; no provider, product, payment, deploy, DB, secret, or legacy portal files.
+- Coding Prompt: send `{ token }` to Auth `/auth/validate`, require `{ valid: true, user }`, preserve full Auth roles, attach request actor/user, fail closed, do not log tokens, and preserve API-key/internal-service machine boundaries.
+- Code: `payments-microservice/src/auth/jwt-roles.guard.ts`, `payments-microservice/src/auth/auth.module.ts`, `payments-microservice/src/auth/jwt-roles.guard.spec.ts`, `payments-microservice/scripts/check-hosted-auth-contract.js`, `payments-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`, `catalog-microservice/src/auth/catalog-auth.guard.ts`, `catalog-microservice/src/auth/catalog-auth.guard.spec.ts`, `catalog-microservice/scripts/check-aos-auth-contract.js`, and `catalog-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`.
+- Validation: Payments focused guard specs, checker, and build passed; Catalog focused guard specs, checker, and build passed; central readiness runs both service checkers.
+
+Evidence:
+- Payments guard calls `AUTH_SERVICE_URL` defaulting to `http://auth-microservice:3370` and posts `{ token }` to `/auth/validate`.
+- Payments guard no longer imports `JwtService`, calls `jwtService.verify`, references `JWT_SECRET`, or registers `JwtModule`; API-key machine boundary remains separate.
+- Catalog guard calls `AUTH_SERVICE_URL` defaulting to `http://auth-microservice:3370` and posts `{ token }` to `/auth/validate` with a fail-closed timeout.
+- Catalog guard no longer uses `verifyJwt`, HS256 `createHmac`, `JWT_SECRET`, `AUTH_JWT_SECRET`, or local JWT verification error paths for user bearer tokens; `x-internal-service-token` remains separate.
+- Payments and Catalog focused tests cover Auth success, invalid Auth response fail-closed behavior, role rejection, and machine-boundary bypass.
+
+Remaining gates:
+- [MISSING: runtime network/allowlist verification for service-to-Auth `/auth/validate` calls].
+- [MISSING: approved final service identity contract for API-key/internal-service machine callers].
+- [MISSING: Catalog owner decision whether local `/api/auth/login` and `/api/auth/register` proxy endpoints remain temporarily or redirect/deprecate].
+- [SUPERSEDED: Vault readiness blocker] `vault-backend` is currently `True/Valid`; token-bearing `/auth/validate` smoke still needs an approved safe test token.
+
+## 2026-06-24 Marketing And StateX Guardrail Wave
+
+Status: completed bounded parallel Marketing/StateX hosted Auth guardrail wave; no deploy, DB, secret, production log, live smoke, backfill, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: product and marketing human Auth surfaces converge on the hosted Auth standard while app-owned business boundaries remain separate.
+- Goal Impact: Marketing callback leak risk is reduced, and StateX existing hosted Auth paths are now enforced by a repeatable checker.
+- System: `marketing-microservice` callback and Auth route tests; `statex` website hosted Auth adapter and contact-helper inventory.
+- Feature: Marketing callback fragment stripping/order guardrail plus StateX hosted Auth static contract checker.
+- Task: harden Marketing callback and add StateX no-write hosted Auth checker.
+- Execution Plan: disjoint repo lanes by sub-agents; Marketing edits callback/tests/checker/docs, StateX edits checker/docs only; central readiness integration follows.
+- Coding Prompt: preserve service-token/contact-helper transitional debt as explicit debt, avoid secrets/live data/deploys, and fail static checks if local credential collection returns.
+- Code: `marketing-microservice/public/auth-callback.html`, `marketing-microservice/test/api-contracts.test.ts`, `marketing-microservice/scripts/check-hosted-auth-static.mjs`, `marketing-microservice/package.json`, `marketing-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`, `statex/scripts/check-statex-hosted-auth-contract.js`, `statex/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`, and central readiness wiring.
+- Validation: Marketing `npm run check:auth-static` and focused `tsx --test ... test/api-contracts.test.ts` passed; StateX `node scripts/check-statex-hosted-auth-contract.js` passed with three recorded debt items; central readiness now runs both checks.
+
+Evidence:
+- Marketing callback parses the fragment into memory, strips the visible URL fragment with `history.replaceState`, then writes the admin token cookie and redirects to `/admin`.
+- Marketing test coverage asserts `replaceState` exists and appears before cookie storage/redirect in the callback.
+- Marketing static checker enforces hosted Auth redirect/callback markers, callback state comparison, and callback operation ordering.
+- StateX checker verifies active website login/register pages redirect through hosted Auth with `client_id=statex`, absolute `/auth/callback` return URL, generated state, callback fragment parsing, returned-state validation, and fragment stripping.
+- StateX checker records non-failing transitional debt for frontend `localStorage` Auth token storage, direct `register_contact`/`login_contact` helpers, and user-portal contact-helper use.
+
+Remaining gates:
+- [MISSING: runtime redirect allowlist verification for `marketing-microservice` and `statex`].
+- [MISSING: approved BFF/httpOnly session migration or explicit transitional browser-token storage exception].
+- [MISSING: StateX owner decision whether user-portal contact registration is active, legacy, or temporary compatibility].
+- [MISSING: authoritative Auth role registry for Marketing viewer/operator/admin/owner roles].
+- [BLOCKED: runtime allowlist verification until `vault-backend` is Ready].
+
+## 2026-06-24 Payments Hosted Auth Frontend And Guard Wave
+
+Status: completed bounded Payments hosted Auth frontend and backend guard slices; no deploy, DB, secret, production log, provider operation, payment mutation, live smoke, backfill, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: Payments human entry points use the central Auth-hosted UI while Payments remains payment/provider/API-key authority.
+- Goal Impact: Payments `/login` and `/register` no longer collect local passwords or local identity registration data.
+- System: `payments-microservice` public frontend shell and asset controller.
+- Feature: hosted Auth login/register redirect, `/auth/callback` serving, callback state validation, Auth `/auth/validate` backend bearer validation, and static regression checker.
+- Task: replace Payments local auth/demo forms with hosted Auth buttons, add callback fragment handling, and replace local `JwtService`/`JWT_SECRET` user-token verification with Auth validation.
+- Execution Plan: Payments frontend/controller/auth-guard/checker/docs/spec only, then central readiness wiring; no provider, webhook, API-key redesign, deploy, or runtime data mutation.
+- Coding Prompt: use `client_id=payments-microservice`, absolute `/auth/callback` return URL, generated state, fragment parsing, state mismatch rejection, `history.replaceState`, transitional `sessionStorage`, and server-side Auth `/auth/validate` without token logging.
+- Code: `payments-microservice/public/payments-ui.js`, `payments-microservice/src/common/controllers/assets.controller.ts`, `payments-microservice/src/auth/jwt-roles.guard.ts`, `payments-microservice/src/auth/auth.module.ts`, `payments-microservice/src/auth/jwt-roles.guard.spec.ts`, `payments-microservice/scripts/check-hosted-auth-contract.js`, `payments-microservice/package.json`, `payments-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`, and central readiness wiring.
+- Validation: Payments `node --check public/payments-ui.js`, `node --check scripts/check-hosted-auth-contract.js`, focused `npm test -- --runTestsByPath src/auth/jwt-roles.guard.spec.ts --runInBand`, `npm run check:hosted-auth`, `npm run build`, and diff checks passed; central readiness runs the Payments checker.
+
+Evidence:
+- Payments `/login` and `/register` render hosted Auth buttons and no longer include password fields or local credential form submission.
+- Hosted Auth URL includes `https://auth.alfares.cz`, `client_id=payments-microservice`, `return_url`, and `state`.
+- Payments `/auth/callback` is served by the asset controller and the SPA handles `#access_token`, optional `#refresh_token`, and returned `state`.
+- Callback validates state, strips the URL fragment with `window.history.replaceState`, stores Auth tokens in transitional `sessionStorage`, and clears legacy Payments Auth `localStorage` token keys.
+- Payments backend guard calls Auth `POST /auth/validate`, requires `{ valid: true, user }`, preserves Auth role strings, attaches request user, and fails closed on Auth validation errors.
+- Payments backend guard no longer imports `JwtService`, calls `jwtService.verify`, references `JWT_SECRET`, or registers `JwtModule`.
+- Payments checker fails if password input, local credential form handling, local Auth POST, hosted Auth params, callback route, state validation, fragment stripping, local JWT verification, or inventory evidence regresses.
+
+Remaining gates:
+- [MISSING: runtime redirect allowlist verification for `payments-microservice`].
+- [MISSING: approved BFF/httpOnly session migration or explicit transitional `sessionStorage` exception].
+- [UNKNOWN: whether API-key service callers later move to an Auth-issued service identity contract].
+- [BLOCKED: runtime allowlist verification until `vault-backend` is Ready].
+
+## 2026-06-24 Catalog And Warehouse Auth Wave
+
+Status: completed bounded Catalog/Warehouse Auth modernization wave; no deploy, DB, secret, production log, live smoke, backfill, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: commerce infrastructure services converge on hosted Auth and explicit Auth-validation boundaries without moving product or stock authority.
+- Goal Impact: Warehouse no longer collects admin credentials locally, and Catalog now has a static guardrail around its transitional auth proxy/local JWT risks.
+- System: `warehouse-microservice` admin UI/session adapter and `catalog-microservice` API auth surface.
+- Feature: hosted Auth admin entry for Warehouse plus Catalog Auth static contract guardrail.
+- Task: replace Warehouse consumer credential forms with hosted Auth redirect/callback and add Catalog no-write auth contract checker.
+- Execution Plan: disjoint lanes; Warehouse edits static admin UI/checker/docs only, Catalog edits checker/package/docs only; no shared Auth contract changes.
+- Coding Prompt: preserve backend guards/service-token behavior, avoid secrets/live data/deploys, and make regression checks enforce hosted Auth markers.
+- Code: `warehouse-microservice/public/admin/index.html`, `warehouse-microservice/public/admin/app.js`, `warehouse-microservice/public/admin/style.css`, `warehouse-microservice/scripts/check-hosted-auth-contract.js`, `warehouse-microservice/package.json`, `warehouse-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`, `catalog-microservice/scripts/check-aos-auth-contract.js`, `catalog-microservice/package.json`, `catalog-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`, and central readiness wiring.
+- Validation: Warehouse `npm run check:hosted-auth`, `npm run build`, and `npm test -- --runInBand` passed; Catalog `npm run check:aos-auth-contract` passed; central readiness now runs both checks.
+
+Evidence:
+- Warehouse admin UI now uses hosted Auth login/register buttons instead of email/password forms.
+- Warehouse admin JS redirects to `https://auth.alfares.cz/login` or `/register` with `client_id=warehouse-microservice`, absolute `return_url=/admin`, and generated `state`.
+- Warehouse admin JS consumes `#access_token`, validates returned `state`, stores the token in `sessionStorage` as transitional storage, strips the fragment, and removes legacy `localStorage` token writes.
+- Warehouse static checker fails if local credential forms or Auth JSON credential POSTs return.
+- Catalog checker verifies its local `/api/auth/login` and `/api/auth/register` proxy endpoints are present and documented as transitional debt, detects local JWT verification and internal service-token paths, and fails on browser password forms or browser token storage in Catalog source/docs.
+
+Remaining gates:
+- [MISSING: runtime redirect allowlist verification for Warehouse].
+- [MISSING: approved BFF/httpOnly session migration or explicit transitional browser-storage exception].
+- [MISSING: Catalog owner decision whether local auth proxy endpoints remain temporarily or redirect/deprecate].
+- [UNKNOWN: final Auth service identity/service-token contract].
+- [BLOCKED: runtime allowlist verification until `vault-backend` is Ready].
+
+## 2026-06-24 First Consumer Implementation Wave
+
+Status: completed first bounded consumer implementation/guardrail wave for Orders and Shop Assistant; no deploy, DB, secret, production log, live smoke, backfill, or legacy `speakasap-portal` access.
+
+IPS chain:
+- Vision: additional Alfares consumers adopt hosted Auth incrementally while Auth remains the identity and credential authority.
+- Goal Impact: Orders no longer asks admins to paste bearer tokens, and Shop Assistant now has a static guardrail proving its existing hosted Auth adapter stays compliant.
+- System: `orders-microservice` admin shell and `shop-assistant` public/customer/admin Auth surfaces.
+- Feature: hosted Auth consumer hardening for first non-Marathon/non-SpeakASAP apps.
+- Task: implement Orders admin hosted Auth redirect/callback slice and add Shop Assistant hosted Auth source checker.
+- Execution Plan: disjoint repo lanes; Orders edits UI/verifier/docs only, Shop Assistant edits checker/package/docs only; no shared Auth contract changes.
+- Coding Prompt: preserve existing backend authorization behavior, do not read secrets or live data, and make regression checks enforce hosted Auth markers.
+- Code: `orders-microservice/src/admin/admin-ui.ts`, `orders-microservice/scripts/verify-admin-operations-console.js`, `orders-microservice/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`, `shop-assistant/scripts/check-hosted-auth-contract.js`, `shop-assistant/package.json`, `shop-assistant/docs/orchestrator/2026-06-24-aos-auth-static-inventory.md`, and central readiness wiring.
+- Validation: Orders `npm test` passed; Shop Assistant `npm run check:hosted-auth` passed; central readiness now runs both checks.
+
+Evidence:
+- Orders admin shell now redirects to `https://auth.alfares.cz/login` with `client_id=orders-microservice`, absolute `return_url=/admin/orders`, and generated `state`.
+- Orders admin shell consumes `#access_token`, validates returned `state`, stores the access token in `sessionStorage` as transitional storage, strips the URL fragment, and rejects mismatched callback state.
+- Orders manual password-style bearer-token paste field was removed; existing backend JWT/role guard behavior was intentionally unchanged.
+- Orders verifier now fails if hosted Auth markers disappear or token-paste UI returns.
+- Shop Assistant checker verifies hosted login/register redirects, `client_id=shop-assistant`, `return_url`, `state`, dashboard/admin fragment parsing, state validation, `history.replaceState`, transitional `sessionStorage`, legacy `localStorage` cleanup, no public password forms/local credential POSTs, and backend Auth `/auth/validate`.
+
+Remaining gates:
+- [MISSING: runtime redirect allowlist verification for Orders and Shop Assistant].
+- [MISSING: approved BFF/httpOnly session migration or explicit transitional browser-storage exception].
+- [UNKNOWN: whether Shop Assistant static page callback is accepted long term instead of a dedicated `/auth/callback` route].
+- [BLOCKED: runtime allowlist verification until `vault-backend` is Ready].
+
+## 2026-06-24 Repo-Local Static Inventory Wave
+
+Status: completed parallel static inventory workers for seven additional remote repos; no application code was changed.
+
+IPS chain:
+- Vision: each consumer migration starts from a concrete source-level inventory of auth surfaces, not only a generic rollout plan.
+- Goal Impact: implementation workers can now choose the first safe hosted Auth code lanes from verified repo-local findings.
+- System: product/education, commerce, and backend consumer repositories under `/home/ssf/Documents/Github`.
+- Feature: repo-local static auth inventory reports.
+- Task: spawn disjoint workers to create `docs/orchestrator/2026-06-24-aos-auth-static-inventory.md` in the seven planned repos.
+- Execution Plan: static source/docs inspection only; no app code, package files, deploy files, env/secret reads, DB access, production logs, live smokes, backfills, or legacy `speakasap-portal`.
+- Coding Prompt: compare current repo auth surfaces to `auth-microservice/docs/HOSTED_AUTH_CONSUMER_STANDARD.md`, record implementation-ready lanes and preserve `[MISSING]` / `[UNKNOWN]`.
+- Code: repo-local static inventory docs in `statex`, `shop-assistant`, `marketing-microservice`, `catalog-microservice`, `orders-microservice`, `payments-microservice`, and `warehouse-microservice`.
+- Validation: worker-reported `git diff --check -- docs/orchestrator/2026-06-24-aos-auth-static-inventory.md` passed in each touched repo; central readiness now verifies the inventory files exist.
+
+Evidence:
+- `statex`: hosted Auth login/register and callback already exist; remaining risks are transitional `localStorage` token storage and direct Auth credential/contact helper methods, plus unknown active/legacy status for user-portal contact registration.
+- `shop-assistant`: public password collection is gone; remaining gap is callback/session alignment because Auth returns to static pages that parse fragments and store tokens in `sessionStorage`.
+- `marketing-microservice`: hosted routes and callback exist; remaining gaps are browser-writable admin token cookie, missing explicit fragment history cleanup evidence, and runtime allowlist/session verification.
+- `catalog-microservice`: local `/api/auth/login` and `/api/auth/register` proxy routes plus local JWT/service-token validation remain; needs hosted callback and local-JWT exception or replacement decision.
+- `orders-microservice`: admin UI still uses pasted bearer token in `sessionStorage`; needs hosted Auth entry and callback/state handling.
+- `payments-microservice`: has public login/register shell routes, API-key protected payment APIs, and local JWT guard; needs scope decision for human login before code migration.
+- `warehouse-microservice`: docs show Auth credential forms and browser access-token storage; needs hosted redirects and callback state validation.
+
+Remaining gates:
+- [MISSING: production callback origins and Auth client registry entries for several repos].
+- [MISSING: approved BFF/httpOnly/session storage contract or repo-specific transitional exception].
+- [MISSING: repo-local local-JWT exception evidence where services still verify JWTs locally].
+- [UNKNOWN: final Auth service identity/service-token contract].
+- [BLOCKED: runtime allowlist verification until `vault-backend` is Ready].
+
+## 2026-06-24 Repo-Local Plan Bootstrap Wave
+
+Status: completed parallel plan bootstrap workers for seven additional remote repos; `school-committee` already had a dirty plan and was not overwritten.
+
+IPS chain:
+- Vision: every ecosystem consumer can migrate to Auth-hosted login from a repo-local IPS/GDD plan, not only from the central Auth orchestrator.
+- Goal Impact: implementation workers can now start per repo with bounded ownership, forbidden files, validation candidates, and explicit blockers.
+- System: product/education, commerce, and backend consumer repositories under `/home/ssf/Documents/Github`.
+- Feature: repo-local Auth modernization planning wave.
+- Task: spawn disjoint workers to create `docs/orchestrator/2026-06-24-aos-auth-modernization-plan.md` in candidate repos where absent.
+- Execution Plan: documentation-only remote edits; no app code, package files, deploy files, env/secret reads, DB access, live smokes, backfills, or legacy `speakasap-portal`.
+- Coding Prompt: reference `auth-microservice/docs/HOSTED_AUTH_CONSUMER_STANDARD.md`, preserve the IPS chain, and mark missing facts as `[MISSING]` or `[UNKNOWN]`.
+- Code: repo-local plan docs in `statex`, `shop-assistant`, `marketing-microservice`, `catalog-microservice`, `orders-microservice`, `payments-microservice`, and `warehouse-microservice`.
+- Validation: worker-reported `git diff --check -- docs/orchestrator/2026-06-24-aos-auth-modernization-plan.md` passed in each touched repo; central readiness now verifies the plan files exist.
+
+Evidence:
+- Product/education worker created plans in `statex`, `shop-assistant`, and `marketing-microservice`; skipped `school-committee` because its plan already existed and was dirty before worker changes.
+- Commerce/backend worker created plans in `catalog-microservice`, `orders-microservice`, `payments-microservice`, and `warehouse-microservice`.
+- Both workers avoided local workspace edits, secrets, live DB rows, production logs, deploys, backfills, smokes, and legacy `speakasap-portal`.
+
+Remaining gates:
+- [MISSING: implementation/inventory owner assignment per repo].
+- [MISSING: repo-specific callback origins and Auth client registry entries].
+- [MISSING: repo-specific test/build/static checker commands for several repos].
+- [BLOCKED: runtime allowlist verification until `vault-backend` is Ready].
+
 ## 2026-06-24 Ecosystem Rollout Guardrail
 
 Status: completed no-write rollout-doc checker and wired it into central readiness; no app code, DB, secret, deploy, or live smoke was touched.
@@ -104,7 +517,7 @@ IPS chain:
 
 Evidence:
 - Readiness command passed Marathon hosted Auth source contract, Marathon Gate 1 approval packet existence, Marathon Gate 2 approval template existence, SpeakASAP hosted Auth source contract, Auth contact-code request approval packet existence, Auth contact-code verify approval packet existence, Auth focused contract specs, Auth deploy shell syntax, Marathon deploy shell syntax, SpeakASAP frontend deploy shell syntax, and runtime deployments all ready.
-- Expected warnings remain: vault-backend not Ready, Marathon live DB dry-run/backfill apply owner-gated, real phone/email contact-code delivery smoke owner/test-contact gated.
+- Superseded historical warning: `vault-backend` was not ready in this run; current readiness later in this document shows `vault-backend=True/Valid`, so only Marathon live DB dry-run/backfill apply and real phone/email contact-code delivery smoke remain owner-gated warnings.
 - The command writes only temporary JSON reports under /tmp and does not read .env, secrets, DB rows, or contact data.
 
 Remaining gates:
@@ -489,7 +902,7 @@ Marathon runtime evidence:
 
 Remaining gates:
 
-- [WARNING: vault-backend ExternalSecret readiness] `ClusterSecretStore vault-backend` and `auth-microservice-secret` currently report `Ready=False`; current Auth pods are healthy, but secret refresh infrastructure needs separate repair.
+- [SUPERSEDED: vault-backend ExternalSecret readiness] Earlier in this session `ClusterSecretStore vault-backend` and `auth-microservice-secret` reported `Ready=False`; current readiness now reports `vault-backend=True/Valid`.
 - [UNKNOWN: production Notifications SMS provider readiness] Contact-code source and hosted UI are live; real phone delivery still needs provider/config smoke with an approved test number.
 - [MISSING: owner approval for Marathon Gate 1 live read-only backfill dry-run].
 - [MISSING: owner approval for Marathon backfill apply].
@@ -502,7 +915,7 @@ Safety boundaries preserved:
 
 ## Orchestrator Update - 2026-06-24 ExternalSecret/Vault Readiness
 
-Status: diagnosed as an infrastructure blocker outside the Auth/Marathon/SpeakASAP application code slice.
+Status: diagnosed as an infrastructure blocker outside the Auth/Marathon/SpeakASAP application code slice; later readiness shows this blocker has been superseded by current `vault-backend=True/Valid` evidence.
 
 Evidence collected read-only, without printing secret values:
 
@@ -518,7 +931,7 @@ Decision:
 
 - Do not restart `external-secrets` as a repair action; the controller is healthy and the provider error is caused by sealed Vault state.
 - Do not mutate `vault-eso-token`, Vault state, Secret values, or ExternalSecret specs in this modernization thread.
-- Required owner/operator action: unseal or recover Vault through the approved infrastructure runbook, then verify `ClusterSecretStore vault-backend` becomes `Ready=True` and ExternalSecrets reconcile.
+- Superseded owner/operator action: unseal or recover Vault through the approved infrastructure runbook was required when Vault reported sealed; current readiness reports `ClusterSecretStore vault-backend` as `True/Valid`.
 
 Impact on AOS auth modernization:
 
@@ -716,7 +1129,7 @@ Shared constraints:
 Orchestrator dependency:
 
 - Workers use `docs/HOSTED_AUTH_CONSUMER_STANDARD.md` as the active Auth-owned consumer standard.
-- Runtime allowlist verification remains gated by sealed Vault and `vault-backend Ready=False`.
+- Runtime allowlist verification is no longer gated by Vault readiness; current read-only in-cluster Auth `/health` reachability passed from the inspected consumer deployments, while token-bearing `/auth/validate` smoke still needs an approved safe test token.
 
 ## Orchestrator Update - 2026-06-24 Wave1-B Shop Assistant Complete
 
@@ -862,7 +1275,7 @@ Shared constraints:
 - Legacy `speakasap-portal` remains forbidden.
 - No `.env`, Kubernetes Secret data, live DB data, raw tokens, deploys, Vault mutation, exchange API keys, live portfolio data, or school-domain schema refactors.
 - Workers must preserve existing repo changes and run `git diff --check` over changed files.
-- Runtime redirect allowlist verification remains blocked by sealed Vault and `vault-backend Ready=False`.
+- Runtime redirect allowlist verification is no longer blocked by Vault readiness; current `vault-backend=True/Valid` evidence supersedes this earlier blocker.
 
 ## Orchestrator Update - 2026-06-24 Wave2-A School Committee Complete
 
@@ -1135,3 +1548,152 @@ Validation:
 - Full Auth validation after this contract change passed: `npm test` 7 suites / 22 tests and `npm run build`.
 - Auth backend/web images were rebuilt and rolled out with tag `e2d77f1-20260624115053`; runtime health returned `{"success":true,"status":"ok","service":"auth-microservice"}`.
 - Marathon `scripts/backfill-marathon-auth-users.js --plan-only --limit 5` now reports `authMarker=perApplicationPreferences.authSources.marathon`, `preservesExistingPrimarySource=true`, `liveAccess=false`, `dbAccess=false`, and `authApiAccess=false`.
+
+
+## School Committee WS-E Live Validation - 2026-06-24
+
+- Live ingress identifies School Committee production hosts as `strilkove.cz` and `www.strilkove.cz`.
+- Initial `GET /auth/validate-return-url` checks rejected both School Committee callback origins because live `AUTH_ALLOWED_REDIRECT_ORIGINS` only included `*.alfares.cz`.
+- Patched non-secret runtime config `AUTH_ALLOWED_REDIRECT_ORIGINS` to `*.alfares.cz,https://strilkove.cz,https://www.strilkove.cz`, updated the remote Auth deployment env source `.env`, and restarted `deployment/auth-microservice`.
+- Post-restart validation returned `valid: true` for both `https://strilkove.cz/auth/callback` and `https://www.strilkove.cz/auth/callback`.
+- School Committee image was built and pushed; deploy script stopped at known `school-committee-secret` ExternalSecret/Vault readiness debt, then a manual rollout restart picked up the already-pushed image using the existing Kubernetes Secret.
+- Safe browser smoke without credentials confirmed `https://strilkove.cz/login?next=%2Fdashboard` redirects to `https://auth.alfares.cz/login` with `client_id=school-committee`, `return_url=https://strilkove.cz/auth/callback`, generated `state`, and no token query parameters.
+- Remaining gate: full credential callback/session smoke requires an approved non-PII test account or synthetic token handoff. ExternalSecret/Vault readiness remains separate infrastructure debt.
+
+## School Committee Credential Callback Smoke - 2026-06-24
+
+- Owner approved a live credential/session smoke using synthetic non-PII Auth accounts under `example.invalid`.
+- Auth synthetic registration returned HTTP 201; hosted Auth login form returned HTTP 201 from `/auth/login`.
+- Browser navigation confirmed School Committee `/login?next=%2Fdashboard` redirects to hosted Auth with `client_id=school-committee`, `return_url=https://strilkove.cz/auth/callback`, and generated `state`.
+- Redacted navigation sequence confirmed Auth token handoff uses the URL fragment, not query parameters; raw tokens were not printed.
+- School Committee callback stripped the fragment and routed the new synthetic user to `/onboarding/profile`.
+- Browser session contained HTTP-only `scp_access`, `scp_refresh`, and `scp_onboarding` cookies; cookie values were not printed.
+- Result: full hosted credential login -> Auth callback -> School Committee BFF session smoke passed.
+- Residual debt: synthetic Auth smoke accounts remain because no safe cleanup path was in scope; Vault/ExternalSecret readiness remains separate deployment automation debt.
+
+## Orchestrator Update - 2026-06-24 Orders Warehouse Service JWT Caller Alignment
+
+Status: Orders caller-side Warehouse service identity contract is source-aligned with Auth-owned service JWTs.
+
+Scope:
+
+- Updated `orders-microservice` only for the Orders -> Warehouse caller contract.
+- No runtime secret reads, token values, database access, live Warehouse calls, deployment, or legacy `speakasap-portal` access.
+- Existing reservation lifecycle behavior and Bearer header transport were preserved.
+
+Changes:
+
+- `docs/orchestrator/WAREHOUSE_HANDOFF_CONTRACT.md` now states that `WAREHOUSE_SERVICE_TOKEN` / `WAREHOUSE_INTERNAL_SERVICE_TOKEN` must be Auth-compatible service JWTs, not locally signed Orders tokens.
+- The expected service identity consumer standard is `auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`.
+- The expected Warehouse receiver role is `internal:warehouse-microservice:admin`.
+- Service identity metadata should include `serviceName` where possible, with Warehouse-side fallbacks documented by the consumer standard.
+- `scripts/verify-warehouse-handoff-contract.js` now verifies that Orders uses only runtime Warehouse token env keys, sends Bearer auth, does not locally sign/verify Warehouse JWTs, and keeps the Auth service JWT contract documented.
+
+Validation:
+
+- `orders-microservice`: `npm run verify:warehouse-handoff` passed.
+- `orders-microservice`: `npm run verify:admin-operations-console` passed.
+- `orders-microservice`: `npm run build` passed.
+- `orders-microservice`: `git diff --check -- scripts/verify-warehouse-handoff-contract.js docs/orchestrator/WAREHOUSE_HANDOFF_CONTRACT.md docs/orchestrator/2026-06-24-aos-auth-static-inventory.md` passed.
+- `auth-microservice`: central `scripts/check-aos-auth-modernization-readiness.sh` now runs `orders-microservice` `npm run verify:warehouse-handoff` as `Orders Warehouse service JWT caller contract`.
+
+Updated gate state:
+
+- [RESOLVED FOR SOURCE VALIDATION: Orders Warehouse service JWT caller contract] Orders now has a source-level guardrail that its Warehouse handoff token is an Auth-owned service JWT transported as Bearer auth.
+- [PENDING: runtime token provisioning verification] Confirming the live `WAREHOUSE_SERVICE_TOKEN` value is issued by Auth and accepted by Warehouse requires owner-approved secret/runtime access.
+
+## Orchestrator Update - 2026-06-24 SpeakASAP Internal Service Identity Lane
+
+Status: new SpeakASAP internal-token routes are source-aligned as explicit machine-auth service actor boundaries.
+
+Scope:
+
+- Updated only the new `speakasap` monorepo; legacy `speakasap-portal` was not touched.
+- No internal token values, DB reads/writes, salary/payment/provider operations, deploy, production smoke, secret reads, contact-code delivery, or Marathon backfill were run.
+- Existing `x-internal-token` comparison behavior and domain route behavior were preserved.
+
+Changes:
+
+- Gateway `/api/v1/internal/...`, user-service, education-service, and financial-service internal token guards now attach `serviceActor` after successful token validation.
+- Payment salary-disburse internal path now classifies successful internal-token validation through `assertInternalServiceActor`.
+- Financial-service outbound internal clients and education-service user lookup now send `X-Service-Name` from `SERVICE_NAME` or deterministic service fallback.
+- Added `speakasap/scripts/check-service-identity-contract.py` to enforce service actor metadata, outbound `X-Service-Name`, docs references, and forbidden token logging/Auth-RBAC confusion.
+- Updated SpeakASAP auth surface inventory, modernization plan, and gateway boundary docs to reference `auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`.
+- Central `auth-microservice/scripts/check-aos-auth-modernization-readiness.sh` now runs the SpeakASAP service identity checker.
+
+Validation:
+
+- `speakasap`: `./scripts/check-service-identity-contract.py --json-report /tmp/speakasap-service-identity-contract.json` passed with `ok=true`.
+- `speakasap`: `python3 -m py_compile scripts/check-service-identity-contract.py` passed with `PYTHONPYCACHEPREFIX=/tmp/speakasap-pycache`.
+- `speakasap`: `cd api-gateway && npm run build` passed.
+- `speakasap`: `cd user-service && npm run build` passed.
+- `speakasap`: `cd education-service && npm run build` passed.
+- `speakasap`: `cd financial-service && npm run build` passed.
+- `speakasap`: `cd payment-service && npm run build` passed.
+- `speakasap`: `git diff --check` passed for touched service identity files and docs.
+
+Updated gate state:
+
+- [RESOLVED FOR SOURCE VALIDATION: SpeakASAP internal-route service actor lane] internal token routes are classified as machine auth and expose service actor metadata in source.
+- [PENDING: Auth-issued service JWT replacement] Static internal tokens remain documented transitional machine-auth exceptions until a separate service-token issuance/cutover design is approved.
+
+## WS-E Vault Readiness Redeploy Closure - 2026-06-24
+
+- Vault/Kubernetes readiness repair completed at infrastructure level: `vault-backend` reports `Ready=True`, reason `Valid`, and the global ExternalSecret failure scan returned only the header row.
+- Missing Vault property `secret/prod/speakasap/education:LESSON_RECORD_MEDIA_TOKEN_SECRET` was restored from the existing `INTERNAL_API_TOKEN` fallback value to preserve the education service runtime fallback behavior; no secret values were printed.
+- Auth redeploy completed successfully after the Vault repair. Deploy evidence: Auth contract tests passed (3 suites / 14 tests), backend image `localhost:5000/auth-microservice:35e78ac-20260624140307` and web image `localhost:5000/auth-microservice-web:35e78ac-20260624140307` rolled out, and in-pod health returned `success:true`.
+- Auth post-deploy allowlist patch was corrected to preserve both School Committee callback origins: `https://strilkove.cz` and `https://www.strilkove.cz`. Live `/auth/validate-return-url` returned `valid:true` for both `https://strilkove.cz/auth/callback` and `https://www.strilkove.cz/auth/callback`.
+- Final public checks returned `auth_health=200`, `auth_login=200`, and School Committee live health `school_live=200`.
+- Final live deployments: `auth-microservice` ready `1/1`, `auth-microservice-web` ready `1/1`, `school-committee` ready `1/1`.
+
+## Orchestrator Update - 2026-06-24 Marathon Profile Callback No-Loop Guard
+
+Status: Marathon source contract now covers the reported `/profile/:marathonerId` loading-loop risk.
+
+Scope:
+
+- Updated only `marathon` checker/docs and central Auth status.
+- No runtime deploy, live login, contact-code delivery, DB query, Marathon backfill, secret read, payment mutation, or legacy `speakasap-portal` access.
+
+Changes:
+
+- `marathon/scripts/check-marathon-hosted-auth-contract.py` now checks the complete profile callback path:
+  - `captureTokenFromUrl()` runs before React render.
+  - Hosted Auth fragment keys are captured/sanitized through `frontend/src/auth.ts`.
+  - `/profile/:marathonerId` is routed to `ProfileDetail`.
+  - profile detail fetch uses Bearer-backed `authFetch` and maps `401` to `MarathonAuthRequiredError`.
+  - unauthenticated profile detail render shows hosted login/password-reset UI without automatic redirect from that render branch.
+- `marathon/docs/orchestrator/2026-06-24-aos-auth-modernization-plan.md` records the IPS/GDD profile no-loop guard evidence.
+
+Validation:
+
+- `marathon`: `PYTHONPYCACHEPREFIX=/tmp/marathon-pycache python3 -m py_compile scripts/check-marathon-hosted-auth-contract.py` passed.
+- `marathon`: `python3 scripts/check-marathon-hosted-auth-contract.py --json-report /tmp/marathon-hosted-auth-profile-loop.json` passed with `ok=true`, `15` passed, `0` failed.
+
+Updated gate state:
+
+- [RESOLVED FOR SOURCE VALIDATION: Marathon profile callback no-loop guard] The previously reported profile loading-loop path now has a source-level regression check.
+- [PENDING: live credential/contact-code profile callback smoke] A real callback/session smoke still requires an approved non-sensitive test account/contact.
+
+## 2026-06-24 School Committee Allowlist Regression Guard
+
+Status: implemented a durable readiness guard for the School Committee production callback allowlist after the Auth deploy script temporarily reintroduced a single-host value.
+
+IPS chain:
+- Vision: hosted Auth consumers must not regress after deployment automation rewrites runtime config.
+- Goal Impact: School Committee remains able to complete hosted Auth callbacks on both `strilkove.cz` and `www.strilkove.cz` after future Auth deploys.
+- System: Auth deploy script, Auth modernization readiness checker, School Committee hosted-auth integration.
+- Feature: deploy-time callback allowlist regression prevention.
+- Task: make the central readiness checker fail if `scripts/deploy.sh` stops preserving `https://www.strilkove.cz` beside `https://strilkove.cz` in `AUTH_ALLOWED_REDIRECT_ORIGINS`.
+- Execution Plan: source checker/spec-only update; no DB, secret value, production user data, or callback token logging.
+- Coding Prompt: assert the exact post-deploy allowlist value used by the Auth deploy script and keep hosted-auth web tests formatted.
+- Code: `scripts/check-aos-auth-modernization-readiness.sh`, `src/auth/hosted-auth-web.spec.ts`.
+- Validation: `bash -n scripts/check-aos-auth-modernization-readiness.sh scripts/check-ecosystem-hosted-auth-rollout-docs.sh`, `npm run test:auth-contract`, `npm run check:ecosystem-auth-rollout-docs`, `npm run check:aos-auth-readiness`, and `git diff --check` passed. Central readiness summary: `pass=27 warn=2 fail=0`.
+
+Evidence:
+- Readiness checker now reports `PASS Auth deploy preserves School Committee callback allowlist`.
+- Live Auth return URL validation returned `valid:true` for both `https://strilkove.cz/auth/callback` and `https://www.strilkove.cz/auth/callback` after the runtime patch.
+
+Remaining gates:
+- [MISSING: owner-approved Marathon live DB dry-run/backfill apply].
+- [MISSING: owner-approved real phone/email contact-code delivery smoke].

@@ -37,6 +37,8 @@ Current direct local verifier consumers are `catalog-microservice`, `warehouse-m
 
 Consumers must not mint Auth JWTs locally, validate Auth user tokens with service-owned JWT signing secrets, hand-roll divergent expiry/algorithm/claim assumptions per service, strip Auth role scopes as a generic rule, or treat static service tokens/API keys as user identity or Auth RBAC roles.
 
+Machine/service-token handling is governed by `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`. A service may keep machine-auth exceptions only when those paths create service actors and remain separate from Auth user identity.
+
 ## Consumer Classification
 
 | Consumer | Standard classification | Follow-up |

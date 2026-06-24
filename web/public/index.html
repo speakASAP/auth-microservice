@@ -70,6 +70,9 @@
     const returnUrlRaw = params.get('return_url') || '';
     const state = params.get('state') || '';
     const clientId = params.get('client_id') || '';
+    const prefillIdentifier = params.get('login_hint') || params.get('identifier') || params.get('email') || params.get('phone') || '';
+    const prefillEmail = params.get('email') || (prefillIdentifier.includes('@') ? prefillIdentifier : '');
+    const prefillPhone = params.get('phone') || (!prefillIdentifier.includes('@') ? prefillIdentifier : '');
     const marathonPhoneRequired = clientId === 'marathon';
 
     const authTitle = document.getElementById('auth-title');
@@ -93,6 +96,21 @@
 
     let mode = initialMode;
     let validatedReturnUrl = '';
+
+    function applyPrefill() {
+      if (mode === 'register') {
+        if (prefillEmail && !identifierInput.value) {
+          identifierInput.value = prefillEmail;
+        }
+        if (prefillPhone && !phoneInput.value) {
+          phoneInput.value = prefillPhone;
+        }
+        return;
+      }
+      if (prefillIdentifier && !identifierInput.value) {
+        identifierInput.value = prefillIdentifier;
+      }
+    }
 
     function parseJwtExpiryIso(accessToken) {
       try {
@@ -148,6 +166,7 @@
       submitBtn.textContent = isRegister ? 'Register' : 'Login';
       magicLinkBtn.style.display = isRegister ? 'none' : 'block';
       resetPasswordBtn.style.display = isRegister ? 'none' : 'block';
+      applyPrefill();
       tabLogin.classList.toggle('btn-secondary', isRegister);
       tabRegister.classList.toggle('btn-secondary', !isRegister);
     }

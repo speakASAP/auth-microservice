@@ -93,7 +93,7 @@ Consumers should preserve Auth role strings and Auth user identifiers. Product s
 
 Local JWT verification is allowed only as a documented exception under `docs/CONSUMER_JWT_VALIDATION_STANDARD.md`. Services using local verification must prove they use Auth-owned verification material, enforce expiry/signature validation, preserve role claims, and do not mint user tokens.
 
-Machine/service tokens are a separate boundary. Do not block hosted human login migration on service-token redesign unless the same guard path validates both user and machine tokens.
+Machine/service tokens are a separate boundary governed by `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`. Do not block hosted human login migration on service-token redesign unless the same guard path validates both user and machine tokens and cannot distinguish user actors from service actors safely.
 
 ## Registration And Existing Users
 
@@ -132,7 +132,7 @@ This registry is a planning artifact. Runtime allowlist truth still lives in Aut
 | --- | --- | --- | --- |
 | `marathon` | `https://marathon.alfares.cz/auth/callback` and in-app protected return paths such as `/profile` | deployed Marathon hosted Auth adapter and journey smoke | active consumer |
 | `speakasap` | `https://speakasap.alfares.cz/auth/callback` | deployed new SpeakASAP frontend adapter | active consumer |
-| `school-committee` | `[MISSING: production origin]/auth/callback` | static BFF inventory | planned migration |
+| `school-committee` | `https://strilkove.cz/auth/callback` and `https://www.strilkove.cz/auth/callback` | live ingress, runtime redirect validation, and School Committee browser smoke | active consumer |
 | `statex` | `[MISSING: production origin]/auth/callback` | static frontend inventory | planned migration |
 | `shop-assistant` | `[MISSING: production origin]/auth/callback` | static hosted-auth redirect inventory | verification lane |
 | `marketing-microservice` | `https://marketing.alfares.cz/auth/callback` | static route/status inventory | verification lane |

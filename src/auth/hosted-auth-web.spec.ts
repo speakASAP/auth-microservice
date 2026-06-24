@@ -23,6 +23,13 @@ describe('hosted auth web contract', () => {
     expect(html).toContain('phoneInput.required = isRegister && marathonPhoneRequired');
   });
 
+  it('prefills Marathon hosted registration with email and phone in separate fields', () => {
+    const registerBranch = html.slice(html.indexOf("if (mode === 'register')"), html.indexOf("return;", html.indexOf("if (mode === 'register')")));
+    expect(registerBranch).toContain('identifierInput.value = prefillEmail');
+    expect(registerBranch).toContain('phoneInput.value = prefillPhone');
+    expect(registerBranch).not.toContain('identifierInput.value = prefillIdentifier');
+  });
+
   it('offers hosted email or phone sign-in code without local consumer forms', () => {
     expect(html).toContain('/auth/contact-code/request');
     expect(html).toContain('/auth/contact-code/verify');

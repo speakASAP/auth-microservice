@@ -184,7 +184,7 @@ deploy_timing_phase_end "Health check"
 deploy_timing_phase_start "Post-deploy config patch"
 kubectl patch configmap auth-microservice-config -n "${NAMESPACE}" --type=merge -p '{
   "data": {
-    "AUTH_ALLOWED_REDIRECT_ORIGINS": "*.alfares.cz,https://strilkove.cz",
+    "AUTH_ALLOWED_REDIRECT_ORIGINS": "*.alfares.cz,https://strilkove.cz,https://www.strilkove.cz",
     "AUTH_MAGIC_LINK_RATE_LIMIT_PER_IP": "100",
     "AUTH_MAGIC_LINK_RATE_LIMIT_PER_EMAIL": "50",
     "AUTH_RATE_LIMIT_WINDOW_MS": "60000",

@@ -6,6 +6,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 required_files=(
   "docs/UNIFIED_AUTH_CONTRACT.md"
   "docs/HOSTED_AUTH_CONSUMER_STANDARD.md"
+  "docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md"
   "docs/orchestrator/2026-06-24-ecosystem-hosted-auth-rollout-index.md"
   "docs/orchestrator/2026-06-24-ecosystem-auth-rollout-product-education.md"
   "docs/orchestrator/2026-06-24-ecosystem-auth-rollout-commerce.md"
@@ -37,6 +38,16 @@ consumer_standard_markers=(
   "Validation Checklist For Consumer Workers"
 )
 
+service_identity_markers=(
+  "x-internal-service-token"
+  "x-service-name"
+  "service actor"
+  "not human identity"
+  "not Auth RBAC"
+  "SERVICE_IDENTITY_CONSUMER_STANDARD"
+  "redaction evidence"
+)
+
 missing=0
 
 for rel_path in "${required_files[@]}"; do
@@ -60,6 +71,14 @@ for rel_path in "${required_files[@]}"; do
       for marker in "${consumer_standard_markers[@]}"; do
         if ! grep -Fq "$marker" "$path"; then
           printf "FAIL %s missing consumer-standard marker: %s\n" "$rel_path" "$marker" >&2
+          missing=1
+        fi
+      done
+      ;;
+    docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md)
+      for marker in "${service_identity_markers[@]}"; do
+        if ! grep -Fq "$marker" "$path"; then
+          printf "FAIL %s missing service-identity marker: %s\n" "$rel_path" "$marker" >&2
           missing=1
         fi
       done
