@@ -80,6 +80,7 @@ if [ ! -d "$SPEAKASAP_REPO" ]; then
 else
   run_check "SpeakASAP hosted Auth source contract" bash -c 'cd "$1" && ./scripts/check-hosted-auth-contract.py --json-report /tmp/speakasap-hosted-auth-contract-readiness.json' _ "$SPEAKASAP_REPO"
   run_check "SpeakASAP service identity contract" bash -c 'cd "$1" && ./scripts/check-service-identity-contract.py --json-report /tmp/speakasap-service-identity-contract-readiness.json' _ "$SPEAKASAP_REPO"
+  run_check "SpeakASAP central Auth validate contract" bash -c 'cd "$1" && ./scripts/check-auth-validate-contract.py --json-report /tmp/speakasap-auth-validate-contract-readiness.json' _ "$SPEAKASAP_REPO"
 fi
 
 if [ -f "$AUTH_REPO/docs/orchestrator/2026-06-24-auth-contact-code-live-smoke-approval.md" ]; then
@@ -92,6 +93,42 @@ if [ -f "$AUTH_REPO/docs/orchestrator/2026-06-24-auth-contact-code-verify-smoke-
   pass "Auth contact-code verify smoke approval packet exists"
 else
   fail "Auth contact-code verify smoke approval packet missing"
+fi
+
+printf "== Auth hosted contact-code inline UX contract ==\n"
+auth_contact_code_inline_failures=0
+if ! grep -Fq 'id="contact-code-row"' "$AUTH_REPO/web/public/index.html"; then
+  printf "missing hosted contact-code row\n"
+  auth_contact_code_inline_failures=$((auth_contact_code_inline_failures + 1))
+fi
+if ! grep -Fq 'autocomplete="one-time-code"' "$AUTH_REPO/web/public/index.html"; then
+  printf "missing one-time-code autocomplete\n"
+  auth_contact_code_inline_failures=$((auth_contact_code_inline_failures + 1))
+fi
+if ! grep -Fq 'id="verify-code-btn"' "$AUTH_REPO/web/public/index.html"; then
+  printf "missing hosted verify-code button\n"
+  auth_contact_code_inline_failures=$((auth_contact_code_inline_failures + 1))
+fi
+if ! grep -Fq 'async function verifyContactCode()' "$AUTH_REPO/web/public/index.html"; then
+  printf "missing hosted verifyContactCode handler\n"
+  auth_contact_code_inline_failures=$((auth_contact_code_inline_failures + 1))
+fi
+if ! grep -Fq "verifyCodeBtn.addEventListener('click', verifyContactCode)" "$AUTH_REPO/web/public/index.html"; then
+  printf "missing hosted verify-code click binding\n"
+  auth_contact_code_inline_failures=$((auth_contact_code_inline_failures + 1))
+fi
+if grep -Fq 'window.prompt' "$AUTH_REPO/web/public/index.html"; then
+  printf "browser prompt contact-code regression detected\n"
+  auth_contact_code_inline_failures=$((auth_contact_code_inline_failures + 1))
+fi
+if ! grep -Fq 'consumer-local code-entry screens are not part of the supported contract' "$AUTH_REPO/docs/UNIFIED_AUTH_CONTRACT.md"; then
+  printf "missing unified contract consumer-local code-entry prohibition\n"
+  auth_contact_code_inline_failures=$((auth_contact_code_inline_failures + 1))
+fi
+if [ "$auth_contact_code_inline_failures" -eq 0 ]; then
+  pass "Auth hosted contact-code inline UX contract"
+else
+  fail "Auth hosted contact-code inline UX contract"
 fi
 
 run_check "Ecosystem hosted Auth rollout docs" bash -lc "cd '$AUTH_REPO' && npm run check:ecosystem-auth-rollout-docs"

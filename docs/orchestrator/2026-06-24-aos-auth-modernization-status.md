@@ -1697,3 +1697,80 @@ Evidence:
 Remaining gates:
 - [MISSING: owner-approved Marathon live DB dry-run/backfill apply].
 - [MISSING: owner-approved real phone/email contact-code delivery smoke].
+
+## Orchestrator Update - 2026-06-24 Auth Hosted Contact-Code UX Contract
+
+Status: Auth-hosted contact login now has a source-level UX contract for inline email/phone code verification.
+
+Scope:
+
+- Updated only `auth-microservice` hosted Auth UI, hosted Auth contract tests, and central Auth contract docs.
+- No deployment, runtime secret reads, database access, live contact-code delivery, live login smoke, Marathon backfill, or legacy `speakasap-portal` access.
+
+Changes:
+
+- `web/public/index.html` no longer relies on `window.prompt` for contact-code verification.
+- Hosted Auth shows an inline one-time-code field and `Verify sign-in code` action after `/auth/contact-code/request` succeeds.
+- `/auth/contact-code/verify` remains Auth-owned and redirects through the same token fragment handoff contract as password/OAuth/magic-link flows.
+- `src/auth/hosted-auth-web.spec.ts` now guards the inline one-time-code UX and forbids browser-prompt regression.
+- `docs/UNIFIED_AUTH_CONTRACT.md` and `docs/HOSTED_AUTH_CONSUMER_STANDARD.md` now state that contact-code entry belongs to Auth-hosted UI, not consumer-local forms.
+
+Validation:
+
+- `npm run test:auth-contract` passed: 3 suites / 15 tests.
+- `npm run build` passed.
+- `git diff --check -- web/public/index.html src/auth/hosted-auth-web.spec.ts docs/UNIFIED_AUTH_CONTRACT.md docs/HOSTED_AUTH_CONSUMER_STANDARD.md docs/orchestrator/2026-06-24-aos-auth-modernization-status.md` passed.
+- `npm run check:aos-auth-readiness` passed with `pass=27 warn=2 fail=0`.
+
+Updated gate state:
+
+- [RESOLVED FOR SOURCE VALIDATION: Auth hosted contact-code UX contract] The central form now owns the contact-code input/verify step in source and tests.
+- [PENDING: owner-approved live email/phone contact-code delivery smoke] Provider delivery and real contact login still need approved non-sensitive test contacts.
+
+## Orchestrator Update - 2026-06-24 Central Readiness Contact-Code UX Gate
+
+Status: central AOS Auth readiness now exposes the hosted contact-code inline UX as its own no-write gate.
+
+Scope:
+
+- Updated only `auth-microservice/scripts/check-aos-auth-modernization-readiness.sh` and this status log.
+- No secret values were printed, no DB mutation was run, and legacy `speakasap-portal` was not accessed.
+
+Changes:
+
+- Added `Auth hosted contact-code inline UX contract` to the central readiness checker.
+- The gate verifies the Auth-hosted page has the inline code row, one-time-code autocomplete, verify button, `verifyContactCode()` handler, click binding, no `window.prompt`, and central docs forbidding consumer-local code-entry screens.
+
+Validation:
+
+- `bash -n scripts/check-aos-auth-modernization-readiness.sh` passed.
+- `git diff --check -- scripts/check-aos-auth-modernization-readiness.sh docs/orchestrator/2026-06-24-aos-auth-modernization-status.md` passed.
+- `./scripts/deploy.sh` completed successfully for `auth-microservice` and `auth-microservice-web`.
+- Public `https://auth.alfares.cz/login` returned the inline `contact-code-row`, `one-time-code`, and `verify-code-btn` markers after deployment.
+- Public `https://auth.alfares.cz/health` returned `success:true`.
+- `npm run check:aos-auth-readiness` passed with `pass=28 warn=2 fail=0`.
+
+Updated gate state:
+
+- [RESOLVED FOR SOURCE VALIDATION: central visible contact-code UX gate] Readiness output will now show the Auth-owned inline contact-code UX explicitly.
+
+## Orchestrator Update - 2026-06-24 SpeakASAP Central Validate Readiness Gate
+
+Status: central AOS Auth readiness now includes the new SpeakASAP protected-service `/auth/validate` convergence checker.
+
+Scope:
+
+- Updated only `auth-microservice/scripts/check-aos-auth-modernization-readiness.sh` and this status log.
+- The source checker itself lives in the new `speakasap` repo and remains no-write.
+- No legacy `speakasap-portal` access was performed.
+
+Changes:
+
+- Added `SpeakASAP central Auth validate contract` to the central readiness checker.
+- The gate executes `speakasap/scripts/check-auth-validate-contract.py` and writes its JSON evidence to `/tmp/speakasap-auth-validate-contract-readiness.json`.
+
+Validation:
+
+- `bash -n scripts/check-aos-auth-modernization-readiness.sh` passed.
+- `speakasap/scripts/check-auth-validate-contract.py --json-report /tmp/speakasap-auth-validate-contract-orchestrator.json` passed.
+- `npm run check:aos-auth-readiness` passed with `pass=29 warn=2 fail=0`.

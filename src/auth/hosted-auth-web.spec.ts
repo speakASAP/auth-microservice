@@ -35,5 +35,13 @@ describe('hosted auth web contract', () => {
     expect(html).toContain('/auth/contact-code/verify');
     expect(html).toContain('Send sign-in code');
     expect(html).toContain('Email or phone');
+    expect(html).toContain('id="contact-code-row"');
+    expect(html).toContain('id="contact-code"');
+    expect(html).toContain('autocomplete="one-time-code"');
+    expect(html).toContain('id="verify-code-btn"');
+    expect(html).toContain('async function verifyContactCode()');
+    expect(html).toContain("verifyCodeBtn.addEventListener('click', verifyContactCode)");
+    expect(html).toContain('contactCodeInput.focus()');
+    expect(html).not.toContain('window.prompt');
   });
 });

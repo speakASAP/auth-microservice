@@ -74,7 +74,7 @@ Accepted transitional model:
 Forbidden model:
 
 - Consumer-local password forms that POST user credentials directly to `/auth/login` or proxy credentials through a local `/api/auth/login` endpoint, unless the form is a temporary compatibility layer explicitly scheduled for removal.
-- Consumer-local phone-code, magic-link, or password-reset flows that duplicate Auth-hosted behavior.
+- Consumer-local phone-code, magic-link, or password-reset flows that duplicate Auth-hosted behavior. Contact-code entry belongs in the Auth-hosted UI itself, with an inline one-time-code input and verify action, not a browser prompt and not a consumer app form.
 - Consumer-minted Auth JWTs for users.
 - Treating `register-contact` or `login-contact` as authenticated login.
 
