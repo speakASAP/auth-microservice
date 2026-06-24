@@ -35,7 +35,7 @@ All JSON endpoints are under `/auth`.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `POST` | `/auth/register` | Create an email/password user and return tokens. |
-| `POST` | `/auth/login` | Authenticate email/password credentials and return tokens. |
+| `POST` | `/auth/login` | Authenticate email or phone identifier plus password and return tokens. Legacy `email` payloads remain supported. |
 | `POST` | `/auth/validate` | Validate an access token. |
 | `POST` | `/auth/refresh` | Exchange a valid refresh token for a new token pair. |
 | `GET` | `/auth/profile` | Return the authenticated JWT user. Requires bearer auth. |
@@ -43,8 +43,8 @@ All JSON endpoints are under `/auth`.
 | `POST` | `/auth/password-reset-confirm` | Consume a password-reset token and set a new password. |
 | `POST` | `/auth/password-change` | Change password for the authenticated user. Requires bearer auth. |
 | `POST` | `/auth/password-set` | Set the first password for an authenticated passwordless user. Requires bearer auth. |
-| `POST` | `/auth/register-contact` | Register or update a contact-based user profile. |
-| `POST` | `/auth/login-contact` | Contact-based login. Returns a session ID, not a JWT. |
+| `POST` | `/auth/register-contact` | Provision or update a contact-based user profile. This is not authentication and does not return JWTs. |
+| `POST` | `/auth/login-contact` | Deprecated contact-login compatibility endpoint. It never issues ecosystem auth without verified proof. |
 | `GET` | `/auth/validate-return-url` | Validate a candidate `return_url`. |
 
 Email/password `register` and `login` responses include:
@@ -56,6 +56,22 @@ Email/password `register` and `login` responses include:
   "refreshToken": "jwt"
 }
 ```
+
+`POST /auth/login` accepts the new identifier shape and the legacy email shape:
+
+```json
+{ "identifier": "user@example.com or +420777123456", "password": "password" }
+```
+
+```json
+{ "email": "user@example.com", "password": "password" }
+```
+
+When the identifier is an email address, Auth looks up the canonical email. When it is not an email address, Auth normalizes it as a phone number and looks in both `users.phone` and phone entries in `users.contactInfo`. Successful email and phone password login return the same `user`, `accessToken`, and `refreshToken` contract.
+
+`POST /auth/register-contact` remains a provisioning endpoint for Marathon, SpeakASAP, and similar callers. It creates or updates the Auth user and returns the canonical `userId`, `authenticated: false`, `provisioning: true`, and sanitized `user`. Any legacy `sessionId` in this response is compatibility metadata only; consumers must not treat it as an Auth JWT, refresh token, cookie session, or ecosystem authentication proof.
+
+`POST /auth/login-contact` is deprecated for ecosystem authentication. It may confirm that contact data exists only after normal lookup, but it does not update activity or return `sessionId`, `accessToken`, or `refreshToken`. Consumers must use `/auth/login` with password or a verified Auth-owned passwordless flow such as email magic-link before treating the user as authenticated. Phone OTP delivery remains `[UNKNOWN: SMS/WhatsApp/Telegram provider for phone passwordless login]`.
 
 `POST /auth/validate` accepts:
 

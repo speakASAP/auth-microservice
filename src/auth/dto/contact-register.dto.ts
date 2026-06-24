@@ -2,8 +2,8 @@
  * Contact-Based Registration DTO
  */
 
-import { IsString, IsArray, ValidateNested, IsOptional, IsEnum } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsArray, ValidateNested, IsOptional, IsEnum, IsBoolean } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export enum ContactType {
   EMAIL = 'email',
@@ -18,7 +18,8 @@ export class ContactInfoDto {
   value: string;
 
   @IsOptional()
-  @IsString()
+  @Transform(({ value }) => value === true || value === 'true' || value === '1' || value === 1)
+  @IsBoolean()
   isPrimary?: boolean;
 }
 
@@ -39,4 +40,3 @@ export class ContactRegisterDto {
   @IsString()
   sessionId?: string;
 }
-

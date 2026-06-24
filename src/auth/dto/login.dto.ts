@@ -2,13 +2,17 @@
  * Login DTO
  */
 
-import { IsEmail, IsString } from 'class-validator';
+import { IsString, ValidateIf } from 'class-validator';
 
 export class LoginDto {
-  @IsEmail()
-  email: string;
+  @ValidateIf((dto) => !dto.identifier)
+  @IsString()
+  email?: string;
+
+  @ValidateIf((dto) => !dto.email)
+  @IsString()
+  identifier?: string;
 
   @IsString()
   password: string;
 }
-

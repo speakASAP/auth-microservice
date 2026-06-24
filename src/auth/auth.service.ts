@@ -156,8 +156,23 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const startedAt = Date.now();
+    const identifier = this.normalizeIdentifier(loginDto.identifier || loginDto.email);
+    const isEmailIdentifier = this.isEmailIdentifier(identifier);
+    const lookupIdentifier = isEmailIdentifier ? this.normalizeEmail(identifier) : this.normalizePhone(identifier);
+
     try {
-      let user = await this.usersService.findByEmail(loginDto.email);
+      if (!lookupIdentifier || !loginDto.password) {
+        this.audit('warn', 'login', 'failure', {
+          identifier,
+          reason: 'missing_credentials',
+          duration_ms: Date.now() - startedAt,
+        });
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      let user = isEmailIdentifier
+        ? await this.usersService.findByEmail(lookupIdentifier)
+        : await this.usersService.findByPhone(lookupIdentifier);
       let authenticatedVia = 'password';
 
       if (user) {
@@ -166,30 +181,38 @@ export class AuthService {
           try {
             const isPasswordValid = await bcryptjs.compare(loginDto.password, user.password);
             if (!isPasswordValid) {
-              user = await this.tryLegacyPasswordLogin(loginDto.email, loginDto.password);
+              user = isEmailIdentifier
+                ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password)
+                : null;
               authenticatedVia = 'legacy_password';
             }
           } catch (err) {
             this.audit('warn', 'login', 'password_check_error', {
-              identifier: loginDto.email,
+              identifier: lookupIdentifier,
               reason: (err as Error).message,
               duration_ms: Date.now() - startedAt,
             });
-            user = await this.tryLegacyPasswordLogin(loginDto.email, loginDto.password);
+            user = isEmailIdentifier
+              ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password)
+              : null;
             authenticatedVia = 'legacy_password';
           }
         } else {
-          user = await this.tryLegacyPasswordLogin(loginDto.email, loginDto.password);
+          user = isEmailIdentifier
+            ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password)
+            : null;
           authenticatedVia = 'legacy_password';
         }
       } else {
-        user = await this.tryLegacyPasswordLogin(loginDto.email, loginDto.password);
+        user = isEmailIdentifier
+          ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password)
+          : null;
         authenticatedVia = 'legacy_password';
       }
 
       if (!user) {
         this.audit('warn', 'login', 'failure', {
-          identifier: loginDto.email,
+          identifier: lookupIdentifier,
           reason: 'invalid_credentials',
           duration_ms: Date.now() - startedAt,
         });
@@ -198,7 +221,7 @@ export class AuthService {
 
       if (!user.isActive) {
         this.audit('warn', 'login', 'failure', {
-          identifier: loginDto.email,
+          identifier: lookupIdentifier,
           user_id: user.id,
           reason: 'inactive_user',
           duration_ms: Date.now() - startedAt,
@@ -208,7 +231,7 @@ export class AuthService {
 
       const tokens = await this.generateTokens(user.id, authenticatedVia);
       this.audit('info', 'login', 'success', {
-        identifier: user.email,
+        identifier: user.email || user.phone || lookupIdentifier,
         user_id: user.id,
         auth_method: authenticatedVia,
         duration_ms: Date.now() - startedAt,
@@ -220,7 +243,7 @@ export class AuthService {
     } catch (err) {
       if (err instanceof UnauthorizedException) throw err;
       this.audit('error', 'login', 'failure', {
-        identifier: loginDto.email,
+        identifier: lookupIdentifier,
         reason: (err as Error).message,
         duration_ms: Date.now() - startedAt,
       }, (err as Error).stack);
@@ -315,6 +338,59 @@ export class AuthService {
       return null;
     }
     return user;
+  }
+
+  private normalizeIdentifier(identifier?: string): string {
+    return (identifier || '').trim();
+  }
+
+  private isEmailIdentifier(identifier: string): boolean {
+    return identifier.includes('@');
+  }
+
+  private normalizeEmail(email?: string): string {
+    return (email || '').trim().toLowerCase();
+  }
+
+  private normalizePhone(phone?: string): string {
+    return (phone || '').trim().replace(/[^0-9+]/g, '');
+  }
+
+  private normalizeContactValue(type: string, value?: string): string {
+    if (type === 'email') {
+      return this.normalizeEmail(value);
+    }
+    if (type === 'phone') {
+      return this.normalizePhone(value);
+    }
+    return (value || '').trim();
+  }
+
+  private normalizeContactInfo(
+    contacts: Array<{ type: string; value: string; isPrimary?: boolean | string }>,
+  ): Array<{ type: string; value: string; isPrimary?: boolean }> {
+    return contacts
+      .map((contact) => {
+        const type = (contact.type || '').trim().toLowerCase();
+        const value = this.normalizeContactValue(type, contact.value);
+        const isPrimary = contact.isPrimary === true || contact.isPrimary === 'true' || contact.isPrimary === '1';
+        return { type, value, isPrimary };
+      })
+      .filter((contact) => Boolean(contact.type && contact.value));
+  }
+
+  private findPrimaryContact(
+    contacts: Array<{ type: string; value: string; isPrimary?: boolean }>,
+    type: 'email' | 'phone',
+  ): { type: string; value: string; isPrimary?: boolean } | undefined {
+    return contacts.find((contact) => contact.type === type && contact.isPrimary) || contacts.find((contact) => contact.type === type);
+  }
+
+  private contactsMatch(leftType: string, leftValue: string, rightType: string, rightValue: string): boolean {
+    if (leftType !== rightType) {
+      return false;
+    }
+    return this.normalizeContactValue(leftType, leftValue) === this.normalizeContactValue(rightType, rightValue);
   }
 
   private async tryLegacyPasswordLogin(email: string, password: string): Promise<User | null> {
@@ -605,9 +681,14 @@ export class AuthService {
   }
 
   async registerContact(contactRegisterDto: ContactRegisterDto) {
-    // Check if user already exists by contact info
+    const normalizedContacts = this.normalizeContactInfo(contactRegisterDto.contactInfo || []);
+    if (normalizedContacts.length === 0) {
+      throw new BadRequestException('At least one contact is required');
+    }
+
+    // Check if user already exists by contact info. This remains provisioning only.
     let existingUser: User | null = null;
-    for (const contact of contactRegisterDto.contactInfo) {
+    for (const contact of normalizedContacts) {
       if (contact.type === 'email') {
         existingUser = await this.usersService.findByEmail(contact.value);
       } else if (contact.type === 'phone') {
@@ -619,24 +700,24 @@ export class AuthService {
     }
 
     if (existingUser) {
-      // Update existing user - add new contact info if not present
-      const existingContacts = existingUser.contactInfo || [];
+      // Update existing user - add new contact info if not present.
+      const existingContacts = this.normalizeContactInfo(existingUser.contactInfo || []);
       const newContacts = [...existingContacts];
 
-      for (const newContact of contactRegisterDto.contactInfo) {
+      for (const newContact of normalizedContacts) {
         const contactExists = existingContacts.some(
-          (c) => c.type === newContact.type && c.value === newContact.value,
+          (contact) => this.contactsMatch(contact.type, contact.value, newContact.type, newContact.value),
         );
         if (!contactExists) {
-          newContacts.push({
-            type: newContact.type,
-            value: newContact.value,
-            isPrimary: newContact.isPrimary || false,
-          });
+          newContacts.push(newContact);
         }
       }
 
+      const primaryEmail = this.findPrimaryContact(newContacts, 'email');
+      const primaryPhone = this.findPrimaryContact(newContacts, 'phone');
       existingUser.contactInfo = newContacts;
+      existingUser.email = existingUser.email || primaryEmail?.value || null;
+      existingUser.phone = existingUser.phone || primaryPhone?.value || null;
       existingUser.name = contactRegisterDto.name || existingUser.name;
       existingUser.lastActivity = new Date();
       existingUser.source = contactRegisterDto.source || existingUser.source;
@@ -644,35 +725,31 @@ export class AuthService {
 
       const updatedUser = await this.usersService.update(existingUser.id, existingUser);
 
-      // Generate session token (not JWT, just a session identifier)
+      // Legacy field retained for compatibility. It is not a JWT and must not be treated as authentication.
       const sessionToken = crypto.randomBytes(32).toString('hex');
 
-      this.logger.log(`Contact-based user updated: ${updatedUser.id}`, 'AuthService');
+      this.logger.log(`Contact-based user provisioned: ${updatedUser.id}`, 'AuthService');
 
       return {
         success: true,
         userId: updatedUser.id,
         sessionId: sessionToken,
+        authenticated: false,
+        provisioning: true,
         message: 'User profile updated',
         isNewUser: false,
         user: this.sanitizeUser(updatedUser),
       };
     } else {
-      // Create new user
-      const primaryContact = contactRegisterDto.contactInfo.find((c) => c.isPrimary) || contactRegisterDto.contactInfo[0];
-      const email = primaryContact.type === 'email' ? primaryContact.value : null;
-      const phone = primaryContact.type === 'phone' ? primaryContact.value : null;
+      const primaryEmail = this.findPrimaryContact(normalizedContacts, 'email');
+      const primaryPhone = this.findPrimaryContact(normalizedContacts, 'phone');
 
       const newUser = await this.usersService.create({
-        email,
-        phone,
+        email: primaryEmail?.value || null,
+        phone: primaryPhone?.value || null,
         name: contactRegisterDto.name,
-        contactInfo: contactRegisterDto.contactInfo.map((c) => ({
-          type: c.type,
-          value: c.value,
-          isPrimary: c.isPrimary || false,
-        })),
-        password: null, // No password for contact-based users
+        contactInfo: normalizedContacts,
+        password: null, // No password for contact-based provisioning.
         isActive: true,
         isVerified: false,
         lastActivity: new Date(),
@@ -680,15 +757,16 @@ export class AuthService {
         sessionId: contactRegisterDto.sessionId,
       });
 
-      // Generate session token
       const sessionToken = crypto.randomBytes(32).toString('hex');
 
-      this.logger.log(`Contact-based user registered: ${newUser.id}`, 'AuthService');
+      this.logger.log(`Contact-based user provisioned: ${newUser.id}`, 'AuthService');
 
       return {
         success: true,
         userId: newUser.id,
         sessionId: sessionToken,
+        authenticated: false,
+        provisioning: true,
         message: 'User registered successfully',
         isNewUser: true,
         user: this.sanitizeUser(newUser),
@@ -697,14 +775,16 @@ export class AuthService {
   }
 
   async loginContact(type: string, value: string) {
+    const normalizedType = (type || '').trim().toLowerCase();
+    const normalizedValue = this.normalizeContactValue(normalizedType, value);
     let user: User | null = null;
 
-    if (type === 'email') {
-      user = await this.usersService.findByEmail(value);
-    } else if (type === 'phone') {
-      user = await this.usersService.findByPhone(value);
+    if (normalizedType === 'email') {
+      user = await this.usersService.findByEmail(normalizedValue);
+    } else if (normalizedType === 'phone') {
+      user = await this.usersService.findByPhone(normalizedValue);
     } else {
-      user = await this.usersService.findByContact(type, value);
+      user = await this.usersService.findByContact(normalizedType, normalizedValue);
     }
 
     if (!user) {
@@ -715,19 +795,15 @@ export class AuthService {
       throw new UnauthorizedException('User account is inactive');
     }
 
-    // Update last activity
-    user.lastActivity = new Date();
-    await this.usersService.update(user.id, { lastActivity: user.lastActivity });
+    this.audit('warn', 'login_contact', 'verification_required', {
+      identifier: normalizedValue,
+      user_id: user.id,
+      contact_type: normalizedType,
+    });
 
-    // Generate session token (not JWT for contact-based users without password)
-    const sessionToken = crypto.randomBytes(32).toString('hex');
-
-    this.logger.log(`Contact-based login successful: ${user.id}`, 'AuthService');
-
-    return {
-      user: this.sanitizeUser(user),
-      sessionId: sessionToken,
-    };
+    throw new UnauthorizedException(
+      'Contact login requires verified authentication. Use /auth/login with a password or the verified magic-link flow.',
+    );
   }
 
   async getUserMarketingPreferences(userId: string) {

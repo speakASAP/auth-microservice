@@ -1,0 +1,100 @@
+import { UnauthorizedException } from '@nestjs/common';
+import * as bcryptjs from 'bcryptjs';
+import { AuthService } from './auth.service';
+
+describe('Auth identifier and contact contract', () => {
+  const baseUser = {
+    id: 'user-1',
+    email: 'person@example.test',
+    phone: '+420777123456',
+    password: '$2b$10$synthetic',
+    isActive: true,
+    isVerified: false,
+    userType: 'end_user',
+  } as any;
+
+  function makeService(user = baseUser) {
+    const usersService = {
+      findByEmail: jest.fn(async (email: string) => (email === 'person@example.test' ? user : null)),
+      findByPhone: jest.fn(async (phone: string) => (phone === '+420777123456' ? user : null)),
+      findByContact: jest.fn(async () => null),
+      findById: jest.fn(async (id: string) => (id === user.id ? user : null)),
+      create: jest.fn(async (payload: any) => ({ id: 'new-user', isActive: true, isVerified: false, userType: 'end_user', ...payload })),
+      update: jest.fn(async (_id: string, payload: any) => ({ ...user, ...payload })),
+    };
+    const service: any = Object.create(AuthService.prototype);
+    service.usersService = usersService;
+    service.rolesService = { getUserRoles: jest.fn(async () => ['app:test:user']) };
+    service.jwtService = { sign: jest.fn(() => 'tok') };
+    service.logger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
+    service.legacyIdentityMappingRepository = { createQueryBuilder: jest.fn() };
+    return { service: service as AuthService, usersService };
+  }
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('authenticates a phone identifier through /auth/login and returns the JWT refresh contract', async () => {
+    jest.spyOn(bcryptjs, 'compare').mockResolvedValue(true as never);
+    const { service, usersService } = makeService();
+
+    const result = await service.login({ identifier: '+420 777 123 456', password: 'valid-password' });
+
+    expect(usersService.findByEmail).not.toHaveBeenCalled();
+    expect(usersService.findByPhone).toHaveBeenCalledWith('+420777123456');
+    expect(result).toMatchObject({
+      user: expect.objectContaining({ id: 'user-1', phone: '+420777123456' }),
+      accessToken: 'tok',
+      refreshToken: 'tok',
+    });
+  });
+
+  it('preserves legacy email login payloads', async () => {
+    jest.spyOn(bcryptjs, 'compare').mockResolvedValue(true as never);
+    const { service, usersService } = makeService();
+
+    const result = await service.login({ email: ' Person@Example.Test ', password: 'valid-password' });
+
+    expect(usersService.findByEmail).toHaveBeenCalledWith('person@example.test');
+    expect(result.accessToken).toBe('tok');
+    expect(result.refreshToken).toBe('tok');
+  });
+
+  it('keeps contact registration as provisioning and normalizes phone contacts', async () => {
+    const { service, usersService } = makeService({ ...baseUser, id: 'none' });
+    usersService.findByEmail.mockResolvedValue(null);
+    usersService.findByPhone.mockResolvedValue(null);
+
+    const result = await service.registerContact({
+      name: 'Provisioned User',
+      source: 'marathon',
+      contactInfo: [{ type: 'phone' as any, value: '+420 777 123 456', isPrimary: 'true' as any }],
+    });
+
+    expect(usersService.create).toHaveBeenCalledWith(expect.objectContaining({
+      phone: '+420777123456',
+      password: null,
+      source: 'marathon',
+      contactInfo: [{ type: 'phone', value: '+420777123456', isPrimary: true }],
+    }));
+    expect(result).toMatchObject({
+      success: true,
+      userId: 'new-user',
+      authenticated: false,
+      provisioning: true,
+      isNewUser: true,
+    });
+    expect(result).not.toHaveProperty('accessToken');
+    expect(result).not.toHaveProperty('refreshToken');
+  });
+
+  it('does not convert contact login into an authenticated session without verified proof', async () => {
+    const { service, usersService } = makeService();
+
+    await expect(service.loginContact('phone', '+420 777 123 456')).rejects.toThrow(UnauthorizedException);
+
+    expect(usersService.findByPhone).toHaveBeenCalledWith('+420777123456');
+    expect(usersService.update).not.toHaveBeenCalled();
+  });
+});

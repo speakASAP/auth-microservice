@@ -24,19 +24,57 @@ export class UsersService {
   ) {}
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { email } });
+    const normalizedEmail = this.normalizeEmail(email);
+    if (!normalizedEmail) {
+      return null;
+    }
+
+    return this.userRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: normalizedEmail })
+      .getOne();
   }
 
   async findByPhone(phone: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { phone } });
+    const normalizedPhone = this.normalizePhone(phone);
+    if (!normalizedPhone) {
+      return null;
+    }
+
+    return this.userRepository
+      .createQueryBuilder('user')
+      .where("regexp_replace(COALESCE(user.phone, ''), '[^0-9+]', '', 'g') = :phone", {
+        phone: normalizedPhone,
+      })
+      .orWhere(
+        `EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements(COALESCE(user.contactInfo, '[]'::jsonb)) AS contact
+          WHERE contact->>'type' = 'phone'
+          AND regexp_replace(COALESCE(contact->>'value', ''), '[^0-9+]', '', 'g') = :phone
+        )`,
+        { phone: normalizedPhone },
+      )
+      .getOne();
   }
 
   async findByContact(type: string, value: string): Promise<User | null> {
-    // Search in contactInfo JSONB field
+    if (type === 'email') {
+      return this.findByEmail(value);
+    }
+    if (type === 'phone') {
+      return this.findByPhone(value);
+    }
+
+    const normalizedValue = (value || '').trim();
+    if (!type || !normalizedValue) {
+      return null;
+    }
+
     return this.userRepository
       .createQueryBuilder('user')
       .where(`user.contactInfo @> :contact`, {
-        contact: JSON.stringify([{ type, value }]),
+        contact: JSON.stringify([{ type, value: normalizedValue }]),
       })
       .getOne();
   }
@@ -147,5 +185,13 @@ export class UsersService {
     }
     await this.userRepository.update(userId, updatePayload);
     return this.findById(userId);
+  }
+
+  private normalizeEmail(email: string): string {
+    return (email || '').trim().toLowerCase();
+  }
+
+  private normalizePhone(phone: string): string {
+    return (phone || '').trim().replace(/[^0-9+]/g, '');
   }
 }
