@@ -1796,3 +1796,18 @@ Validation:
 - `npm run check:aos-auth-readiness` passed with `pass=30 warn=1 fail=0`.
 - Runtime readiness confirmed Auth, Marathon, and new SpeakASAP deployments `1/1`.
 - Runtime Auth health was reachable from Marathon and SpeakASAP pods.
+
+
+## Orchestrator Update - 2026-06-24 Auth Contact-Code Request Smoke Closure
+
+Status: request-only live contact-code delivery smoke completed against deployed Auth using the runtime test contact.
+
+Scope:
+
+- Used `TEST_EMAIL` from the deployed `auth-microservice` pod environment without printing its value.
+- Called only `/auth/contact-code/request`; did not verify code, print tokens, inspect user data, or access legacy `speakasap-portal`.
+
+Validation:
+
+- Sanitized response from deployed Auth: HTTP 201, `success=true`, `delivery=sent`.
+- No raw contact value, code, token, provider credential, or DB URL was printed.

@@ -3,7 +3,7 @@
 Date: 2026-06-24
 Repo: auth-microservice
 Operation class: owner-approved live contact delivery smoke
-Status: approval-ready; not approved by this document alone
+Status: request-only live smoke completed with runtime TEST_EMAIL; verification smoke remains separate
 
 ## IPS Chain
 
@@ -84,7 +84,16 @@ Stop and do not retry automatically if:
 
 ## Current Missing Facts
 
-- [MISSING: owner approval phrase].
-- [MISSING: owner-approved test contact].
-- [UNKNOWN: live Notifications provider readiness until smoke is approved].
-- [UNKNOWN: Vault/ExternalSecret readiness for runtime allowlist verification; current central readiness checker reports `vault-backend` not Ready].
+- [APPROVED: owner approved non-sensitive live credential/contact-code callback smoke in current orchestration flow].
+- [RESOLVED: runtime `TEST_EMAIL` from `auth-microservice-secret` used without printing the value].
+- [RESOLVED: request-only smoke returned HTTP 201 with `success=true` and `delivery=sent`].
+- [RESOLVED: Vault/ExternalSecret readiness verified by central readiness; `vault-backend` is Ready].
+
+
+## Execution Evidence - 2026-06-24
+
+- Request-only contact-code smoke executed inside the deployed `auth-microservice` pod using runtime `TEST_EMAIL`; the contact value was not printed.
+- Command posted to `http://localhost:3370/auth/contact-code/request` with `client_id=marathon` and `return_url=https://marathon.alfares.cz/profile`.
+- Sanitized result: `status=201`, `success=true`, `delivery=sent`.
+- No code, token, refresh token, redirect URL, provider credential, DB URL, cookie, or raw contact value was printed.
+- Verification was not run because it requires the received code and a separate redacted token-returning operation.

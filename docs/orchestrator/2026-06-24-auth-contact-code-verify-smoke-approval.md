@@ -78,7 +78,7 @@ Stop and do not retry automatically if:
 
 ## Current Missing Facts
 
-- [MISSING: request-only smoke evidence].
+- [RESOLVED: request-only smoke returned HTTP 201 with `success=true` and `delivery=sent` using runtime `TEST_EMAIL` without printing the value].
 - [MISSING: owner approval phrase].
 - [MISSING: owner-provided code].
 - [MISSING: approved test contact].

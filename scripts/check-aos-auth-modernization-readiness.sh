@@ -303,7 +303,11 @@ if grep -Fq 'Final idempotent approved reconciliation apply executed with `--inc
 else
   warn "Marathon live DB dry-run/backfill apply evidence missing or incomplete; see marathon/docs/orchestrator/2026-06-24-marathon-auth-approval-record.md"
 fi
-warn "Real phone/email contact-code delivery smoke remains owner/test-contact gated and was not run; see auth-microservice/docs/orchestrator/2026-06-24-auth-contact-code-live-smoke-approval.md"
+if grep -Fq 'Sanitized result: `status=201`, `success=true`, `delivery=sent`.' "$AUTH_REPO/docs/orchestrator/2026-06-24-auth-contact-code-live-smoke-approval.md"; then
+  pass "Auth contact-code request-only live smoke evidence recorded"
+else
+  warn "Real phone/email contact-code delivery smoke remains owner/test-contact gated and was not run; see auth-microservice/docs/orchestrator/2026-06-24-auth-contact-code-live-smoke-approval.md"
+fi
 
 printf "\nSummary: pass=%s warn=%s fail=%s\n" "$PASS_COUNT" "$WARN_COUNT" "$FAIL_COUNT"
 if [ "$FAIL_COUNT" -gt 0 ]; then
