@@ -44,6 +44,12 @@
           <input id="password" name="password" type="password" minlength="6" required autocomplete="current-password">
         </div>
 
+        <div id="contact-code-row" class="form-group" style="display: none;">
+          <label for="contact-code">Sign-in code</label>
+          <input id="contact-code" name="contact-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code">
+          <button id="verify-code-btn" type="button" class="btn btn-secondary" style="margin-left: 0; width: 100%; margin-top: 0.5rem;">Verify sign-in code</button>
+        </div>
+
         <div id="submit-error" class="error" style="display: none;"></div>
         <div id="submit-success" class="success" style="display: none;"></div>
         <button id="submit-btn" type="submit" class="btn">Continue</button>
@@ -83,6 +89,9 @@
     const identifierInput = document.getElementById('identifier');
     const phoneInput = document.getElementById('phone');
     const passwordInput = document.getElementById('password');
+    const contactCodeRow = document.getElementById('contact-code-row');
+    const contactCodeInput = document.getElementById('contact-code');
+    const verifyCodeBtn = document.getElementById('verify-code-btn');
     const form = document.getElementById('auth-form');
     const submitBtn = document.getElementById('submit-btn');
     const submitError = document.getElementById('submit-error');
@@ -166,6 +175,7 @@
       submitBtn.textContent = isRegister ? 'Register' : 'Login';
       magicLinkBtn.style.display = isRegister ? 'none' : 'block';
       resetPasswordBtn.style.display = isRegister ? 'none' : 'block';
+      contactCodeRow.style.display = isRegister || !contactCodeRequestedFor ? 'none' : 'block';
       applyPrefill();
       tabLogin.classList.toggle('btn-secondary', isRegister);
       tabRegister.classList.toggle('btn-secondary', !isRegister);
@@ -175,6 +185,9 @@
       mode = nextMode;
       setError('');
       setSuccess('');
+      contactCodeRequestedFor = '';
+      contactCodeInput.value = '';
+      contactCodeRow.style.display = 'none';
       const targetPath = nextMode === 'register' ? '/register' : '/login';
       window.history.replaceState(null, '', targetPath + window.location.search);
       syncMode();
@@ -288,11 +301,35 @@
           throw new Error(body.message || 'Could not request sign-in code');
         }
         contactCodeRequestedFor = identifier;
-        const code = window.prompt('Enter the 6-digit sign-in code sent to your email or phone.');
-        if (!code) {
-          setSuccess('Sign-in code requested. Enter it when it arrives.');
-          return;
-        }
+        contactCodeInput.value = '';
+        contactCodeRow.style.display = 'block';
+        contactCodeInput.focus();
+        setSuccess('Sign-in code requested. Enter the 6-digit code here when it arrives.');
+      } catch (error) {
+        setError(error.message || 'Could not complete sign-in code flow');
+      } finally {
+        magicLinkBtn.disabled = false;
+      }
+    }
+
+    async function verifyContactCode() {
+      setError('');
+      setSuccess('');
+      const code = contactCodeInput.value.trim();
+      if (!validatedReturnUrl) {
+        setError('Invalid return_url');
+        return;
+      }
+      if (!contactCodeRequestedFor) {
+        setError('Request a sign-in code first.');
+        return;
+      }
+      if (!/^\d{6}$/.test(code)) {
+        setError('Enter the 6-digit sign-in code.');
+        return;
+      }
+      verifyCodeBtn.disabled = true;
+      try {
         const verifyResponse = await fetch('/auth/contact-code/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -309,9 +346,9 @@
         const data = await verifyResponse.json();
         window.location.assign(data.redirectUrl || buildTokenHandoffUrl(validatedReturnUrl, data, state));
       } catch (error) {
-        setError(error.message || 'Could not complete sign-in code flow');
+        setError(error.message || 'Could not verify sign-in code');
       } finally {
-        magicLinkBtn.disabled = false;
+        verifyCodeBtn.disabled = false;
       }
     }
 
@@ -345,6 +382,7 @@
     tabLogin.addEventListener('click', () => gotoMode('login'));
     tabRegister.addEventListener('click', () => gotoMode('register'));
     magicLinkBtn.addEventListener('click', requestMagicLink);
+    verifyCodeBtn.addEventListener('click', verifyContactCode);
     resetPasswordBtn.addEventListener('click', requestPasswordReset);
     form.addEventListener('submit', submitAuth);
 
