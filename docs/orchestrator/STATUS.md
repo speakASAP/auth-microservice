@@ -1,5 +1,46 @@
 # Auth Orchestrator Status
 
+## 2026-06-26 - Hosted Password Reset Route Fix Validated Pending Deployment
+
+Current focus:
+
+- Owner-reported production defect: password reset email links open `GET /reset-password`, which returned `Cannot GET /reset-password`.
+- Auth branch: `main`.
+- Deployment: not run; production deployment requires owner approval.
+- Runtime code changes: hosted route/UI only; existing reset token API contract is unchanged.
+
+DocsRAG evidence:
+
+- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
+- DocsRAG returned no matching sources for the password reset hosted route query, so remote source and Auth contract docs were used.
+
+Implementation evidence:
+
+- Added `/reset-password` to hosted route serving in `src/main.ts` and `web/server.js`.
+- Added hosted reset-password mode in `web/public/index.html` that reads the email token query parameter in-browser and submits only to `/auth/password-reset-confirm`.
+- Added focused regression coverage in `src/auth/hosted-auth-web.spec.ts`.
+- Updated `docs/UNIFIED_AUTH_CONTRACT.md`, `docs/orchestrator/CONTEXT_PACKAGE.md`, and `docs/orchestrator/EXECUTION_PLAN.md`.
+
+Validation evidence:
+
+- Pre-deploy live probe with a synthetic token confirmed current production `/reset-password` returned HTTP 404 and `Cannot GET /reset-password`.
+- `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts` passed.
+- `npm run build` passed.
+- `node --check web/server.js` passed.
+- Inline hosted Auth script extraction plus `node --check /tmp/auth-hosted-inline-check.js` passed.
+- `git diff --check` passed.
+- Active gate-critical missing-marker scan returned no matches.
+- Documentation secret-pattern scan returned no matches.
+- Broad `docs/orchestrator` missing-marker scan still reports pre-existing historical rollout planning markers under `docs/orchestrator/2026-06-24-*`; those files were not introduced by this fix.
+
+Boundary evidence:
+
+- No Auth JWT payload, RBAC, OAuth, magic-link, redirect allowlist, CORS, internal-service, database schema, consumer-service code, decoded secret, JWT, refresh token, OAuth token, magic-link token, real reset token, password, API key, or raw production user data changed or was recorded.
+
+Next action:
+
+- Commit the remote fix; deploy only after owner approval.
+
 ## 2026-06-13 - Goal 09 Auth Contract Production Smoke Verification Completed
 
 Current focus:

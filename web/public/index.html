@@ -12,7 +12,7 @@
       <h2 id="auth-title">Sign in</h2>
       <p id="auth-subtitle" style="margin: 0 0 1rem 0; color: var(--muted);">Continue with your Alfares account</p>
 
-      <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+      <div id="auth-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
         <button id="tab-login" type="button" class="btn btn-secondary" style="flex: 1;">Login</button>
         <button id="tab-register" type="button" class="btn btn-secondary" style="flex: 1;">Register</button>
       </div>
@@ -29,7 +29,7 @@
           </div>
         </div>
 
-        <div class="form-group">
+        <div id="identifier-row" class="form-group">
           <label id="identifier-label" for="identifier">Email or phone</label>
           <input id="identifier" name="identifier" type="text" required autocomplete="username" inputmode="email">
         </div>
@@ -40,8 +40,13 @@
         </div>
 
         <div class="form-group">
-          <label for="password">Password</label>
+          <label id="password-label" for="password">Password</label>
           <input id="password" name="password" type="password" minlength="6" required autocomplete="current-password">
+        </div>
+
+        <div id="password-confirm-row" class="form-group" style="display: none;">
+          <label for="password-confirm">Confirm new password</label>
+          <input id="password-confirm" name="password-confirm" type="password" minlength="6" autocomplete="new-password">
         </div>
 
         <div id="contact-code-row" class="form-group" style="display: none;">
@@ -60,7 +65,10 @@
         <button id="reset-password-btn" type="button" class="btn btn-secondary" style="margin-left: 0; width: 100%;">Forgot password?</button>
       </div>
 
-      <p style="margin-top: 1rem; color: var(--muted); font-size: 0.85rem;">
+      <p id="reset-login-link" style="display: none; margin-top: 1rem; color: var(--muted); font-size: 0.85rem;">
+        Remembered your password? <a href="/login">Back to login</a>
+      </p>
+      <p id="return-url-row" style="margin-top: 1rem; color: var(--muted); font-size: 0.85rem;">
         Redirect target:
         <code id="return-url-label">(not set)</code>
       </p>
@@ -72,9 +80,10 @@
 
   <script>
     const params = new URLSearchParams(window.location.search);
-    const initialMode = window.location.pathname === '/register' ? 'register' : 'login';
+    const initialMode = window.location.pathname === '/register' ? 'register' : (window.location.pathname === '/reset-password' ? 'reset' : 'login');
     const returnUrlRaw = params.get('return_url') || '';
     const state = params.get('state') || '';
+    const resetToken = params.get('token') || '';
     const clientId = params.get('client_id') || '';
     const prefillIdentifier = params.get('login_hint') || params.get('identifier') || params.get('email') || params.get('phone') || '';
     const prefillEmail = params.get('email') || (prefillIdentifier.includes('@') ? prefillIdentifier : '');
@@ -83,12 +92,17 @@
 
     const authTitle = document.getElementById('auth-title');
     const authSubtitle = document.getElementById('auth-subtitle');
+    const authTabs = document.getElementById('auth-tabs');
     const nameRow = document.getElementById('name-row');
     const phoneRow = document.getElementById('phone-row');
+    const identifierRow = document.getElementById('identifier-row');
     const identifierLabel = document.getElementById('identifier-label');
     const identifierInput = document.getElementById('identifier');
     const phoneInput = document.getElementById('phone');
+    const passwordLabel = document.getElementById('password-label');
     const passwordInput = document.getElementById('password');
+    const passwordConfirmRow = document.getElementById('password-confirm-row');
+    const passwordConfirmInput = document.getElementById('password-confirm');
     const contactCodeRow = document.getElementById('contact-code-row');
     const contactCodeInput = document.getElementById('contact-code');
     const verifyCodeBtn = document.getElementById('verify-code-btn');
@@ -101,6 +115,9 @@
     const tabRegister = document.getElementById('tab-register');
     const magicLinkBtn = document.getElementById('magic-link-btn');
     const resetPasswordBtn = document.getElementById('reset-password-btn');
+    const authLinks = document.getElementById('auth-links');
+    const resetLoginLink = document.getElementById('reset-login-link');
+    const returnUrlRow = document.getElementById('return-url-row');
     let contactCodeRequestedFor = '';
 
     let mode = initialMode;
@@ -160,23 +177,34 @@
 
     function syncMode() {
       const isRegister = mode === 'register';
-      authTitle.textContent = isRegister ? 'Create account' : 'Sign in';
-      authSubtitle.textContent = isRegister
-        ? (marathonPhoneRequired ? 'Create an account for your marathon profile' : 'Create an Alfares account')
-        : 'Continue with email or phone';
+      const isReset = mode === 'reset';
+      authTitle.textContent = isReset ? 'Reset password' : (isRegister ? 'Create account' : 'Sign in');
+      authSubtitle.textContent = isReset
+        ? 'Choose a new password for your Alfares account'
+        : (isRegister
+          ? (marathonPhoneRequired ? 'Create an account for your marathon profile' : 'Create an Alfares account')
+          : 'Continue with email or phone');
+      authTabs.style.display = isReset ? 'none' : 'flex';
       nameRow.style.display = isRegister ? 'flex' : 'none';
       phoneRow.style.display = isRegister ? 'block' : 'none';
+      identifierRow.style.display = isReset ? 'none' : 'block';
       phoneInput.required = isRegister && marathonPhoneRequired;
+      identifierInput.required = !isReset;
+      passwordConfirmRow.style.display = isReset ? 'block' : 'none';
+      passwordConfirmInput.required = isReset;
+      passwordLabel.textContent = isReset ? 'New password' : 'Password';
       identifierLabel.textContent = isRegister ? 'Email' : 'Email or phone';
       identifierInput.type = isRegister ? 'email' : 'text';
       identifierInput.autocomplete = isRegister ? 'email' : 'username';
       identifierInput.inputMode = isRegister ? 'email' : 'text';
-      passwordInput.autocomplete = isRegister ? 'new-password' : 'current-password';
-      submitBtn.textContent = isRegister ? 'Register' : 'Login';
-      magicLinkBtn.style.display = isRegister ? 'none' : 'block';
-      resetPasswordBtn.style.display = isRegister ? 'none' : 'block';
-      contactCodeRow.style.display = isRegister || !contactCodeRequestedFor ? 'none' : 'block';
-      applyPrefill();
+      passwordInput.autocomplete = isRegister || isReset ? 'new-password' : 'current-password';
+      submitBtn.textContent = isReset ? 'Reset password' : (isRegister ? 'Register' : 'Login');
+      submitBtn.style.display = 'block';
+      authLinks.style.display = isRegister || isReset ? 'none' : 'block';
+      resetLoginLink.style.display = isReset ? 'block' : 'none';
+      returnUrlRow.style.display = isReset ? 'none' : 'block';
+      contactCodeRow.style.display = isRegister || isReset || !contactCodeRequestedFor ? 'none' : 'block';
+      if (!isReset) applyPrefill();
       tabLogin.classList.toggle('btn-secondary', isRegister);
       tabRegister.classList.toggle('btn-secondary', !isRegister);
     }
@@ -194,6 +222,9 @@
     }
 
     async function validateReturnUrl() {
+      if (mode === 'reset') {
+        return;
+      }
       if (!returnUrlRaw) {
         setError('Missing required query parameter: return_url');
         submitBtn.disabled = true;
@@ -221,6 +252,10 @@
       event.preventDefault();
       setError('');
       setSuccess('');
+      if (mode === 'reset') {
+        await submitPasswordReset();
+        return;
+      }
       if (!validatedReturnUrl) {
         setError('Invalid return_url');
         return;
@@ -267,6 +302,42 @@
         window.location.assign(buildTokenHandoffUrl(validatedReturnUrl, data, state));
       } catch (error) {
         setError(error.message || 'Authentication failed');
+        submitBtn.disabled = false;
+      }
+    }
+
+    async function submitPasswordReset() {
+      if (!resetToken) {
+        setError('Invalid or missing password reset token.');
+        return;
+      }
+      const newPassword = passwordInput.value;
+      const confirmPassword = passwordConfirmInput.value;
+      if (!newPassword || newPassword.length < 6) {
+        setError('Password must be at least 6 characters.');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setError('Passwords do not match.');
+        return;
+      }
+      submitBtn.disabled = true;
+      try {
+        const response = await fetch('/auth/password-reset-confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: resetToken, newPassword }),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({ message: 'Could not reset password' }));
+          throw new Error(body.message || 'Could not reset password');
+        }
+        passwordInput.value = '';
+        passwordConfirmInput.value = '';
+        submitBtn.style.display = 'none';
+        setSuccess('Password reset successfully. You can now sign in.');
+      } catch (error) {
+        setError(error.message || 'Could not reset password');
         submitBtn.disabled = false;
       }
     }

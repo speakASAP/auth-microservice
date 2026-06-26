@@ -1,6 +1,6 @@
 # Auth Implementation State
 
-Last updated: 2026-06-13.
+Last updated: 2026-06-26.
 
 ## Orchestrator Command
 
@@ -29,7 +29,7 @@ AUTH ORCHESTRATOR: implement goal number 6
 - Running goals: none
 - Blocked goals: none
 - Worker threads: none
-- Production status: `STATE.json` reports production health `ok`
+- Production status: `STATE.json` reports production health `ok`; owner reported `/reset-password` route defect on 2026-06-26
 - Source of truth: `alfares:/home/ssf/Documents/Github/auth-microservice`
 - Local snapshot rule: `/Users/Sergej.Stasok/Documents/auth` is context only; future code and documentation changes must be made and committed on `alfares`.
 - Agent entrypoint: `AGENTS.md`
@@ -103,6 +103,7 @@ Do not paste full worker logs into this file. Compress each worker result into n
 Append newest entries at the top.
 
 ```text
+2026-06-26: Hosted password reset route fix in progress on `alfares`. Owner reported emailed password reset links open `GET /reset-password` and receive `Cannot GET /reset-password`. Implemented hosted `/reset-password` serving and reset-password UI mode against the existing `/auth/password-reset-confirm` API. Validation passed: focused hosted-auth Jest spec, build, hosted script syntax, web server syntax, diff-check, active missing-marker scan, and documentation secret-pattern scan. Production deployment not run pending owner approval. No decoded secrets, JWTs, refresh tokens, OAuth tokens, magic-link tokens, real reset tokens, passwords, API keys, raw production user data, database changes, or consumer-service changes were recorded.
 2026-06-13: AUTH-ALPHA-01 and RBAC-REM-07 production deployment completed on `alfares`. Deployed Auth backend image `localhost:5000/auth-microservice:b540e74-20260613062417`, Auth web image `localhost:5000/auth-microservice-web:b540e74-20260613062417`, and Logging image `localhost:5000/logging-microservice:4769c51`. Validation: Auth backend and web deployments rolled out, Logging deployment rolled out, Auth pod health returned `ok`, `https://auth.alfares.cz/login` returned HTTP 200, `https://auth.alfares.cz/admin` returned HTTP 200, and `https://logging.alfares.cz/health` returned `ok`. No decoded secrets, JWTs, refresh tokens, OAuth tokens, magic-link tokens, reset tokens, passwords, API keys, production user data, or database changes were recorded.
 2026-06-13: AUTH-ALPHA-01 hosted token handoff URL normalization completed on `alfares`. Centralized backend OAuth and magic-link token handoff URL construction, updated hosted email/password UI handoff construction, and added focused tests so caller fragments are replaced by Auth's final token handoff fragment instead of creating double-fragment redirects. Validation: DocsRAG returned HTTP 200 from the Auth pod, focused Jest handoff tests passed, `npm run build` passed, frontend syntax checks passed, diff-check passed, and Auth documentation secret/missing-marker scans passed. No endpoint path, JWT payload, OAuth provider, magic-link token storage, CORS, redirect allowlist, deployment, database, production user data, decoded secret, JWT, refresh token, OAuth token, magic-link token, reset token, or password changes.
 2026-06-13: RBAC-REM-07 Logging admin role-enforcement verification completed on `alfares`. Logging commit `4769c51` added backend Auth role enforcement for `GET /api/logs/query` and `GET /api/logs/services`, left `POST /api/logs` ingestion unchanged, and added frontend admin role checks. Validation: DocsRAG returned HTTP 200 from the Auth pod, Logging `npm run build` passed, frontend JS syntax checks passed, compiled guard assertions passed, Logging diff-check passed, Auth documentation diff-check and secret/missing-marker scans passed. No Auth runtime code, Auth JWT payload, Auth token validation endpoint, Logging log-ingestion endpoint, deployment, database, production user data, decoded secret, JWT, API-key, or token changes.

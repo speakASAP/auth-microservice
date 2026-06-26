@@ -2,110 +2,79 @@
 
 YAML metadata:
 - id: AUTH-EXECUTION-PLAN
-- status: done
-- owner: owner-approved
-- created: 2026-06-13
-- last_updated: 2026-06-13
-- completeness_level: validated
-- upstream: docs/IMPLEMENTATION_STATE.md, docs/orchestrator/CONTEXT_PACKAGE.md, docs/orchestrator/PROJECT_INVARIANTS.md, docs/UNIFIED_AUTH_CONTRACT.md
+- status: validated-pending-deploy
+- owner: owner-reported-production-defect
+- created: 2026-06-26
+- last_updated: 2026-06-26
+- completeness_level: bounded
+- upstream: user production report, docs/UNIFIED_AUTH_CONTRACT.md, docs/orchestrator/PROJECT_INVARIANTS.md
 - downstream: docs/orchestrator/STATUS.md
 
 ## Selected Goal And Chunk
 
-Owner-approved Goal 09: Auth Contract Production Smoke Verification.
+Owner-reported production defect: emailed password reset links land on `GET /reset-password`, which currently returns `Cannot GET /reset-password`.
 
-Current chunk: verify the live Auth production surface after the completed `AUTH-ALPHA-01` and `RBAC-REM-07` deployment, without making runtime or deployment changes.
+Current chunk: restore the Auth-hosted reset-password page route and form without changing token generation, token storage, JWT payloads, redirect allowlists, CORS, OAuth, magic-link, RBAC, database schema, or consumer-service ownership.
 
 ## Upstream Traceability
 
-- Original intent: `docs/orchestrator/INTENT.md`
-- Current state: `docs/IMPLEMENTATION_STATE.md`
-- Owner selection: user accepted the recommended Auth contract/production smoke verification task on 2026-06-13.
-- Goal file: `implementation-goals/GOAL-09-auth-contract-production-smoke-verification.md`
-- Contract source: `docs/UNIFIED_AUTH_CONTRACT.md`
-- Verification source: `docs/UNIFIED_AUTH_VERIFICATION.md`
-- Environment source: `docs/ENV_CORS_AND_AUTH_CHECK.md`
-
-## Goal Impact
-
-This task strengthens Auth operational confidence after deployment by proving key production entry points and contract checks are reachable and safely handled. It does not change Auth behavior.
+- Vision: Auth remains the Statex identity and credential authority.
+- Goal impact: users who receive password reset email can complete the existing Auth-owned reset-token flow.
+- System: NestJS Auth backend plus hosted `web/public/index.html` Auth UI.
+- Feature: password reset request and confirmation.
+- Task: serve `/reset-password` and add hosted UI mode that submits to `/auth/password-reset-confirm`.
+- Coding prompt: patch only hosted Auth route/UI/tests/docs; do not inspect or record real tokens.
+- Validation: focused Jest contract test, build, syntax checks, route probes, diff and doc scans.
 
 ## Project Invariants
 
-- AUTH-INV-001: applies. Verification confirms Auth remains identity, JWT, OAuth, magic-link, RBAC, and hosted-flow authority.
-- AUTH-INV-002: applies. No non-Auth domain ownership moves into Auth.
-- AUTH-INV-003: applies. Contract behavior is smoke-checked; no API/JWT/RBAC/OAuth/magic-link/redirect/CORS/internal-service contract change is planned.
-- AUTH-INV-004: applies. Verification must not record secrets, tokens, passwords, raw production user data, or decoded secret material.
-- AUTH-INV-005: applies. Hosted Auth login/register/admin entry points are verified.
-- AUTH-INV-006: applies. Evidence must be recorded in status and continuation state.
-- AUTH-INV-007: applies. DocsRAG is queried from the Auth pod before verification evidence is finalized.
+- AUTH-INV-001 applies: Auth keeps ownership of identity, credentials, and password reset.
+- AUTH-INV-002 applies: no non-Auth domain ownership moves into Auth.
+- AUTH-INV-003 applies: existing API endpoints stay compatible; only a missing hosted page route is added.
+- AUTH-INV-004 applies: no password reset token values, secrets, JWTs, passwords, or production user data may be recorded.
+- AUTH-INV-005 applies: the hosted Auth UI owns password reset.
+- AUTH-INV-006 applies: evidence is recorded in status and implementation state.
+- AUTH-INV-007 applies: DocsRAG was queried from the Auth pod and returned HTTP 200 with no matching sources.
 
 ## Sensitive-Data Handling
 
-Classification: synthetic and public metadata only.
+Classification: public metadata and synthetic-only test strings.
 
-Allowed evidence: HTTP status codes, command names, safe endpoint paths, build/syntax results, and response summaries for synthetic invalid-token and redirect-validation checks.
+Allowed evidence: file paths, route paths, HTTP statuses, command results, synthetic token string names in tests.
 
-Forbidden evidence: decoded secrets, JWTs, refresh tokens, OAuth tokens, magic-link tokens, reset tokens, passwords, internal-service tokens, API keys, Authorization header values, or raw production user data.
+Forbidden evidence: real password reset tokens, JWTs, refresh tokens, OAuth tokens, magic-link tokens, passwords, decoded secrets, Authorization values, or production user records.
 
-## Contract Validation Plan
+## Contract Impact
 
-Contract impact: none. This is verification-only.
+API contract impact: none. `POST /auth/password-reset-request` and `POST /auth/password-reset-confirm` keep their current request/response shapes.
 
-Expected behavior:
+Hosted Auth impact: `/reset-password?token=...` now serves the hosted Auth page and lets the user set a new password through the existing confirm endpoint.
 
-- Production health returns `ok`.
-- Hosted `/login`, `/register`, and `/admin` return reachable HTTPS responses.
-- `POST /auth/validate` handles a synthetic invalid token without exposing token material.
-- `GET /auth/validate-return-url` handles safe HTTPS URL validation without token handoff.
-- Build and frontend syntax checks pass against the current deployed source state.
+No JWT, RBAC, OAuth, magic-link, redirect allowlist, CORS, internal-service, database schema, or consumer-service contract changes.
 
 ## Scope
 
-Allowed documentation/state files:
+Allowed files:
 
-- `implementation-goals/GOAL-09-auth-contract-production-smoke-verification.md`
-- `implementation-goals/README.md`
-- `docs/orchestrator/GOALS.md`
+- `src/main.ts`
+- `web/server.js`
+- `web/public/index.html`
+- `src/auth/hosted-auth-web.spec.ts`
+- `docs/UNIFIED_AUTH_CONTRACT.md`
 - `docs/orchestrator/CONTEXT_PACKAGE.md`
 - `docs/orchestrator/EXECUTION_PLAN.md`
 - `docs/orchestrator/STATUS.md`
 - `docs/IMPLEMENTATION_STATE.md`
-- `TASKS.md`
-- `STATE.json`
-
-## Non-Goals
-
-- No Auth runtime code changes.
-- No consumer runtime code changes.
-- No endpoint, JWT payload, RBAC, OAuth, magic-link, redirect allowlist, CORS, internal-service, or database changes.
-- No deployment.
-- No use of real credentials or production user data.
 
 ## Validation Plan
 
-- Query DocsRAG from the Auth pod with the pod `JWT_TOKEN`, without printing the token.
-- Run `npm run build`.
-- Run `node --check web/public/js/admin.js`.
-- Run inline hosted login page script syntax extraction.
-- Run production HTTPS checks for `/health`, `/login`, `/register`, and `/admin`.
-- Run synthetic invalid-token validation against `/auth/validate`.
-- Run safe redirect validation against `/auth/validate-return-url`.
-- Run `git diff --check`.
-- Run gate-critical missing-marker scan.
-- Run documentation secret-pattern scan.
-
-## Completion Checklist
-
-- [x] Owner selected Goal 09.
-- [x] Selected goal and chunk named.
-- [x] Intent and boundary impact stated.
-- [x] Context package refreshed.
-- [x] Invariants evaluated.
-- [x] Sensitive-data classification stated.
-- [x] Contract impact stated.
-- [x] Validation plan stated.
-- [x] DocsRAG queried successfully.
-- [x] Verification commands run.
-- [x] Evidence recorded.
-- [x] Goal marked complete.
+- DocsRAG query from `deployment/auth-microservice` without printing `JWT_TOKEN`.
+- `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts`
+- `npm run build`
+- `node --check` for hosted Auth inline script extraction.
+- `node --check web/server.js`
+- `git diff --check`
+- Missing-marker scan for gate-critical docs.
+- Documentation secret-pattern scan.
+- Production pre-deploy route probe for `/reset-password` to confirm current defect.
+- Deployment only after owner approval.

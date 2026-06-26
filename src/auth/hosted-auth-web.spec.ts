@@ -3,6 +3,8 @@ import { join } from 'path';
 
 describe('hosted auth web contract', () => {
   const html = readFileSync(join(process.cwd(), 'web/public/index.html'), 'utf8');
+  const mainTs = readFileSync(join(process.cwd(), 'src/main.ts'), 'utf8');
+  const webServer = readFileSync(join(process.cwd(), 'web/server.js'), 'utf8');
 
   it('posts password login with the central identifier field', () => {
     expect(html).toContain('id="identifier"');
@@ -15,6 +17,17 @@ describe('hosted auth web contract', () => {
     expect(html).toContain('/auth/contact-code/verify');
     expect(html).toContain('/auth/password-reset-request');
     expect(html).toContain('Forgot password?');
+  });
+
+  it('serves emailed password reset links from the hosted Auth page', () => {
+    expect(mainTs).toContain("['/login', '/register', '/reset-password']");
+    expect(webServer).toContain("['/login', '/register', '/reset-password']");
+    expect(html).toContain("window.location.pathname === '/reset-password'");
+    expect(html).toContain("const resetToken = params.get('token') || ''");
+    expect(html).toContain('id="password-confirm"');
+    expect(html).toContain('/auth/password-reset-confirm');
+    expect(html).toContain("identifierInput.required = !isReset");
+    expect(html).toContain("if (mode === 'reset')");
   });
 
   it('requires phone for marathon hosted registration before calling /auth/register', () => {

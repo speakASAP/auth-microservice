@@ -24,7 +24,7 @@ async function bootstrap() {
 
   // Serve public landing/admin assets from the same backend process in Kubernetes.
   app.useStaticAssets(webPublicPath, { index: 'index.html' });
-  expressApp.get(['/login', '/register'], (_req, res) => {
+  expressApp.get(['/login', '/register', '/reset-password'], (_req, res) => {
     res.sendFile(join(webPublicPath, 'index.html'));
   });
   expressApp.get('/admin', (_req, res) => {
