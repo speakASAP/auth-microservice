@@ -42,7 +42,7 @@ When a service accepts service JWTs validated by Auth `/auth/validate`, the Auth
 Existing service-local API keys and bearer service tokens may remain only as documented transitional exceptions. They must be classified as machine auth, not Auth RBAC:
 
 - `payments-microservice` `x-api-key` is Payments-owned API auth.
-- `catalog-microservice` `x-internal-service-token` is Catalog-local service auth.
+- `catalog-microservice` `x-internal-service-token` uses Auth-owned runtime secret source `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN` for Goal 17 Catalog-to-Orders product statistics. Consumers still treat it as service identity, not user identity.
 - `speakasap` `/api/v1/internal/...` `x-internal-token` paths are service-owned internal routes.
 - Catalog-to-Warehouse and Orders-to-Warehouse service bearer tokens need explicit receiving-side classification: either Auth-compatible service JWTs or documented service-local machine auth.
 

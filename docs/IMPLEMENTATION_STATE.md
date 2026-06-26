@@ -1,3 +1,4 @@
+2026-06-27: Auth-owned Catalog service identity source established for Goal 17. Created runtime-only Vault property `CATALOG_INTERNAL_SERVICE_TOKEN` under `secret/prod/auth-microservice` without printing or recording the value. Catalog and Orders consume it via ExternalSecret as `CATALOG_INTERNAL_SERVICE_TOKEN`; request contract remains `x-internal-service-token` plus `x-service-name: catalog-microservice`, mapping to service actor `internal:catalog-microservice:service`, not an Auth user JWT. No Auth endpoint, JWT payload, RBAC, database, user data, or secret value changed in source.
 # Auth Implementation State
 
 Last updated: 2026-06-26.

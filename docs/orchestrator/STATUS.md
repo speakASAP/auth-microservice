@@ -1,3 +1,11 @@
+# 2026-06-27 - Catalog Service Identity Ownership Confirmation
+
+Change: created Auth-owned runtime Vault property `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN` without printing or recording the value. Catalog and Orders ExternalSecret manifests consume that property under their local `CATALOG_INTERNAL_SERVICE_TOKEN` environment key.
+
+Boundary decision: the supported machine-auth contract is `x-internal-service-token` plus `x-service-name: catalog-microservice`, mapped by Orders to `internal:catalog-microservice:service`. This does not mint or validate a user JWT through `/auth/validate`, because `/auth/validate` is user-token validation and machine actors are not Auth users.
+
+Validation: no secret values were printed or committed. Auth docs only record the ownership source and contract; runtime synchronization and smoke validation are owned by the Catalog/Orders manifests and Kubernetes checks.
+
 # Auth Orchestrator Status
 
 ## 2026-06-26 - Hosted Password Reset Route Fix Deployed
