@@ -2,7 +2,7 @@
 
 ```yaml
 id: AUTH-CONTEXT-PACKAGE
-status: validated-pending-deploy
+status: validated
 owner: owner-reported-production-defect
 created: 2026-06-26
 last_updated: 2026-06-26

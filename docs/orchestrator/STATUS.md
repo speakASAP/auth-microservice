@@ -1,12 +1,12 @@
 # Auth Orchestrator Status
 
-## 2026-06-26 - Hosted Password Reset Route Fix Validated Pending Deployment
+## 2026-06-26 - Hosted Password Reset Route Fix Deployed
 
 Current focus:
 
 - Owner-reported production defect: password reset email links open `GET /reset-password`, which returned `Cannot GET /reset-password`.
 - Auth branch: `main`.
-- Deployment: not run; production deployment requires owner approval.
+- Deployment: completed after owner approval; deploy script built and pushed images `localhost:5000/auth-microservice:1026463-20260626175614` and `localhost:5000/auth-microservice-web:1026463-20260626175614`.
 - Runtime code changes: hosted route/UI only; existing reset token API contract is unchanged.
 
 DocsRAG evidence:
@@ -25,6 +25,7 @@ Validation evidence:
 
 - Pre-deploy live probe with a synthetic token confirmed current production `/reset-password` returned HTTP 404 and `Cannot GET /reset-password`.
 - `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts` passed.
+- Deploy script `npm run test:auth-contract` passed: 3 suites, 16 tests.
 - `npm run build` passed.
 - `node --check web/server.js` passed.
 - Inline hosted Auth script extraction plus `node --check /tmp/auth-hosted-inline-check.js` passed.
@@ -32,6 +33,13 @@ Validation evidence:
 - Active gate-critical missing-marker scan returned no matches.
 - Documentation secret-pattern scan returned no matches.
 - Broad `docs/orchestrator` missing-marker scan still reports pre-existing historical rollout planning markers under `docs/orchestrator/2026-06-24-*`; those files were not introduced by this fix.
+- Deploy script timed out while waiting for the backend rollout, then the same rollout completed successfully on a follow-up `kubectl rollout status deployment/auth-microservice --timeout=120s` check.
+- `kubectl -n statex-apps rollout status deployment/auth-microservice --timeout=30s` passed.
+- `kubectl -n statex-apps rollout status deployment/auth-microservice-web --timeout=30s` passed.
+- `kubectl -n statex-apps get deploy auth-microservice auth-microservice-web -o wide` showed both deployments `READY 1/1` on image tag `1026463-20260626175614`.
+- `GET https://auth.alfares.cz/reset-password?token=synthetic-final-probe` returned HTTP 200 and contained hosted reset form markers `resetToken`, `password-confirm`, and `/auth/password-reset-confirm`.
+- `GET https://auth.alfares.cz/health` returned HTTP 200 with status `ok`.
+- Synthetic invalid `POST /auth/password-reset-confirm` returned HTTP 400 `Invalid or expired reset token`, without using or recording a real reset token.
 
 Boundary evidence:
 
@@ -39,7 +47,7 @@ Boundary evidence:
 
 Next action:
 
-- Commit the remote fix; deploy only after owner approval.
+- No action needed for the reset-password route. The remote repo has no configured git remote, so pushing to origin is blocked until a remote URL is configured.
 
 ## 2026-06-13 - Goal 09 Auth Contract Production Smoke Verification Completed
 

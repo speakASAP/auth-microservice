@@ -2,7 +2,7 @@
 
 YAML metadata:
 - id: AUTH-EXECUTION-PLAN
-- status: validated-pending-deploy
+- status: done
 - owner: owner-reported-production-defect
 - created: 2026-06-26
 - last_updated: 2026-06-26
