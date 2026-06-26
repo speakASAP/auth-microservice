@@ -28,6 +28,7 @@ const APPLICATIONS = [
   { name: 'shop-assistant', displayName: 'Shop Assistant', type: ApplicationType.USER_FACING },
   { name: 'beauty', displayName: 'Beauty', type: ApplicationType.USER_FACING },
   { name: 'crypto-ai-agent', displayName: 'Crypto AI Agent', type: ApplicationType.USER_FACING },
+  { name: 'domain-research', displayName: 'Domain Research', type: ApplicationType.USER_FACING },
   { name: 'marathon', displayName: 'Marathon', type: ApplicationType.USER_FACING },
   { name: 'flipflop-service', displayName: 'FlipFlop Service', type: ApplicationType.USER_FACING },
   { name: 'allegro-service', displayName: 'Allegro Service', type: ApplicationType.USER_FACING },
