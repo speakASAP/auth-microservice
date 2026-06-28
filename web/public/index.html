@@ -39,7 +39,7 @@
           <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel">
         </div>
 
-        <div class="form-group">
+        <div id="password-row" class="form-group">
           <label id="password-label" for="password">Password</label>
           <input id="password" name="password" type="password" minlength="6" required autocomplete="current-password">
         </div>
@@ -100,6 +100,7 @@
     const identifierInput = document.getElementById('identifier');
     const phoneInput = document.getElementById('phone');
     const passwordLabel = document.getElementById('password-label');
+    const passwordRow = document.getElementById('password-row');
     const passwordInput = document.getElementById('password');
     const passwordConfirmRow = document.getElementById('password-confirm-row');
     const passwordConfirmInput = document.getElementById('password-confirm');
@@ -190,6 +191,7 @@
       identifierRow.style.display = isReset ? 'none' : 'block';
       phoneInput.required = isRegister && marathonPhoneRequired;
       identifierInput.required = !isReset;
+      passwordRow.style.display = 'block';
       passwordConfirmRow.style.display = isReset ? 'block' : 'none';
       passwordConfirmInput.required = isReset;
       passwordLabel.textContent = isReset ? 'New password' : 'Password';
@@ -202,6 +204,14 @@
       submitBtn.style.display = 'block';
       authLinks.style.display = isRegister || isReset ? 'none' : 'block';
       resetLoginLink.style.display = isReset ? 'block' : 'none';
+      const resetLoginAnchor = resetLoginLink.querySelector('a');
+      if (resetLoginAnchor) {
+        const loginParams = new URLSearchParams();
+        if (returnUrlRaw) loginParams.set('return_url', returnUrlRaw);
+        if (clientId) loginParams.set('client_id', clientId);
+        if (state) loginParams.set('state', state);
+        resetLoginAnchor.href = loginParams.toString() ? `/login?${loginParams.toString()}` : '/login';
+      }
       returnUrlRow.style.display = isReset ? 'none' : 'block';
       contactCodeRow.style.display = isRegister || isReset || !contactCodeRequestedFor ? 'none' : 'block';
       if (!isReset) applyPrefill();
@@ -226,7 +236,7 @@
         return;
       }
       if (!returnUrlRaw) {
-        setError('Missing required query parameter: return_url');
+        returnUrlLabel.textContent = '(required by application)';
         submitBtn.disabled = true;
         magicLinkBtn.disabled = true;
         return;
@@ -334,6 +344,8 @@
         }
         passwordInput.value = '';
         passwordConfirmInput.value = '';
+        passwordRow.style.display = 'none';
+        passwordConfirmRow.style.display = 'none';
         submitBtn.style.display = 'none';
         setSuccess('Password reset successfully. You can now sign in.');
       } catch (error) {

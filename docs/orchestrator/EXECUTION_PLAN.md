@@ -3,7 +3,7 @@
 YAML metadata:
 - id: AUTH-EXECUTION-PLAN
 - status: validated-not-deployed
-- owner: owner-selected-admin-users-enhancement
+- owner: owner-selected-reset-password-ux-fix
 - created: 2026-06-28
 - last_updated: 2026-06-28
 - completeness_level: bounded
@@ -12,51 +12,48 @@ YAML metadata:
 
 ## Selected Goal And Chunk
 
-Owner-selected admin enhancement: when an administrator selects a user on `/admin`, show all assigned roles and registered applications, then allow role and application assignment/removal by checkbox clicks. The chunk also preserves the adjacent admin Users search/filter and application-admin overview work already present in the remote worktree.
+Owner-selected hosted reset-password UX fix: after password reset success, remove the visible new-password fields from the page, and make the `Back to login` link safe so it does not immediately show `Missing required query parameter: return_url`.
 
 ## Upstream Traceability
 
-- Vision: Auth remains the Statex identity, RBAC, user-role, and application-role authority.
-- Goal impact: Auth administrators can inspect and maintain a selected user's global roles, per-application roles, and application registrations without shell scripts.
-- System: NestJS Auth backend plus hosted `web/public/admin.html` admin UI.
-- Feature: admin user management, role visibility, and role assignment.
-- Task: reuse existing Auth admin role APIs from the hosted admin UI; add checkbox controls for role and application membership; preserve existing RBAC assignment semantics.
-- Coding prompt: patch only admin user/query/role UI/docs and adjacent admin summaries; do not expose secrets, tokens, passwords, or raw production user-data dumps.
-- Validation: DocsRAG query, TypeScript build, lint, admin JS syntax check, focused hosted web test, and diff-check.
+- Vision: Auth remains the Statex identity and hosted credential authority.
+- Goal impact: users who complete password reset see only success state and can navigate back to hosted login without a confusing query-parameter error.
+- System: hosted `web/public/index.html` served by Auth backend/web.
+- Feature: hosted password reset UI.
+- Task: update client-side reset success rendering and reset-page login link behavior; keep API contracts unchanged.
+- Coding prompt: patch only hosted Auth UI/test/docs; do not expose secrets, tokens, passwords, or raw production user-data.
+- Validation: hosted Auth focused Jest test, inline script syntax check, web server syntax check, TypeScript build, and diff-check.
 
 ## Project Invariants
 
-- AUTH-INV-001 applies: Auth keeps ownership of identity, RBAC, applications, and service-authentication boundaries.
+- AUTH-INV-001 applies: Auth keeps ownership of identity, credentials, hosted login, and password reset.
 - AUTH-INV-002 applies: no catalog, warehouse, orders, payment, lead, marketing, notification, logging, database, or gateway ownership moves into Auth.
-- AUTH-INV-003 applies: existing Auth API, JWT, OAuth, magic-link, redirect, CORS, and internal-service contracts remain compatible. Existing RBAC assignment APIs are reused; assignment semantics are not changed.
-- AUTH-INV-004 applies: no secrets, passwords, JWTs, refresh tokens, OAuth tokens, magic-link tokens, password-reset tokens, API keys, or raw production user-data dumps may be recorded.
-- AUTH-INV-005 applies: hosted Auth admin remains the central admin surface.
+- AUTH-INV-003 applies: no API, JWT, RBAC, OAuth, magic-link, redirect allowlist, CORS, internal-service, database, or consumer-service contract changes.
+- AUTH-INV-004 applies: no secrets, passwords, JWTs, refresh tokens, OAuth tokens, magic-link tokens, password-reset tokens, API keys, or raw production user-data may be recorded.
+- AUTH-INV-005 applies: hosted Auth remains the supported credential UI.
 - AUTH-INV-006 applies: evidence is recorded in status and implementation state.
-- AUTH-INV-007 applies: DocsRAG was queried from the Auth pod and returned HTTP 200 with no matching source headings.
+- AUTH-INV-007 not applicable: no broad architecture or cross-service contract decision.
 
 ## Sensitive-Data Handling
 
-Classification: admin metadata shape only. Validation did not print production user rows, secrets, tokens, passwords, or Authorization values.
+Classification: no production data. The implementation uses only UI source, route names, and synthetic/static test assertions.
 
-Allowed evidence: file paths, route paths, query parameter names, command results, HTTP status summaries.
+Allowed evidence: file paths, route paths, query parameter names, command pass/fail summaries.
 
-Forbidden evidence: secret values, tokens, passwords, decoded runtime config, raw production user rows, or admin credentials.
+Forbidden evidence: secret values, tokens, passwords, decoded runtime config, raw production user rows, Authorization values, or real reset links.
 
 ## Contract Impact
 
-Admin API impact: `GET /auth/admin/users` accepts optional `search`, `applicationId`, `status`, `verified`, and `adminOnly=yes` query parameters and returns application summary fields for listed users. `GET /auth/admin/users/application-admins` returns applications with users who hold application-scoped admin roles. The checkbox UI reuses existing `GET /auth/admin/roles`, `GET/POST/DELETE /auth/admin/users/:userId/roles`, and `GET /auth/admin/applications` contracts.
+No Auth API contract change. `POST /auth/password-reset-confirm` remains unchanged. Password reset tokens, token expiry, reset email generation, JWT payloads, refresh tokens, OAuth, magic links, RBAC, CORS, internal service contracts, database schema, redirect allowlist, and consumer-service behavior remain unchanged.
 
-No JWT, refresh token, OAuth, magic-link, password reset, redirect allowlist, CORS, internal-service, database schema, or consumer-service contract changes. No new RBAC persistence semantics; user-driven checkbox changes call the existing role assignment/removal API.
+Hosted UI impact: after successful reset confirmation, the password input rows and submit button are hidden. The reset page's `Back to login` link preserves `return_url`, `client_id`, and `state` when present, and a plain `/login` load no longer shows an immediate missing-parameter error before user action.
 
 ## Scope
 
 Allowed files:
 
-- `src/auth/admin-users.controller.ts`
-- `src/users/users.service.ts`
-- `web/public/admin.html`
-- `web/public/js/admin.js`
-- `web/public/css/style.css`
+- `web/public/index.html`
+- `src/auth/hosted-auth-web.spec.ts`
 - `docs/orchestrator/CONTEXT_PACKAGE.md`
 - `docs/orchestrator/EXECUTION_PLAN.md`
 - `docs/orchestrator/STATUS.md`
@@ -64,20 +61,18 @@ Allowed files:
 
 ## Parallel Execution
 
-- Workstream: backend admin query/reporting API. Status: complete. Owner role: Auth backend. Files: `src/auth/admin-users.controller.ts`, `src/users/users.service.ts`.
-- Workstream: hosted admin UI controls and rendering. Status: complete. Owner role: Auth frontend. Files: `web/public/admin.html`, `web/public/js/admin.js`, `web/public/css/style.css`. Includes selected-user role/application checkboxes.
-- Integration owner: original orchestrator thread. Validation owner: original orchestrator thread. Merge order: backend first, UI second, docs last. No separate workers were launched because the touched files were tightly coupled and small.
+- Workstream: hosted reset UI behavior. Status: complete. Owner role: Auth frontend. Files: `web/public/index.html`.
+- Workstream: focused hosted web regression coverage. Status: complete. Owner role: validation. Files: `src/auth/hosted-auth-web.spec.ts`.
+- Integration owner: original thread. Validation owner: original thread. Merge order: UI first, test second, docs last. No separate workers were launched because this is a narrow two-source-file UI fix.
 
 ## Validation Plan And Evidence
 
-- DocsRAG query from `deployment/auth-microservice` without printing `JWT_TOKEN`: HTTP 200, no matching headings.
-- `npm run build`: passed.
-- `npm run lint`: passed.
-- `node --check web/public/js/admin.js`: passed.
-- `node --check web/server.js`: passed.
 - `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts`: passed, 6 tests.
 - `git diff --check`: passed.
+- `npm run build`: passed.
+- `node --check web/server.js`: passed.
+- Extracted inline script from `web/public/index.html` to `/tmp/auth-hosted-inline-check.js`; `node --check /tmp/auth-hosted-inline-check.js`: passed.
 
 ## Deployment Plan
 
-The owner request targets `https://auth.alfares.cz/admin`; deploy after validation with `./scripts/deploy.sh`, then verify the live admin asset and route without printing tokens or production user rows.
+Production deployment is pending explicit owner approval. After approval, run `./scripts/deploy.sh`, then verify `https://auth.alfares.cz/reset-password?token=synthetic-ui-check` returns the hosted reset page and `https://auth.alfares.cz/login` does not render the old immediate missing-`return_url` error.

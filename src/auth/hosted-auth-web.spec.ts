@@ -24,10 +24,15 @@ describe('hosted auth web contract', () => {
     expect(webServer).toContain("['/login', '/register', '/reset-password']");
     expect(html).toContain("window.location.pathname === '/reset-password'");
     expect(html).toContain("const resetToken = params.get('token') || ''");
+    expect(html).toContain('id="password-row"');
     expect(html).toContain('id="password-confirm"');
+    expect(html).toContain("passwordRow.style.display = 'none'");
+    expect(html).toContain("passwordConfirmRow.style.display = 'none'");
     expect(html).toContain('/auth/password-reset-confirm');
     expect(html).toContain("identifierInput.required = !isReset");
     expect(html).toContain("if (mode === 'reset')");
+    expect(html).toContain("resetLoginAnchor.href = loginParams.toString() ? `/login?${loginParams.toString()}` : '/login'");
+    expect(html).not.toContain("Missing required query parameter: return_url");
   });
 
   it('requires phone for marathon hosted registration before calling /auth/register', () => {

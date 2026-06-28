@@ -3,7 +3,7 @@
 ```yaml
 id: AUTH-CONTEXT-PACKAGE
 status: validated
-owner: owner-selected-admin-users-enhancement
+owner: owner-selected-reset-password-ux-fix
 created: 2026-06-28
 last_updated: 2026-06-28
 completeness_level: bounded
@@ -18,50 +18,35 @@ downstream:
 
 ## Target Task
 
-Add Auth admin selected-user role/application management on `/admin`: show all roles assigned to the selected user, show applications where the user is registered, and allow adding/removing roles and applications through checkboxes. Preserve the adjacent Users search/filter and application-admin overview work already present in the remote worktree.
+Fix hosted `/reset-password` UX after a successful password reset: hide the new-password and confirm-new-password fields after success, and prevent the reset page's `Back to login` link from producing the immediate `Missing required query parameter: return_url` error.
 
 ## Upstream Traceability
 
 - Original Auth intent: `docs/orchestrator/INTENT.md`
-- Current state: `docs/IMPLEMENTATION_STATE.md` and `STATE.json` mark the project frozen, with owner-selected operational fixes and enhancements eligible as bounded work.
+- Current state: `docs/IMPLEMENTATION_STATE.md`
 - Auth contract surface: `docs/UNIFIED_AUTH_CONTRACT.md`
+- Hosted reset route evidence: `docs/orchestrator/STATUS.md`
 - Verification standard: `docs/UNIFIED_AUTH_VERIFICATION.md`
 - Operational environment: `docs/ENV_CORS_AND_AUTH_CHECK.md`
 - Readiness checks: `docs/orchestrator/READINESS_GATES.md`
-- DocsRAG: queried from the Auth pod for `Auth admin user role application checkbox assignment dashboard`; returned HTTP 200 with no matching source headings.
+- DocsRAG: not required because this is a narrow hosted UI defect with no ecosystem architecture or cross-service contract decision.
 
 ## Included Documents
 
-Read before editing:
-
 - `AGENTS.md`
-- `TASKS.md`
-- `STATE.json`
 - `docs/IMPLEMENTATION_STATE.md`
-- `docs/IMPLEMENTATION_ORCHESTRATOR.md`
-- `docs/UNIFIED_AUTH_CONTRACT.md`
-- `docs/ENV_CORS_AND_AUTH_CHECK.md`
-- `docs/UNIFIED_AUTH_VERIFICATION.md`
-- `docs/orchestrator/MASTER_PROMPT.md`
-- `docs/orchestrator/INTENT.md`
-- `docs/orchestrator/GOALS.md`
-- `docs/orchestrator/PLAN.md`
 - `docs/orchestrator/STATUS.md`
-- `docs/orchestrator/PROMPTS.md`
 - `docs/orchestrator/PROJECT_INVARIANTS.md`
 - `docs/orchestrator/PRE_CODING_GATE.md`
+- `docs/orchestrator/READINESS_GATES.md`
 - `docs/orchestrator/CONTEXT_PACKAGE.md`
 - `docs/orchestrator/EXECUTION_PLAN.md`
-- `docs/orchestrator/READINESS_GATES.md`
-- `implementation-goals/README.md`
+- `docs/UNIFIED_AUTH_CONTRACT.md`
 
 ## Included Source
 
-- `src/auth/admin-users.controller.ts` for admin user list query parameters and the application-admins API.
-- `src/users/users.service.ts` for admin list filtering, application summaries, and application-admin grouping.
-- `web/public/admin.html` for admin Users filters, Application admins, and selected-user roles copy/cache version.
-- `web/public/js/admin.js` for filter state, API requests, application select population, admin-app rendering, role catalog loading, and role/application checkbox assignment.
-- `web/public/css/style.css` for filter, badge, and checkbox layout.
+- `web/public/index.html` for hosted login/register/reset UI behavior.
+- `src/auth/hosted-auth-web.spec.ts` for hosted reset/login UI contract checks.
 
 ## Excluded Documents And Data
 
@@ -74,21 +59,20 @@ Do not read, print, or record:
 
 ## Auth Constraints
 
-- Keep Auth as the identity, RBAC, user-role, and application-role authority.
-- Do not change login, registration, JWT payloads, refresh tokens, OAuth, magic links, password reset, CORS, internal-service contracts, database schema, or consumer-service behavior.
+- Keep Auth as the identity, credential, hosted login, hosted password reset, and token handoff authority.
+- Do not change password reset token generation, validation, expiration, persistence, or email sending.
+- Do not change JWT payloads, refresh tokens, OAuth, magic links, RBAC, CORS, internal-service contracts, database schema, redirect allowlist, or consumer-service behavior.
 - Do not deploy to production without owner approval.
 
 ## Allowed Changes
 
-- Add server-side admin user search and filters for search text, application, status, verification, and application-admin-only.
-- Add an Auth-admin-only overview of application-scoped admin assignments across registered applications.
-- Add user-list columns summarizing application access and application admin roles.
-- Add selected-user role checkboxes and application membership checkboxes backed by existing Auth admin role APIs.
-- Update admin static asset version and documentation state.
+- Hide password input rows after successful hosted password reset confirmation.
+- Preserve `return_url`, `client_id`, and `state` on the reset page's `Back to login` link when those parameters exist.
+- Avoid displaying an immediate missing-`return_url` error on a plain `/login` page load.
+- Update focused hosted web tests and orchestrator status docs.
 
 ## Forbidden Changes
 
-- Agent-driven production database writes or direct role mutations outside the existing admin APIs.
+- Reset-token or password-confirm API behavior changes.
 - Secret material, decoded runtime config, raw production user-data dumps, or token evidence.
-- JWT/RBAC contract changes beyond read-only admin reporting.
-- Consumer-service code or gateway ownership changes.
+- JWT, RBAC, OAuth, magic-link, CORS, internal-service, database, or consumer-service contract changes.

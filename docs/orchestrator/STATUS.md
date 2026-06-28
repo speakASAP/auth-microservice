@@ -1,3 +1,44 @@
+# 2026-06-28 - Hosted Password Reset Success UX Fix
+
+Current focus:
+
+- Owner-reported hosted reset defect: after successful password reset, the `New password` and `Confirm new password` fields remained visible.
+- Owner-reported hosted navigation defect: clicking reset page `Back to login` opened `/login` and immediately showed `Missing required query parameter: return_url`.
+- Auth branch: `main`.
+- Runtime code changes: hosted UI only.
+- Deployment: pending explicit owner approval.
+
+Implementation evidence:
+
+- Added a stable `password-row` container to `web/public/index.html`.
+- After successful `/auth/password-reset-confirm`, the hosted UI now clears and hides the new-password row, confirm-new-password row, and submit button, leaving only the success message and login link.
+- The reset page `Back to login` link now preserves `return_url`, `client_id`, and `state` when those query parameters exist.
+- A plain `/login` page load no longer renders the immediate `Missing required query parameter: return_url` error. The login action remains disabled until a valid consumer `return_url` exists.
+- Updated `src/auth/hosted-auth-web.spec.ts` with focused assertions for the reset success and login-link behavior.
+
+Validation evidence:
+
+- `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts` passed: 1 suite, 6 tests.
+- `git diff --check` passed.
+- `npm run build` passed.
+- `node --check web/server.js` passed.
+- Extracted inline script from `web/public/index.html` and `node --check /tmp/auth-hosted-inline-check.js` passed.
+
+Boundary evidence:
+
+- No password reset API, reset-token generation, reset-token validation, reset-token expiry, email sending, JWT payload, refresh token, OAuth, magic-link, RBAC, redirect allowlist, CORS, internal-service contract, database schema, consumer-service code, decoded secret, JWT, refresh token, OAuth token, magic-link token, real reset token, password, API key, or raw production user data changed or was recorded.
+
+Intent Compliance Report:
+
+- Goal: make hosted password reset success and return-to-login UX coherent.
+- Implemented: hosted UI hides reset fields after success and avoids the immediate missing-`return_url` error from the reset page login link.
+- Not implemented: API changes, token changes, password policy changes, DB changes, or consumer-service changes.
+- Boundary check: Auth remains the hosted credential and password reset authority.
+- Subagents used: none.
+- Validation evidence: focused hosted web test, build, diff-check, web server syntax, and inline script syntax passed.
+- Risks: production still serves the previous behavior until owner-approved deployment runs.
+- Next action: owner approves production deployment, then run `./scripts/deploy.sh` and live route checks.
+
 2026-06-28: Owner-selected Auth admin Users role/application checkbox management implemented on `alfares`; deployment pending. Gate decision: accept before deployment. Scope: `src/auth/admin-users.controller.ts`, `src/users/users.service.ts`, `web/public/admin.html`, `web/public/js/admin.js`, `web/public/css/style.css`, `docs/orchestrator/CONTEXT_PACKAGE.md`, `docs/orchestrator/EXECUTION_PLAN.md`, `docs/IMPLEMENTATION_STATE.md`, `docs/orchestrator/STATUS.md`. Implemented server-side `GET /auth/admin/users` filters for search text, application, active/inactive status, verified/unverified status, and application-admin-only; added per-user application and admin-application summaries; added `GET /auth/admin/users/application-admins` for admins grouped across every registered application; updated the selected-user roles panel so all global and per-application roles render as checkboxes; added application registration checkboxes that assign the default application `user` role and remove all assigned roles for that application when unchecked; reused existing `GET /auth/admin/roles`, `GET/POST/DELETE /auth/admin/users/:userId/roles`, and `GET /auth/admin/applications` contracts. Validation passed: `node --check web/public/js/admin.js`, `node --check web/server.js`, `git diff --check`, `npm run build`, `npm run lint`, and `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts` (6 tests). No production database writes by agents, role mutations by agents, decoded secrets, JWTs, refresh tokens, OAuth tokens, magic-link tokens, reset tokens, passwords, raw production user-data dumps, consumer-service code, JWT payload changes, RBAC assignment semantic changes, OAuth, magic-link, CORS, internal-service contracts, or database schema changes. Next unfinished task: deploy to production and verify `https://auth.alfares.cz/admin`.
 # 2026-06-28 - Admin Users Layout Width Fix
 
