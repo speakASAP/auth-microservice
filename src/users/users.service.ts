@@ -181,7 +181,7 @@ export class UsersService {
         `EXISTS (
           SELECT 1
           FROM user_roles ur
-          WHERE ur."userId" = user.id
+          WHERE ur."userId" = "user"."id"
           AND ur."applicationId" = :applicationId
           AND (ur."expiresAt" IS NULL OR ur."expiresAt" > NOW())
         )`,
@@ -196,7 +196,7 @@ export class UsersService {
           SELECT 1
           FROM user_roles ur
           INNER JOIN roles role ON role.id = ur."roleId"
-          WHERE ur."userId" = user.id
+          WHERE ur."userId" = "user"."id"
           AND ur."applicationId" IS NOT NULL
           ${adminApplicationClause}
           AND LOWER(role.name) LIKE :adminRoleName
