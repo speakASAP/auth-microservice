@@ -46,19 +46,44 @@ export class AdminUsersController {
   }
 
   @Get()
-  async getAllUsers(@Request() req, @Query('limit') limitParam?: string, @Query('offset') offsetParam?: string) {
+  async getAllUsers(
+    @Request() req,
+    @Query('limit') limitParam?: string,
+    @Query('offset') offsetParam?: string,
+    @Query('search') searchParam?: string,
+    @Query('applicationId') applicationIdParam?: string,
+    @Query('status') statusParam?: string,
+    @Query('verified') verifiedParam?: string,
+    @Query('adminOnly') adminOnlyParam?: string,
+  ) {
     const startedAt = Date.now();
     const requestedLimit = Number.parseInt(limitParam || '100', 10);
     const requestedOffset = Number.parseInt(offsetParam || '0', 10);
     const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 100;
     const offset = Number.isFinite(requestedOffset) ? Math.max(requestedOffset, 0) : 0;
-    const [users, count] = await this.usersService.findAdminListPage(limit, offset);
+    const search = (searchParam || '').trim().slice(0, 120);
+    const applicationId = (applicationIdParam || '').trim();
+    const status = statusParam === 'active' || statusParam === 'inactive' ? statusParam : undefined;
+    const verified = verifiedParam === 'yes' || verifiedParam === 'no' ? verifiedParam : undefined;
+    const adminOnly = adminOnlyParam === 'yes';
+    const [users, count] = await this.usersService.findAdminListPage(limit, offset, {
+      search,
+      applicationId,
+      status,
+      verified,
+      adminOnly,
+    });
     this.audit('admin_user_list', 'success', {
       actor: req.user.email,
       actor_id: req.user.id,
       count,
       limit,
       offset,
+      search_filter: Boolean(search),
+      application_filter: Boolean(applicationId),
+      status_filter: status,
+      verified_filter: verified,
+      admin_only_filter: adminOnly,
       duration_ms: Date.now() - startedAt,
     });
     return {
@@ -68,6 +93,19 @@ export class AdminUsersController {
       limit,
       offset,
     };
+  }
+
+  @Get('application-admins')
+  async getApplicationAdmins(@Request() req) {
+    const startedAt = Date.now();
+    const applications = await this.usersService.findApplicationAdmins();
+    this.audit('admin_application_admins_list', 'success', {
+      actor: req.user.email,
+      actor_id: req.user.id,
+      application_count: applications.length,
+      duration_ms: Date.now() - startedAt,
+    });
+    return { success: true, applications };
   }
 
   @Get(':id')

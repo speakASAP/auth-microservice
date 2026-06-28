@@ -4,17 +4,41 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { MagicLinkToken } from '../auth/entities/magic-link-token.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
+import { Application } from '../applications/entities/application.entity';
 import { UpdateUserMarketingPreferencesDto } from '../auth/dto/update-user-marketing-preferences.dto';
+
+export type AdminUserApplicationSummary = {
+  id: string;
+  name: string;
+  displayName: string | null;
+  roles: string[];
+};
 
 export type AdminUserListItem = Pick<
   User,
   'id' | 'email' | 'firstName' | 'lastName' | 'phone' | 'isActive' | 'isVerified' | 'userType' | 'createdAt' | 'updatedAt'
->;
+> & {
+  applications?: AdminUserApplicationSummary[];
+  adminApplications?: AdminUserApplicationSummary[];
+};
+
+export type AdminUserListFilters = {
+  search?: string;
+  applicationId?: string;
+  status?: 'active' | 'inactive';
+  verified?: 'yes' | 'no';
+  adminOnly?: boolean;
+};
+
+export type AdminApplicationAdminsSummary = {
+  application: Pick<Application, 'id' | 'name' | 'displayName' | 'type' | 'isActive'>;
+  admins: Array<Pick<User, 'id' | 'email' | 'firstName' | 'lastName'> & { roles: string[] }>;
+};
 
 @Injectable()
 export class UsersService {
@@ -104,24 +128,223 @@ export class UsersService {
     });
   }
 
-  async findAdminListPage(limit: number, offset: number): Promise<[AdminUserListItem[], number]> {
-    return this.userRepository.findAndCount({
+  async findAdminListPage(
+    limit: number,
+    offset: number,
+    filters: AdminUserListFilters = {},
+  ): Promise<[AdminUserListItem[], number]> {
+    const query = this.userRepository
+      .createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.email',
+        'user.firstName',
+        'user.lastName',
+        'user.phone',
+        'user.isActive',
+        'user.isVerified',
+        'user.userType',
+        'user.createdAt',
+        'user.updatedAt',
+      ])
+      .orderBy('user.createdAt', 'DESC')
+      .take(limit)
+      .skip(offset);
+
+    const search = (filters.search || '').trim().toLowerCase();
+    if (search) {
+      query.andWhere(
+        new Brackets((qb) => {
+          qb.where("LOWER(COALESCE(user.email, '')) LIKE :search", { search: `%${search}%` })
+            .orWhere("LOWER(COALESCE(user.firstName, '')) LIKE :search", { search: `%${search}%` })
+            .orWhere("LOWER(COALESCE(user.lastName, '')) LIKE :search", { search: `%${search}%` })
+            .orWhere("LOWER(COALESCE(user.phone, '')) LIKE :search", { search: `%${search}%` })
+            .orWhere("LOWER(COALESCE(user.userType, '')) LIKE :search", { search: `%${search}%` });
+        }),
+      );
+    }
+
+    if (filters.status === 'active') {
+      query.andWhere('user.isActive = :isActive', { isActive: true });
+    } else if (filters.status === 'inactive') {
+      query.andWhere('user.isActive = :isActive', { isActive: false });
+    }
+
+    if (filters.verified === 'yes') {
+      query.andWhere('user.isVerified = :isVerified', { isVerified: true });
+    } else if (filters.verified === 'no') {
+      query.andWhere('user.isVerified = :isVerified', { isVerified: false });
+    }
+
+    if (filters.applicationId) {
+      query.andWhere(
+        `EXISTS (
+          SELECT 1
+          FROM user_roles ur
+          WHERE ur."userId" = user.id
+          AND ur."applicationId" = :applicationId
+          AND (ur."expiresAt" IS NULL OR ur."expiresAt" > NOW())
+        )`,
+        { applicationId: filters.applicationId },
+      );
+    }
+
+    if (filters.adminOnly) {
+      const adminApplicationClause = filters.applicationId ? 'AND ur."applicationId" = :adminApplicationId' : '';
+      query.andWhere(
+        `EXISTS (
+          SELECT 1
+          FROM user_roles ur
+          INNER JOIN roles role ON role.id = ur."roleId"
+          WHERE ur."userId" = user.id
+          AND ur."applicationId" IS NOT NULL
+          ${adminApplicationClause}
+          AND LOWER(role.name) LIKE :adminRoleName
+          AND (ur."expiresAt" IS NULL OR ur."expiresAt" > NOW())
+        )`,
+        { adminRoleName: '%admin%', adminApplicationId: filters.applicationId },
+      );
+    }
+
+    const [users, count] = await query.getManyAndCount();
+    const enrichedUsers = await this.attachAdminApplicationSummaries(users);
+    return [enrichedUsers, count];
+  }
+
+  async findApplicationAdmins(): Promise<AdminApplicationAdminsSummary[]> {
+    const applications = await this.userRepository.manager.getRepository(Application).find({
       select: {
         id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        phone: true,
+        name: true,
+        displayName: true,
+        type: true,
         isActive: true,
-        isVerified: true,
-        userType: true,
-        createdAt: true,
-        updatedAt: true,
       },
-      order: { createdAt: 'DESC' },
-      take: limit,
-      skip: offset,
+      order: { name: 'ASC' },
     });
+
+    const userRoles = await this.userRepository.manager.getRepository(UserRole).find({
+      relations: ['user', 'role', 'application'],
+    });
+
+    const now = Date.now();
+    const adminsByApplication = new Map<string, Map<string, Pick<User, 'id' | 'email' | 'firstName' | 'lastName'> & { roles: string[] }>>();
+    userRoles.forEach((userRole) => {
+      if (
+        !userRole.applicationId ||
+        !userRole.user ||
+        !userRole.role ||
+        !this.isAdminRoleName(userRole.role.name) ||
+        (userRole.expiresAt && userRole.expiresAt.getTime() <= now)
+      ) {
+        return;
+      }
+
+      if (!adminsByApplication.has(userRole.applicationId)) {
+        adminsByApplication.set(userRole.applicationId, new Map());
+      }
+
+      const appAdmins = adminsByApplication.get(userRole.applicationId);
+      let admin = appAdmins.get(userRole.userId);
+      if (!admin) {
+        admin = {
+          id: userRole.user.id,
+          email: userRole.user.email,
+          firstName: userRole.user.firstName,
+          lastName: userRole.user.lastName,
+          roles: [],
+        };
+        appAdmins.set(userRole.userId, admin);
+      }
+
+      if (!admin.roles.includes(userRole.role.name)) {
+        admin.roles.push(userRole.role.name);
+      }
+    });
+
+    return applications.map((application) => ({
+      application,
+      admins: Array.from(adminsByApplication.get(application.id)?.values() || []).sort((a, b) =>
+        (a.email || a.id).localeCompare(b.email || b.id),
+      ),
+    }));
+  }
+
+  private async attachAdminApplicationSummaries(users: User[]): Promise<AdminUserListItem[]> {
+    if (users.length === 0) {
+      return [];
+    }
+
+    const userIds = users.map((user) => user.id);
+    const userRoles = await this.userRepository.manager.getRepository(UserRole).find({
+      where: { userId: In(userIds) },
+      relations: ['role', 'application'],
+    });
+
+    const now = Date.now();
+    const appsByUser = new Map<string, Map<string, AdminUserApplicationSummary>>();
+    const adminAppsByUser = new Map<string, Map<string, AdminUserApplicationSummary>>();
+    userRoles.forEach((userRole) => {
+      if (!userRole.applicationId || !userRole.application || (userRole.expiresAt && userRole.expiresAt.getTime() <= now)) {
+        return;
+      }
+
+      this.addUserApplicationSummary(appsByUser, userRole);
+      if (this.isAdminRoleName(userRole.role?.name)) {
+        this.addUserApplicationSummary(adminAppsByUser, userRole);
+      }
+    });
+
+    return users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      isActive: user.isActive,
+      isVerified: user.isVerified,
+      userType: user.userType,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      applications: this.sortedApplicationSummaries(appsByUser.get(user.id)),
+      adminApplications: this.sortedApplicationSummaries(adminAppsByUser.get(user.id)),
+    }));
+  }
+
+  private addUserApplicationSummary(
+    target: Map<string, Map<string, AdminUserApplicationSummary>>,
+    userRole: UserRole,
+  ): void {
+    if (!target.has(userRole.userId)) {
+      target.set(userRole.userId, new Map());
+    }
+
+    const userApps = target.get(userRole.userId);
+    let appSummary = userApps.get(userRole.applicationId);
+    if (!appSummary) {
+      appSummary = {
+        id: userRole.applicationId,
+        name: userRole.application.name,
+        displayName: userRole.application.displayName || null,
+        roles: [],
+      };
+      userApps.set(userRole.applicationId, appSummary);
+    }
+
+    const roleName = userRole.role?.name;
+    if (roleName && !appSummary.roles.includes(roleName)) {
+      appSummary.roles.push(roleName);
+    }
+  }
+
+  private sortedApplicationSummaries(
+    apps?: Map<string, AdminUserApplicationSummary>,
+  ): AdminUserApplicationSummary[] {
+    return Array.from(apps?.values() || []).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  private isAdminRoleName(roleName?: string): boolean {
+    return Boolean(roleName && roleName.toLowerCase().includes('admin'));
   }
 
   async delete(id: string): Promise<void> {

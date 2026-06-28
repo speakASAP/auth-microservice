@@ -29,11 +29,16 @@
   let backendStatusEl, loggingStatusEl, logsLoading, logsContent, logsEmpty;
   let passwordChangeForm, passwordChangeBtn, passwordError, passwordSuccess;
   let usersLoading, usersContent, usersEmpty, createUserBtn;
+  let usersSearchInput, usersApplicationFilter, usersStatusFilter, usersVerifiedFilter, usersAdminOnlyFilter;
+  let usersApplyFiltersBtn, usersClearFiltersBtn;
   let userModal, userModalTitle, userModalClose, userForm, userSaveBtn, userCancelBtn, userError;
   let tokenDisplay, showTokenBtn, copyTokenBtn, tokenSuccess;
   let applicationsLoading, applicationsContent, applicationsEmpty;
+  let applicationAdminsLoading, applicationAdminsContent, applicationAdminsEmpty;
   let rolesUserSelect, rolesRefreshBtn, userRolesPlaceholder, userRolesLoading, userRolesContent;
   let cachedUsers = [];
+  let cachedApplications = [];
+  let cachedRoles = [];
   let usersOffset = 0;
   let usersLimit = 100;
   let usersTotal = 0;
@@ -61,6 +66,13 @@
     usersContent = document.getElementById('users-content');
     usersEmpty = document.getElementById('users-empty');
     createUserBtn = document.getElementById('create-user-btn');
+    usersSearchInput = document.getElementById('users-search-input');
+    usersApplicationFilter = document.getElementById('users-application-filter');
+    usersStatusFilter = document.getElementById('users-status-filter');
+    usersVerifiedFilter = document.getElementById('users-verified-filter');
+    usersAdminOnlyFilter = document.getElementById('users-admin-only-filter');
+    usersApplyFiltersBtn = document.getElementById('users-apply-filters-btn');
+    usersClearFiltersBtn = document.getElementById('users-clear-filters-btn');
     userModal = document.getElementById('user-modal');
     userModalTitle = document.getElementById('user-modal-title');
     userModalClose = document.getElementById('user-modal-close');
@@ -75,6 +87,9 @@
     applicationsLoading = document.getElementById('applications-loading');
     applicationsContent = document.getElementById('applications-content');
     applicationsEmpty = document.getElementById('applications-empty');
+    applicationAdminsLoading = document.getElementById('application-admins-loading');
+    applicationAdminsContent = document.getElementById('application-admins-content');
+    applicationAdminsEmpty = document.getElementById('application-admins-empty');
     rolesUserSelect = document.getElementById('roles-user-select');
     rolesRefreshBtn = document.getElementById('roles-refresh-btn');
     userRolesPlaceholder = document.getElementById('user-roles-placeholder');
@@ -150,6 +165,36 @@
       userForm.addEventListener('submit', function (e) {
         e.preventDefault();
         saveUser();
+      });
+    }
+
+    if (usersApplyFiltersBtn) {
+      usersApplyFiltersBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        loadUsers(0);
+      });
+    }
+
+    if (usersClearFiltersBtn) {
+      usersClearFiltersBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        clearUserFilters();
+      });
+    }
+
+    [usersApplicationFilter, usersStatusFilter, usersVerifiedFilter, usersAdminOnlyFilter].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('change', function () {
+        loadUsers(0);
+      });
+    });
+
+    if (usersSearchInput) {
+      usersSearchInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          loadUsers(0);
+        }
       });
     }
 
@@ -229,8 +274,10 @@
     if (loggedIn) {
       if (userEmailEl) userEmailEl.textContent = sessionStorage.getItem('auth_admin_email') || 'User';
       loadDashboard();
-      loadUsers();
       loadApplications();
+      loadRoleCatalog();
+      loadApplicationAdmins();
+      loadUsers();
       updateTokenDisplay();
     } else {
       if (tokenDisplay) tokenDisplay.value = '';
@@ -455,10 +502,7 @@
         return;
       }
 
-      const params = new URLSearchParams({
-        limit: String(usersLimit),
-        offset: String(usersOffset)
-      });
+      const params = buildUsersQueryParams();
       const res = await fetch('/auth/admin/users?' + params.toString(), {
         headers: {
           'Authorization': 'Bearer ' + token
@@ -492,7 +536,7 @@
         usersTotal = Number.isFinite(Number(data.count)) ? Number(data.count) : 0;
         if (usersContent) usersContent.classList.add('hidden');
         if (usersEmpty) {
-          usersEmpty.textContent = usersTotal > 0 ? 'No users found on this page.' : 'No users found.';
+          usersEmpty.textContent = usersTotal > 0 ? 'No users found on this page.' : (hasActiveUserFilters() ? 'No users match the selected filters.' : 'No users found.');
           usersEmpty.classList.remove('hidden');
         }
         populateRolesUserSelect([]);
@@ -527,6 +571,55 @@
     }
   }
 
+  function buildUsersQueryParams() {
+    const params = new URLSearchParams({
+      limit: String(usersLimit),
+      offset: String(usersOffset)
+    });
+    const search = usersSearchInput ? usersSearchInput.value.trim() : '';
+    const applicationId = usersApplicationFilter ? usersApplicationFilter.value : '';
+    const status = usersStatusFilter ? usersStatusFilter.value : '';
+    const verified = usersVerifiedFilter ? usersVerifiedFilter.value : '';
+    if (search) params.set('search', search);
+    if (applicationId) params.set('applicationId', applicationId);
+    if (status) params.set('status', status);
+    if (verified) params.set('verified', verified);
+    if (usersAdminOnlyFilter && usersAdminOnlyFilter.checked) params.set('adminOnly', 'yes');
+    return params;
+  }
+
+  function hasActiveUserFilters() {
+    return Boolean(
+      (usersSearchInput && usersSearchInput.value.trim()) ||
+      (usersApplicationFilter && usersApplicationFilter.value) ||
+      (usersStatusFilter && usersStatusFilter.value) ||
+      (usersVerifiedFilter && usersVerifiedFilter.value) ||
+      (usersAdminOnlyFilter && usersAdminOnlyFilter.checked)
+    );
+  }
+
+  function clearUserFilters() {
+    if (usersSearchInput) usersSearchInput.value = '';
+    if (usersApplicationFilter) usersApplicationFilter.value = '';
+    if (usersStatusFilter) usersStatusFilter.value = '';
+    if (usersVerifiedFilter) usersVerifiedFilter.value = '';
+    if (usersAdminOnlyFilter) usersAdminOnlyFilter.checked = false;
+    loadUsers(0);
+  }
+
+  function populateUserApplicationFilter(apps) {
+    if (!usersApplicationFilter) return;
+    const current = usersApplicationFilter.value;
+    usersApplicationFilter.innerHTML = '<option value="">All applications</option>';
+    (apps || []).forEach(function (app) {
+      const opt = document.createElement('option');
+      opt.value = app.id;
+      opt.textContent = app.displayName || app.name || app.id;
+      if (app.id === current) opt.selected = true;
+      usersApplicationFilter.appendChild(opt);
+    });
+  }
+
   async function loadApplications() {
     if (!applicationsLoading || !applicationsContent || !applicationsEmpty) return;
 
@@ -557,10 +650,15 @@
       applicationsLoading.classList.add('hidden');
 
       if (Array.isArray(data) && data.length > 0) {
+        cachedApplications = data;
+        populateUserApplicationFilter(data);
         renderApplications(data);
         applicationsContent.classList.remove('hidden');
-        applicationsEmpty.classList.remove('hidden');
+        applicationsEmpty.classList.add('hidden');
+        if (rolesUserSelect && rolesUserSelect.value) loadUserRoles(rolesUserSelect.value);
       } else {
+        cachedApplications = [];
+        populateUserApplicationFilter([]);
         applicationsContent.classList.add('hidden');
         applicationsEmpty.classList.remove('hidden');
       }
@@ -569,6 +667,24 @@
       applicationsContent.classList.add('hidden');
       applicationsEmpty.textContent = 'Network error loading applications';
       applicationsEmpty.classList.remove('hidden');
+    }
+  }
+
+  async function loadRoleCatalog() {
+    try {
+      const token = getAccessToken();
+      if (!token) return;
+
+      const res = await fetch('/auth/admin/roles', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const data = await res.json().catch(() => ([]));
+      cachedRoles = res.ok && Array.isArray(data) ? data : [];
+
+      const userId = rolesUserSelect && rolesUserSelect.value;
+      if (userId) loadUserRoles(userId);
+    } catch (e) {
+      cachedRoles = [];
     }
   }
 
@@ -594,6 +710,76 @@
 
     applicationsContent.innerHTML = '';
     applicationsContent.appendChild(table);
+  }
+
+  async function loadApplicationAdmins() {
+    if (!applicationAdminsLoading || !applicationAdminsContent || !applicationAdminsEmpty) return;
+
+    applicationAdminsLoading.classList.remove('hidden');
+    applicationAdminsContent.classList.add('hidden');
+    applicationAdminsEmpty.classList.add('hidden');
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        applicationAdminsLoading.classList.add('hidden');
+        return;
+      }
+
+      const res = await fetch('/auth/admin/users/application-admins', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const data = await res.json().catch(() => ({}));
+      applicationAdminsLoading.classList.add('hidden');
+
+      if (!res.ok || !data.success) {
+        applicationAdminsEmpty.textContent = 'Error loading application admins: ' + (data.message || 'Unknown error');
+        applicationAdminsEmpty.classList.remove('hidden');
+        return;
+      }
+
+      const rows = Array.isArray(data.applications) ? data.applications : [];
+      renderApplicationAdmins(rows);
+      applicationAdminsContent.classList.toggle('hidden', rows.length === 0);
+      applicationAdminsEmpty.classList.toggle('hidden', rows.length > 0);
+    } catch (e) {
+      applicationAdminsLoading.classList.add('hidden');
+      applicationAdminsContent.classList.add('hidden');
+      applicationAdminsEmpty.textContent = 'Network error loading application admins';
+      applicationAdminsEmpty.classList.remove('hidden');
+    }
+  }
+
+  function renderApplicationAdmins(rows) {
+    if (!applicationAdminsContent) return;
+
+    const table = document.createElement('table');
+    table.className = 'users-table application-admins-table';
+    table.innerHTML = '<thead><tr><th>Application</th><th>Type</th><th>Admins</th></tr></thead><tbody></tbody>';
+    const tbody = table.querySelector('tbody');
+
+    rows.forEach(function (row) {
+      const app = row.application || {};
+      const admins = Array.isArray(row.admins) ? row.admins : [];
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><strong>' + escapeHtml(app.displayName || app.name || '—') + '</strong><br><span class="muted-small">' + escapeHtml(app.name || app.id || '—') + '</span></td>' +
+        '<td>' + escapeHtml(app.type || '—') + '</td>' +
+        '<td>' + renderAdminUsersList(admins) + '</td>';
+      tbody.appendChild(tr);
+    });
+
+    applicationAdminsContent.innerHTML = '';
+    applicationAdminsContent.appendChild(table);
+  }
+
+  function renderAdminUsersList(admins) {
+    if (!admins || admins.length === 0) return '<span class="muted-small">No app admins</span>';
+    return '<div class="admin-chip-list">' + admins.map(function (admin) {
+      const label = admin.email || [admin.firstName, admin.lastName].filter(Boolean).join(' ') || admin.id;
+      const roles = Array.isArray(admin.roles) && admin.roles.length > 0 ? ' · ' + admin.roles.join(', ') : '';
+      return '<span class="admin-chip">' + escapeHtml(label + roles) + '</span>';
+    }).join('') + '</div>';
   }
 
   function showUserRolesPlaceholder() {
@@ -653,56 +839,211 @@
   function renderUserRoles(userId, roles) {
     if (!userRolesContent) return;
 
-    const globalRoles = [];
-    const appRoles = {};
-
-    roles.forEach(function (r) {
-      if (typeof r !== 'string') return;
-      if (r.indexOf('global:') === 0) {
-        globalRoles.push(r.substring(7));
-      } else if (r.indexOf('app:') === 0) {
-        const rest = r.substring(4);
-        const colon = rest.indexOf(':');
-        if (colon > 0) {
-          const appName = rest.substring(0, colon);
-          const roleName = rest.substring(colon + 1);
-          if (!appRoles[appName]) appRoles[appName] = [];
-          appRoles[appName].push(roleName);
-        }
-      }
-    });
-
+    const assigned = new Set((roles || []).filter(function (r) { return typeof r === 'string'; }));
     const user = cachedUsers.find(function (u) { return u.id === userId; });
     const userEmail = user ? user.email : userId;
+    const roleCatalog = cachedRoles.filter(function (role) { return role && role.isActive !== false; });
+    const appCatalog = cachedApplications.filter(function (app) { return app && app.isActive !== false; });
 
-    let html = '<p style="margin-bottom: 1rem;"><strong>' + escapeHtml(userEmail) + '</strong></p>';
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = '<p style="margin-bottom: 1rem;"><strong>' + escapeHtml(userEmail) + '</strong></p>';
 
-    if (globalRoles.length > 0) {
-      html += '<p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Global roles</p>';
-      html += '<ul style="margin: 0 0 1rem 1.5rem;">';
-      globalRoles.forEach(function (name) {
-        html += '<li><code>global:' + escapeHtml(name) + '</code></li>';
-      });
-      html += '</ul>';
+    const status = document.createElement('div');
+    status.style.color = 'var(--muted)';
+    status.style.fontSize = '0.85rem';
+    status.style.marginBottom = '0.75rem';
+    wrapper.appendChild(status);
+
+    wrapper.appendChild(renderApplicationMemberships(userId, appCatalog, roleCatalog, assigned, status));
+    wrapper.appendChild(renderRoleCheckboxes(userId, roleCatalog, assigned, status));
+
+    if (roleCatalog.length === 0) {
+      const empty = document.createElement('p');
+      empty.style.color = 'var(--muted)';
+      empty.textContent = 'No roles are available. Run the RBAC seed first.';
+      wrapper.appendChild(empty);
     }
 
-    const appNames = Object.keys(appRoles).sort();
-    if (appNames.length > 0) {
-      html += '<p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Per-application roles</p>';
-      html += '<ul style="margin: 0 0 0 1.5rem;">';
-      appNames.forEach(function (appName) {
-        appRoles[appName].forEach(function (roleName) {
-          html += '<li><code>app:' + escapeHtml(appName) + ':' + escapeHtml(roleName) + '</code></li>';
+    userRolesContent.innerHTML = '';
+    userRolesContent.appendChild(wrapper);
+  }
+
+  function renderApplicationMemberships(userId, apps, roleCatalog, assigned, statusEl) {
+    const section = document.createElement('div');
+    section.style.marginBottom = '1rem';
+    section.innerHTML = '<h3 style="margin: 0 0 0.5rem; font-size: 1rem;">Applications</h3>';
+
+    if (apps.length === 0) {
+      const empty = document.createElement('p');
+      empty.style.color = 'var(--muted)';
+      empty.textContent = 'No active applications found.';
+      section.appendChild(empty);
+      return section;
+    }
+
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(260px, 1fr))';
+    grid.style.gap = '0.5rem';
+
+    apps.forEach(function (app) {
+      const appRoles = roleCatalog.filter(function (role) {
+        return role.applicationId === app.id && (role.scope === 'application' || role.scope === 'internal');
+      });
+      const assignedAppRoles = appRoles.filter(function (role) { return assigned.has(roleToString(role)); });
+      const defaultRole = appRoles.find(function (role) { return role.scope === 'application' && role.name === 'user'; }) || appRoles[0];
+      const label = document.createElement('label');
+      label.style.display = 'flex';
+      label.style.alignItems = 'flex-start';
+      label.style.gap = '0.5rem';
+      label.style.padding = '0.6rem 0.7rem';
+      label.style.border = '1px solid var(--border)';
+      label.style.borderRadius = 'var(--radius)';
+      label.style.background = 'var(--bg)';
+
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = assignedAppRoles.length > 0;
+      input.disabled = !defaultRole;
+      input.addEventListener('change', function () {
+        toggleApplicationMembership(userId, appRoles, defaultRole, assigned, input.checked, statusEl);
+      });
+
+      const body = document.createElement('span');
+      const name = document.createElement('span');
+      name.style.display = 'block';
+      name.style.fontWeight = '600';
+      name.textContent = app.displayName || app.name || app.id;
+      const meta = document.createElement('span');
+      meta.style.display = 'block';
+      meta.style.color = 'var(--muted)';
+      meta.style.fontSize = '0.8rem';
+      meta.textContent = assignedAppRoles.length > 0
+        ? assignedAppRoles.map(function (role) { return role.name; }).join(', ')
+        : (defaultRole ? 'Not registered' : 'No assignable roles');
+      body.appendChild(name);
+      body.appendChild(meta);
+
+      label.appendChild(input);
+      label.appendChild(body);
+      grid.appendChild(label);
+    });
+
+    section.appendChild(grid);
+    return section;
+  }
+
+  function renderRoleCheckboxes(userId, roleCatalog, assigned, statusEl) {
+    const section = document.createElement('div');
+    section.innerHTML = '<h3 style="margin: 0 0 0.5rem; font-size: 1rem;">Roles</h3>';
+
+    const groups = groupRolesByApplication(roleCatalog);
+    Object.keys(groups).sort().forEach(function (groupName) {
+      const group = document.createElement('div');
+      group.style.marginBottom = '0.75rem';
+      const title = document.createElement('div');
+      title.style.color = 'var(--muted)';
+      title.style.fontSize = '0.85rem';
+      title.style.marginBottom = '0.35rem';
+      title.textContent = groupName;
+      group.appendChild(title);
+
+      groups[groupName].forEach(function (role) {
+        const roleString = roleToString(role);
+        const label = document.createElement('label');
+        label.style.display = 'inline-flex';
+        label.style.alignItems = 'center';
+        label.style.gap = '0.4rem';
+        label.style.margin = '0 0.75rem 0.5rem 0';
+        label.style.padding = '0.45rem 0.55rem';
+        label.style.border = '1px solid var(--border)';
+        label.style.borderRadius = 'var(--radius)';
+        label.style.background = 'var(--bg)';
+
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = assigned.has(roleString);
+        input.addEventListener('change', function () {
+          toggleRole(userId, role, assigned, input.checked, statusEl);
         });
+
+        const text = document.createElement('span');
+        text.textContent = roleString;
+        label.appendChild(input);
+        label.appendChild(text);
+        group.appendChild(label);
       });
-      html += '</ul>';
+      section.appendChild(group);
+    });
+
+    return section;
+  }
+
+  function groupRolesByApplication(roles) {
+    return roles.reduce(function (groups, role) {
+      const app = role.applicationId ? findApplication(role.applicationId) : null;
+      const key = role.scope === 'global' ? 'Global' : ((app && (app.displayName || app.name)) || role.applicationId || 'Application');
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(role);
+      return groups;
+    }, {});
+  }
+
+  function findApplication(applicationId) {
+    return cachedApplications.find(function (app) { return app.id === applicationId; }) || null;
+  }
+
+  function roleToString(role) {
+    if (!role) return '';
+    if (role.scope === 'global') return 'global:' + role.name;
+    const app = role.applicationId ? findApplication(role.applicationId) : null;
+    const appName = app ? app.name : role.applicationId;
+    const prefix = role.scope === 'internal' ? 'internal' : 'app';
+    return prefix + ':' + appName + ':' + role.name;
+  }
+
+  async function toggleApplicationMembership(userId, appRoles, defaultRole, assigned, checked, statusEl) {
+    if (checked) {
+      if (!defaultRole) return;
+      await toggleRole(userId, defaultRole, assigned, true, statusEl);
+      return;
     }
 
-    if (globalRoles.length === 0 && appNames.length === 0) {
-      html += '<p style="color: var(--muted);">No roles assigned. Use <code>./scripts/assign-role-by-email.sh --email=… --role=global:superadmin</code> (or <code>app:shop-assistant:admin</code>) to assign.</p>';
+    const assignedAppRoles = appRoles.filter(function (role) { return assigned.has(roleToString(role)); });
+    for (const role of assignedAppRoles) {
+      await toggleRole(userId, role, assigned, false, statusEl, true);
     }
+    loadUserRoles(userId);
+  }
 
-    userRolesContent.innerHTML = html;
+  async function toggleRole(userId, role, assigned, checked, statusEl, skipReload) {
+    const token = getAccessToken();
+    if (!token || !role || !role.id) return;
+
+    const roleString = roleToString(role);
+    if (statusEl) statusEl.textContent = checked ? 'Assigning ' + roleString + '...' : 'Removing ' + roleString + '...';
+
+    try {
+      const payload = role.applicationId ? { roleId: role.id, applicationId: role.applicationId } : { roleId: role.id };
+      const url = '/auth/admin/users/' + encodeURIComponent(userId) + '/roles' + (checked ? '' : '/' + encodeURIComponent(role.id));
+      const res = await fetch(url, {
+        method: checked ? 'POST' : 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Role update failed');
+      if (checked) assigned.add(roleString);
+      else assigned.delete(roleString);
+      if (statusEl) statusEl.textContent = 'Saved.';
+      if (!skipReload) loadUserRoles(userId);
+    } catch (e) {
+      if (statusEl) statusEl.textContent = e.message || 'Role update failed.';
+      loadUserRoles(userId);
+    }
   }
 
   function renderUsers(users) {
@@ -710,7 +1051,7 @@
 
     const table = document.createElement('table');
     table.className = 'users-table';
-    table.innerHTML = '<thead><tr><th>Email</th><th>Name</th><th>Phone</th><th>Status</th><th>Verified</th><th>Created</th><th>Actions</th></tr></thead><tbody></tbody>';
+    table.innerHTML = '<thead><tr><th>Email</th><th>Name</th><th>Phone</th><th>Status</th><th>Verified</th><th>Applications</th><th>Admin apps</th><th>Created</th><th>Actions</th></tr></thead><tbody></tbody>';
     const tbody = table.querySelector('tbody');
 
     users.forEach(function (user) {
@@ -725,7 +1066,9 @@
         '<td>' + escapeHtml(name) + '</td>' +
         '<td>' + escapeHtml(user.phone || '—') + '</td>' +
         '<td class="' + statusClass + '">' + escapeHtml(statusText) + '</td>' +
-        '<td>' + (user.isVerified ? '✓' : '—') + '</td>' +
+        '<td>' + (user.isVerified ? 'Yes' : '—') + '</td>' +
+        '<td>' + renderUserApplicationBadges(user.applications) + '</td>' +
+        '<td>' + renderUserApplicationBadges(user.adminApplications) + '</td>' +
         '<td>' + escapeHtml(createdDate) + '</td>' +
         '<td class="actions">' +
         '<button type="button" class="btn btn-small" data-action="edit" data-id="' + escapeHtml(user.id) + '">Edit</button>' +
@@ -777,6 +1120,15 @@
     usersContent.innerHTML = '';
     usersContent.appendChild(table);
     usersContent.appendChild(renderUsersPagination(users.length));
+  }
+
+  function renderUserApplicationBadges(apps) {
+    if (!Array.isArray(apps) || apps.length === 0) return '<span class="muted-small">—</span>';
+    return '<div class="admin-chip-list">' + apps.map(function (app) {
+      const label = app.displayName || app.name || app.id;
+      const roles = Array.isArray(app.roles) && app.roles.length > 0 ? ' · ' + app.roles.join(', ') : '';
+      return '<span class="admin-chip">' + escapeHtml(label + roles) + '</span>';
+    }).join('') + '</div>';
   }
 
   function renderUsersPagination(visibleCount) {
