@@ -6,7 +6,7 @@ Current focus:
 - Owner-reported hosted navigation defect: clicking reset page `Back to login` opened `/login` and immediately showed `Missing required query parameter: return_url`.
 - Auth branch: `main`.
 - Runtime code changes: hosted UI only.
-- Deployment: pending explicit owner approval.
+- Deployment: completed with images `localhost:5000/auth-microservice:49a2f30-20260628230756` and `localhost:5000/auth-microservice-web:49a2f30-20260628230756`.
 
 Implementation evidence:
 
@@ -23,6 +23,15 @@ Validation evidence:
 - `npm run build` passed.
 - `node --check web/server.js` passed.
 - Extracted inline script from `web/public/index.html` and `node --check /tmp/auth-hosted-inline-check.js` passed.
+- Owner approved production deployment on 2026-06-29 Europe/Prague.
+- Deploy script `npm run test:auth-contract` passed: 3 suites, 16 tests.
+- Deploy completed successfully in 279.77s with backend image `localhost:5000/auth-microservice:49a2f30-20260628230756` and web image `localhost:5000/auth-microservice-web:49a2f30-20260628230756`.
+- Deploy health check returned Auth status `ok`.
+- `kubectl -n statex-apps get deploy auth-microservice auth-microservice-web -o wide` showed both deployments `READY 1/1` on image tag `49a2f30-20260628230756`.
+- `curl -I -H Cache-Control: no-cache https://auth.alfares.cz/reset-password?token=synthetic-ui-check` returned HTTP 200.
+- `curl -I -H Cache-Control: no-cache https://auth.alfares.cz/login` returned HTTP 200.
+- Live `https://auth.alfares.cz/health` returned status `ok`.
+- Served hosted HTML contains `id="password-row"`, `resetLoginAnchor.href`, `(required by application)`, and `passwordRow.style.display = 'none'`; it no longer contains the old `Missing required query parameter: return_url` message.
 
 Boundary evidence:
 
@@ -36,8 +45,8 @@ Intent Compliance Report:
 - Boundary check: Auth remains the hosted credential and password reset authority.
 - Subagents used: none.
 - Validation evidence: focused hosted web test, build, diff-check, web server syntax, and inline script syntax passed.
-- Risks: production still serves the previous behavior until owner-approved deployment runs.
-- Next action: owner approves production deployment, then run `./scripts/deploy.sh` and live route checks.
+- Risks: browser cache should be refreshed if a tab was already open on the old hosted HTML.
+- Next action: owner verifies the hosted reset/login flow in browser.
 
 2026-06-28: Owner-selected Auth admin Users role/application checkbox management implemented and deployed on `alfares`. Gate decision: accept before deployment. Scope: `src/auth/admin-users.controller.ts`, `src/users/users.service.ts`, `web/public/admin.html`, `web/public/js/admin.js`, `web/public/css/style.css`, `docs/orchestrator/CONTEXT_PACKAGE.md`, `docs/orchestrator/EXECUTION_PLAN.md`, `docs/IMPLEMENTATION_STATE.md`, `docs/orchestrator/STATUS.md`. Implemented server-side `GET /auth/admin/users` filters for search text, application, active/inactive status, verified/unverified status, and application-admin-only; added per-user application and admin-application summaries; added `GET /auth/admin/users/application-admins` for admins grouped across every registered application; updated the selected-user roles panel so all global and per-application roles render as checkboxes; added application registration checkboxes that assign the default application `user` role and remove all assigned roles for that application when unchecked; reused existing `GET /auth/admin/roles`, `GET/POST/DELETE /auth/admin/users/:userId/roles`, and `GET /auth/admin/applications` contracts. Validation passed: `node --check web/public/js/admin.js`, `node --check web/server.js`, `git diff --check`, `npm run build`, `npm run lint`, and `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts` (6 tests). No production database writes by agents, role mutations by agents, decoded secrets, JWTs, refresh tokens, OAuth tokens, magic-link tokens, reset tokens, passwords, raw production user-data dumps, consumer-service code, JWT payload changes, RBAC assignment semantic changes, OAuth, magic-link, CORS, internal-service contracts, or database schema changes. Deployment completed with backend image `localhost:5000/auth-microservice:bf7e63c-20260628214651` after the post-deploy restart and web image `localhost:5000/auth-microservice-web:bf7e63c-20260628214214`. Live verification passed: `curl -I -H Cache-Control: no-cache https://auth.alfares.cz/admin` returned HTTP 200; served `/admin` HTML contains `View and update the selected user` and `/js/admin.js?v=20260628235000`; served admin JS contains `cachedRoles`, `/auth/admin/roles`, and `toggleApplicationMembership`; unauthenticated `GET /auth/admin/users/application-admins` returned HTTP 401, confirming the route is present and protected. Next unfinished task: owner browser-verifies checkbox assignment behavior with an authenticated admin session.
 # 2026-06-28 - Admin Users Layout Width Fix
