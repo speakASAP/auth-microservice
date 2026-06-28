@@ -1,3 +1,40 @@
+# 2026-06-28 - Admin Users Layout Width Fix
+
+Current focus:
+
+- Owner-reported production UI defect: the live `/admin` Users page is too narrow, making the populated table look clipped and hiding action controls.
+- Auth branch: `main`.
+- Runtime code changes: hosted admin CSS/cache-busting only.
+
+Implementation evidence:
+
+- Updated `web/public/css/style.css` so the authenticated dashboard container is `80vw` with no `max-width` cap.
+- Changed `.log-list` to allow horizontal overflow instead of clipping table content.
+- Added a `1100px` minimum width to `.users-table` so the Actions column remains reachable.
+- Added a mobile fallback for dashboard width under `900px`.
+- Bumped the admin asset query in `web/public/admin.html` to force refreshed hosted admin assets.
+
+Validation evidence:
+
+- `git status --short --branch` was clean before editing target files.
+- Source inspection confirmed the page data is rendered by `web/public/js/admin.js` into `#users-container`; the observed issue is layout clipping, not an empty users API response.
+- Planned checks: `node --check web/public/js/admin.js`, `node --check web/server.js`, `npm run build`, `git diff --check`, `curl -I -H Cache-Control: no-cache https://auth.alfares.cz/admin`, deploy rollout checks, and live route check after deploy.
+
+Boundary evidence:
+
+- No Auth endpoint, JWT payload, RBAC, OAuth, magic-link, redirect allowlist, CORS, internal-service, database schema, consumer-service code, decoded secret, JWT, refresh token, OAuth token, magic-link token, reset token, password, API key, or raw production user data changed or was recorded.
+
+Intent Compliance Report:
+
+- Goal: make the hosted Auth admin Users page wide enough to inspect populated user rows.
+- Implemented: dashboard-only width and table overflow fix.
+- Not implemented: API/data changes, user-data inspection, Auth contract changes, or role changes.
+- Boundary check: Auth remains identity/access authority; this is hosted admin presentation only.
+- Subagents used: none.
+- Validation evidence: pending command/runtime checks below.
+- Risks: browser cache may retain the old CSS until the refreshed admin asset is served by the deployed web image.
+- Next action: run validation and deploy if checks pass.
+
 # 2026-06-27 - Catalog Service Identity Ownership Confirmation
 
 Change: created Auth-owned runtime Vault property `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN` without printing or recording the value. Catalog and Orders ExternalSecret manifests consume that property under their local `CATALOG_INTERNAL_SERVICE_TOKEN` environment key.
