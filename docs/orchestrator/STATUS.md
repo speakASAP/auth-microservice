@@ -5,6 +5,7 @@ Current focus:
 - Owner-reported production UI defect: the live `/admin` Users page is too narrow, making the populated table look clipped and hiding action controls.
 - Auth branch: `main`.
 - Runtime code changes: hosted admin CSS/cache-busting only.
+- Deployment: completed with images `localhost:5000/auth-microservice:a39f9d2-20260628212026` and `localhost:5000/auth-microservice-web:a39f9d2-20260628212026`.
 
 Implementation evidence:
 
@@ -18,7 +19,16 @@ Validation evidence:
 
 - `git status --short --branch` was clean before editing target files.
 - Source inspection confirmed the page data is rendered by `web/public/js/admin.js` into `#users-container`; the observed issue is layout clipping, not an empty users API response.
-- Planned checks: `node --check web/public/js/admin.js`, `node --check web/server.js`, `npm run build`, `git diff --check`, `curl -I -H Cache-Control: no-cache https://auth.alfares.cz/admin`, deploy rollout checks, and live route check after deploy.
+- `node --check web/public/js/admin.js` passed.
+- `node --check web/server.js` passed.
+- `npm run build` passed.
+- `git diff --check` passed before deployment.
+- Deploy script `npm run test:auth-contract` passed: 3 suites, 16 tests.
+- Deploy completed successfully in 187.21s with images `localhost:5000/auth-microservice:a39f9d2-20260628212026` and `localhost:5000/auth-microservice-web:a39f9d2-20260628212026`.
+- Deploy health check returned Auth status `ok`.
+- `kubectl -n statex-apps get deploy auth-microservice auth-microservice-web` showed both deployments ready on image tag `a39f9d2-20260628212026`.
+- `curl -I -H Cache-Control: no-cache https://auth.alfares.cz/admin` returned HTTP 200.
+- Live `https://auth.alfares.cz/css/style.css` contains `#dashboard-view.container`, `width: 80vw`, `overflow-x: auto`, and `min-width: 1100px`.
 
 Boundary evidence:
 
@@ -31,9 +41,9 @@ Intent Compliance Report:
 - Not implemented: API/data changes, user-data inspection, Auth contract changes, or role changes.
 - Boundary check: Auth remains identity/access authority; this is hosted admin presentation only.
 - Subagents used: none.
-- Validation evidence: pending command/runtime checks below.
-- Risks: browser cache may retain the old CSS until the refreshed admin asset is served by the deployed web image.
-- Next action: run validation and deploy if checks pass.
+- Validation evidence: syntax checks, build, deploy contract tests, rollout, live route, and served CSS checks passed.
+- Risks: existing browser tabs may need a hard refresh if they cached the old CSS before deployment.
+- Next action: owner verifies the live `/admin` Users page in browser.
 
 # 2026-06-27 - Catalog Service Identity Ownership Confirmation
 
