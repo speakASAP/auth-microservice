@@ -18,7 +18,7 @@ downstream:
 
 ## Target Task
 
-Add Auth admin Users search and filters on `/admin`, including filtering users by application, viewing all application admins grouped by application, and showing each listed user's application admin assignments.
+Add Auth admin selected-user role/application management on `/admin`: show all roles assigned to the selected user, show applications where the user is registered, and allow adding/removing roles and applications through checkboxes. Preserve the adjacent Users search/filter and application-admin overview work already present in the remote worktree.
 
 ## Upstream Traceability
 
@@ -28,7 +28,7 @@ Add Auth admin Users search and filters on `/admin`, including filtering users b
 - Verification standard: `docs/UNIFIED_AUTH_VERIFICATION.md`
 - Operational environment: `docs/ENV_CORS_AND_AUTH_CHECK.md`
 - Readiness checks: `docs/orchestrator/READINESS_GATES.md`
-- DocsRAG: queried from the Auth pod for `Auth admin users page search filters application users admin dashboard`; returned HTTP 200 with no matching source headings.
+- DocsRAG: queried from the Auth pod for `Auth admin user role application checkbox assignment dashboard`; returned HTTP 200 with no matching source headings.
 
 ## Included Documents
 
@@ -59,9 +59,9 @@ Read before editing:
 
 - `src/auth/admin-users.controller.ts` for admin user list query parameters and the application-admins API.
 - `src/users/users.service.ts` for admin list filtering, application summaries, and application-admin grouping.
-- `web/public/admin.html` for admin Users filters and the Application admins section.
-- `web/public/js/admin.js` for filter state, API requests, application select population, and admin-app rendering.
-- `web/public/css/style.css` for filter and badge layout.
+- `web/public/admin.html` for admin Users filters, Application admins, and selected-user roles copy/cache version.
+- `web/public/js/admin.js` for filter state, API requests, application select population, admin-app rendering, role catalog loading, and role/application checkbox assignment.
+- `web/public/css/style.css` for filter, badge, and checkbox layout.
 
 ## Excluded Documents And Data
 
@@ -83,11 +83,12 @@ Do not read, print, or record:
 - Add server-side admin user search and filters for search text, application, status, verification, and application-admin-only.
 - Add an Auth-admin-only overview of application-scoped admin assignments across registered applications.
 - Add user-list columns summarizing application access and application admin roles.
+- Add selected-user role checkboxes and application membership checkboxes backed by existing Auth admin role APIs.
 - Update admin static asset version and documentation state.
 
 ## Forbidden Changes
 
-- Production database writes or role mutations.
+- Agent-driven production database writes or direct role mutations outside the existing admin APIs.
 - Secret material, decoded runtime config, raw production user-data dumps, or token evidence.
 - JWT/RBAC contract changes beyond read-only admin reporting.
 - Consumer-service code or gateway ownership changes.
