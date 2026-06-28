@@ -2,7 +2,7 @@
 
 YAML metadata:
 - id: AUTH-EXECUTION-PLAN
-- status: validated-not-deployed
+- status: deployed
 - owner: owner-selected-reset-password-ux-fix
 - created: 2026-06-28
 - last_updated: 2026-06-28
