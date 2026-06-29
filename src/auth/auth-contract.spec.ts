@@ -25,7 +25,10 @@ describe('Auth identifier and contact contract', () => {
     const service: any = Object.create(AuthService.prototype);
     service.usersService = usersService;
     service.rolesService = { getUserRoles: jest.fn(async () => ['app:test:user']) };
-    service.jwtService = { sign: jest.fn(() => 'tok') };
+    service.jwtService = {
+      sign: jest.fn(() => 'tok'),
+      verify: jest.fn(() => ({ sub: user.id })),
+    };
     service.logger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
     service.legacyIdentityMappingRepository = { createQueryBuilder: jest.fn() };
     return { service: service as AuthService, usersService };
@@ -137,5 +140,55 @@ describe('Auth identifier and contact contract', () => {
 
     expect(usersService.findByPhone).toHaveBeenCalledWith('+420777123456');
     expect(usersService.update).not.toHaveBeenCalled();
+  });
+
+  it('exposes service actor fields for service principals during token validation', async () => {
+    const serviceUser = {
+      ...baseUser,
+      id: 'service-user-1',
+      email: 'catalog-warehouse-service@example.test',
+      userType: 'service',
+      perApplicationPreferences: {
+        serviceIdentity: {
+          serviceName: 'catalog-microservice',
+          clientId: 'catalog-microservice',
+          authMethod: 'auth-service-jwt',
+        },
+      },
+    } as any;
+    const { service } = makeService(serviceUser);
+    (service as any).rolesService.getUserRoles.mockResolvedValue(['internal:warehouse-microservice:admin']);
+
+    const result = await service.validateToken('service-token');
+
+    expect(result).toMatchObject({
+      id: 'service-user-1',
+      userType: 'service',
+      serviceName: 'catalog-microservice',
+      service: 'catalog-microservice',
+      clientId: 'catalog-microservice',
+      authMethod: 'auth-service-jwt',
+      roles: ['internal:warehouse-microservice:admin'],
+    });
+    expect(result).not.toHaveProperty('password');
+  });
+
+  it('does not add service actor fields to normal users during token validation', async () => {
+    const { service } = makeService({
+      ...baseUser,
+      perApplicationPreferences: {
+        serviceIdentity: {
+          serviceName: 'catalog-microservice',
+        },
+      },
+    } as any);
+
+    const result = await service.validateToken('user-token');
+
+    expect(result.userType).toBe('end_user');
+    expect(result).not.toHaveProperty('serviceName');
+    expect(result).not.toHaveProperty('service');
+    expect(result).not.toHaveProperty('clientId');
+    expect(result).not.toHaveProperty('authMethod');
   });
 });
