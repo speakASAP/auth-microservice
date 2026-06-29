@@ -3,8 +3,9 @@
 #
 # Usage: ./scripts/assign-role-by-email.sh --email=user@example.com --role=global:superadmin
 #        ./scripts/assign-role-by-email.sh --email=test@example.com --role=app:shop-assistant:admin
+#        ./scripts/assign-role-by-email.sh --email=service@example.com --role=internal:warehouse-microservice:admin --dry-run
 #
-# Role must be one of: global:superadmin, app:shop-assistant:admin
+# Role format: global:<role>, app:<application>:<role>, or internal:<service>:<role>
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
