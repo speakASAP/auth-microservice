@@ -289,6 +289,7 @@ export class AuthService {
       const sanitizedUser = this.sanitizeUser(user);
       return {
         ...sanitizedUser,
+        ...this.resolveServiceIdentity(user),
         roles,
       };
     } catch (error) {
@@ -1464,6 +1465,32 @@ export class AuthService {
   private sanitizeUser(user: User) {
     const { password, ...sanitized } = user;
     return sanitized;
+  }
+
+  private resolveServiceIdentity(user: User) {
+    if (user.userType !== 'service') {
+      return {};
+    }
+
+    const preferences = user.perApplicationPreferences as
+      | { serviceIdentity?: { serviceName?: unknown; clientId?: unknown; authMethod?: unknown } }
+      | null
+      | undefined;
+    const identity = preferences?.serviceIdentity;
+    const serviceName = typeof identity?.serviceName === 'string' ? identity.serviceName.trim() : '';
+    const clientId = typeof identity?.clientId === 'string' ? identity.clientId.trim() : serviceName;
+    const authMethod = typeof identity?.authMethod === 'string' ? identity.authMethod.trim() : 'auth-service-jwt';
+
+    if (!serviceName) {
+      return {};
+    }
+
+    return {
+      serviceName,
+      service: serviceName,
+      clientId,
+      authMethod,
+    };
   }
 
   private buildTokenHandoffUrl(
