@@ -98,7 +98,7 @@ export class AuthController {
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   async getProfile(@Request() req) {
-    return { user: req.user };
+    return { user: await this.authService.getProfile(req.user.id) };
   }
 
   @Post('magic-link/request')

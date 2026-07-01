@@ -2,58 +2,58 @@
 
 YAML metadata:
 - id: AUTH-EXECUTION-PLAN
-- status: deployed
-- owner: owner-selected-reset-password-ux-fix
-- created: 2026-06-28
-- last_updated: 2026-06-28
+- status: validated-source
+- owner: owner-selected-profile-single-source-audit
+- created: 2026-07-01
+- last_updated: 2026-07-01
 - completeness_level: bounded
 - upstream: user production request, docs/UNIFIED_AUTH_CONTRACT.md, docs/orchestrator/PROJECT_INVARIANTS.md
 - downstream: docs/orchestrator/STATUS.md
 
 ## Selected Goal And Chunk
 
-Owner-selected hosted reset-password UX fix: after password reset success, remove the visible new-password fields from the page, and make the `Back to login` link safe so it does not immediately show `Missing required query parameter: return_url`.
+Owner-selected Auth profile single-source audit and contract hardening: verify that registered user identity/contact data is stored in Auth and make `/auth/profile` an explicit sanitized Auth database profile read for consuming services after hosted Auth handoff.
 
 ## Upstream Traceability
 
-- Vision: Auth remains the Statex identity and hosted credential authority.
-- Goal impact: users who complete password reset see only success state and can navigate back to hosted login without a confusing query-parameter error.
-- System: hosted `web/public/index.html` served by Auth backend/web.
-- Feature: hosted password reset UI.
-- Task: update client-side reset success rendering and reset-page login link behavior; keep API contracts unchanged.
-- Coding prompt: patch only hosted Auth UI/test/docs; do not expose secrets, tokens, passwords, or raw production user-data.
-- Validation: hosted Auth focused Jest test, inline script syntax check, web server syntax check, TypeScript build, and diff-check.
+- Vision: Auth remains the Statex ecosystem identity and access authority.
+- Goal impact: a user who registers in one Alfares application can have their Auth-owned profile fields read by another application through the shared Auth contract instead of re-entering or forking profile data.
+- System: Auth `users` table, hosted Auth handoff, `/auth/validate`, `/auth/profile`, and Bazos hosted Auth consumer bridge.
+- Feature: canonical registered-user profile read.
+- Task: inspect profile persistence/response paths, patch `/auth/profile` to use a fresh sanitized Auth DB read, add regression coverage, document the consumer contract, and record evidence.
+- Coding prompt: patch only Auth profile contract/source/tests/docs; do not expose secrets, tokens, passwords, or raw production user data.
+- Validation: focused Auth contract tests, hosted Auth contract suite, build, lint, diff-check, DocsRAG query result, and read-only Bazos consumer spot check.
 
 ## Project Invariants
 
-- AUTH-INV-001 applies: Auth keeps ownership of identity, credentials, hosted login, and password reset.
-- AUTH-INV-002 applies: no catalog, warehouse, orders, payment, lead, marketing, notification, logging, database, or gateway ownership moves into Auth.
-- AUTH-INV-003 applies: no API, JWT, RBAC, OAuth, magic-link, redirect allowlist, CORS, internal-service, database, or consumer-service contract changes.
-- AUTH-INV-004 applies: no secrets, passwords, JWTs, refresh tokens, OAuth tokens, magic-link tokens, password-reset tokens, API keys, or raw production user-data may be recorded.
-- AUTH-INV-005 applies: hosted Auth remains the supported credential UI.
-- AUTH-INV-006 applies: evidence is recorded in status and implementation state.
-- AUTH-INV-007 not applicable: no broad architecture or cross-service contract decision.
+- AUTH-INV-001 applies: Auth keeps ownership of identity, login, JWT, refresh tokens, registered-user preferences, and service authentication.
+- AUTH-INV-002 applies: Bazos platform account/session/identity data stays in Bazos; no catalog, warehouse, orders, payment, lead, marketing, notification, logging, database, or gateway ownership moves into Auth.
+- AUTH-INV-003 applies: no JWT shape, RBAC, OAuth, magic-link, CORS, internal-service, database schema, or breaking endpoint contract change.
+- AUTH-INV-004 applies: no secrets, tokens, passwords, decoded JWTs, raw production user data, Bazos cookies, or session payloads are recorded.
+- AUTH-INV-005 applies: hosted Auth remains the supported login/register surface.
+- AUTH-INV-006 applies: validation evidence is recorded in status and implementation state.
+- AUTH-INV-007 applies: DocsRAG was queried from the running Auth pod; it returned HTTP 200 with no matching context/sources for the specific profile query.
 
 ## Sensitive-Data Handling
 
-Classification: no production data. The implementation uses only UI source, route names, and synthetic/static test assertions.
+Classification: synthetic plus source metadata. Tests use synthetic user fields only. Bazos inspection was source-only and did not read production DB rows, cookies, sessions, JWT values, or token values.
 
-Allowed evidence: file paths, route paths, query parameter names, command pass/fail summaries.
+Allowed evidence: file paths, route paths, field names, command pass/fail summaries, source-only consumer behavior summaries.
 
-Forbidden evidence: secret values, tokens, passwords, decoded runtime config, raw production user rows, Authorization values, or real reset links.
+Forbidden evidence: secret values, JWTs, refresh tokens, OAuth tokens, reset tokens, magic-link tokens, passwords, raw production user rows, Bazos platform cookies, Bazos session envelopes, Authorization values, or decoded runtime config.
 
 ## Contract Impact
 
-No Auth API contract change. `POST /auth/password-reset-confirm` remains unchanged. Password reset tokens, token expiry, reset email generation, JWT payloads, refresh tokens, OAuth, magic links, RBAC, CORS, internal service contracts, database schema, redirect allowlist, and consumer-service behavior remain unchanged.
-
-Hosted UI impact: after successful reset confirmation, the password input rows and submit button are hidden. The reset page's `Back to login` link preserves `return_url`, `client_id`, and `state` when present, and a plain `/login` load no longer shows an immediate missing-parameter error before user action.
+`GET /auth/profile` now explicitly calls `AuthService.getProfile(req.user.id)`, which reads the current Auth DB user and returns `sanitizeUser(user)`. This clarifies and hardens the existing profile endpoint as the canonical sanitized Auth profile read. JWT payload shape, `/auth/validate`, `/auth/register`, `/auth/login`, refresh tokens, OAuth, magic links, RBAC, CORS, internal-service contracts, database schema, and consumer-service source are unchanged.
 
 ## Scope
 
 Allowed files:
 
-- `web/public/index.html`
-- `src/auth/hosted-auth-web.spec.ts`
+- `src/auth/auth.service.ts`
+- `src/auth/auth.controller.ts`
+- `src/auth/auth-contract.spec.ts`
+- `docs/UNIFIED_AUTH_CONTRACT.md`
 - `docs/orchestrator/CONTEXT_PACKAGE.md`
 - `docs/orchestrator/EXECUTION_PLAN.md`
 - `docs/orchestrator/STATUS.md`
@@ -61,18 +61,27 @@ Allowed files:
 
 ## Parallel Execution
 
-- Workstream: hosted reset UI behavior. Status: complete. Owner role: Auth frontend. Files: `web/public/index.html`.
-- Workstream: focused hosted web regression coverage. Status: complete. Owner role: validation. Files: `src/auth/hosted-auth-web.spec.ts`.
-- Integration owner: original thread. Validation owner: original thread. Merge order: UI first, test second, docs last. No separate workers were launched because this is a narrow two-source-file UI fix.
+- Workstream: Auth profile endpoint hardening. Status: complete. Owner role: Auth backend. Files: `src/auth/auth.service.ts`, `src/auth/auth.controller.ts`.
+- Workstream: Auth contract regression coverage. Status: complete. Owner role: validation. Files: `src/auth/auth-contract.spec.ts`.
+- Workstream: consumer spot check. Status: complete, read-only. Owner role: integration auditor. Files inspected in `bazos-service`; no edits.
+- Integration owner: original thread. Validation owner: original thread. Merge order: Auth source, Auth tests, Auth docs/status. No separate workers were launched because the code edit is small and only Auth files were changed; Bazos inspection stayed read-only.
 
 ## Validation Plan And Evidence
 
-- `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts`: passed, 6 tests.
-- `git diff --check`: passed.
+- DocsRAG query from running Auth pod: HTTP 200, no matching context/sources returned for the specific Hevrike/Bazos profile query.
+- `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts`: passed, 8 tests.
+- `npm run test:auth-contract`: passed, 3 suites and 19 tests.
 - `npm run build`: passed.
-- `node --check web/server.js`: passed.
-- Extracted inline script from `web/public/index.html` to `/tmp/auth-hosted-inline-check.js`; `node --check /tmp/auth-hosted-inline-check.js`: passed.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+- Read-only Bazos source spot check: Bazos hosted Auth migration is present; `/ui/auth/me` calls Auth validation and returns `validation.user`; Bazos local `BazosAccount` and `BazosIdentity` remain Bazos-platform entities, not global Auth profile ownership.
 
 ## Deployment Plan
 
-Production deployment is pending explicit owner approval. After approval, run `./scripts/deploy.sh`, then verify `https://auth.alfares.cz/reset-password?token=synthetic-ui-check` returns the hosted reset page and `https://auth.alfares.cz/login` does not render the old immediate missing-`return_url` error.
+Production deployment was not performed in this session. Deploy only after explicit owner approval:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && ./scripts/deploy.sh'
+```
+
+Post-deploy checks should include Auth `/health`, `/auth/profile` with an owner-provided test token or approved synthetic flow, and a Bazos `/ui/auth/me` profile read through the hosted Auth callback path.

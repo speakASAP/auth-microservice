@@ -349,6 +349,15 @@ export class AuthService {
     return user;
   }
 
+  async getProfile(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    return this.sanitizeUser(user);
+  }
+
   private normalizeIdentifier(identifier?: string): string {
     return (identifier || '').trim();
   }

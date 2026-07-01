@@ -38,7 +38,7 @@ All JSON endpoints are under `/auth`.
 | `POST` | `/auth/login` | Authenticate email or phone identifier plus password and return tokens. Legacy `email` payloads remain supported. |
 | `POST` | `/auth/validate` | Validate an access token. |
 | `POST` | `/auth/refresh` | Exchange a valid refresh token for a new token pair. |
-| `GET` | `/auth/profile` | Return the authenticated JWT user. Requires bearer auth. |
+| `GET` | `/auth/profile` | Return the authenticated user's canonical sanitized Auth profile from the Auth database. Requires bearer auth. |
 | `POST` | `/auth/password-reset-request` | Create a password-reset token and request notification delivery. |
 | `POST` | `/auth/password-reset-confirm` | Consume a password-reset token and set a new password. |
 | `POST` | `/auth/password-change` | Change password for the authenticated user. Requires bearer auth. |
@@ -68,6 +68,8 @@ Email/password `register` and `login` responses include:
 ```
 
 When the identifier is an email address, Auth looks up the canonical email. When it is not an email address, Auth normalizes it as a phone number and looks in both `users.phone` and phone entries in `users.contactInfo`. Successful email and phone password login return the same `user`, `accessToken`, and `refreshToken` contract.
+
+`GET /auth/profile` is the canonical profile read for consuming applications after hosted Auth handoff. Consumers must initialize or refresh local application profile views from this Auth-owned response, not from application-local registration forms or stale JWT claims. The response is read from the Auth `users` table for the authenticated subject and is sanitized before return; it includes Auth-owned identity/contact fields such as `email`, `firstName`, `lastName`, `phone`, `contactInfo`, and Auth-owned preference/source metadata when present, and never includes `password`.
 
 `POST /auth/register-contact` remains a provisioning endpoint for Marathon, SpeakASAP, and similar callers. It creates or updates the Auth user and returns the canonical `userId`, `authenticated: false`, `provisioning: true`, and sanitized `user`. Any legacy `sessionId` in this response is compatibility metadata only; consumers must not treat it as an Auth JWT, refresh token, cookie session, or ecosystem authentication proof. For new users, `source` records the initial provisioning source. For existing users, Auth preserves the original `source` and records additional provisioning sources under `perApplicationPreferences.authSources.<source>`, for example `perApplicationPreferences.authSources.marathon`, so one central identity can belong to several Alfares applications without losing origin history.
 

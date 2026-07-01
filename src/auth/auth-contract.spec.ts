@@ -142,6 +142,41 @@ describe('Auth identifier and contact contract', () => {
     expect(usersService.update).not.toHaveBeenCalled();
   });
 
+  it('returns the canonical sanitized Auth profile from the database', async () => {
+    const { service, usersService } = makeService({
+      ...baseUser,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      phone: '+420777123456',
+      contactInfo: [{ type: 'phone', value: '+420777123456', isPrimary: true }],
+      perApplicationPreferences: {
+        authSources: {
+          hevrike: { source: 'hevrike', provisioned: true },
+          bazos: { source: 'bazos', provisioned: true },
+        },
+      },
+    } as any);
+
+    const result = await service.getProfile('user-1');
+
+    expect(usersService.findById).toHaveBeenCalledWith('user-1');
+    expect(result).toMatchObject({
+      id: 'user-1',
+      email: 'person@example.test',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      phone: '+420777123456',
+      contactInfo: [{ type: 'phone', value: '+420777123456', isPrimary: true }],
+      perApplicationPreferences: expect.objectContaining({
+        authSources: expect.objectContaining({
+          hevrike: expect.objectContaining({ source: 'hevrike' }),
+          bazos: expect.objectContaining({ source: 'bazos' }),
+        }),
+      }),
+    });
+    expect(result).not.toHaveProperty('password');
+  });
+
   it('exposes service actor fields for service principals during token validation', async () => {
     const serviceUser = {
       ...baseUser,
