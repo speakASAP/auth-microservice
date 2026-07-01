@@ -32,6 +32,7 @@ import { ContactCodeRequestDto } from './dto/contact-code-request.dto';
 import { ContactCodeVerifyDto } from './dto/contact-code-verify.dto';
 import { InternalServiceGuard } from './guards/internal-service.guard';
 import { UpdateUserMarketingPreferencesDto } from './dto/update-user-marketing-preferences.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -99,6 +100,12 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async getProfile(@Request() req) {
     return { user: await this.authService.getProfile(req.user.id) };
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  async updateProfile(@Request() req, @Body() dto: UpdateProfileDto) {
+    return { user: await this.authService.updateProfile(req.user.id, dto) };
   }
 
   @Post('magic-link/request')

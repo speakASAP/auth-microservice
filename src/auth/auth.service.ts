@@ -25,6 +25,7 @@ import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
 import { PasswordResetConfirmDto } from './dto/password-reset-confirm.dto';
 import { PasswordChangeDto } from './dto/password-change.dto';
 import { ContactRegisterDto } from './dto/contact-register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { LoggerService } from '../../shared/logger/logger.service';
 import { User } from '../users/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -825,6 +826,126 @@ export class AuthService {
     }
   }
 
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const startedAt = Date.now();
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const nextFirstName = this.cleanOptionalString(dto.firstName);
+    const nextLastName = this.cleanOptionalString(dto.lastName);
+    const nextPhone = this.normalizePhone(dto.phone);
+    const nextPreferences = this.mergeCanonicalProfile(
+      user.perApplicationPreferences,
+      dto.profile,
+      dto.address,
+    );
+    const nextContacts = nextPhone
+      ? this.upsertPrimaryContact(user.contactInfo || [], { type: 'phone', value: nextPhone, isPrimary: true })
+      : user.contactInfo;
+
+    await this.usersService.update(userId, {
+      ...user,
+      firstName: nextFirstName ?? user.firstName,
+      lastName: nextLastName ?? user.lastName,
+      phone: nextPhone || user.phone,
+      contactInfo: nextContacts,
+      perApplicationPreferences: nextPreferences,
+      lastActivity: new Date(),
+    } as User);
+
+    const updatedUser = await this.usersService.findById(userId);
+    if (!updatedUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    this.logger.log(
+      `Authenticated profile updated user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`,
+      'AuthService',
+    );
+    return this.sanitizeUser(updatedUser);
+  }
+
+  private mergeCanonicalProfile(
+    existing: Record<string, unknown> | null | undefined,
+    profilePatch?: Record<string, unknown>,
+    addressPatch?: UpdateProfileDto['address'],
+  ): Record<string, unknown> {
+    const base = existing && typeof existing === 'object' && !Array.isArray(existing) ? existing : {};
+    const existingCanonical = base.canonicalProfile &&
+      typeof base.canonicalProfile === 'object' &&
+      !Array.isArray(base.canonicalProfile)
+      ? base.canonicalProfile as Record<string, unknown>
+      : {};
+    const existingAddress = existingCanonical.address &&
+      typeof existingCanonical.address === 'object' &&
+      !Array.isArray(existingCanonical.address)
+      ? existingCanonical.address as Record<string, unknown>
+      : {};
+    const cleanedAddress = this.cleanAddress(addressPatch);
+    const nextCanonical: Record<string, unknown> = {
+      ...existingCanonical,
+      ...(profilePatch || {}),
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (cleanedAddress) {
+      nextCanonical.address = {
+        ...existingAddress,
+        ...cleanedAddress,
+      };
+    }
+
+    return {
+      ...base,
+      canonicalProfile: nextCanonical,
+    };
+  }
+
+  private cleanAddress(address?: UpdateProfileDto['address']): Record<string, string> | null {
+    if (!address) {
+      return null;
+    }
+
+    const cleaned: Record<string, string> = {};
+    for (const key of ['firstName', 'lastName', 'street', 'city', 'postalCode', 'country', 'phone'] as const) {
+      const value = this.cleanOptionalString(address[key]);
+      if (value !== undefined) {
+        cleaned[key] = key === 'phone' ? this.normalizePhone(value) || value : value;
+      }
+    }
+
+    return Object.keys(cleaned).length ? cleaned : null;
+  }
+
+  private cleanOptionalString(value?: string | null): string | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    return String(value).trim();
+  }
+
+  private upsertPrimaryContact(
+    contacts: Array<{ type: string; value: string; isPrimary?: boolean }>,
+    nextContact: { type: string; value: string; isPrimary?: boolean },
+  ) {
+    const normalized = this.normalizeContactInfo(contacts || []);
+    const withoutSameType = normalized.map((contact) => (
+      contact.type === nextContact.type ? { ...contact, isPrimary: false } : contact
+    ));
+    const existingIndex = withoutSameType.findIndex((contact) =>
+      this.contactsMatch(contact.type, contact.value, nextContact.type, nextContact.value),
+    );
+
+    if (existingIndex >= 0) {
+      withoutSameType[existingIndex] = nextContact;
+      return withoutSameType;
+    }
+
+    return [...withoutSameType, nextContact];
+  }
+
   async loginContact(type: string, value: string) {
     const normalizedType = (type || '').trim().toLowerCase();
     const normalizedValue = this.normalizeContactValue(normalizedType, value);
@@ -1473,7 +1594,22 @@ export class AuthService {
 
   private sanitizeUser(user: User) {
     const { password, ...sanitized } = user;
-    return sanitized;
+    const preferences = user.perApplicationPreferences as Record<string, unknown> | null | undefined;
+    const canonicalProfile = preferences?.canonicalProfile &&
+      typeof preferences.canonicalProfile === 'object' &&
+      !Array.isArray(preferences.canonicalProfile)
+      ? preferences.canonicalProfile as Record<string, unknown>
+      : undefined;
+    const profileAddress = canonicalProfile?.address &&
+      typeof canonicalProfile.address === 'object' &&
+      !Array.isArray(canonicalProfile.address)
+      ? canonicalProfile.address
+      : undefined;
+
+    return {
+      ...sanitized,
+      ...(profileAddress ? { profileAddress } : {}),
+    };
   }
 
   private resolveServiceIdentity(user: User) {

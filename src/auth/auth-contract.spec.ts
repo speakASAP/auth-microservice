@@ -177,6 +177,85 @@ describe('Auth identifier and contact contract', () => {
     expect(result).not.toHaveProperty('password');
   });
 
+  it('updates canonical Auth profile and address in the central profile document', async () => {
+    const { service, usersService } = makeService({
+      ...baseUser,
+      firstName: 'Old',
+      contactInfo: [{ type: 'email', value: 'person@example.test', isPrimary: true }],
+      perApplicationPreferences: {
+        authSources: { flipflop: { source: 'flipflop' } },
+      },
+    } as any);
+
+    usersService.update.mockImplementation(async (_id: string, patch: any) => ({ ...baseUser, ...patch }));
+    usersService.findById
+      .mockResolvedValueOnce({
+        ...baseUser,
+        firstName: 'Old',
+        contactInfo: [{ type: 'email', value: 'person@example.test', isPrimary: true }],
+        perApplicationPreferences: { authSources: { flipflop: { source: 'flipflop' } } },
+      } as any)
+      .mockResolvedValueOnce({
+        ...baseUser,
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        phone: '+420777123456',
+        contactInfo: [
+          { type: 'email', value: 'person@example.test', isPrimary: true },
+          { type: 'phone', value: '+420777123456', isPrimary: true },
+        ],
+        perApplicationPreferences: {
+          authSources: { flipflop: { source: 'flipflop' } },
+          canonicalProfile: {
+            address: {
+              street: 'Vaclavske namesti 1',
+              city: 'Praha',
+              postalCode: '11000',
+              country: 'Czech Republic',
+            },
+          },
+        },
+      } as any);
+
+    const result = await service.updateProfile('user-1', {
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      phone: '+420 777 123 456',
+      address: {
+        street: 'Vaclavske namesti 1',
+        city: 'Praha',
+        postalCode: '11000',
+        country: 'Czech Republic',
+      },
+    });
+
+    expect(usersService.update).toHaveBeenCalledWith('user-1', expect.objectContaining({
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      phone: '+420777123456',
+      contactInfo: expect.arrayContaining([
+        expect.objectContaining({ type: 'phone', value: '+420777123456', isPrimary: true }),
+      ]),
+      perApplicationPreferences: expect.objectContaining({
+        authSources: expect.objectContaining({ flipflop: expect.objectContaining({ source: 'flipflop' }) }),
+        canonicalProfile: expect.objectContaining({
+          address: expect.objectContaining({
+            street: 'Vaclavske namesti 1',
+            city: 'Praha',
+            postalCode: '11000',
+            country: 'Czech Republic',
+          }),
+        }),
+      }),
+    }));
+    expect(result).toMatchObject({
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      phone: '+420777123456',
+    });
+    expect(result).not.toHaveProperty('password');
+  });
+
   it('exposes service actor fields for service principals during token validation', async () => {
     const serviceUser = {
       ...baseUser,
