@@ -1,3 +1,31 @@
+## 2026-07-02 - Goal 10.20 FlipFlop Profile Invoice Management
+
+Current focus:
+
+- Complete the source-level FlipFlop profile-management surface for Auth-owned reusable invoice profiles and align default-selection methods with the Auth contract.
+
+Evidence:
+
+- FlipFlop commit: `87e47ee feat: manage auth invoice profiles in account`.
+- Added `/profile/invoice-profiles` account UI backed only by Auth invoice profile APIs.
+- The UI supports listing, creating, editing, deleting, and default selection for Auth-owned invoice profiles with company, company ID, tax ID, VAT ID, invoice email, phone, and billing address fields.
+- `/profile` now links to invoice profile management.
+- Frontend `authApi` and shared Auth service now use `POST` for `/auth/profile/delivery-addresses/:id/default` and `/auth/profile/invoice-profiles/:id/default`, matching Auth controller and contract.
+- Added `npm run verify:auth-wallet-profile-ui`.
+- Read-only sidecar confirmed the Auth controller exposes default-selection endpoints as `POST` and that FlipFlop lacked profile invoice management before this chunk.
+
+Validation:
+
+- FlipFlop: `git diff --check`, `npm run verify:auth-wallet-profile-ui`, `npm run verify:auth-wallet-checkout-selectors`, `services/frontend npm run build`, `shared npm run build`, targeted frontend eslint for changed profile/auth files, targeted dangerous literal-secret scan, and added-line `any` scan passed.
+
+Boundary:
+
+- Source/verifier work only. No Auth runtime code, SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT value inspection, raw production customer data inspection, authenticated smoke, or live checkout submit.
+
+Next unfinished chunk:
+
+- Owner approval for Auth schema-only live DB preflight, live SQL apply, Auth deploy, wallet endpoint 401 smoke, and post-deploy FlipFlop checkout/profile runtime smoke.
+
 ## 2026-07-02 - Goal 10.19 FlipFlop Checkout Wallet Save-Back
 
 Current focus:

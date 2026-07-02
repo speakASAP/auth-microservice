@@ -206,6 +206,7 @@ Chunks:
 - [x] 10.17 Source-define Auth invoice profile field semantics.
 - [x] 10.18 Source-prepare Orders and FlipFlop immutable order snapshots for optional Auth invoice fields `companyId`, `vatId`, and `email`.
 - [x] 10.19 Source-prepare explicit FlipFlop checkout save-back for Auth invoice profiles and delivery addresses.
+- [x] 10.20 Source-prepare FlipFlop account invoice profile management and Auth wallet default-method alignment.
 
 Acceptance criteria:
 
