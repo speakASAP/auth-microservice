@@ -4,7 +4,7 @@ import { AuthService } from './auth.service';
 
 describe('Auth identifier and contact contract', () => {
   const baseUser = {
-    id: 'user-1',
+    id: '11111111-1111-4111-8111-111111111111',
     email: 'person@example.test',
     phone: '+420777123456',
     password: '$2b$10$synthetic',
@@ -47,7 +47,7 @@ describe('Auth identifier and contact contract', () => {
     expect(usersService.findByEmail).not.toHaveBeenCalled();
     expect(usersService.findByPhone).toHaveBeenCalledWith('+420777123456');
     expect(result).toMatchObject({
-      user: expect.objectContaining({ id: 'user-1', phone: '+420777123456' }),
+      user: expect.objectContaining({ id: '11111111-1111-4111-8111-111111111111', phone: '+420777123456' }),
       accessToken: 'tok',
       refreshToken: 'tok',
     });
@@ -111,7 +111,7 @@ describe('Auth identifier and contact contract', () => {
       ],
     });
 
-    expect(usersService.update).toHaveBeenCalledWith('user-1', expect.objectContaining({
+    expect(usersService.update).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', expect.objectContaining({
       source: 'school-committee',
       perApplicationPreferences: expect.objectContaining({
         theme: 'default',
@@ -126,7 +126,7 @@ describe('Auth identifier and contact contract', () => {
     }));
     expect(result).toMatchObject({
       success: true,
-      userId: 'user-1',
+      userId: '11111111-1111-4111-8111-111111111111',
       authenticated: false,
       provisioning: true,
       isNewUser: false,
@@ -157,11 +157,11 @@ describe('Auth identifier and contact contract', () => {
       },
     } as any);
 
-    const result = await service.getProfile('user-1');
+    const result = await service.getProfile('11111111-1111-4111-8111-111111111111');
 
-    expect(usersService.findById).toHaveBeenCalledWith('user-1');
+    expect(usersService.findById).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111');
     expect(result).toMatchObject({
-      id: 'user-1',
+      id: '11111111-1111-4111-8111-111111111111',
       email: 'person@example.test',
       firstName: 'Ada',
       lastName: 'Lovelace',
@@ -217,7 +217,7 @@ describe('Auth identifier and contact contract', () => {
         },
       } as any);
 
-    const result = await service.updateProfile('user-1', {
+    const result = await service.updateProfile('11111111-1111-4111-8111-111111111111', {
       firstName: 'Ada',
       lastName: 'Lovelace',
       phone: '+420 777 123 456',
@@ -229,7 +229,7 @@ describe('Auth identifier and contact contract', () => {
       },
     });
 
-    expect(usersService.update).toHaveBeenCalledWith('user-1', expect.objectContaining({
+    expect(usersService.update).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', expect.objectContaining({
       firstName: 'Ada',
       lastName: 'Lovelace',
       phone: '+420777123456',
@@ -259,7 +259,7 @@ describe('Auth identifier and contact contract', () => {
   it('exposes service actor fields for service principals during token validation', async () => {
     const serviceUser = {
       ...baseUser,
-      id: 'service-user-1',
+      id: '22222222-2222-4222-8222-222222222222',
       email: 'catalog-warehouse-service@example.test',
       userType: 'service',
       perApplicationPreferences: {
@@ -276,7 +276,7 @@ describe('Auth identifier and contact contract', () => {
     const result = await service.validateToken('service-token');
 
     expect(result).toMatchObject({
-      id: 'service-user-1',
+      id: '22222222-2222-4222-8222-222222222222',
       userType: 'service',
       serviceName: 'catalog-microservice',
       service: 'catalog-microservice',
@@ -285,6 +285,20 @@ describe('Auth identifier and contact contract', () => {
       roles: ['internal:warehouse-microservice:admin'],
     });
     expect(result).not.toHaveProperty('password');
+  });
+
+  it('rejects non-UUID JWT subjects before database lookup', async () => {
+    const { service, usersService } = makeService();
+    (service as any).jwtService.verify.mockReturnValue({ sub: 'warehouse-reservation-expiry-cron' });
+
+    await expect(service.validateToken('service-token')).rejects.toThrow(UnauthorizedException);
+
+    expect(usersService.findById).not.toHaveBeenCalled();
+    expect((service as any).logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('reason=invalid_subject'),
+      'AuthAudit',
+    );
+    expect((service as any).logger.error).not.toHaveBeenCalled();
   });
 
   it('does not add service actor fields to normal users during token validation', async () => {

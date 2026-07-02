@@ -1,3 +1,41 @@
+## 2026-07-02 - Auth Validate Logging Loop Source Fix
+
+Current focus:
+
+- Owner-reported Auth login/runtime issue and suspected circular logging.
+- Preserved Auth ownership: identity, login, JWT validation, RBAC role lookup, and audit boundaries remain in Auth; logging storage remains in Logging.
+
+Diagnosis evidence:
+
+- `https://auth.alfares.cz/login` returned HTTP 200 and `/health` returned ok.
+- Synthetic bad password login returned expected HTTP 401.
+- Live Auth local logs showed password login successes at 2026-07-02 04:49:25, 04:50:24, and 04:50:32 UTC.
+- Logging ingestion from inside the Auth pod to `http://logging-microservice:3367/api/logs` returned HTTP 201.
+- Logging source confirms `POST /api/logs` is unguarded, while admin read endpoints call Auth `/auth/validate`.
+- Auth and Logging stored logs showed repeated `/auth/validate` failures with `invalid input syntax for type uuid: "warehouse-reservation-expiry-cron"`.
+
+Implementation evidence:
+
+- Added pre-DB UUID subject validation in `AuthService.validateToken`.
+- Expected `UnauthorizedException` validation denials now stay warning-level and are not re-logged as unexpected errors.
+- Successful `validate_token` audit events are no longer emitted through the external logger, reducing Auth -> Logging -> Auth validation feedback noise.
+- Added focused regression coverage proving non-UUID JWT subjects are rejected before `usersService.findById`.
+
+Verification evidence:
+
+- `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts` passed: 10 tests.
+- `git diff --check` passed.
+- `npm run build` passed.
+- `npm run lint` passed.
+
+Deployment:
+
+- Not deployed in this source-only session. Production deployment remains owner-approval gated.
+
+Next unfinished chunks:
+
+- Owner approval is required before running `./scripts/deploy.sh` for this Auth remediation.
+
 2026-07-01: Owner-approved Auth profile single-source fix deployed to production. Deploy command: `./scripts/deploy.sh` from `alfares:/home/ssf/Documents/Github/auth-microservice` at commit `2d105b6`. Deploy script evidence: focused Auth contract tests passed 3 suites/19 tests; backend image built and pushed as `localhost:5000/auth-microservice:2d105b6-20260701184319` with digest `sha256:7da7a574b64dc600b62cc640bdcca158fef8654f7b3d96f90390b2d58be3abfe`; web image built and pushed as `localhost:5000/auth-microservice-web:2d105b6-20260701184319` with digest `sha256:6036290b742825188725285fe302d51144b2b57b6c0e8bc6b56625de00360b97`; ConfigMap, ExternalSecret, manifests, and image updates applied. Runtime note: initial backend rollout timed out because kubelet/containerd was slow pulling images while unrelated pods were also in image/container lifecycle states; production remained available through the old Auth pod due `maxUnavailable=0`. Recovery: deleted only the stuck new Auth pod so the Deployment retried the new pod; no old ready pod, database, secret, or source was deleted. Final verification: `kubectl rollout status deploy/auth-microservice` and `deploy/auth-microservice-web` both succeeded; deployments show backend and web `READY 1/1`, `UP-TO-DATE 1`, `AVAILABLE 1` on the `2d105b6-20260701184319` images; new backend pod `auth-microservice-f5f99b747-8gk6f` is `1/1 Running` with imageID digest `sha256:7da7a574b64dc600b62cc640bdcca158fef8654f7b3d96f90390b2d58be3abfe`; public `https://auth.alfares.cz/health` returned `success=true,status=ok`; unauthenticated `GET /auth/profile` returned HTTP 401; public `/login` returned HTTP 200; running compiled code contains `dist/src/auth/auth.service.js: async getProfile(userId)`. Boundary: no production user rows, tokens, passwords, decoded JWTs, Vault values, Bazos cookies, Bazos session data, DB mutation, user merge/backfill, JWT shape change, RBAC/OAuth/magic-link/CORS/internal-service/database schema change, or consumer-service source change was performed. Next unfinished chunk: optional owner-provided test-user live profile smoke through Bazos `/ui/auth/me` or hosted Auth callback.
 
 2026-07-01: Owner-selected Auth profile single-source audit and contract hardening completed in source. Vision: Auth remains the Statex ecosystem identity and profile/contact source of truth for registered users. Goal Impact: consumers such as Bazos can initialize or refresh profile views from Auth after hosted handoff instead of forking email/name/phone into app-local registration forms. System: Auth `users` table, `/auth/profile`, `/auth/validate`, hosted Auth handoff, and read-only Bazos consumer bridge. Feature: canonical registered-user profile read. Task: inspect Auth profile persistence/response paths, make `/auth/profile` explicitly read and return a sanitized Auth DB user, add regression coverage for `email`, `firstName`, `lastName`, `phone`, `contactInfo`, and source metadata, and document consumer expectations. Execution Plan: bounded owner-selected profile single-source audit in `docs/orchestrator/EXECUTION_PLAN.md`. Coding Prompt: do not expose secrets, tokens, passwords, decoded JWTs, raw production user data, Bazos cookies, or session payloads. Code: added `AuthService.getProfile(userId)` and changed `AuthController.getProfile` to return `authService.getProfile(req.user.id)`; documented `/auth/profile` as the canonical sanitized Auth database profile read; added synthetic regression coverage. Validation: DocsRAG query from running Auth pod returned HTTP 200 with no matching context/sources for the specific Hevrike/Bazos profile query; `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts` passed 8 tests; `npm run test:auth-contract` passed 3 suites/19 tests; `npm run build` passed; `npm run lint` passed; `git diff --check` passed; read-only Bazos source spot check confirmed hosted Auth migration and `/ui/auth/me` use Auth validation while Bazos local account/identity tables remain Bazos-platform entities. Boundary: no production DB mutation, user merge/backfill, raw production user-data read, secret/token/password inspection, decoded JWT inspection, JWT shape change, RBAC/OAuth/magic-link/CORS/internal-service/database schema change, consumer-service source edit, or production deployment was performed. Next unfinished chunk: owner-approved deployment and live profile smoke if this source fix should go to production.

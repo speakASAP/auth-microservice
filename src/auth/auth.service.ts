@@ -111,6 +111,10 @@ export class AuthService {
       .map(([key, value]) => `${key}=${String(value).replace(/\s+/g, '_')}`)
       .join(' ');
 
+    if (operation === 'validate_token' && outcome === 'success') {
+      return;
+    }
+
     if (level === 'error') {
       this.logger.error(message, trace, 'AuthAudit');
     } else if (level === 'warn') {
@@ -267,6 +271,14 @@ export class AuthService {
         secret: process.env.JWT_SECRET,
       });
 
+      if (!this.isUuid(payload.sub)) {
+        this.audit('warn', 'validate_token', 'failure', {
+          reason: 'invalid_subject',
+          duration_ms: Date.now() - startedAt,
+        });
+        throw new UnauthorizedException('Invalid token');
+      }
+
       const user = await this.usersService.findById(payload.sub);
       if (!user || !user.isActive) {
         this.audit('warn', 'validate_token', 'failure', {
@@ -294,12 +306,18 @@ export class AuthService {
         roles,
       };
     } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
       this.audit('error', 'validate_token', 'failure', {
         reason: error.message,
         duration_ms: Date.now() - startedAt,
       }, error.stack);
       throw new UnauthorizedException('Invalid token');
     }
+  }
+
+  private isUuid(value: unknown): value is string {
+    return typeof value === 'string'
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   }
 
   async refreshToken(refreshToken: string) {
