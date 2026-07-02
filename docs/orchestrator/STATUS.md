@@ -30,11 +30,19 @@ Verification evidence:
 
 Deployment:
 
-- Not deployed in this source-only session. Production deployment remains owner-approval gated.
+- Deploy script Auth contract tests passed before image build.
+- Backend image digest: `sha256:82a82874d3e7fa3eff250b0c0fef06d592a55f04a2cd3052716e5867c9cef79f`.
+- Web image digest: `sha256:58e9c938f5741041f841079f06847068311aadd5133ecc6db5010d8882cba7bd`.
+- Kubernetes backend and web rollouts completed; both deployments are `READY 1/1`.
+- Public `/health` returned ok after deployment.
+- Synthetic bad `/auth/login` returned HTTP 401 after deployment.
+- Running compiled backend contains `invalid_subject` and `isUuid(value)`.
+
+- Owner-approved deployment completed with backend image `localhost:5000/auth-microservice:854e4b0-20260702051115` and web image `localhost:5000/auth-microservice-web:854e4b0-20260702051115`.
 
 Next unfinished chunks:
 
-- Owner approval is required before running `./scripts/deploy.sh` for this Auth remediation.
+- No unfinished deployment action remains for this remediation.
 
 2026-07-01: Owner-approved Auth profile single-source fix deployed to production. Deploy command: `./scripts/deploy.sh` from `alfares:/home/ssf/Documents/Github/auth-microservice` at commit `2d105b6`. Deploy script evidence: focused Auth contract tests passed 3 suites/19 tests; backend image built and pushed as `localhost:5000/auth-microservice:2d105b6-20260701184319` with digest `sha256:7da7a574b64dc600b62cc640bdcca158fef8654f7b3d96f90390b2d58be3abfe`; web image built and pushed as `localhost:5000/auth-microservice-web:2d105b6-20260701184319` with digest `sha256:6036290b742825188725285fe302d51144b2b57b6c0e8bc6b56625de00360b97`; ConfigMap, ExternalSecret, manifests, and image updates applied. Runtime note: initial backend rollout timed out because kubelet/containerd was slow pulling images while unrelated pods were also in image/container lifecycle states; production remained available through the old Auth pod due `maxUnavailable=0`. Recovery: deleted only the stuck new Auth pod so the Deployment retried the new pod; no old ready pod, database, secret, or source was deleted. Final verification: `kubectl rollout status deploy/auth-microservice` and `deploy/auth-microservice-web` both succeeded; deployments show backend and web `READY 1/1`, `UP-TO-DATE 1`, `AVAILABLE 1` on the `2d105b6-20260701184319` images; new backend pod `auth-microservice-f5f99b747-8gk6f` is `1/1 Running` with imageID digest `sha256:7da7a574b64dc600b62cc640bdcca158fef8654f7b3d96f90390b2d58be3abfe`; public `https://auth.alfares.cz/health` returned `success=true,status=ok`; unauthenticated `GET /auth/profile` returned HTTP 401; public `/login` returned HTTP 200; running compiled code contains `dist/src/auth/auth.service.js: async getProfile(userId)`. Boundary: no production user rows, tokens, passwords, decoded JWTs, Vault values, Bazos cookies, Bazos session data, DB mutation, user merge/backfill, JWT shape change, RBAC/OAuth/magic-link/CORS/internal-service/database schema change, or consumer-service source change was performed. Next unfinished chunk: optional owner-provided test-user live profile smoke through Bazos `/ui/auth/me` or hosted Auth callback.
 
