@@ -1,3 +1,44 @@
+## 2026-07-02 - Goal 10 Cliplot Readiness And Marketplace Channel Audit
+
+Current focus:
+
+- Complete the remaining non-live C1/M1 Goal 10 lanes while Auth wallet runtime
+  endpoints remain undeployed.
+
+Evidence:
+
+- Cliplot worker completed on remote `alfares` only.
+- Cliplot commit: `01f6dea docs: add auth wallet checkout readiness gate`.
+- Added Cliplot execution plan
+  `implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`,
+  verifier `scripts/auth-wallet-checkout-readiness.js`, validation report
+  `reports/validation/GOAL-10-auth-wallet-checkout-readiness.md`, and
+  `npm run readiness:auth-wallet-checkout`.
+- Coordinator revalidation passed in Cliplot: `npm run
+  readiness:auth-wallet-checkout`, `node --check
+  scripts/auth-wallet-checkout-readiness.js && git diff --check`, `npm run
+  check`, and targeted dangerous literal-secret scan on changed files.
+- Marketplace/channel read-only subagent audited `catalog-microservice`,
+  `allegro`, `aukro`, `bazos`, `heureka`, and `shop-assistant`.
+- Added Auth coordinator audit
+  `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md`.
+- M1 conclusion: no repo-local Auth wallet plans are needed now for those six
+  repositories. Marketplace buyer/contact/order data must remain immutable
+  channel/Orders evidence and must not back-write reusable buyer wallet records
+  into Auth.
+
+Boundary:
+
+- No Auth SQL, deploy, Kubernetes mutation, live checkout/order/payment/
+  Warehouse/notification mutation, live DB query/write, secret/token/cookie
+  inspection, customer row inspection, or marketplace repo edit.
+
+Next unfinished chunk:
+
+- Owner approval for Auth schema-only live DB preflight, live SQL apply, Auth
+  deploy, wallet endpoint 401 smoke, and optional synthetic authenticated
+  wallet/checkout smoke.
+
 ## 2026-07-02 - Goal 10 ChytraKoupe Source-Readiness Verifier And Callback Cleanup
 
 Current focus:

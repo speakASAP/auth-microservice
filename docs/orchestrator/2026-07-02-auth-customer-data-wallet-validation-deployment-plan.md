@@ -88,7 +88,12 @@ Consumers:
 - `chytrakoupe`: plan commit `a1dabca` and verifier/callback cleanup commit
   `2838ebf` created; selector implementation is blocked until Auth wallet
   deploy, client-id, CORS/redirect, and snapshot decisions are approved.
-- `cliplot`: clean at `4ae3e25`; checkout mutation remains approval-gated.
+- `cliplot`: readiness commit `01f6dea` created; checkout mutation and wallet
+  selector integration remain approval-gated.
+- Marketplace/channel audit: `catalog-microservice`, `allegro`, `aukro`,
+  `bazos`, `heureka`, and `shop-assistant` do not need repo-local wallet plans
+  now. Marketplace buyer/contact/order data must remain immutable channel or
+  Orders evidence and must not back-write reusable wallet records into Auth.
 
 ## Repository Matrix
 
@@ -99,7 +104,8 @@ Consumers:
 | `orders-microservice` | Orders contract owner | Clean `main` at `c5e6dd6`; Auth subject aliases and immutable snapshots already supported | if provenance fields are approved, run build, create-order contract verifier, event verifier, lifecycle/invoice verifiers, full tests, and secret scan | optional validate-create payload smoke and event privacy check after contract approval | wallet provenance field names/idempotency semantics not approved |
 | `rent-a-box` | Rent-a-box migration owner | Plan-only commit `fcfeb48` | intent preflight, lint, tests, focused API/web checks, diff-check when code lane starts | hosted Auth callback/token/session/admin mapping; wallet read/write adapter; no backfill without approval | hosted Auth token/session/admin-role decision; DB migration/backfill approval; row counts unknown |
 | `chytrakoupe` | ChytraKoupe checkout owner | Plan/verifier commit `2838ebf`; selector UI still absent by design | `npm run verify:auth-wallet-checkout-selectors` passed; `npm run lint` passed; `npm run build` passed; `node --check scripts/verify-auth-wallet-checkout-selectors.mjs && git diff --check` passed; literal-secret scan passed | delivery/invoice selectors; guest fallback; order snapshot check; no live checkout submit without approval | Auth wallet deploy; client-id decision; CORS/redirect allowlist; Orders snapshot decisions |
-| `cliplot` | Cliplot coordinator | Readiness-only; checkout still guarded | build/check/readiness scripts only | no live order/payment/Warehouse/notification mutation without approval | checkout approval and Auth wallet consumer policy |
+| `cliplot` | Cliplot coordinator | Readiness commit `01f6dea`; checkout still guarded | `npm run readiness:auth-wallet-checkout` passed; `node --check scripts/auth-wallet-checkout-readiness.js && git diff --check` passed; `npm run check` passed; literal-secret scan passed | no live order/payment/Warehouse/notification mutation without approval | checkout approval, Auth wallet live contract, authenticated session contract, no-PII logging/frontend exposure review |
+| marketplace/channel repos | Auth coordinator | `catalog-microservice` `311030d`, `allegro` `6c64a30`, `aukro` `ba61422`, `bazos` `cdcd739`, `heureka` `976a1a8`, `shop-assistant` `4ed76b1` | read-only status/head and bounded source/doc audit completed | no wallet back-write; preserve channel evidence and Orders snapshots | possible later Allegro raw-payload retention review; Bazos/Aukro provider-specific unknowns |
 
 ## Merge And Deployment Order
 
@@ -124,7 +130,11 @@ Consumers:
 11. Keep Orders unchanged unless the wallet provenance contract is approved.
 12. Start Rent-a-box and ChytraKoupe code lanes only after their missing hosted
     Auth/client/snapshot decisions are resolved.
-13. Keep Cliplot read-only/guarded until checkout mutation approval exists.
+13. Keep Cliplot read-only/guarded until checkout mutation approval and Auth
+    wallet live contract evidence exist.
+14. Keep marketplace/channel repositories out of Auth wallet back-write scope
+    unless a future source change introduces a registered-user checkout wallet
+    surface.
 
 ## Auth Live Operation Runbook
 

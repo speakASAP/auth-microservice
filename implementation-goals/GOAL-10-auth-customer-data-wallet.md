@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth + FlipFlop source prepared, Rent-a-box plan/verifier created, ChytraKoupe plan/verifier/callback cleanup created, live SQL/deploy/runtime smoke approval-gated
+Status: active; Auth + FlipFlop source prepared, Rent-a-box/ChytraKoupe/Cliplot readiness lanes created, marketplace/channel audit complete, live SQL/deploy/runtime smoke approval-gated
 
 ## Intent
 
@@ -55,6 +55,8 @@ Auth customer data wallet:
 - [x] 10.9 Rent-a-box hosted Auth/profile migration plan and readiness verifier created in commits `fcfeb48` and `09dce2f`.
 - [x] 10.10 ChytraKoupe checkout selector plan, readiness verifier, and safe callback cleanup created in commits `a1dabca` and `2838ebf`.
 - [x] 10.11 Cross-repo validation and deployment plan.
+- [x] 10.12 Cliplot checkout wallet readiness plan/verifier created in commit `01f6dea`.
+- [x] 10.13 Marketplace/channel audit completed; no repo-local wallet plans needed now for Catalog, Allegro, Aukro, Bazos, Heureka, or Shop Assistant.
 
 ## Acceptance Criteria
 
@@ -95,8 +97,8 @@ marketplace operations.
 | O1 Orders compatibility            | audit-complete     | Orders worker            | create-order contract/docs               | provenance decision       | 6           |
 | R1 Rent-a-box Auth migration plan  | plan+verifier-created | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | Auth deploy + migration approval | 7 |
 | CK1 ChytraKoupe checkout selectors | plan+verifier-created | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | Auth deploy + client-id decision | 8 |
-| C1 Cliplot plan                    | blocked            | Cliplot coordinator      | docs only                                | checkout approval         | later       |
-| M1 marketplace audit               | ready read-only    | explorer                 | Catalog/Allegro/Aukro/Bazos/Heureka docs | none                      | no code     |
+| C1 Cliplot plan                    | plan+verifier-created | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js` | checkout approval + Auth wallet live contract | later |
+| M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
 ## Validation
 
@@ -133,7 +135,8 @@ that repo's status/validation report.
 - `[MISSING: customer invoice profile/selection contract for company ID, tax ID, VAT ID, and invoice email fields]`
 - `[MISSING: Rent-a-box hosted Auth token/session/admin-role migration decision before code changes]`
 - `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
-- `[UNKNOWN: final customer-checkout consumer repo set beyond FlipFlop, Chytrakoupe, Rent-a-box, and Cliplot]`
+- `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
+- `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
 
 ## 2026-07-02 Goal 10.11 Validation And Deployment Plan Result
 
@@ -230,6 +233,31 @@ that repo's status/validation report.
   mutation, live checkout submit, live DB query/write, Auth SQL apply,
   secret/token/cookie inspection, or production customer-data access was
   performed.
+
+## 2026-07-02 Cliplot Readiness And Marketplace Audit Result
+
+- 2026-07-02: Cliplot checkout wallet readiness gate created in commit
+  `01f6dea docs: add auth wallet checkout readiness gate`.
+- Changed Cliplot files:
+  `implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`,
+  `scripts/auth-wallet-checkout-readiness.js`,
+  `reports/validation/GOAL-10-auth-wallet-checkout-readiness.md`, and
+  `package.json`.
+- Cliplot verifier reports `dependency_gated_auth_wallet_checkout_readiness`,
+  checks checkout/cart/customer surfaces, confirms hosted Auth link surface,
+  and fails on premature runtime wallet endpoint usage.
+- Validation passed in Cliplot: `npm run readiness:auth-wallet-checkout`,
+  `node --check scripts/auth-wallet-checkout-readiness.js && git diff --check`,
+  `npm run check`, and targeted dangerous literal-secret scan on changed files.
+- M1 marketplace/channel audit completed in
+  `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md`.
+  Catalog, Allegro, Aukro, Bazos, Heureka, and Shop Assistant do not need
+  repo-local wallet plans now because inspected surfaces are product truth,
+  marketplace/channel evidence, Orders projections, or search/preferences, not
+  reusable registered-user checkout wallet ownership.
+- No Auth SQL, deploy, Kubernetes mutation, live checkout/order/payment/
+  Warehouse/notification mutation, live DB query/write, secret/token/cookie
+  inspection, customer row inspection, or marketplace repo edit was performed.
 
 ## Coding Prompt
 
