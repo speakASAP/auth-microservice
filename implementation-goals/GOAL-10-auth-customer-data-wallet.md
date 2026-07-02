@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI, FlipFlop selectors/save-back/profile invoice management, and Orders/FlipFlop order snapshot support source-prepared; Rent-a-box/ChytraKoupe/Cliplot readiness lanes created; marketplace/channel audit complete; live SQL/deploy/runtime smoke approval-gated
+Status: active; Auth API + hosted profile UI, FlipFlop selectors/save-back/profile invoice management/navigation, and Orders/FlipFlop order snapshot support source-prepared; Rent-a-box/ChytraKoupe/Cliplot readiness lanes created; marketplace/channel audit complete; live SQL/deploy/runtime smoke approval-gated
 
 ## Intent
 
@@ -64,6 +64,7 @@ Auth customer data wallet:
 - [x] 10.18 Orders and FlipFlop consumer order snapshot support for optional Auth invoice fields source-prepared.
 - [x] 10.19 FlipFlop checkout explicit Auth wallet save-back source-prepared.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
+- [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 
 ## Acceptance Criteria
 
@@ -100,7 +101,7 @@ marketplace operations.
 | A1 Auth backend                    | source-implemented | Auth backend worker      | Auth source/docs/tests                   | SQL apply/deploy approval | 2           |
 | A2 Auth profile UI                 | source-prepared    | Auth frontend worker     | hosted Auth/profile UI                   | Auth deploy/runtime smoke | 3           |
 | F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | runtime smoke gated       | 4           |
-| F2 FlipFlop checkout/profile UX    | source-prepared    | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management | Auth deploy/runtime smoke incl. manual-edit guard/save-back/profile CRUD | 5           |
+| F2 FlipFlop checkout/profile UX    | source-prepared    | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deploy/runtime smoke incl. manual-edit guard/save-back/profile CRUD | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth runtime deploy/smoke | 6           |
 | R1 Rent-a-box Auth migration plan  | plan+verifier-created | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | Auth deploy + migration approval | 7 |
 | CK1 ChytraKoupe checkout selectors | plan+verifier-created | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | Auth deploy + client-id decision | 8 |
@@ -146,6 +147,15 @@ that repo's status/validation report.
 - `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-02 Goal 10.21 FlipFlop Invoice Profile Navigation Result
+
+- 2026-07-02: FlipFlop commit `e499dd4` source-prepared account navigation for Auth invoice profile management.
+- Header and Dashboard now expose `/profile/invoice-profiles` for authenticated users.
+- `npm run verify:auth-wallet-profile-ui` now verifies Profile, Header, and Dashboard links to invoice profile management.
+- Validation passed in FlipFlop: `git diff --check`, `npm run verify:auth-wallet-profile-ui`, `services/frontend npm run build`, `node --check scripts/verify-auth-wallet-profile-ui.js`, targeted dangerous literal-secret scan, and added-line `any` scan.
+- Targeted eslint still reports existing Header/Dashboard lint debt outside this diff.
+- No Auth runtime code, SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT value inspection, raw production customer data inspection, authenticated smoke, or live checkout submit was performed.
 
 ## 2026-07-02 Goal 10.20 FlipFlop Profile Invoice Management Result
 

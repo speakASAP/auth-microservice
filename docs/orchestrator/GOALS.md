@@ -207,6 +207,7 @@ Chunks:
 - [x] 10.18 Source-prepare Orders and FlipFlop immutable order snapshots for optional Auth invoice fields `companyId`, `vatId`, and `email`.
 - [x] 10.19 Source-prepare explicit FlipFlop checkout save-back for Auth invoice profiles and delivery addresses.
 - [x] 10.20 Source-prepare FlipFlop account invoice profile management and Auth wallet default-method alignment.
+- [x] 10.21 Source-prepare FlipFlop account invoice profile navigation/discoverability.
 
 Acceptance criteria:
 

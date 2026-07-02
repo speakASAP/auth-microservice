@@ -1,3 +1,30 @@
+## 2026-07-02 - Goal 10.21 FlipFlop Invoice Profile Navigation
+
+Current focus:
+
+- Make the source-prepared Auth invoice profile management UI discoverable from common authenticated account entry points.
+
+Evidence:
+
+- FlipFlop commit: `e499dd4 feat: surface auth invoice profiles in account navigation`.
+- Authenticated Header navigation now links to `/profile/invoice-profiles`.
+- Dashboard quick actions now include `/profile/invoice-profiles`.
+- `npm run verify:auth-wallet-profile-ui` now pins Profile, Header, and Dashboard invoice-profile links.
+
+Validation:
+
+- FlipFlop: `git diff --check`, `npm run verify:auth-wallet-profile-ui`, `services/frontend npm run build`, `node --check scripts/verify-auth-wallet-profile-ui.js`, targeted dangerous literal-secret scan, and added-line `any` scan passed.
+- Targeted eslint on changed Header/Dashboard was attempted and failed on existing `Header.tsx:53` `setState`-in-effect plus dashboard warnings outside this diff; this remains frontend lint baseline debt.
+
+Boundary:
+
+- Source/verifier work only. No Auth runtime code, SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT value inspection, raw production customer data inspection, authenticated smoke, or live checkout submit.
+- FlipFlop has an unrelated unstaged `shared/health/health.service.ts` change that was not staged or modified by this chunk.
+
+Next unfinished chunk:
+
+- Owner approval for Auth schema-only live DB preflight, live SQL apply, Auth deploy, wallet endpoint 401 smoke, and post-deploy FlipFlop checkout/profile runtime smoke.
+
 ## 2026-07-02 - Goal 10.20 FlipFlop Profile Invoice Management
 
 Current focus:
