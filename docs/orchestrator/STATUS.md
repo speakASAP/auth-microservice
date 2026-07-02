@@ -1,3 +1,47 @@
+## 2026-07-02 - Goal 10.6 FlipFlop Auth Wallet Client Bridge Source Prep
+
+Current focus:
+
+- Advance the first dependency-gated consumer lane without requiring live Auth
+  wallet SQL/deploy.
+
+Implementation evidence:
+
+- Worker completed source-only FlipFlop client bridge commit `515f4b7 feat: add
+  Auth wallet client bridge` in `alfares:/home/ssf/Documents/Github/flipflop`.
+- Changed files were limited to `shared/auth/auth.interface.ts`,
+  `shared/auth/auth.service.ts`, and `services/frontend/lib/api/auth.ts`.
+- Added typed delivery address, invoice profile, checkout-data aggregate,
+  create/update payload, delete-response, and default-operation client methods
+  for `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+  `/auth/profile/invoice-profiles`.
+- Existing checkout/profile pages, order payload behavior, deploy files, Auth
+  repo source, Orders repo source, secrets, and customer data were not touched.
+
+Validation evidence from worker:
+
+- `python3 scripts/pre_coding_gate.py --root .` passed.
+- `python3 scripts/strict_doc_audit.py --root . --format markdown
+  --fail-on-issues` passed, 100/100.
+- `git diff --check -- shared/auth/auth.interface.ts
+  shared/auth/auth.service.ts services/frontend/lib/api/auth.ts` passed.
+- `npm --prefix shared run build` passed.
+- `npm --prefix services/frontend exec -- tsc --noEmit --pretty false` passed.
+- `npm --prefix services/frontend run build` passed with only existing
+  workspace-root and outdated `baseline-browser-mapping` warnings.
+
+Boundary:
+
+- No FlipFlop checkout/profile UI wiring, live consumer smoke, order creation
+  payload change, Auth SQL apply, Auth deploy, production DB read/write, secret
+  inspection, or customer-data inspection was performed.
+
+Next unfinished chunk:
+
+- Keep FlipFlop checkout/profile selector wiring gated on stable Auth runtime,
+  owner-approved Auth SQL apply, and Auth deploy. Orders snapshot compatibility
+  remains gated on the final FlipFlop selected-profile payload shape.
+
 ## 2026-07-02 - Goal 10 Auth Customer Data Wallet Repeated Replica Drift
 
 Current focus:

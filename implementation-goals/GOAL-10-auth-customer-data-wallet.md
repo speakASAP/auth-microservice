@@ -139,3 +139,9 @@ as order snapshot owner only. Preserve hosted Auth login/register and existing
 JWT/RBAC/OAuth/magic-link contracts. Do not print secrets, token values,
 passwords, decoded JWTs, raw production user data, or full customer address
 payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
+## 2026-07-02 Goal 10.6 Source Prep Result
+
+- 2026-07-02: Goal 10.6 FlipFlop client bridge source prep completed in
+  `flipflop` commit `515f4b7`. This adds typed shared/frontend Auth wallet
+  clients only. Checkout/profile selector wiring and runtime smoke remain gated
+  on Auth SQL/deploy and stable backend health.
