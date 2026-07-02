@@ -145,3 +145,12 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
   `flipflop` commit `515f4b7`. This adds typed shared/frontend Auth wallet
   clients only. Checkout/profile selector wiring and runtime smoke remain gated
   on Auth SQL/deploy and stable backend health.
+
+## 2026-07-02 Goal 10.7 Source Prep And Orders Audit Result
+
+- 2026-07-02: Goal 10.7 FlipFlop checkout/profile selector source prep completed
+  in `flipflop` commit `840eff6`. It wires defensive wallet selectors and
+  fallback behavior without changing order payload semantics or deploying.
+- Orders compatibility audit found no immediate source change is required:
+  Orders already stores separate immutable shipping/billing snapshots, and Auth
+  wallet IDs should wait for an approved final provenance contract.

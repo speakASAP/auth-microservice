@@ -1,3 +1,75 @@
+## 2026-07-02 - Goal 10.7 FlipFlop Selectors And Orders Compatibility
+
+Current focus:
+
+- Continue dependency-gated consumer implementation without live Auth SQL/deploy.
+- Preserve Orders as immutable order snapshot owner.
+
+Auth source validation evidence:
+
+- Source preflight showed clean `auth-microservice` worktree on `main`, ahead of
+  `origin/main` by docs-only commits, with SQL checksum
+  `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`
+  for `scripts/create-customer-data-wallet-tables.sql`.
+- `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts
+  src/users/users.service.spec.ts` passed: 2 suites, 15 tests.
+- `npm run test:auth-contract` passed: 3 suites, 25 tests.
+- `npm run build` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
+
+FlipFlop implementation evidence:
+
+- Worker completed source-only selector wiring in `flipflop` commit
+  `840eff6 feat: wire Auth wallet selectors in checkout`.
+- Changed files: `services/frontend/app/checkout/page.tsx`,
+  `services/frontend/app/profile/addresses/page.tsx`, and
+  `implementation-goals/GOAL-10.7-auth-wallet-checkout-profile-selectors.validation-report.md`.
+- Checkout defensively loads Auth wallet checkout data for authenticated users.
+  Invoice profiles prefill existing contact/billing fields only; delivery
+  addresses prefill existing optional different-delivery fields only.
+- Profile addresses prefer Auth wallet addresses when available, with fallback
+  to existing local `/users/addresses` when wallet endpoints fail or return 404.
+- Guest checkout, manual entry, `/auth/profile`, and order payload semantics
+  were preserved.
+
+FlipFlop validation evidence from worker:
+
+- `python3 scripts/pre_coding_gate.py --root .` passed.
+- `python3 scripts/strict_doc_audit.py --root . --format markdown
+  --fail-on-issues` passed, 100/100.
+- `cd services/frontend && npm exec -- tsc --noEmit` passed.
+- `cd services/frontend && npm run build` passed with existing-style Next/root
+  and `baseline-browser-mapping` warnings.
+- `git diff --check` and cached diff check passed.
+- Commit hook pre-commit checks passed.
+
+Orders compatibility evidence:
+
+- Read-only Orders audit confirmed current clean `orders-microservice` source
+  already accepts separate immutable `shippingAddress` and `billingAddress`
+  snapshots and persists both as JSONB.
+- `billingAddress` already supports invoice-style fields such as `companyName`
+  and `taxId`.
+- Unknown create/order fields are rejected or normalized away, and there is no
+  current safe field for Auth wallet IDs.
+- No Orders source change is needed before final FlipFlop payload provenance
+  decisions. Adding wallet IDs now would be optional at best and harmful if it
+  made Orders depend on mutable Auth data or leaked IDs into events/logs.
+
+Boundary:
+
+- No Auth SQL apply, Auth deploy, FlipFlop deploy, Orders edit, production DB
+  read/write, secret/token/password/JWT value inspection, raw customer data
+  inspection, or live checkout smoke was performed.
+
+Next unfinished chunk:
+
+- Request owner approval for schema-only DB preflight, live SQL apply, and Auth
+  deploy. After Auth deploy, verify wallet endpoints return 401 unauthenticated
+  instead of 404/500, then run non-destructive FlipFlop checkout/profile runtime
+  smoke. Orders remains dependency-gated on final wallet provenance decisions.
+
 ## 2026-07-02 - Goal 10 Auth Runtime Recovered Before SQL/Deploy Gate
 
 Current focus:
