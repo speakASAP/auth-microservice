@@ -1,6 +1,6 @@
 # Auth Customer Data Wallet Live Gate
 
-Status: approval-gated
+Status: Auth SQL/deploy/401 gate completed; synthetic authenticated smoke remains approval-gated
 Created: 2026-07-02
 Scope: `auth-microservice` Goal 10 A1 live SQL apply and deployment.
 
@@ -31,11 +31,10 @@ after the owner approves schema-only DB preflight, SQL apply, and Auth deploy.
   current runtime source checkpoint `1a60240`.
 - `scripts/create-customer-data-wallet-tables.sql` is additive and idempotent.
 - Production uses `DB_SYNC=false`; do not set `DB_SYNC=true`.
-- Live SQL has not been applied.
-- No Auth HEAD containing this runtime source checkpoint has been deployed in
-  this runbook.
-- FlipFlop and other consumer runtime work remains dependency-gated until Auth
-  SQL and deploy are live.
+- Live SQL has been applied for `scripts/create-customer-data-wallet-tables.sql`.
+- Auth HEAD `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d` has been deployed.
+- FlipFlop non-mutating post-deploy smoke passed; authenticated synthetic
+  wallet and checkout smoke remains gated on synthetic account/token approval.
 - Runtime gate blocker observed after pre-approval fixes: Auth backend was
   `0/1` on old image `0d4282b-20260702102426`, public health returned HTTP
   503, and an Auth-only pod recreation still left the backend pod stuck before

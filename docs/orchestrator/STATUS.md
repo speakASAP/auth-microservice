@@ -1,3 +1,72 @@
+## 2026-07-02 - Goal 10.25 Auth Live SQL Deploy And 401 Smoke
+
+Current focus:
+
+- Execute the owner-approved Auth live DB/deploy gate and bounded post-deploy
+  smoke for Goal 10.
+
+Evidence:
+
+- Owner approval was given for schema-only live DB preflight, live SQL apply,
+  Auth deploy from Source Preflight-captured HEAD, wallet endpoint 401 smoke,
+  and post-deploy FlipFlop runtime smoke.
+- Source Preflight captured exact Auth HEAD
+  `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`; worktree clean; `main` ahead of
+  `origin/main` by 1.
+- SQL checksum:
+  `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`.
+- Runtime verifier checksum:
+  `3786afab774e58dd9800272507ca919b7cfdf8d80a16fb4f09ef1541e482ec26`.
+- Deploy script checksum:
+  `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
+- Schema-only DB preflight selected only metadata and passed: `public.users`
+  exists, wallet tables were absent before apply, and `gen_random_uuid` is
+  available.
+- Live SQL apply succeeded in a single transaction.
+- Post-apply schema metadata verification passed: wallet tables
+  `user_delivery_addresses` and `user_invoice_profiles` exist with 45 columns
+  and 8 indexes.
+- Auth deploy completed with backend image
+  `localhost:5000/auth-microservice:2871a6f-20260702210100` and web image
+  `localhost:5000/auth-microservice-web:2871a6f-20260702210100`; backend and
+  web deployments are `1/1`.
+- Post-deploy wallet 401 smoke passed: `/health` HTTP 200 and wallet endpoints
+  `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+  `/auth/profile/invoice-profiles` returned HTTP 401 unauthenticated.
+
+Validation:
+
+- Auth: `npm run check:customer-data-wallet-preflight` passed.
+- Auth: `npm run check:customer-data-wallet-runtime -- --expect=predeploy`
+  passed before deploy with wallet endpoints HTTP 404.
+- Auth: focused Auth/User specs passed, 2 suites / 15 tests.
+- Auth: `npm run test:auth-contract` passed, 3 suites / 27 tests.
+- Auth: `npm run build`, `npm run lint`, and `git diff --check` passed.
+- Auth deploy script completed successfully.
+- Auth: `npm run check:customer-data-wallet-runtime -- --expect=deployed`
+  passed after deploy with wallet endpoints HTTP 401.
+- FlipFlop: `npm run verify:auth-wallet-profile-ui` passed.
+- FlipFlop: `npm run verify:auth-wallet-checkout-selectors` passed.
+- FlipFlop: `npm run verify:orders-hub-integration` passed.
+- FlipFlop: `npm run verify:guest-checkout-ui` passed and reported
+  `nonMutating: true`.
+
+Boundary:
+
+- SQL was limited to the approved additive wallet schema file. Runtime DB env
+  values were used without printing them.
+- Schema verification selected only metadata. No customer rows, raw address or
+  invoice payloads, secret/token/password/JWT values, authenticated synthetic
+  account, or live checkout submit was used.
+- Synthetic authenticated wallet CRUD/default/delete smoke remains unrun because
+  no synthetic account/token was provided or approved.
+
+Next unfinished chunk:
+
+- Owner-approved synthetic authenticated wallet and FlipFlop checkout/profile
+  smoke, if required, then dependency-gated consumer migrations for Rent-a-box,
+  ChytraKoupe, and Cliplot.
+
 ## 2026-07-02 - Goal 10.24 FlipFlop Main Target Source Revalidation
 
 Current focus:

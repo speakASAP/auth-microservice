@@ -34,29 +34,25 @@ Owner: Auth coordinator
 
 Decision: `pass` for docs-only planning.
 
-Decision: `hold` for live operations until explicit owner approval covers each
-bounded operation:
+Decision: `pass` for approved Auth live SQL apply, Auth deploy, and
+unauthenticated wallet 401 smoke. These were executed on 2026-07-02 from
+Source Preflight-captured Auth HEAD
+`2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`.
 
-- schema-only live DB preflight;
-- use of DB connection environment values without printing values;
-- live SQL apply for `scripts/create-customer-data-wallet-tables.sql`;
-- Auth deploy from the exact remote HEAD captured by Source Preflight
-  immediately before approved deploy execution;
+Decision: `hold` remains for live operations not covered by the completed gate:
+
 - Kubernetes rollback mutation if rollback is needed;
 - synthetic authenticated account/token for cross-repo smoke;
-- consumer deploy/runtime checkout smoke.
+- consumer deploy/runtime checkout smoke beyond the completed non-mutating
+  FlipFlop checks.
 
 ## Current Evidence
 
 Auth:
 
 - Repo: `alfares:/home/ssf/Documents/Github/auth-microservice`.
-- Current runtime source checkpoint before this docs correction: `main` at
-  `1a60240de3affb739cfbe1cac49dd95e5025582a`.
-- Source Preflight must capture the exact current remote HEAD immediately before
-  any approved live execution. Documentation-only checkpoint commits after the
-  runtime source checkpoint may be included only if they are cleanly captured by
-  that preflight and approval.
+- Source Preflight captured deploy HEAD
+  `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`.
 - Wallet API source commit `b6c1585`, hosted profile wallet UI commit
   `4bdbd27`, and runtime gate verifier commit `9ff1099` are ancestors of the
   runtime source checkpoint. Runtime source has not changed after the
@@ -75,13 +71,13 @@ Auth:
   `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
 - Deploy script runs Auth contract tests/build/image rollout/health checks; it
   does not run SQL.
-- Live runtime: backend/web are `1/1` on old image tag
-  `0d4282b-20260702102426`.
+- Live runtime: backend/web are `1/1` on image tags
+  `2871a6f-20260702210100`.
 - Live `/health` returned HTTP 200.
-- Live unauthenticated wallet probes returned HTTP 404 for
+- Live unauthenticated wallet probes returned HTTP 401 for
   `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
-  `/auth/profile/invoice-profiles`, proving Goal 10 code is not deployed yet.
-- Expected unauthenticated result after deploy is HTTP 401, not 404 or 500.
+  `/auth/profile/invoice-profiles`, proving Goal 10 wallet routes are deployed
+  and protected by Auth.
 
 Consumers:
 
@@ -250,14 +246,10 @@ Run only after Auth wallet endpoint 401 smoke passes.
 
 ## Open Blockers
 
-- `[MISSING: owner approval to run schema-only live DB preflight]`
-- `[MISSING: approval to use DB connection environment values without printing them]`
-- `[MISSING: owner approval to apply live SQL]`
-- `[MISSING: owner approval to deploy exact Auth remote HEAD captured by Source Preflight immediately before approved execution]`
 - `[MISSING: owner approval for Kubernetes rollback mutation if rollback is needed]`
 - `[MISSING: destructive DB rollback/drop approval; do not drop wallet tables by default]`
 - `[MISSING: owner-approved synthetic account/token for authenticated Auth wallet and cross-repo checkout smoke]`
-- `[MISSING: post-deploy FlipFlop runtime smoke after Auth wallet 401 gate]`
+- `[MISSING: authenticated synthetic FlipFlop runtime smoke after Auth wallet 401 gate]`
 - `[MISSING: optional future wallet provenance contract for Orders field names and idempotency semantics]`
 - Auth invoice profile v1 field semantics are source-defined:
   `companyId`, `taxId`, `vatId`, and invoice recipient `email`.
