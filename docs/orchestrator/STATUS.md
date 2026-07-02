@@ -1,3 +1,40 @@
+## 2026-07-02 - Goal 10 Rent-a-box Source-Readiness Verifier
+
+Current focus:
+
+- Add a dependency-gated Rent-a-box verifier so the consumer migration lane can
+  be resumed without attempting product code before Auth wallet runtime
+  evidence exists.
+
+Evidence:
+
+- Rent-a-box read-only subagent confirmed product migration is still blocked by
+  missing Auth wallet runtime, hosted Auth browser/callback contract, backend
+  token validation contract, admin role mapping, and owner-approved
+  migration/backfill scope.
+- Added `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py`.
+- Updated Rent-a-box Goal 12 docs and orchestration state so the next action
+  points at Goal 12 Auth wallet dependency gates instead of completed Goal 11.
+- Rent-a-box commit: `09dce2f docs: add auth wallet readiness verifier`.
+- Validation passed in Rent-a-box: `python3 -m py_compile
+  scripts/check_goal12_auth_wallet_readiness.py`, `python3
+  scripts/check_goal12_auth_wallet_readiness.py --root .`,
+  `python3 scripts/check_no_cyrillic.py docs AGENTS.md README.md`,
+  `git diff --check`, and targeted dangerous literal-secret scan on changed
+  files.
+
+Boundary:
+
+- Source/docs only. No Rent-a-box product auth migration, live DB query,
+  production row/password-hash/contract inspection, secret/token/cookie
+  inspection, Auth SQL, deploy, Kubernetes mutation, or live checkout smoke.
+
+Next unfinished chunk:
+
+- ChytraKoupe safe verifier/callback-hardening lane can run next, or request
+  owner approval for Auth schema-only live DB preflight, SQL apply, Auth deploy,
+  wallet endpoint 401 smoke, and optional synthetic authenticated smoke.
+
 ## 2026-07-02 - Goal 10 Source-Only Wallet DB Preflight Helper
 
 Current focus:

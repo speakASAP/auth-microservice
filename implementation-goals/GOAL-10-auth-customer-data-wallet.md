@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth + FlipFlop source prepared, Rent-a-box/Chytrakoupe plans created, live SQL/deploy/runtime smoke approval-gated
+Status: active; Auth + FlipFlop source prepared, Rent-a-box plan/verifier created, Chytrakoupe plan created, live SQL/deploy/runtime smoke approval-gated
 
 ## Intent
 
@@ -52,7 +52,7 @@ Auth customer data wallet:
 - [x] 10.6 FlipFlop shared Auth client and user-service bridge source prep.
 - [x] 10.7 FlipFlop checkout/profile selectors source prep with checkout manual-edit guard.
 - [x] 10.8 Orders snapshot compatibility audit; no source change before provenance decision.
-- [x] 10.9 Rent-a-box hosted Auth/profile migration plan created in commit `fcfeb48`.
+- [x] 10.9 Rent-a-box hosted Auth/profile migration plan and readiness verifier created in commits `fcfeb48` and `09dce2f`.
 - [x] 10.10 Chytrakoupe checkout selector integration plan created in commit `a1dabca`.
 - [x] 10.11 Cross-repo validation and deployment plan.
 
@@ -93,7 +93,7 @@ marketplace operations.
 | F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | runtime smoke gated       | 4           |
 | F2 FlipFlop checkout UX            | source-prepared    | FlipFlop frontend worker | checkout/profile UI                      | Auth deploy/runtime smoke incl. manual-edit guard | 5           |
 | O1 Orders compatibility            | audit-complete     | Orders worker            | create-order contract/docs               | provenance decision       | 6           |
-| R1 Rent-a-box Auth migration plan  | plan-created       | Rent-a-box coordinator   | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Auth deploy + migration approval | 7           |
+| R1 Rent-a-box Auth migration plan  | plan+verifier-created | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | Auth deploy + migration approval | 7 |
 | CK1 Chytrakoupe checkout selectors | plan-created       | Chytrakoupe worker       | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Auth deploy + client-id decision | 8           |
 | C1 Cliplot plan                    | blocked            | Cliplot coordinator      | docs only                                | checkout approval         | later       |
 | M1 marketplace audit               | ready read-only    | explorer                 | Catalog/Allegro/Aukro/Bazos/Heureka docs | none                      | no code     |
@@ -189,6 +189,24 @@ that repo's status/validation report.
 - Live SQL apply, Auth deploy, wallet endpoint 401 smoke, and synthetic
   authenticated smoke remain approval-gated.
 
+## 2026-07-02 Rent-a-box Source-Readiness Verifier Result
+
+- 2026-07-02: Rent-a-box Goal 12 source-readiness verifier created in commit
+  `09dce2f docs: add auth wallet readiness verifier`.
+- Changed Rent-a-box files:
+  `scripts/check_goal12_auth_wallet_readiness.py`,
+  `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`,
+  `docs/goals/ORCHESTRATION_STATE.md`, and `docs/goals/README.md`.
+- The verifier is source-only and reports `pass_dependency_gated` when the
+  expected Auth wallet blockers are present and local auth/profile surfaces are
+  still consistent with the migration plan.
+- Validation passed in Rent-a-box: helper compile, helper execution,
+  no-Cyrillic docs check, diff-check, and targeted dangerous literal-secret
+  scan on changed files.
+- No Rent-a-box product auth migration, live DB query, production row,
+  password-hash or contract inspection, secret/token/cookie inspection, Auth
+  SQL, deploy, Kubernetes mutation, or live checkout smoke was performed.
+
 ## Coding Prompt
 
 Implement only the assigned chunk. Preserve Auth as the source of truth for
@@ -201,10 +219,10 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
 ## 2026-07-02 Goal 10.9 And 10.10 Plan Results
 
 - 2026-07-02: Goal 10.9 Rent-a-box hosted Auth/profile migration plan created
-  in `rent-a-box` commit `fcfeb48`, file
+  in `rent-a-box` commit `fcfeb48`, with source-readiness verifier commit
+  `09dce2f`, file
   `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`
-  with validation note
-  `rent-a-box/reports/validation/goal-12-auth-customer-data-wallet-migration-plan.md`.
+  and helper `scripts/check_goal12_auth_wallet_readiness.py`.
   Read-only audit confirmed local email/password auth, local JWT minting,
   local password hash storage, local profile/contact/billing storage, and
   domain foreign keys coupled to local `customer_profiles.id`; migration is
