@@ -1,6 +1,6 @@
 # Auth Customer Data Wallet Contract
 
-Status: source-implemented; live SQL apply and deployment approval-gated
+Status: Auth and FlipFlop source-implemented; live SQL apply, deployment, and runtime smoke approval-gated
 Owner: auth-microservice
 Created: 2026-07-02
 
@@ -39,16 +39,21 @@ Implemented now:
   creation snapshots. Orders is allowed to store these snapshots for order
   history and legal/fulfillment evidence, but not as editable user profile
   truth.
+- FlipFlop source now includes typed Auth wallet clients, defensive checkout/profile selectors,
+  and a checkout manual-edit guard that fall back to existing local/manual flows until
+  the Auth wallet endpoints are deployed.
 
 Not implemented or deployed yet:
 
 - The live Auth database has not yet had
   `scripts/create-customer-data-wallet-tables.sql` applied.
 - The new source has not yet been deployed to production.
-- Consumer checkout forms still enter billing/delivery data inline, even when a
-  user is authenticated.
-- Cross-repository checkout contracts do not yet require Auth address/profile
-  selectors before creating order snapshots.
+- Live deployed consumer checkout forms still enter billing/delivery data inline
+  until Auth SQL/deploy and FlipFlop runtime deployment/smoke complete. FlipFlop
+  source now has defensive wallet selectors, a manual-edit guard, and fallbacks.
+- Cross-repository checkout runtime contracts do not yet require Auth
+  address/profile selectors before creating order snapshots. FlipFlop source prep
+  exists; runtime verification is still gated.
 - Some repos still duplicate more than profile snapshots. `rent-a-box` was
   found with local email/password auth, local JWTs, local profile storage, and
   billing address fields. This is a separate credential/profile migration risk,
@@ -187,8 +192,9 @@ Consumer applications must:
   saved entries.
 - Provide "add new" and "edit" actions that call Auth APIs, not local profile
   persistence.
-- Submit selected address/invoice profile IDs and resolved snapshots to their
-  order creation flow.
+- Submit resolved address/invoice snapshots to their order creation flow. Submit
+  selected Auth wallet IDs only after an approved immutable provenance contract
+  defines field names and idempotency semantics.
 - Preserve guest checkout when required by the product.
 - Avoid logging full addresses, billing data, tokens, passwords, or raw
   customer payloads.

@@ -1,3 +1,37 @@
+## 2026-07-02 - Goal 10 Coordinator Status Normalization
+
+Current focus:
+
+- Keep Goal 10 status aligned with current source-only cross-repo work.
+
+Evidence:
+
+- Goal 10.6 FlipFlop client bridge is source-prepared in `flipflop` commit
+  `515f4b7`.
+- Goal 10.7 FlipFlop checkout/profile selectors are source-prepared in
+  `flipflop` commit `840eff6`; follow-up checkout manual-edit guard is
+  source-prepared in `flipflop` commit `4268a48`.
+- Goal 10.8 Orders compatibility audit is complete; no Orders source change is
+  needed until an approved Auth wallet provenance contract defines wallet ID
+  field names and idempotency semantics.
+- Live Auth remains healthy on old image, but wallet endpoints are still not
+  deployed; live SQL has not been applied.
+- Auth coordinator docs validation passed `git diff --check` and a dangerous
+  literal-secret marker scan on the changed files. Auth repo does not contain
+  `scripts/pre_coding_gate.py` or `scripts/strict_doc_audit.py`; those checks
+  remain `[MISSING: repo-local checker]` for this docs-only coordinator update.
+
+Boundary:
+
+- Documentation/status normalization only. No SQL, deploy, production DB access,
+  secret inspection, customer-data inspection, or consumer runtime smoke.
+
+Next unfinished chunk:
+
+- Owner-approved Auth schema-only DB preflight, live SQL apply, Auth deploy,
+  wallet endpoint 401 smoke, then FlipFlop runtime smoke including
+  manual-edit-before-wallet-response and explicit selector override coverage.
+
 ## 2026-07-02 - Goal 10.7 FlipFlop Selectors And Orders Compatibility
 
 Current focus:

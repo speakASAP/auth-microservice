@@ -193,8 +193,11 @@ Prefer app rollback through Kubernetes rollout undo or a forward source fix.
 
 Consumer code remains gated as follows:
 
-- FlipFlop typed wallet client work may be prepared source-only only when its
-  repo ownership is clean.
-- FlipFlop checkout/profile runtime wiring waits for Auth SQL and deploy.
-- Orders work waits for Auth deployment, FlipFlop payload shape, and resolution
-  of unrelated dirty event/order changes in `orders-microservice`.
+- FlipFlop typed wallet client work is source-prepared in commit `515f4b7`.
+- FlipFlop checkout/profile selector wiring is source-prepared in commit
+  `840eff6`; checkout manual-edit guard is source-prepared in commit `4268a48`.
+  Runtime deployment/smoke waits for Auth SQL and deploy, and must cover
+  manual edit before wallet response plus explicit selector override.
+- Orders compatibility audit is complete; no Orders source change is needed until
+  an approved Auth wallet provenance contract defines ID field names and
+  idempotency semantics.

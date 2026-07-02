@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth A1 source implemented, live SQL apply/deploy approval-gated
+Status: active; Auth + FlipFlop source prepared, live SQL/deploy/runtime smoke approval-gated
 
 ## Intent
 
@@ -49,9 +49,9 @@ Auth customer data wallet:
 - [x] 10.3 Auth invoice profile API.
 - [x] 10.4 Auth checkout aggregate and legacy `profileAddress` projection.
 - [x] 10.5 Auth contract docs and tests.
-- [ ] 10.6 FlipFlop shared Auth client and user-service bridge.
-- [ ] 10.7 FlipFlop checkout/profile selectors.
-- [ ] 10.8 Orders snapshot contract compatibility.
+- [x] 10.6 FlipFlop shared Auth client and user-service bridge source prep.
+- [x] 10.7 FlipFlop checkout/profile selectors source prep with checkout manual-edit guard.
+- [x] 10.8 Orders snapshot compatibility audit; no source change before provenance decision.
 - [ ] 10.9 Rent-a-box hosted Auth/profile migration plan.
 - [ ] 10.10 Chytrakoupe checkout selector integration plan.
 - [ ] 10.11 Cross-repo validation and deployment plan.
@@ -90,9 +90,9 @@ marketplace operations.
 | A0 Planning                        | complete           | Auth coordinator         | Auth docs only                           | None                      | 1           |
 | A1 Auth backend                    | source-implemented | Auth backend worker      | Auth source/docs/tests                   | SQL apply/deploy approval | 2           |
 | A2 Auth profile UI                 | dependency-gated   | Auth frontend worker     | hosted Auth/profile UI                   | A1                        | 3           |
-| F1 FlipFlop backend bridge         | dependency-gated   | FlipFlop backend worker  | shared Auth client, user-service         | A1                        | 4           |
-| F2 FlipFlop checkout UX            | dependency-gated   | FlipFlop frontend worker | checkout/profile UI                      | F1                        | 5           |
-| O1 Orders compatibility            | dependency-gated   | Orders worker            | create-order contract/docs               | A1 + F1                   | 6           |
+| F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | runtime smoke gated       | 4           |
+| F2 FlipFlop checkout UX            | source-prepared    | FlipFlop frontend worker | checkout/profile UI                      | Auth deploy/runtime smoke incl. manual-edit guard | 5           |
+| O1 Orders compatibility            | audit-complete     | Orders worker            | create-order contract/docs               | provenance decision       | 6           |
 | R1 Rent-a-box Auth migration plan  | dependency-gated   | Rent-a-box coordinator   | docs first                               | A1                        | 7           |
 | CK1 Chytrakoupe checkout selectors | dependency-gated   | Chytrakoupe worker       | checkout/auth client                     | A1                        | 8           |
 | C1 Cliplot plan                    | blocked            | Cliplot coordinator      | docs only                                | checkout approval         | later       |
@@ -128,6 +128,8 @@ that repo's status/validation report.
 - `[MISSING: owner-approved Auth deploy after source validation and SQL apply]`
 - `[MISSING: approved schema-only DB verification command/session]`
 - `[MISSING: owner-approved synthetic account for live cross-repo checkout smoke]`
+- `[MISSING: post-deploy wallet endpoint 401 smoke]`
+- `[MISSING: post-deploy FlipFlop checkout/profile runtime smoke, including manual-edit-before-wallet-response and explicit selector override]`
 - `[MISSING: customer invoice profile/selection contract for company ID, tax ID, VAT ID, and invoice email fields]`
 - `[UNKNOWN: final customer-checkout consumer repo set beyond FlipFlop, Chytrakoupe, Rent-a-box, and Cliplot]`
 
