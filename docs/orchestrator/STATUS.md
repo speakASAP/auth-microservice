@@ -1,3 +1,59 @@
+## 2026-07-03 - Goal 10.31 ChytraKoupe Source-Prepared Selectors And Consumer Head Refresh
+
+Current focus:
+
+- Move the next safe consumer lane forward after Auth live wallet deploy while
+  keeping runtime and mutating smoke gates closed.
+
+Evidence:
+
+- DocsRAG query from the running Auth pod returned HTTP 200 with 15 source
+  headings, including guarded checkout intent, target dataflow, and validation
+  evidence. No token value was printed.
+- ChytraKoupe committed
+  `b280f75 feat: source-prepare auth wallet checkout selectors`.
+- The ChytraKoupe source chunk added `lib/auth/wallet.ts`, reads Auth
+  `/auth/profile/checkout-data` with the existing stored bearer token, adds
+  delivery-address and invoice-profile selectors to checkout, guards default
+  wallet prefill after manual edits, and still submits only immutable
+  `billingAddress`/`deliveryAddress` snapshots to `/api/orders/guest`.
+- ChytraKoupe does not submit Auth wallet IDs, mutable Auth wallet references,
+  or `customer.authSubject`; the Auth-subject linkage decision remains open
+  only if central Orders must persist it.
+- Rent-a-box read-only audit kept Goal 12 `pass_dependency_gated`. Safe next
+  code is only a non-invasive hosted Auth callback/config scaffold; backend
+  auth migration, admin role mapping, consent/profile migration, migration
+  approval, backfill, and row-count complexity remain blocked.
+- Cliplot current observed HEAD moved to `0e6a233` with unrelated dirty
+  approval/config/integration files. Its wallet readiness verifier still
+  reports no runtime wallet integration, and selector/session/PII/response
+  contract blockers remain unchanged.
+
+Validation:
+
+- ChytraKoupe: `npm run verify:auth-wallet-checkout-selectors`, `node --check
+  scripts/verify-auth-wallet-checkout-selectors.mjs`, `npm run build`,
+  `npm run lint`, `git diff --check`, and targeted dangerous literal-secret
+  scan passed.
+- Cliplot: `npm run readiness:auth-wallet-checkout` passed in read-only mode
+  and still reports `runtimeWalletIntegrationPresent=false`.
+- Rent-a-box: read-only worker ran
+  `python3 scripts/check_goal12_auth_wallet_readiness.py --root .`, which
+  returned `pass_dependency_gated`.
+
+Boundary:
+
+- No deploy, live checkout submit, DB access, secret/token/password/JWT/cookie
+  inspection, customer/order data inspection, payment/Warehouse/notification
+  mutation, or Auth runtime change was performed.
+
+Next unfinished chunk:
+
+- Rent-a-box source-backed hosted Auth callback scaffold, ChytraKoupe final
+  client-id/Auth-subject decisions before runtime claim, Cliplot selector and
+  session/PII/response approvals, or owner-approved synthetic authenticated
+  Auth/FlipFlop smoke.
+
 ## 2026-07-03 - Goal 10.30 Auth Live Refresh From Captured HEAD
 
 Current focus:

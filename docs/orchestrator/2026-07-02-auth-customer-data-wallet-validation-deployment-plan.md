@@ -116,17 +116,17 @@ Consumers:
   blocked until a source-backed Rent-a-box callback route, concrete
   `client_id`/`return_url`, admin role mapping, consent/profile migration
   mapping, and migration/backfill decisions are approved.
-- `chytrakoupe`: current `main` is clean and ahead of origin at `002818f`; the
-  Goal 06 verifier records the completed Auth wallet 401 gate, Orders snapshot
-  shape, Auth v1 invoice fields, fragment-only Auth handoff direction,
-  Auth-side wildcard redirect/CORS evidence, and `flipflop-service`
-  `/api/orders/guest` snapshot mapping. Selector implementation remains blocked
-  until Auth client-id and authenticated Auth subject linkage decisions are
-  approved.
-- `cliplot`: current clean `main` at `9f1be04` includes refreshed Auth wallet
-  readiness evidence. Checkout mutation and wallet selector integration remain
-  approval-gated on selector behavior, browser/session, PII exposure, and
-  response-contract decisions.
+- `chytrakoupe`: current `main` is ahead of origin at `b280f75`; the Goal 06
+  verifier records completed Auth wallet 401 gate evidence, source-prepared
+  Auth wallet checkout-data client, delivery/invoice selectors, immutable
+  billing/delivery snapshots, and no Auth wallet IDs or `customer.authSubject`
+  in order payloads. Runtime claim remains blocked until the final Auth
+  client-id and authenticated Auth subject linkage decisions are approved.
+- `cliplot`: current observed HEAD is `0e6a233` with unrelated dirty
+  approval/config/integration files. Auth wallet readiness still reports no
+  runtime wallet integration; checkout mutation and wallet selector integration
+  remain approval-gated on selector behavior, browser/session, PII exposure,
+  and response-contract decisions.
 - Marketplace/channel audit: `catalog-microservice`, `allegro`, `aukro`,
   `bazos`, `heureka`, and `shop-assistant` do not need repo-local wallet plans
   now. Marketplace buyer/contact/order data must remain immutable channel or
@@ -140,16 +140,16 @@ Consumers:
 | `flipflop` | FlipFlop integration owner | Clean `main` at `97b7e40`; wallet lane merged at `7e97e98` | `npm run verify:auth-wallet-profile-ui` passed; `npm run verify:auth-wallet-checkout-selectors` passed; `npm run verify:orders-hub-integration` passed; earlier shared/frontend/order-service build evidence remains recorded in Goal 10.18-10.21 | non-mutating post-deploy smoke passed including guest checkout; authenticated checkout/profile selectors, manual-edit guard, explicit save-back, and invoice profile CRUD/default UI still need synthetic authenticated smoke before completion | owner-approved synthetic account/token; authenticated runtime smoke |
 | `orders-microservice` | Orders contract owner | Clean `main` at `2111389`; Auth subject aliases and immutable snapshots supported, including optional Auth invoice fields from `3c7d0c3` | `npm run verify:create-order-contract` passed; `npm run verify:invoices-read-boundary` passed; earlier build/full-test evidence remains recorded in Goal 10.18 | optional validate-create payload smoke and event privacy check after Auth deploy approval | optional future wallet provenance field names/idempotency semantics not approved |
 | `rent-a-box` | Rent-a-box migration owner | Clean `main` ahead 3 at `9e6cf38`; Auth wallet 401 gate, hosted Auth handoff, live wildcard redirect/CORS evidence, `/auth/validate`, and wallet API shape consumed by Goal 12 verifier | `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py scripts/ips_pre_coding_gate.py` passed; `python3 scripts/check_goal12_auth_wallet_readiness.py --root .` passed with `pass_dependency_gated`; `./scripts/intent_preflight.sh` passed; `git diff --check`, targeted literal-secret scan, and stale broad callback/allowlist blocker scan passed | hosted Auth callback/session/admin adapter; consent/profile migration mapping; no backfill without approval | source-backed callback route, concrete `client_id`/`return_url`, admin role mapping, consent/profile migration mapping, DB migration/backfill, row counts unknown |
-| `chytrakoupe` | ChytraKoupe checkout owner | Clean `main` ahead 1 at `002818f`; Auth wallet 401 gate, Orders snapshot shape, Auth v1 invoice fields, fragment-only Auth handoff, Auth-side wildcard redirect/CORS evidence, and `/api/orders/guest` snapshot mapping consumed by Goal 06 verifier; selector UI still absent by design | `npm run verify:auth-wallet-checkout-selectors` passed; `node --check scripts/verify-auth-wallet-checkout-selectors.mjs` passed; `git diff --check`, targeted dangerous literal-secret scan, and stale blocker scan passed | delivery/invoice selectors; guest fallback; optional Auth subject linkage; no live checkout submit without approval | Auth client-id decision; authenticated Auth subject linkage if central Orders must persist `customer.authSubject` |
-| `cliplot` | Cliplot coordinator | Clean `main` ahead 1 at `8dbd1e2`; Auth wallet 401 gate consumed by readiness verifier; checkout still guarded and source-known facts recorded | `npm run readiness:auth-wallet-checkout` passed; `node --check scripts/auth-wallet-checkout-readiness.js` passed; `npm run check` passed; `git diff --check` and targeted literal-secret scan passed | no live order/payment/Warehouse/notification mutation without approval | selector behavior approval, authenticated browser/session contract, no-PII logging/frontend exposure review, response fields/version identifier |
+| `chytrakoupe` | ChytraKoupe checkout owner | `main` ahead 1 at `b280f75`; Auth wallet checkout-data client and delivery/invoice selector source prepared; order submit remains immutable snapshot-only and does not send Auth wallet IDs or `customer.authSubject` | `npm run verify:auth-wallet-checkout-selectors` passed; `node --check scripts/verify-auth-wallet-checkout-selectors.mjs` passed; `npm run build` passed; `npm run lint` passed; `git diff --check` and targeted dangerous literal-secret scan passed | runtime selector smoke; final client-id decision; optional Auth subject linkage; no live checkout submit without approval | final Auth client-id decision; authenticated Auth subject linkage if central Orders must persist `customer.authSubject` |
+| `cliplot` | Cliplot coordinator | Observed HEAD `0e6a233` with unrelated dirty approval/config/integration files; Auth wallet readiness still reports no runtime wallet integration | `npm run readiness:auth-wallet-checkout` passed read-only and retained wallet blockers | no live order/payment/Warehouse/notification mutation without approval | selector behavior approval, authenticated browser/session contract, no-PII logging/frontend exposure review, response fields/version identifier; unrelated dirty files |
 | marketplace/channel repos | Auth coordinator | `catalog-microservice` `311030d`, `allegro` `6c64a30`, `aukro` `ba61422`, `bazos` `cdcd739`, `heureka` `976a1a8`, `shop-assistant` `4ed76b1` | read-only status/head and bounded source/doc audit completed | no wallet back-write; preserve channel evidence and Orders snapshots | possible later Allegro raw-payload retention review; Bazos/Aukro provider-specific unknowns |
 
 ## Merge And Deployment Order
 
 1. Current source states are frozen in this plan: Auth deployed Source
    Preflight HEAD `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`, FlipFlop
-   `97b7e40`, Orders `2c35d2f`, Rent-a-box `9e6cf38`, ChytraKoupe `002818f`,
-   and Cliplot `8dbd1e2`.
+   `97b7e40`, Orders `2c35d2f`, Rent-a-box `9e6cf38`, ChytraKoupe `b280f75`,
+   and Cliplot observed HEAD `0e6a233` with unrelated dirty files.
 2. Push or merge plan/source commits that are intentionally part of the release.
 3. Keep Orders unchanged for current snapshot support unless a separate
    wallet-provenance contract is approved.
@@ -161,8 +161,10 @@ Consumers:
 6. Deploy/runtime-smoke FlipFlop from the approved target branch only after
     Auth wallet 401 smoke passes.
 7. Keep Orders unchanged unless the wallet provenance contract is approved.
-8. Start Rent-a-box and ChytraKoupe code lanes only after their remaining
-   callback/client/Auth-subject and migration decisions are resolved.
+8. Start Rent-a-box code lanes only after callback/client/admin/consent and
+   migration decisions are resolved; ChytraKoupe source selector lane is
+   prepared but runtime claim remains gated on final client/Auth-subject
+   decisions.
 9. Keep Cliplot read-only/guarded until selector/session/PII/response-contract
    approvals exist.
 10. Keep marketplace/channel repositories out of Auth wallet back-write scope
@@ -272,7 +274,7 @@ Run only after Auth wallet endpoint 401 smoke passes.
   `companyId`, `vatId`, and `email` is source-prepared and verified in Orders
   through `3c7d0c3` and current `2111389`.
 - `[MISSING: Rent-a-box hosted Auth token/session/admin-role migration decision before code changes]`
-- `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
+- `[MISSING: ChytraKoupe hosted Auth client_id decision before production runtime claim]`
 - `[UNKNOWN: final customer-checkout consumer repo set beyond FlipFlop, Chytrakoupe, Rent-a-box, and Cliplot]`
 
 ## Parallel Execution

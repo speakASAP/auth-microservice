@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; Rent-a-box/ChytraKoupe/Cliplot readiness lanes created; marketplace/channel audit complete; live SQL/deploy/unauthenticated 401 smoke completed; synthetic authenticated smoke and dependent consumer code lanes remain approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors source-prepared; Rent-a-box/Cliplot readiness lanes remain gated; marketplace/channel audit complete; live SQL/deploy/unauthenticated 401 smoke completed; synthetic authenticated smoke and dependent runtime lanes remain approval-gated
 
 ## Intent
 
@@ -73,6 +73,8 @@ Auth customer data wallet:
 - [x] 10.27 Dependency-gated consumer readiness lanes refreshed against Auth wallet 401 evidence.
 - [x] 10.28 Consumer contract blockers refined after read-only subagent audits.
 - [x] 10.29 Consumer gates narrowed after live Auth allowlist and adapter audits.
+- [x] 10.30 Auth live refresh from Source Preflight-captured HEAD completed.
+- [x] 10.31 ChytraKoupe source-prepared checkout selectors and current consumer head refresh.
 
 ## Acceptance Criteria
 
@@ -112,8 +114,8 @@ marketplace operations.
 | F2 FlipFlop checkout/profile UX    | source-prepared    | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deployed; synthetic checkout/profile smoke gated | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
 | R1 Rent-a-box Auth migration plan  | gate-narrowed | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | source callback route, client_id/return_url, admin role mapping, consent/profile migration mapping, migration approval | 7 |
-| CK1 ChytraKoupe checkout selectors | gate-narrowed | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | client-id and optional Auth subject linkage | 8 |
-| C1 Cliplot plan                    | source-facts-recorded | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js` | selector/session/PII/response-contract approvals | later |
+| CK1 ChytraKoupe checkout selectors | source-prepared; runtime-gated | ChytraKoupe worker | `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | final client-id decision and optional Auth subject linkage before runtime claim | 8 |
+| C1 Cliplot plan                    | source-facts-recorded; current repo dirty outside wallet lane | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js` | selector/session/PII/response-contract approvals | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
 ## Validation
@@ -149,7 +151,7 @@ that repo's status/validation report.
 - `[MISSING: post-deploy consumer runtime smoke confirming Auth invoice profile selection reaches immutable order billing snapshots]`
 - `[MISSING: authenticated synthetic FlipFlop checkout/profile runtime smoke, including manual-edit-before-wallet-response, explicit selector override, explicit checkout wallet save-back, and profile invoice CRUD/default selection]`
 - `[MISSING: source-backed Rent-a-box hosted Auth callback route, concrete client_id/return_url, admin role mapping, consent/profile migration mapping, and migration/backfill decision before code changes]`
-- `[MISSING: ChytraKoupe hosted Auth client_id and authenticated Auth subject linkage decision before selector implementation]`
+- `[MISSING: ChytraKoupe final hosted Auth client_id decision and authenticated Auth subject linkage decision before production runtime claim]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
 
@@ -273,6 +275,27 @@ that repo's status/validation report.
 - Remaining gates: synthetic authenticated Auth wallet CRUD/default/delete and
   FlipFlop checkout/profile runtime smoke, plus Rent-a-box, ChytraKoupe, and
   Cliplot product-code decisions.
+
+## 2026-07-03 Goal 10.31 ChytraKoupe Source-Prepared Selectors
+
+- ChytraKoupe commit `b280f75 feat: source-prepare auth wallet checkout
+  selectors` adds a typed Auth wallet checkout-data client, delivery-address
+  and invoice-profile selectors, default wallet prefill guarded after manual
+  edits, and separate immutable billing/delivery snapshots.
+- ChytraKoupe checkout still posts to `/api/orders/guest`; it does not submit
+  Auth wallet IDs, mutable Auth wallet references, or `customer.authSubject`.
+- Validation passed: `npm run verify:auth-wallet-checkout-selectors`,
+  `node --check scripts/verify-auth-wallet-checkout-selectors.mjs`,
+  `npm run build`, `npm run lint`, `git diff --check`, and targeted
+  dangerous literal-secret scan.
+- Rent-a-box read-only audit kept Goal 12 `pass_dependency_gated`; only hosted
+  Auth callback/config scaffold is safe before admin-role, consent/profile, and
+  migration/backfill decisions.
+- Cliplot current observed HEAD is `0e6a233` with unrelated dirty files; wallet
+  readiness still reports no runtime wallet integration and blockers unchanged.
+- No deploy, live checkout submit, DB access, secret/token/cookie inspection,
+  customer/order data inspection, payment/Warehouse mutation, notification
+  send, or Auth runtime change was performed.
 
 ## 2026-07-02 Goal 10.25 Auth Live SQL Deploy And 401 Smoke Result
 

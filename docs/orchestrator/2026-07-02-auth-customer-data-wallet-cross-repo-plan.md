@@ -137,11 +137,10 @@ Dirty or ahead; future workers must inspect before editing:
   redirect/CORS evidence while preserving source callback route,
   `client_id`/`return_url`, admin role, consent/profile migration, and backfill
   blockers.
-- `chytrakoupe`: clean and ahead at `002818f`; repo-local Goal 06 plan now
-  consumes the Auth wallet 401 gate, Orders immutable snapshot shape, Auth v1
-  invoice fields, fragment-only Auth handoff direction, Auth-side wildcard
-  redirect/CORS evidence, and `flipflop-service` `/api/orders/guest` snapshot
-  mapping while preserving client-id and optional Auth subject linkage blockers.
+- `chytrakoupe`: clean and ahead at `b280f75`; repo-local Goal 06 source
+  prepares Auth wallet checkout-data reading, delivery/invoice selectors, and
+  immutable billing/delivery snapshots, while retaining final client-id and
+  optional Auth subject linkage gates before runtime claim.
 - `heureka`: reported dirty by read-only explorer.
 - `shop-assistant`: reported dirty by read-only explorer; lower priority
   because no local login/register controller was found.
@@ -416,13 +415,15 @@ Reason:
 
 Plan:
 
-- Repo-local selector plan: `chytrakoupe` commit `002818f`, file `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
+- Repo-local selector implementation: `chytrakoupe` commit `b280f75`, files
+  `lib/auth/wallet.ts`, `components/checkout/CheckoutClient.tsx`, and
+  `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
 - Decide whether ChytraKoupe keeps `client_id=flipflop` or receives a new Auth
-  client id.
+  client id before production runtime claim.
 - Decide whether central Orders must persist `customer.authSubject` for
   signed-in ChytraKoupe orders. Snapshot mapping through `/api/orders/guest` is
-  source-resolved when Auth wallet data is resolved into manual
-  `billingAddress` and `deliveryAddress` snapshots.
+  source-resolved and source-prepared, but the current guest path leaves Auth
+  subject unset.
 - Remove query-token callback fallback during implementation unless an owner
   approves a legacy compatibility exception.
 - Replace registered-user checkout entry with Auth checkout-data selectors.
