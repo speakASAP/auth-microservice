@@ -165,9 +165,18 @@ Minimum fields:
 - `createdAt`
 - `updatedAt`
 
+Field semantics:
+
+- `companyId` is the company registration identifier, including Czech ICO-style
+  values.
+- `vatId` is the VAT/DIC-style identifier when applicable.
+- `taxId` is a separate tax identifier for storefront/accounting flows that
+  require one.
+- `email` is the invoice recipient email. `invoiceEmail` and
+  `electronicInvoiceEmail` are not Auth v1 aliases.
+
 Optional future fields:
 
-- `electronicInvoiceEmail`
 - `street2`
 - `region`
 - `sourceApplication`

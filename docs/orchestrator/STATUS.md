@@ -1815,6 +1815,66 @@ Next unfinished chunks:
   Auth deploy, strict wallet endpoint 401 smoke, and optional synthetic
   authenticated wallet smoke.
 
+## 2026-07-02 Goal 10.17 Auth Invoice Profile Field Semantics
+
+Vision -> Goal Impact -> System -> Feature -> Task -> Execution Plan -> Coding
+Prompt -> Code -> Validation:
+
+- Vision: Auth remains the single source of truth for reusable registered-user
+  invoice profile data across customer checkout surfaces.
+- Goal Impact: storefronts can select the same Auth invoice profile fields
+  without guessing whether company ID, tax ID, VAT ID, or invoice email use
+  local aliases.
+- System: `auth-microservice` contract docs define the canonical producer
+  schema; consumer order snapshots remain immutable copies and do not become
+  reusable profile truth.
+- Feature: Auth invoice profile v1 fields are explicitly defined as
+  `companyId`, `taxId`, `vatId`, and invoice recipient `email`.
+- Task: update Auth contract docs and Goal 10 blockers so the unresolved item is
+  limited to consumer order snapshot support/validation for optional Auth
+  invoice fields not currently preserved by Orders.
+- Execution Plan: source-only documentation patch; no runtime code, SQL,
+  deployment, DB, secret, customer data, or consumer repo edit.
+- Coding Prompt: preserve Auth ownership boundaries and mark remaining
+  consumer gaps precisely instead of keeping a broad missing Auth field
+  contract.
+- Code: updated `docs/UNIFIED_AUTH_CONTRACT.md`,
+  `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`,
+  `implementation-goals/GOAL-10-auth-customer-data-wallet.md`,
+  `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`,
+  `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`,
+  and `docs/IMPLEMENTATION_STATE.md`.
+- Validation: pending final `git diff --check`, invoice field contract scan, and
+  dangerous literal-secret scan before commit.
+
+Evidence:
+
+- `companyId` is the company registration identifier, including Czech
+  ICO-style values.
+- `vatId` is the VAT/DIC-style identifier when applicable.
+- `taxId` remains a separate storefront/accounting tax identifier.
+- Invoice recipient email is Auth field `email`; `invoiceEmail` and
+  `electronicInvoiceEmail` are not Auth v1 aliases.
+- Read-only sidecar audit found FlipFlop Auth client already uses
+  `companyId`, `taxId`, `vatId`, and `email`; Orders currently snapshots only
+  `companyName`/`taxId`; ChytraKoupe remains dependency-gated on accepted order
+  payload fields.
+
+Boundary:
+
+- No runtime code, SQL, deploy, Kubernetes mutation, DB access,
+  secret/token/password/JWT value inspection, raw production customer data
+  inspection, authenticated smoke, or consumer repo edit was performed.
+
+Next unfinished chunks:
+
+- Consumer order snapshot support/validation for optional Auth invoice fields
+  `companyId`, `vatId`, and `email` beyond the current
+  `companyName`/`taxId` subset.
+- Owner approval is still required for schema-only DB preflight, SQL apply,
+  Auth deploy, strict wallet endpoint 401 smoke, and optional synthetic
+  authenticated wallet smoke.
+
 ## 2026-07-02 - Goal 10.16 Auth Release Gate Head Refresh
 
 Current focus:

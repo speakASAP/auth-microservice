@@ -101,6 +101,48 @@ authenticated checkout forms. The response contains:
 }
 ```
 
+`invoiceProfiles[]` uses the Auth v1 invoice profile schema:
+
+```json
+{
+  "id": "uuid",
+  "label": "Billing label",
+  "type": "person-or-company",
+  "firstName": "Billing first name",
+  "lastName": "Billing last name",
+  "companyName": "Company name",
+  "companyId": "Company registration ID / ICO",
+  "taxId": "Tax identifier used by the storefront/accounting flow",
+  "vatId": "VAT identifier / DIC when applicable",
+  "street": "Billing street",
+  "street2": "Billing street 2",
+  "city": "Billing city",
+  "region": "Billing region",
+  "postalCode": "Billing postal code",
+  "country": "Billing country",
+  "phone": "Billing phone",
+  "email": "Invoice recipient email",
+  "isDefault": false,
+  "sourceApplication": "optional source app",
+  "createdAt": "iso timestamp",
+  "updatedAt": "iso timestamp"
+}
+```
+
+Consumer mapping rules:
+
+- Auth field names are canonical for reusable invoice profile truth:
+  `companyId`, `taxId`, `vatId`, and `email`.
+- `companyId` represents the company registration identifier, including Czech
+  ICO-style values.
+- `vatId` represents the VAT/DIC-style identifier when the customer has one.
+- `taxId` is kept as a separate tax identifier for storefront/accounting flows
+  that require it; consumers must not collapse it with `vatId` unless that
+  store's accounting contract explicitly says they are the same.
+- Invoice recipient email is the `email` field. `invoiceEmail` and
+  `electronicInvoiceEmail` are not accepted Auth v1 field aliases unless a
+  future contract version explicitly adds them.
+
 Delivery address and invoice profile CRUD endpoints are scoped to the bearer
 subject. Responses are sanitized and do not expose `userId`, `deletedAt`,
 passwords, tokens, provider details, payment details, or raw audit data.

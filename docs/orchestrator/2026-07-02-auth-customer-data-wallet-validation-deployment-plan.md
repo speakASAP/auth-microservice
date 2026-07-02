@@ -244,7 +244,9 @@ Run only after Auth wallet endpoint 401 smoke passes.
 - `[MISSING: owner-approved synthetic account/token for authenticated Auth wallet and cross-repo checkout smoke]`
 - `[MISSING: FlipFlop target branch decision before runtime deployment]`
 - `[MISSING: final wallet provenance contract for Orders field names and idempotency semantics]`
-- `[MISSING: customer invoice profile/selection contract for company ID, tax ID, VAT ID, and invoice email fields across all storefronts]`
+- Auth invoice profile v1 field semantics are source-defined:
+  `companyId`, `taxId`, `vatId`, and invoice recipient `email`.
+- `[MISSING: consumer order snapshot support/validation for optional Auth invoice fields companyId, vatId, and email beyond the current companyName/taxId subset]`
 - `[MISSING: Rent-a-box hosted Auth token/session/admin-role migration decision before code changes]`
 - `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
 - `[UNKNOWN: final customer-checkout consumer repo set beyond FlipFlop, Chytrakoupe, Rent-a-box, and Cliplot]`

@@ -60,6 +60,7 @@ Auth customer data wallet:
 - [x] 10.14 Auth hosted `/profile` wallet management UI source-prepared.
 - [x] 10.15 Auth wallet runtime 401 smoke verifier source-prepared.
 - [x] 10.16 Auth release gate exact HEAD refreshed to current deploy candidate.
+- [x] 10.17 Auth invoice profile field semantics source-defined.
 
 ## Acceptance Criteria
 
@@ -137,7 +138,7 @@ that repo's status/validation report.
 - `[MISSING: owner-approved synthetic account for live cross-repo checkout smoke]`
 - `[MISSING: post-deploy wallet endpoint 401 smoke]`
 - `[MISSING: post-deploy FlipFlop checkout/profile runtime smoke, including manual-edit-before-wallet-response and explicit selector override]`
-- `[MISSING: customer invoice profile/selection contract for company ID, tax ID, VAT ID, and invoice email fields]`
+- `[MISSING: consumer order snapshot support/validation for optional Auth invoice fields companyId, vatId, and email beyond the current companyName/taxId subset]`
 - `[MISSING: Rent-a-box hosted Auth token/session/admin-role migration decision before code changes]`
 - `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
@@ -192,6 +193,26 @@ that repo's status/validation report.
 - No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT
   value inspection, raw production customer data inspection, authenticated
   smoke, or consumer repo edit was performed.
+
+## 2026-07-02 Goal 10.17 Auth Invoice Profile Field Semantics Result
+
+- 2026-07-02: Auth invoice profile v1 field semantics were source-defined in
+  `docs/UNIFIED_AUTH_CONTRACT.md` and
+  `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`.
+- Canonical reusable Auth fields are `companyId`, `taxId`, `vatId`, and
+  invoice recipient `email`; `invoiceEmail` and `electronicInvoiceEmail` are
+  not Auth v1 aliases.
+- Mapping rule: `companyId` is the company registration identifier including
+  Czech ICO-style values, `vatId` is the VAT/DIC-style identifier when
+  applicable, and `taxId` remains a separate tax identifier for
+  storefront/accounting flows that require one.
+- Remaining cross-service gap is now narrower: consumer order snapshots still
+  need source support/validation for optional Auth invoice fields
+  `companyId`, `vatId`, and `email` beyond the current `companyName`/`taxId`
+  subset.
+- No runtime code, SQL, deploy, DB access, secret/token/password/JWT value
+  inspection, raw production customer data inspection, authenticated smoke, or
+  consumer repo edit was performed.
 
 ## 2026-07-02 Goal 10.14 Auth Hosted Profile Wallet UI Result
 

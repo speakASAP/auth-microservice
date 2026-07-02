@@ -714,5 +714,10 @@ Cross-repo:
 - `[MISSING: owner-approved Auth deploy after source validation and SQL apply]`
 - `[MISSING: approved schema-only DB verification command/session]`
 - `[MISSING: owner-approved synthetic account for live cross-repo smoke]`
-- `[MISSING: customer invoice profile/selection contract for company ID, tax ID, VAT ID, and invoice email fields]`
+- Auth invoice profile v1 field semantics are defined in
+  `docs/UNIFIED_AUTH_CONTRACT.md` and
+  `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`: `companyId` is the company
+  registration identifier, `vatId` is the VAT/DIC-style identifier, `taxId` is
+  a separate tax identifier, and invoice recipient email is `email`.
+- `[MISSING: consumer order snapshot support/validation for optional Auth invoice fields companyId, vatId, and email beyond the current companyName/taxId subset]`
 - `[UNKNOWN: final consumer repo set beyond FlipFlop and Cliplot checkout surfaces]`
