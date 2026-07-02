@@ -1,3 +1,43 @@
+## 2026-07-02 - Goal 10 ChytraKoupe Source-Readiness Verifier And Callback Cleanup
+
+Current focus:
+
+- Add a dependency-gated ChytraKoupe verifier and safe hosted Auth callback URL
+  cleanup while Auth wallet runtime endpoints remain undeployed.
+
+Evidence:
+
+- ChytraKoupe worker completed on remote `alfares` only.
+- ChytraKoupe commit: `2838ebf test: add auth wallet checkout gate verifier`.
+- Added `scripts/verify-auth-wallet-checkout-selectors.mjs` and `npm run
+  verify:auth-wallet-checkout-selectors`.
+- Added validation report
+  `reports/validation/auth-wallet-checkout-selectors-verifier.md`.
+- Hardened `app/auth/callback/AuthCallbackClient.tsx` so token-bearing
+  query/hash material is stripped from browser history with
+  `window.history.replaceState(null, "", url.pathname)` after callback values
+  are captured.
+- The verifier passes the expected dependency-gated state: wallet selector UI,
+  wallet client/fetch source, and local wallet persistence remain absent while
+  explicit Auth wallet/client-id/CORS/order-payload blockers remain documented.
+- Coordinator revalidation passed: `npm run verify:auth-wallet-checkout-selectors`,
+  `npm run lint`, `npm run build`, `node --check
+  scripts/verify-auth-wallet-checkout-selectors.mjs && git diff --check`, and
+  targeted dangerous literal-secret scan on changed ChytraKoupe files.
+
+Boundary:
+
+- No product wallet selector UI, checkout behavior migration, deploy,
+  Kubernetes mutation, live checkout submit, live DB query/write, Auth SQL
+  apply, secret/token/cookie inspection, or production customer-data access.
+
+Next unfinished chunk:
+
+- Actual ChytraKoupe delivery/invoice selector integration remains gated on
+  Auth wallet endpoints returning 401 instead of 404, client_id decision,
+  CORS/redirect allowlist confirmation, Orders snapshot contract, and invoice
+  field contract.
+
 ## 2026-07-02 - Goal 10 Rent-a-box Source-Readiness Verifier
 
 Current focus:

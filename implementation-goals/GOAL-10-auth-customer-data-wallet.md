@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth + FlipFlop source prepared, Rent-a-box plan/verifier created, Chytrakoupe plan created, live SQL/deploy/runtime smoke approval-gated
+Status: active; Auth + FlipFlop source prepared, Rent-a-box plan/verifier created, ChytraKoupe plan/verifier/callback cleanup created, live SQL/deploy/runtime smoke approval-gated
 
 ## Intent
 
@@ -53,7 +53,7 @@ Auth customer data wallet:
 - [x] 10.7 FlipFlop checkout/profile selectors source prep with checkout manual-edit guard.
 - [x] 10.8 Orders snapshot compatibility audit; no source change before provenance decision.
 - [x] 10.9 Rent-a-box hosted Auth/profile migration plan and readiness verifier created in commits `fcfeb48` and `09dce2f`.
-- [x] 10.10 Chytrakoupe checkout selector integration plan created in commit `a1dabca`.
+- [x] 10.10 ChytraKoupe checkout selector plan, readiness verifier, and safe callback cleanup created in commits `a1dabca` and `2838ebf`.
 - [x] 10.11 Cross-repo validation and deployment plan.
 
 ## Acceptance Criteria
@@ -94,7 +94,7 @@ marketplace operations.
 | F2 FlipFlop checkout UX            | source-prepared    | FlipFlop frontend worker | checkout/profile UI                      | Auth deploy/runtime smoke incl. manual-edit guard | 5           |
 | O1 Orders compatibility            | audit-complete     | Orders worker            | create-order contract/docs               | provenance decision       | 6           |
 | R1 Rent-a-box Auth migration plan  | plan+verifier-created | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | Auth deploy + migration approval | 7 |
-| CK1 Chytrakoupe checkout selectors | plan-created       | Chytrakoupe worker       | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Auth deploy + client-id decision | 8           |
+| CK1 ChytraKoupe checkout selectors | plan+verifier-created | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | Auth deploy + client-id decision | 8 |
 | C1 Cliplot plan                    | blocked            | Cliplot coordinator      | docs only                                | checkout approval         | later       |
 | M1 marketplace audit               | ready read-only    | explorer                 | Catalog/Allegro/Aukro/Bazos/Heureka docs | none                      | no code     |
 
@@ -207,6 +207,30 @@ that repo's status/validation report.
   password-hash or contract inspection, secret/token/cookie inspection, Auth
   SQL, deploy, Kubernetes mutation, or live checkout smoke was performed.
 
+## 2026-07-02 ChytraKoupe Source-Readiness Verifier Result
+
+- 2026-07-02: ChytraKoupe source-readiness verifier and hosted Auth callback
+  cleanup created in commit `2838ebf test: add auth wallet checkout gate
+  verifier`.
+- Changed ChytraKoupe files:
+  `scripts/verify-auth-wallet-checkout-selectors.mjs`, `package.json`,
+  `reports/validation/auth-wallet-checkout-selectors-verifier.md`, and
+  `app/auth/callback/AuthCallbackClient.tsx`.
+- The verifier confirms the expected dependency-gated state: explicit
+  `[MISSING: ...]` blockers remain documented, wallet selector/client source is
+  absent, guest checkout is still manual, and no local wallet persistence was
+  introduced.
+- Callback cleanup now strips token-bearing query/hash material from browser
+  history after callback values are captured.
+- Validation passed in ChytraKoupe: `npm run
+  verify:auth-wallet-checkout-selectors`, `npm run lint`, `npm run build`,
+  `node --check scripts/verify-auth-wallet-checkout-selectors.mjs && git diff
+  --check`, and targeted dangerous literal-secret scan on changed files.
+- No wallet selector UI, checkout behavior migration, deploy, Kubernetes
+  mutation, live checkout submit, live DB query/write, Auth SQL apply,
+  secret/token/cookie inspection, or production customer-data access was
+  performed.
+
 ## Coding Prompt
 
 Implement only the assigned chunk. Preserve Auth as the source of truth for
@@ -229,8 +253,9 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
   blocked from code changes until Auth wallet deploy and owner-approved
   migration/backfill decisions.
 - 2026-07-02: Goal 10.10 ChytraKoupe checkout selector integration plan created
-  in `chytrakoupe` commit `a1dabca`, file
-  `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
+  in `chytrakoupe` commit `a1dabca`, with verifier/callback cleanup commit
+  `2838ebf`, file `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`
+  and helper `scripts/verify-auth-wallet-checkout-selectors.mjs`.
   Read-only audit confirmed hosted Auth exists, checkout remains guest-first and
   manual, no wallet selectors or local profile/address tables exist, and code
   changes are gated on Auth wallet deploy, client-id decision, CORS/redirect

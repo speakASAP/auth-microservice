@@ -85,9 +85,9 @@ Consumers:
   provenance contract is approved.
 - `rent-a-box`: plan commit `fcfeb48` created; code migration is blocked until
   hosted Auth/session/admin-role and data migration decisions are approved.
-- `chytrakoupe`: plan commit `a1dabca` created; selector implementation is
-  blocked until Auth wallet deploy, client-id, CORS/redirect, and snapshot
-  decisions are approved.
+- `chytrakoupe`: plan commit `a1dabca` and verifier/callback cleanup commit
+  `2838ebf` created; selector implementation is blocked until Auth wallet
+  deploy, client-id, CORS/redirect, and snapshot decisions are approved.
 - `cliplot`: clean at `4ae3e25`; checkout mutation remains approval-gated.
 
 ## Repository Matrix
@@ -98,7 +98,7 @@ Consumers:
 | `flipflop` | FlipFlop integration owner | Active target `codex/orders-lifecycle-cabinet-flipflop-clean` source-integrated at `223db57` | pre-coding gate passed; strict doc audit passed 100/100; shared build passed; frontend `tsc --noEmit` passed; frontend build passed; `git diff --check` passed | guest checkout unchanged; authenticated checkout/profile selectors; wallet fallback on 404/failure; manual-edit-before-wallet-response guard; explicit selector override; profile address fallback; no wallet IDs in order payload unless approved | Auth wallet deploy; owner-approved synthetic account; runtime smoke |
 | `orders-microservice` | Orders contract owner | Clean `main` at `c5e6dd6`; Auth subject aliases and immutable snapshots already supported | if provenance fields are approved, run build, create-order contract verifier, event verifier, lifecycle/invoice verifiers, full tests, and secret scan | optional validate-create payload smoke and event privacy check after contract approval | wallet provenance field names/idempotency semantics not approved |
 | `rent-a-box` | Rent-a-box migration owner | Plan-only commit `fcfeb48` | intent preflight, lint, tests, focused API/web checks, diff-check when code lane starts | hosted Auth callback/token/session/admin mapping; wallet read/write adapter; no backfill without approval | hosted Auth token/session/admin-role decision; DB migration/backfill approval; row counts unknown |
-| `chytrakoupe` | ChytraKoupe checkout owner | Plan-only commit `a1dabca` | lint, build, diff-check, literal-secret scan when code lane starts | callback hardening; delivery/invoice selectors; guest fallback; order snapshot check; no live checkout submit without approval | Auth wallet deploy; client-id decision; CORS/redirect allowlist; Orders snapshot decisions |
+| `chytrakoupe` | ChytraKoupe checkout owner | Plan/verifier commit `2838ebf`; selector UI still absent by design | `npm run verify:auth-wallet-checkout-selectors` passed; `npm run lint` passed; `npm run build` passed; `node --check scripts/verify-auth-wallet-checkout-selectors.mjs && git diff --check` passed; literal-secret scan passed | delivery/invoice selectors; guest fallback; order snapshot check; no live checkout submit without approval | Auth wallet deploy; client-id decision; CORS/redirect allowlist; Orders snapshot decisions |
 | `cliplot` | Cliplot coordinator | Readiness-only; checkout still guarded | build/check/readiness scripts only | no live order/payment/Warehouse/notification mutation without approval | checkout approval and Auth wallet consumer policy |
 
 ## Merge And Deployment Order
