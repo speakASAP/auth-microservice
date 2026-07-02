@@ -172,7 +172,9 @@ a:hover {
   font-size: 0.9rem;
   color: var(--muted);
 }
-.form-group input {
+.form-group input,
+.form-group select,
+.form-group textarea {
   width: 100%;
   max-width: 320px;
   padding: 0.5rem 0.75rem;
@@ -182,7 +184,13 @@ a:hover {
   color: var(--text);
   font-size: 1rem;
 }
-.form-group input:focus {
+.form-group textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: var(--accent);
 }
@@ -297,6 +305,210 @@ a:hover {
 
 .hidden {
   display: none;
+}
+
+/* Hosted profile wallet */
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+.profile-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.profile-header .header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  min-width: 0;
+}
+.profile-header .header-right span {
+  overflow-wrap: anywhere;
+}
+.profile-header a.logout {
+  color: var(--muted);
+  white-space: nowrap;
+}
+.profile-header a.logout:hover {
+  color: var(--error);
+  text-decoration: none;
+}
+.profile-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.profile-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  max-width: 480px;
+  margin-bottom: 1.5rem;
+}
+.profile-card-wide {
+  max-width: none;
+  margin-bottom: 0;
+}
+.profile-card h2 {
+  margin: 0 0 1.25rem 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.profile-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.profile-card-header h2 {
+  margin: 0;
+}
+.profile-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.profile-form-grid .form-group {
+  margin-bottom: 0;
+}
+.profile-form-grid .form-group input,
+.profile-form-grid .form-group select,
+.profile-form-grid .form-group textarea {
+  max-width: none;
+  background: var(--bg);
+}
+.profile-span-2 {
+  grid-column: span 2;
+}
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+.profile-status {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+}
+.profile-status.success {
+  border-color: rgba(63, 185, 80, 0.45);
+  color: var(--success);
+}
+.profile-status.error {
+  border-color: rgba(248, 81, 73, 0.45);
+  color: var(--error);
+}
+.wallet-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.wallet-entry {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 1rem;
+}
+.wallet-entry-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+.wallet-entry h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+.wallet-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid rgba(63, 185, 80, 0.45);
+  border-radius: var(--radius);
+  color: var(--success);
+  font-size: 0.75rem;
+}
+.wallet-entry-details {
+  color: var(--muted);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+.wallet-entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+.wallet-form {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.btn-small {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+}
+.btn-secondary.danger {
+  color: var(--error);
+}
+.token-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.token-row input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: monospace;
+  font-size: 0.82rem;
+}
+.token-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.error {
+  color: var(--error);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+.success {
+  color: var(--success);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
 }
 
 /* Modal */
@@ -459,6 +671,25 @@ a:hover {
     grid-template-columns: 1fr;
   }
   .filter-actions {
+    justify-content: flex-start;
+  }
+  .profile-header,
+  .profile-card-header,
+  .wallet-entry-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .profile-form-grid,
+  .wallet-list {
+    grid-template-columns: 1fr;
+  }
+  .profile-span-2 {
+    grid-column: span 1;
+  }
+  .profile-card {
+    padding: 1rem;
+  }
+  .wallet-entry-actions {
     justify-content: flex-start;
   }
 }

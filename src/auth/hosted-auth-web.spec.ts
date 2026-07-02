@@ -3,6 +3,8 @@ import { join } from 'path';
 
 describe('hosted auth web contract', () => {
   const html = readFileSync(join(process.cwd(), 'web/public/index.html'), 'utf8');
+  const profileHtml = readFileSync(join(process.cwd(), 'web/public/profile.html'), 'utf8');
+  const profileJs = readFileSync(join(process.cwd(), 'web/public/js/profile.js'), 'utf8');
   const mainTs = readFileSync(join(process.cwd(), 'src/main.ts'), 'utf8');
   const webServer = readFileSync(join(process.cwd(), 'web/server.js'), 'utf8');
 
@@ -71,5 +73,39 @@ describe('hosted auth web contract', () => {
     expect(html).toContain("verifyCodeBtn.addEventListener('click', verifyContactCode)");
     expect(html).toContain('contactCodeInput.focus()');
     expect(html).not.toContain('window.prompt');
+  });
+
+  it('serves hosted profile wallet management from the web container', () => {
+    expect(webServer).toContain("app.get('/profile'");
+    expect(profileHtml).toContain('<script src="/js/profile.js"></script>');
+    expect(profileHtml).toContain('id="identifier"');
+    expect(profileHtml).toContain('Email or phone');
+    expect(profileHtml).toContain('id="canonical-profile-form"');
+    expect(profileHtml).toContain('id="delivery-addresses-section"');
+    expect(profileHtml).toContain('id="delivery-address-form"');
+    expect(profileHtml).toContain('id="invoice-profiles-section"');
+    expect(profileHtml).toContain('id="invoice-profile-form"');
+    expect(profileHtml).toContain('name="companyId"');
+    expect(profileHtml).toContain('name="taxId"');
+    expect(profileHtml).toContain('name="vatId"');
+  });
+
+  it('uses Auth-owned wallet APIs with bearer auth from hosted profile UI', () => {
+    expect(profileJs).toContain("fetchJson('/auth/profile')");
+    expect(profileJs).toContain("fetchJson('/auth/profile/checkout-data')");
+    expect(profileJs).toContain("'/auth/profile/delivery-addresses'");
+    expect(profileJs).toContain("'/auth/profile/invoice-profiles'");
+    expect(profileJs).toContain("Authorization: 'Bearer ' + getToken()");
+    expect(profileJs).toContain("method: 'PATCH'");
+    expect(profileJs).toContain("method: 'POST'");
+    expect(profileJs).toContain("method: 'DELETE'");
+    expect(profileJs).toContain("history.replaceState(null, '', window.location.pathname + window.location.search)");
+    expect(profileJs).toContain("params.get('access_token') || params.get('accessToken')");
+    expect(profileJs).toContain("params.get('refresh_token') || params.get('refreshToken')");
+    expect(profileJs).toContain("params.has('access_token') || params.has('accessToken') || params.has('refresh_token') || params.has('refreshToken')");
+    expect(profileJs).toContain('body: JSON.stringify({ identifier, password })');
+    expect(profileJs).not.toContain('body: JSON.stringify({ email, password })');
+    expect(profileJs).not.toContain("console.log");
+    expect(profileJs).not.toContain("localStorage");
   });
 });

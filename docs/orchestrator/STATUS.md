@@ -1680,3 +1680,70 @@ Next unfinished chunks:
 2026-07-02: Owner-reported Catalog hosted Auth loop investigated. Clean headless Chrome CDP flow from `https://catalog.alfares.cz/login` completed hosted register and hosted login to `https://catalog.alfares.cz/dashboard`; dashboard rendered the synthetic user, `auth_token` was present, `/api/auth/profile` returned HTTP 200, and Catalog dashboard data requests returned HTTP 200. Internal Catalog pod probe confirmed `/api/auth/register` returned `accessToken` and `/api/auth/profile` returned HTTP 200 with nested `user`. A separate premature/native form-submit race reproduced an Auth-side fail-open fallback: before hosted UI JS/return-url validation was ready, the browser performed a default GET form submit, dropped `return_url/state`, and returned to `/login` with `Redirect target: (required by application)`. Source fix implemented in `web/public/index.html`: hosted form now has `onsubmit="return false;"`, submit and contact-code buttons are disabled until `return_url` validation succeeds, and validation success explicitly enables them. Regression added in `src/auth/hosted-auth-web.spec.ts`. Pre-deploy validation passed: DocsRAG query from running Auth pod returned HTTP 200 with 10 sources; `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts` passed 7 tests; `node --check web/server.js`; `node --check web/public/js/admin.js`; `git diff --check`; `npm run build`; and `npm run lint` passed. No production DB mutation, raw production user-data read, token/secret/password/JWT value inspection, JWT payload change, RBAC/OAuth/magic-link/CORS/internal-service/database schema change, or consumer-service source edit was performed. Deployment and post-deploy race validation pending.
 
 2026-07-02: Hosted Auth form fail-closed hardening deployed to production. Commit `0d4282b` deployed with backend image `localhost:5000/auth-microservice:0d4282b-20260702102426` digest `sha256:3c745e83dd9a62656ca1cf103b624fbe410c1633782b160f2cb3a60eca4fef1e` and web image `localhost:5000/auth-microservice-web:0d4282b-20260702102426` digest `sha256:262637d2d2772549db47b4b9585b607bb58cf9880cb165f0e892c75c9e9d51a5`. Deploy-script focused Auth contract tests passed 3 suites/22 tests; backend and web rollouts completed; public `/login` returned HTTP 200 with `last-modified: Thu, 02 Jul 2026 10:22:52 GMT`; in-cluster served HTML check returned `formFailClosed=true`, `submitDisabled=true`, `magicDisabled=true`, and `enablesAfterValidation=true`. Post-deploy headless Chrome CDP verification from `https://catalog.alfares.cz/login` completed hosted register and hosted login to `https://catalog.alfares.cz/dashboard`; `auth_token` was present, `/api/auth/profile` returned HTTP 200, and the dashboard rendered the synthetic user plus product/category/attribute counters. No token, refresh token, password, decoded JWT, secret, raw production user data, production DB mutation, JWT payload change, RBAC/OAuth/magic-link/CORS/internal-service/database schema change, or consumer-service source edit was performed.
+
+## 2026-07-02 - Goal 10.14 Auth Hosted Profile Wallet UI Source Prep
+
+Current focus:
+
+- Goal 10.14 Auth hosted `/profile` wallet management UI: source-prepared.
+- Live SQL apply, Auth deploy, wallet endpoint 401 smoke, and synthetic
+  authenticated wallet smoke remain owner-approval gated.
+
+Subagent evidence:
+
+- Read-only hosted UI explorer confirmed `/profile` is served by the web
+  container, existing profile page was token/password only, and wallet APIs
+  already exist in source under `/auth/profile/...`.
+- Read-only post-change reviewer found two pre-commit issues: malformed or
+  variant token hash handoffs could leave token-like material in the URL, and
+  direct `/profile` sign-in still used email-only login instead of the Auth
+  `identifier` contract. Both findings were fixed before commit.
+
+Implementation evidence:
+
+- `web/public/profile.html` now renders canonical profile, delivery address
+  book, and invoice profile forms in hosted Auth.
+- `web/public/js/profile.js` loads `/auth/profile` and
+  `/auth/profile/checkout-data`, writes profile updates through
+  `PATCH /auth/profile`, and manages delivery/invoice CRUD, default selection,
+  and soft-delete through existing `/auth/profile/...` endpoints.
+- The hosted profile script keeps bearer tokens in `sessionStorage`, uses
+  same-origin requests with `Authorization: Bearer ...`, strips snake-case and
+  camel-case token-bearing hash fragments after hosted handoff even when the
+  access token is malformed or empty, and does not use `localStorage` or
+  console logging.
+- Direct `/profile` password login now uses `{ identifier, password }`, matching
+  the central Auth email-or-phone login contract.
+- `web/public/css/style.css` adds responsive profile wallet layout styles.
+- `src/auth/hosted-auth-web.spec.ts` now pins `/profile` route serving, wallet
+  UI sections/forms, company/tax/VAT invoice fields, wallet endpoint usage,
+  bearer auth, mutation methods, defensive token-hash cleanup, identifier-based
+  profile login, and absence of `localStorage`/console logging in the profile
+  script.
+
+Verification evidence:
+
+- `node --check web/public/js/profile.js` passed.
+- `node --check web/server.js` passed.
+- `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts` passed:
+  1 suite, 9 tests.
+- `npm run test:auth-contract` passed: 3 suites, 27 tests.
+- `npm run build` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
+- Targeted dangerous literal-secret scan on changed hosted profile source files
+  returned no matches.
+
+Boundary:
+
+- No live SQL, deploy, Kubernetes mutation, production DB access,
+  secret/token/password/JWT value inspection, raw production customer data
+  inspection, backend API contract change, consumer repo edit, or live checkout
+  smoke was performed.
+
+Next unfinished chunks:
+
+- Commit Goal 10.14 after final validation.
+- Owner approval is still required for schema-only DB preflight, SQL apply,
+  Auth deploy, wallet endpoint 401 smoke, and optional synthetic authenticated
+  wallet smoke.

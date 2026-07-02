@@ -306,3 +306,49 @@ Boundary:
   deploy, rollback mutation, synthetic authenticated smoke, FlipFlop runtime
   smoke, Orders provenance changes, and Rent-a-box/ChytraKoupe code lanes remain
   separately approval-gated.
+
+## Current Task Addendum - 2026-07-02 Auth Hosted Profile Wallet UI
+
+Target task: implement source-only hosted `/profile` management for Auth-owned
+canonical profile, delivery address book, and invoice profiles after A1 wallet
+API source implementation.
+
+Included source and documents:
+
+- `web/public/profile.html`
+- `web/public/js/profile.js`
+- `web/public/css/style.css`
+- `src/auth/hosted-auth-web.spec.ts`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/IMPLEMENTATION_STATE.md`
+
+Included evidence:
+
+- Hosted web route `/profile` is served by `web/server.js` from
+  `web/public/profile.html`.
+- Existing backend wallet endpoints are under `/auth/profile`,
+  `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+  `/auth/profile/invoice-profiles`.
+- Existing client pattern uses same-origin fetch, bearer auth, and
+  `sessionStorage`; hosted profile code preserves that pattern and clears
+  token-bearing snake-case or camel-case hash fragments from browser history
+  even when a handoff is malformed or empty.
+- Direct hosted `/profile` password login uses the central Auth
+  `{ identifier, password }` contract instead of an email-only payload.
+- Validation passed for hosted web contract, Auth wallet contract suite, build,
+  lint, JS syntax, diff-check, and targeted dangerous literal-secret scan.
+
+Excluded data:
+
+- No production DB access, live customer row/address/invoice inspection, live
+  checkout payload inspection, secret/token/password/JWT value inspection,
+  deploy, SQL apply, Kubernetes mutation, or consumer repo edit.
+
+Boundary:
+
+- Auth hosted profile UI may edit reusable Auth-owned registered-user profile,
+  delivery address, and invoice profile records after the API is deployed.
+- Storefront checkout UIs and Orders snapshot semantics remain separately
+  owned and dependency-gated.

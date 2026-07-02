@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth + FlipFlop source prepared, Rent-a-box/ChytraKoupe/Cliplot readiness lanes created, marketplace/channel audit complete, live SQL/deploy/runtime smoke approval-gated
+Status: active; Auth API + hosted profile UI and FlipFlop source prepared, Rent-a-box/ChytraKoupe/Cliplot readiness lanes created, marketplace/channel audit complete, live SQL/deploy/runtime smoke approval-gated
 
 ## Intent
 
@@ -57,6 +57,7 @@ Auth customer data wallet:
 - [x] 10.11 Cross-repo validation and deployment plan.
 - [x] 10.12 Cliplot checkout wallet readiness plan/verifier created in commit `01f6dea`.
 - [x] 10.13 Marketplace/channel audit completed; no repo-local wallet plans needed now for Catalog, Allegro, Aukro, Bazos, Heureka, or Shop Assistant.
+- [x] 10.14 Auth hosted `/profile` wallet management UI source-prepared.
 
 ## Acceptance Criteria
 
@@ -91,7 +92,7 @@ marketplace operations.
 | ---------------------------------- | ------------------ | ------------------------ | ---------------------------------------- | ------------------------- | ----------- |
 | A0 Planning                        | complete           | Auth coordinator         | Auth docs only                           | None                      | 1           |
 | A1 Auth backend                    | source-implemented | Auth backend worker      | Auth source/docs/tests                   | SQL apply/deploy approval | 2           |
-| A2 Auth profile UI                 | dependency-gated   | Auth frontend worker     | hosted Auth/profile UI                   | A1                        | 3           |
+| A2 Auth profile UI                 | source-prepared    | Auth frontend worker     | hosted Auth/profile UI                   | Auth deploy/runtime smoke | 3           |
 | F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | runtime smoke gated       | 4           |
 | F2 FlipFlop checkout UX            | source-prepared    | FlipFlop frontend worker | checkout/profile UI                      | Auth deploy/runtime smoke incl. manual-edit guard | 5           |
 | O1 Orders compatibility            | audit-complete     | Orders worker            | create-order contract/docs               | provenance decision       | 6           |
@@ -106,6 +107,7 @@ Auth:
 
 ```bash
 npm test -- --runTestsByPath src/auth/auth-contract.spec.ts
+npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts
 npm run test:auth-contract
 npm run build
 npm run lint
@@ -137,6 +139,36 @@ that repo's status/validation report.
 - `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-02 Goal 10.14 Auth Hosted Profile Wallet UI Result
+
+- 2026-07-02: Auth hosted `/profile` source now manages Auth-owned canonical
+  profile fields, delivery address book entries, and invoice profiles through
+  the existing `/auth/profile`, `/auth/profile/checkout-data`,
+  `/auth/profile/delivery-addresses`, and `/auth/profile/invoice-profiles`
+  endpoints.
+- The UI keeps bearer tokens in `sessionStorage`, sends same-origin requests
+  with `Authorization: Bearer ...`, strips snake-case and camel-case
+  token-bearing hash fragments after hosted handoff even when the access token
+  is malformed or empty, supports the central `{ identifier, password }` login
+  contract, and does not use `localStorage` or console logging.
+- Regression coverage in `src/auth/hosted-auth-web.spec.ts` now pins `/profile`
+  route serving, wallet UI sections/forms, company/tax/VAT invoice fields,
+  wallet endpoint usage, bearer auth, mutation methods, defensive hash cleanup,
+  identifier-based profile login, and absence of localStorage/console logging
+  in the profile script.
+- Validation passed in Auth: `node --check web/public/js/profile.js`,
+  `node --check web/server.js`, `npm test -- --runTestsByPath
+  src/auth/hosted-auth-web.spec.ts`, `npm run test:auth-contract`, `npm run
+  build`, `npm run lint`, `git diff --check`, and targeted dangerous
+  literal-secret scan on changed hosted profile files.
+- No live SQL, deploy, Kubernetes mutation, production DB access,
+  secret/token/password/JWT value inspection, raw production customer data
+  inspection, backend API contract change, consumer repo edit, or live checkout
+  smoke was performed.
+- Live wallet endpoint activation remains gated on owner-approved Auth schema
+  DB preflight, SQL apply, deploy, wallet endpoint 401 smoke, and optional
+  synthetic authenticated wallet smoke.
 
 ## 2026-07-02 Goal 10.11 Validation And Deployment Plan Result
 

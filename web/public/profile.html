@@ -5,35 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Profile – Auth Service</title>
   <link rel="stylesheet" href="/css/style.css">
-  <style>
-    .profile-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1rem 0;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 2rem;
-    }
-    .profile-header h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
-    .profile-header .header-right { display: flex; align-items: center; gap: 1rem; font-size: 0.9rem; color: var(--muted); }
-    .profile-header a.logout { color: var(--muted); }
-    .profile-header a.logout:hover { color: var(--error); text-decoration: none; }
-    .profile-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      max-width: 480px;
-      margin-bottom: 1.5rem;
-    }
-    .profile-card h2 { margin: 0 0 1.25rem 0; font-size: 1rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem; }
-    .token-row { display: flex; gap: 0.5rem; align-items: flex-start; flex-wrap: wrap; }
-    .token-row input { flex: 1; min-width: 200px; padding: 0.5rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: monospace; font-size: 0.82rem; }
-    .token-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .error { color: var(--error); font-size: 0.9rem; margin-top: 0.5rem; }
-    .success { color: var(--success); font-size: 0.9rem; margin-top: 0.5rem; }
-    .hidden { display: none; }
-  </style>
 </head>
 <body>
 
@@ -43,8 +14,8 @@
       <h2>Sign in to view your profile</h2>
       <form id="login-form">
         <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" required autocomplete="email">
+          <label for="identifier">Email or phone</label>
+          <input type="text" id="identifier" name="identifier" required autocomplete="username">
         </div>
         <div class="form-group">
           <label for="password">Password</label>
@@ -64,6 +35,213 @@
         <span id="header-email"></span>
         <a href="#" id="logout-link" class="logout">Sign out</a>
       </div>
+    </div>
+
+    <div id="wallet-status" class="profile-status hidden" role="status"></div>
+
+    <div class="profile-layout">
+      <section class="profile-card profile-card-wide" id="canonical-profile-section">
+        <div class="profile-card-header">
+          <h2>Canonical Profile</h2>
+          <button type="button" class="btn btn-secondary" id="refresh-wallet-btn">Refresh</button>
+        </div>
+        <form id="canonical-profile-form">
+          <div class="profile-form-grid">
+            <div class="form-group">
+              <label for="profile-first-name">First name</label>
+              <input type="text" id="profile-first-name" name="firstName" maxlength="100" autocomplete="given-name">
+            </div>
+            <div class="form-group">
+              <label for="profile-last-name">Last name</label>
+              <input type="text" id="profile-last-name" name="lastName" maxlength="100" autocomplete="family-name">
+            </div>
+            <div class="form-group">
+              <label for="profile-phone">Phone</label>
+              <input type="tel" id="profile-phone" name="phone" maxlength="40" autocomplete="tel">
+            </div>
+            <div class="form-group">
+              <label for="profile-address-street">Street</label>
+              <input type="text" id="profile-address-street" name="street" maxlength="255" autocomplete="street-address">
+            </div>
+            <div class="form-group">
+              <label for="profile-address-city">City</label>
+              <input type="text" id="profile-address-city" name="city" maxlength="120" autocomplete="address-level2">
+            </div>
+            <div class="form-group">
+              <label for="profile-address-postal-code">Postal code</label>
+              <input type="text" id="profile-address-postal-code" name="postalCode" maxlength="20" autocomplete="postal-code">
+            </div>
+            <div class="form-group">
+              <label for="profile-address-country">Country</label>
+              <input type="text" id="profile-address-country" name="country" maxlength="120" autocomplete="country-name">
+            </div>
+          </div>
+          <div class="profile-actions">
+            <button type="submit" class="btn">Save profile</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="profile-card profile-card-wide" id="delivery-addresses-section">
+        <div class="profile-card-header">
+          <h2>Delivery Addresses</h2>
+          <button type="button" class="btn btn-secondary" id="new-delivery-address-btn">New address</button>
+        </div>
+        <div id="delivery-address-list" class="wallet-list"></div>
+        <form id="delivery-address-form" class="wallet-form">
+          <input type="hidden" id="delivery-address-id" name="id">
+          <div class="profile-form-grid">
+            <div class="form-group">
+              <label for="delivery-label">Label</label>
+              <input type="text" id="delivery-label" name="label" maxlength="120" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="delivery-first-name">First name</label>
+              <input type="text" id="delivery-first-name" name="firstName" maxlength="100" autocomplete="shipping given-name">
+            </div>
+            <div class="form-group">
+              <label for="delivery-last-name">Last name</label>
+              <input type="text" id="delivery-last-name" name="lastName" maxlength="100" autocomplete="shipping family-name">
+            </div>
+            <div class="form-group">
+              <label for="delivery-company">Company</label>
+              <input type="text" id="delivery-company" name="company" maxlength="160" autocomplete="shipping organization">
+            </div>
+            <div class="form-group profile-span-2">
+              <label for="delivery-street">Street</label>
+              <input type="text" id="delivery-street" name="street" maxlength="255" autocomplete="shipping address-line1">
+            </div>
+            <div class="form-group">
+              <label for="delivery-street2">Street 2</label>
+              <input type="text" id="delivery-street2" name="street2" maxlength="255" autocomplete="shipping address-line2">
+            </div>
+            <div class="form-group">
+              <label for="delivery-city">City</label>
+              <input type="text" id="delivery-city" name="city" maxlength="120" autocomplete="shipping address-level2">
+            </div>
+            <div class="form-group">
+              <label for="delivery-region">Region</label>
+              <input type="text" id="delivery-region" name="region" maxlength="120" autocomplete="shipping address-level1">
+            </div>
+            <div class="form-group">
+              <label for="delivery-postal-code">Postal code</label>
+              <input type="text" id="delivery-postal-code" name="postalCode" maxlength="20" autocomplete="shipping postal-code">
+            </div>
+            <div class="form-group">
+              <label for="delivery-country">Country</label>
+              <input type="text" id="delivery-country" name="country" maxlength="120" autocomplete="shipping country-name">
+            </div>
+            <div class="form-group">
+              <label for="delivery-phone">Phone</label>
+              <input type="tel" id="delivery-phone" name="phone" maxlength="40" autocomplete="shipping tel">
+            </div>
+            <div class="form-group">
+              <label for="delivery-email">Email</label>
+              <input type="email" id="delivery-email" name="email" maxlength="180" autocomplete="shipping email">
+            </div>
+            <div class="form-group profile-span-2">
+              <label for="delivery-delivery-instructions">Delivery instructions</label>
+              <textarea id="delivery-delivery-instructions" name="deliveryInstructions" maxlength="1000" rows="3"></textarea>
+            </div>
+          </div>
+          <label class="inline-check">
+            <input type="checkbox" id="delivery-is-default" name="isDefault">
+            <span>Default delivery address</span>
+          </label>
+          <div class="profile-actions">
+            <button type="submit" class="btn" id="save-delivery-address-btn">Save address</button>
+            <button type="button" class="btn btn-secondary" id="cancel-delivery-edit-btn">Clear</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="profile-card profile-card-wide" id="invoice-profiles-section">
+        <div class="profile-card-header">
+          <h2>Invoice Profiles</h2>
+          <button type="button" class="btn btn-secondary" id="new-invoice-profile-btn">New invoice profile</button>
+        </div>
+        <div id="invoice-profile-list" class="wallet-list"></div>
+        <form id="invoice-profile-form" class="wallet-form">
+          <input type="hidden" id="invoice-profile-id" name="id">
+          <div class="profile-form-grid">
+            <div class="form-group">
+              <label for="invoice-label">Label</label>
+              <input type="text" id="invoice-label" name="label" maxlength="120" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="invoice-type">Type</label>
+              <select id="invoice-type" name="type">
+                <option value="person">Person</option>
+                <option value="company">Company</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="invoice-first-name">First name</label>
+              <input type="text" id="invoice-first-name" name="firstName" maxlength="100" autocomplete="billing given-name">
+            </div>
+            <div class="form-group">
+              <label for="invoice-last-name">Last name</label>
+              <input type="text" id="invoice-last-name" name="lastName" maxlength="100" autocomplete="billing family-name">
+            </div>
+            <div class="form-group">
+              <label for="invoice-company-name">Company name</label>
+              <input type="text" id="invoice-company-name" name="companyName" maxlength="180" autocomplete="billing organization">
+            </div>
+            <div class="form-group">
+              <label for="invoice-company-id">Company ID</label>
+              <input type="text" id="invoice-company-id" name="companyId" maxlength="80" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="invoice-tax-id">Tax ID</label>
+              <input type="text" id="invoice-tax-id" name="taxId" maxlength="80" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="invoice-vat-id">VAT ID</label>
+              <input type="text" id="invoice-vat-id" name="vatId" maxlength="80" autocomplete="off">
+            </div>
+            <div class="form-group profile-span-2">
+              <label for="invoice-street">Street</label>
+              <input type="text" id="invoice-street" name="street" maxlength="255" autocomplete="billing address-line1">
+            </div>
+            <div class="form-group">
+              <label for="invoice-street2">Street 2</label>
+              <input type="text" id="invoice-street2" name="street2" maxlength="255" autocomplete="billing address-line2">
+            </div>
+            <div class="form-group">
+              <label for="invoice-city">City</label>
+              <input type="text" id="invoice-city" name="city" maxlength="120" autocomplete="billing address-level2">
+            </div>
+            <div class="form-group">
+              <label for="invoice-region">Region</label>
+              <input type="text" id="invoice-region" name="region" maxlength="120" autocomplete="billing address-level1">
+            </div>
+            <div class="form-group">
+              <label for="invoice-postal-code">Postal code</label>
+              <input type="text" id="invoice-postal-code" name="postalCode" maxlength="20" autocomplete="billing postal-code">
+            </div>
+            <div class="form-group">
+              <label for="invoice-country">Country</label>
+              <input type="text" id="invoice-country" name="country" maxlength="120" autocomplete="billing country-name">
+            </div>
+            <div class="form-group">
+              <label for="invoice-phone">Phone</label>
+              <input type="tel" id="invoice-phone" name="phone" maxlength="40" autocomplete="billing tel">
+            </div>
+            <div class="form-group">
+              <label for="invoice-email">Invoice email</label>
+              <input type="email" id="invoice-email" name="email" maxlength="180" autocomplete="billing email">
+            </div>
+          </div>
+          <label class="inline-check">
+            <input type="checkbox" id="invoice-is-default" name="isDefault">
+            <span>Default invoice profile</span>
+          </label>
+          <div class="profile-actions">
+            <button type="submit" class="btn" id="save-invoice-profile-btn">Save invoice profile</button>
+            <button type="button" class="btn btn-secondary" id="cancel-invoice-edit-btn">Clear</button>
+          </div>
+        </form>
+      </section>
     </div>
 
     <!-- Access Token -->

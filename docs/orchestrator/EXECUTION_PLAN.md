@@ -322,6 +322,72 @@ Deployment plan:
 - deploy with `./scripts/deploy.sh` after source validation
 - post-deploy hosted register/login browser CDP flow and fail-closed race check
 
+## Current Execution Addendum - 2026-07-02 Auth Hosted Profile Wallet UI
+
+Selected goal and chunk: Goal 10.14 - Auth hosted `/profile` wallet management
+UI source prep.
+
+Pre-coding gate decision: pass. A1 Auth wallet API source exists and the
+hosted web container already serves `/profile`; the remaining work is bounded
+to the profile web source and hosted web contract tests.
+
+Intent chain:
+
+- Vision: Auth is the Statex identity and reusable customer data authority.
+- Goal impact: registered users can manage reusable profile, delivery, and
+  invoice data once in Auth and consumers can later select the same entries.
+- System: `auth-microservice` hosted web profile page plus existing
+  `/auth/profile/...` wallet APIs.
+- Feature: hosted profile wallet management UI.
+- Task: add source-only profile/address/invoice management controls and static
+  contract coverage; do not deploy or mutate live data.
+- Coding prompt: patch only hosted profile web files, focused tests, and
+  orchestrator status docs; preserve tokens/secrets/password safety.
+
+Sensitive-data handling: source and static contract tests only. No DB
+connection values, live customer rows, address rows, invoice rows, secrets,
+token values, decoded JWTs, passwords, cookies, or live checkout payloads are
+read or recorded.
+
+Contract impact: no backend API contract change. The UI consumes existing
+same-origin Auth wallet endpoints with bearer auth from `sessionStorage`,
+strips token-bearing snake-case and camel-case hash fragments after hosted
+handoff, and uses the central `{ identifier, password }` login contract for
+direct `/profile` sign-in.
+
+Allowed files:
+
+- `web/public/profile.html`
+- `web/public/js/profile.js`
+- `web/public/css/style.css`
+- `src/auth/hosted-auth-web.spec.ts`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/orchestrator/CONTEXT_PACKAGE.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/IMPLEMENTATION_STATE.md`
+
+Parallel execution:
+
+- UI implementation owner: Auth coordinator, complete.
+- Read-only hosted UI explorer: complete; confirmed `/profile` surface and
+  wallet APIs before coding.
+- Read-only source review subagent: complete; token-fragment cleanup and
+  identifier-login findings fixed before commit.
+- Live deployment/operator lane: dependency-gated on explicit owner approval
+  for schema preflight, SQL apply, deploy, and smoke.
+
+Validation plan:
+
+- `node --check web/public/js/profile.js`
+- `node --check web/server.js`
+- `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts`
+- `npm run test:auth-contract`
+- `npm run build`
+- `npm run lint`
+- `git diff --check`
+- targeted dangerous literal-secret scan on changed hosted profile files
+
 ## Current Execution Addendum - 2026-07-02 Auth Customer Data Wallet Planning
 
 Selected goal and chunk: Goal 10.0 - plan Auth-owned profile, delivery address book, invoice profile, and cross-repo checkout selector rollout.
