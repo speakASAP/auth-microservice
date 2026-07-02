@@ -1,3 +1,35 @@
+## 2026-07-02 - Goal 10.18 Consumer Order Snapshot Support
+
+Current focus:
+
+- Source-prepare Orders and FlipFlop so Auth invoice profile fields can travel as immutable order snapshots while reusable profile truth remains Auth-owned.
+
+Evidence:
+
+- Orders commit: `3c7d0c3 feat: preserve auth invoice fields in order snapshots`.
+- Orders now accepts, normalizes, persists, and documents optional billing snapshot fields `companyId`, `vatId`, and invoice recipient `email` alongside existing `companyName` and `taxId`.
+- Orders verifiers now pin the create-order contract and invoice read boundary for those fields.
+- FlipFlop commit: `20dd1f8 feat: forward auth invoice fields to order snapshots`.
+- FlipFlop checkout now preserves Auth-selected invoice profile fields in form state and sends a dedicated billing snapshot with `companyName`, `companyId`, `taxId`, `vatId`, and `email`.
+- FlipFlop order-service and shared central Orders client now forward those fields to `orders-microservice` without making delivery snapshots inherit billing-only invoice fields.
+- Read-only sidecar audit completed before coding and found the exact Orders/FlipFlop contract gap.
+
+Validation:
+
+- Orders: `git diff --check`, `npm run build`, `npm run verify:create-order-contract`, `npm run verify:invoices-read-boundary`, full `npm test`, and targeted dangerous literal-secret scan passed.
+- FlipFlop: `git diff --check`, `npm run verify:auth-wallet-checkout-selectors`, `npm run verify:orders-hub-integration`, shared build, order-service build, frontend build, `npm run verify:guest-checkout-ui`, and targeted dangerous literal-secret scan passed.
+- FlipFlop full `services/frontend npm run lint` still fails on baseline debt in unrelated files plus existing `any` usage in changed files; added-line diff scans found no newly added `any` usage.
+
+Boundary:
+
+- Source/docs/verifier work only. No Auth runtime code, SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT value inspection, raw production customer data inspection, authenticated smoke, or live checkout submit.
+- Orders still stores immutable order snapshots only and does not become the reusable profile source of truth.
+- FlipFlop has an unrelated unstaged `k8s/deployment.yaml` imagePullPolicy change that was not staged, committed, or modified by this checkpoint.
+
+Next unfinished chunk:
+
+- Owner approval for Auth schema-only live DB preflight, live SQL apply, Auth deploy, wallet endpoint 401 smoke, then consumer runtime smoke confirming selected Auth invoice profile data reaches immutable order billing snapshots.
+
 ## 2026-07-02 - Goal 10 Cliplot Readiness And Marketplace Channel Audit
 
 Current focus:

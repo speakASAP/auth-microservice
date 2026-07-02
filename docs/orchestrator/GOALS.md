@@ -198,6 +198,13 @@ Chunks:
 - [x] 10.9 Create Rent-a-box hosted Auth/profile migration plan before any code changes.
 - [x] 10.10 Create Chytrakoupe checkout selector integration plan.
 - [x] 10.11 Run cross-repo validation and record deployment plan.
+- [x] 10.12 Create Cliplot checkout wallet readiness plan/verifier.
+- [x] 10.13 Complete marketplace/channel audit.
+- [x] 10.14 Source-prepare Auth hosted `/profile` wallet management UI.
+- [x] 10.15 Source-prepare Auth wallet runtime 401 smoke verifier.
+- [x] 10.16 Refresh Auth release gate exact HEAD.
+- [x] 10.17 Source-define Auth invoice profile field semantics.
+- [x] 10.18 Source-prepare Orders and FlipFlop immutable order snapshots for optional Auth invoice fields `companyId`, `vatId`, and `email`.
 
 Acceptance criteria:
 
