@@ -1743,7 +1743,71 @@ Boundary:
 
 Next unfinished chunks:
 
-- Commit Goal 10.14 after final validation.
+- Goal 10.14 is committed in `4bdbd27`.
 - Owner approval is still required for schema-only DB preflight, SQL apply,
   Auth deploy, wallet endpoint 401 smoke, and optional synthetic authenticated
   wallet smoke.
+
+## 2026-07-02 - Goal 10.15 Auth Wallet Runtime Gate Verifier
+
+Current focus:
+
+- Goal 10.15 Auth wallet runtime 401 smoke verifier: source-prepared.
+- Live SQL apply, Auth deploy, strict post-deploy wallet 401 smoke, and
+  synthetic authenticated wallet smoke remain owner-approval gated.
+
+Subagent evidence:
+
+- Read-only runtime gate explorer confirmed only
+  `scripts/check-customer-data-wallet-preflight.js` existed; it validates SQL
+  shape and does not perform public HTTP runtime checks.
+- Existing runbooks used manual curl probes for `/health`,
+  `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+  `/auth/profile/invoice-profiles`.
+- Expected behavior remains: before deploy wallet endpoints return HTTP 404;
+  after approved SQL + deploy they must return HTTP 401 unauthenticated, proving
+  route availability and Auth guard protection, not DB schema correctness.
+
+Implementation evidence:
+
+- Added `scripts/check-customer-data-wallet-runtime-smoke.js`.
+- Added `npm run check:customer-data-wallet-runtime`.
+- The verifier supports:
+  - `--expect=predeploy`: `/health` 200 and wallet endpoints 404.
+  - `--expect=deployed`: `/health` 200 and wallet endpoints 401.
+  - `auto`: classify uniform 404 as
+    `dependency_gated_wallet_routes_not_deployed` and uniform 401 as
+    `pass_post_deploy_wallet_401_smoke`.
+- The verifier sends unauthenticated bodyless GET requests only, sends no
+  Authorization header, cookies, or request body, reads no response body, and
+  prints only status metadata.
+- Updated live-gate and validation/deployment runbooks to use
+  `npm run check:customer-data-wallet-runtime -- --expect=deployed` for the
+  post-deploy wallet 401 smoke gate.
+
+Verification evidence:
+
+- `node --check scripts/check-customer-data-wallet-runtime-smoke.js` passed.
+- `npm run check:customer-data-wallet-runtime -- --expect=predeploy` passed
+  against current live runtime with `/health` 200 and wallet endpoints 404.
+- `npm run check:customer-data-wallet-runtime` passed and reported
+  `dependency_gated_wallet_routes_not_deployed`.
+- `npm run check:customer-data-wallet-preflight` passed.
+- `npm run test:auth-contract` passed.
+- `npm run build` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
+- Targeted dangerous literal-secret scan on changed verifier/docs returned no
+  secret values.
+
+Boundary:
+
+- No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT
+  value inspection, raw production customer data inspection, response body
+  capture, authenticated smoke, or consumer repo edit was performed.
+
+Next unfinished chunks:
+
+- Owner approval is still required for schema-only DB preflight, SQL apply,
+  Auth deploy, strict wallet endpoint 401 smoke, and optional synthetic
+  authenticated wallet smoke.

@@ -175,15 +175,12 @@ Post-deploy checks:
 
 ```bash
 ssh alfares 'kubectl rollout status deploy/auth-microservice -n statex-apps && kubectl rollout status deploy/auth-microservice-web -n statex-apps'
-curl -fsS https://auth.alfares.cz/health
-curl -i https://auth.alfares.cz/auth/profile
-curl -i https://auth.alfares.cz/auth/profile/checkout-data
-curl -i https://auth.alfares.cz/auth/profile/delivery-addresses
-curl -i https://auth.alfares.cz/auth/profile/invoice-profiles
+ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && npm run check:customer-data-wallet-runtime -- --expect=deployed'
 ```
 
-Expected unauthenticated result for profile and wallet endpoints: `401`, not
-`500`.
+Expected unauthenticated result for wallet endpoints: `401`, not `404`, `500`,
+`200`, or redirect. Before deploy, the same verifier can be run with
+`--expect=predeploy`; the expected wallet result in that mode is `404`.
 
 ## Abort And Rollback Boundaries
 

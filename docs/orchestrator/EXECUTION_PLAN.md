@@ -388,6 +388,70 @@ Validation plan:
 - `git diff --check`
 - targeted dangerous literal-secret scan on changed hosted profile files
 
+## Current Execution Addendum - 2026-07-02 Auth Wallet Runtime Gate Verifier
+
+Selected goal and chunk: Goal 10.15 - source-only Auth wallet runtime 401 smoke
+verifier.
+
+Pre-coding gate decision: pass. Goal 10 deployment docs currently contain
+manual public curl probes for the wallet 401 gate; a reusable verifier can
+improve post-deploy evidence without running SQL, deploying, reading secrets,
+or touching customer data.
+
+Intent chain:
+
+- Vision: Auth is the single editable source of truth for registered-user
+  profile, delivery address book, and invoice profile data.
+- Goal impact: the rollout has a repeatable post-deploy gate proving wallet
+  routes are live and protected before consumer runtime smoke starts.
+- System: public Auth HTTPS endpoint and existing wallet route contracts.
+- Feature: unauthenticated runtime gate verifier.
+- Task: add a source-only status-code verifier and update runbooks/status.
+- Coding prompt: bodyless unauthenticated GETs only; print status metadata
+  only; do not send tokens/cookies, request bodies, DB queries, or customer
+  payloads.
+
+Sensitive-data handling: public status-code metadata only. No Authorization
+headers, cookies, response bodies, DB connection values, secrets, tokens,
+decoded JWTs, passwords, customer rows, address rows, invoice rows, or
+authenticated smoke data are read or recorded.
+
+Contract impact: no API contract change. The verifier asserts the existing
+contract: before deploy the wallet routes remain 404; after deploy they must be
+present and guarded with HTTP 401 when unauthenticated.
+
+Allowed files:
+
+- `scripts/check-customer-data-wallet-runtime-smoke.js`
+- `package.json`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-live-gate.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/orchestrator/CONTEXT_PACKAGE.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/IMPLEMENTATION_STATE.md`
+
+Parallel execution:
+
+- Runtime verifier discovery subagent: complete, read-only; confirmed only SQL
+  preflight helper existed and recommended a bodyless status-code verifier.
+- Auth coordinator: implement verifier and docs/status updates.
+- Auth operator lane: still dependency-gated on explicit owner approval for
+  schema preflight, SQL apply, deploy, rollback mutation, and synthetic smoke.
+
+Validation plan:
+
+- `node --check scripts/check-customer-data-wallet-runtime-smoke.js`
+- `npm run check:customer-data-wallet-runtime -- --expect=predeploy`
+- `npm run check:customer-data-wallet-runtime`
+- `npm run check:customer-data-wallet-preflight`
+- `npm run test:auth-contract`
+- `npm run build`
+- `npm run lint`
+- `git diff --check`
+- targeted dangerous literal-secret scan on changed verifier/docs
+
 ## Current Execution Addendum - 2026-07-02 Auth Customer Data Wallet Planning
 
 Selected goal and chunk: Goal 10.0 - plan Auth-owned profile, delivery address book, invoice profile, and cross-repo checkout selector rollout.

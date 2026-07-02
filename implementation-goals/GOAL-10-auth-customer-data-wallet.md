@@ -58,6 +58,7 @@ Auth customer data wallet:
 - [x] 10.12 Cliplot checkout wallet readiness plan/verifier created in commit `01f6dea`.
 - [x] 10.13 Marketplace/channel audit completed; no repo-local wallet plans needed now for Catalog, Allegro, Aukro, Bazos, Heureka, or Shop Assistant.
 - [x] 10.14 Auth hosted `/profile` wallet management UI source-prepared.
+- [x] 10.15 Auth wallet runtime 401 smoke verifier source-prepared.
 
 ## Acceptance Criteria
 
@@ -109,6 +110,7 @@ Auth:
 npm test -- --runTestsByPath src/auth/auth-contract.spec.ts
 npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts
 npm run test:auth-contract
+npm run check:customer-data-wallet-runtime -- --expect=predeploy
 npm run build
 npm run lint
 git diff --check
@@ -139,6 +141,34 @@ that repo's status/validation report.
 - `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-02 Goal 10.15 Auth Wallet Runtime Gate Verifier Result
+
+- 2026-07-02: Added source-only runtime smoke verifier
+  `scripts/check-customer-data-wallet-runtime-smoke.js` and package alias
+  `npm run check:customer-data-wallet-runtime`.
+- The verifier sends unauthenticated bodyless public `GET` probes only, prints
+  HTTP status metadata only, does not send Authorization headers/cookies/request
+  bodies, does not read response bodies, and does not touch the DB.
+- `--expect=predeploy` requires `/health` HTTP 200 and wallet endpoints HTTP
+  404, proving the Goal 10 routes are not live yet.
+- `--expect=deployed` requires `/health` HTTP 200 and wallet endpoints HTTP
+  401, proving the deployed wallet routes exist and are protected by Auth.
+- `auto` mode accepts either uniform 404 or uniform 401 and reports
+  `dependency_gated_wallet_routes_not_deployed` or
+  `pass_post_deploy_wallet_401_smoke`.
+- Runbook docs now use
+  `npm run check:customer-data-wallet-runtime -- --expect=deployed` for the
+  post-deploy wallet endpoint 401 smoke gate.
+- Validation passed in Auth: script syntax check, `npm run
+  check:customer-data-wallet-runtime -- --expect=predeploy`,
+  `npm run check:customer-data-wallet-runtime`, `npm run
+  check:customer-data-wallet-preflight`, `npm run test:auth-contract`,
+  `npm run build`, `npm run lint`, `git diff --check`, and targeted dangerous
+  literal-secret scan on changed verifier/docs.
+- No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT
+  value inspection, raw production customer data inspection, authenticated
+  smoke, or consumer repo edit was performed.
 
 ## 2026-07-02 Goal 10.14 Auth Hosted Profile Wallet UI Result
 

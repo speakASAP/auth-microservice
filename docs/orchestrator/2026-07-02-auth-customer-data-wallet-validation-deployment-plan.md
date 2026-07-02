@@ -122,7 +122,8 @@ Consumers:
    transaction.
 7. Deploy Auth from the exact approved remote HEAD.
 8. Run Auth post-deploy smoke: backend/web rollout, `/health` 200, and wallet
-   endpoints return 401 unauthenticated.
+   endpoints return 401 unauthenticated through
+   `npm run check:customer-data-wallet-runtime -- --expect=deployed`.
 9. If owner approves a synthetic account/token, run authenticated Auth wallet
    CRUD/default/delete smoke with synthetic data only and cleanup where agreed.
 10. Deploy/runtime-smoke FlipFlop from the approved target branch only after
@@ -182,10 +183,7 @@ Post-deploy 401 smoke:
 ```bash
 ssh alfares 'kubectl rollout status deploy/auth-microservice -n statex-apps'
 ssh alfares 'kubectl rollout status deploy/auth-microservice-web -n statex-apps'
-ssh alfares 'curl -k -sS -o /dev/null -w "%{http_code}\n" https://auth.alfares.cz/health'
-ssh alfares 'curl -k -sS -o /dev/null -w "%{http_code}\n" https://auth.alfares.cz/auth/profile/checkout-data'
-ssh alfares 'curl -k -sS -o /dev/null -w "%{http_code}\n" https://auth.alfares.cz/auth/profile/delivery-addresses'
-ssh alfares 'curl -k -sS -o /dev/null -w "%{http_code}\n" https://auth.alfares.cz/auth/profile/invoice-profiles'
+ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && npm run check:customer-data-wallet-runtime -- --expect=deployed'
 ```
 
 ## FlipFlop Runtime Smoke Plan

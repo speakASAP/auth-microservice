@@ -352,3 +352,42 @@ Boundary:
   delivery address, and invoice profile records after the API is deployed.
 - Storefront checkout UIs and Orders snapshot semantics remain separately
   owned and dependency-gated.
+
+## Current Task Addendum - 2026-07-02 Auth Wallet Runtime Gate Verifier
+
+Target task: add a source-only public runtime verifier for the Goal 10
+post-deploy wallet endpoint 401 smoke gate.
+
+Included source and documents:
+
+- `scripts/check-customer-data-wallet-preflight.js`
+- `scripts/check-customer-data-wallet-runtime-smoke.js`
+- `package.json`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-live-gate.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/IMPLEMENTATION_STATE.md`
+
+Included evidence:
+
+- Existing preflight helper validates SQL shape only; it does not verify public
+  wallet route availability.
+- Existing runbooks expected wallet routes to return HTTP 401 unauthenticated
+  after deploy and current live evidence shows HTTP 404 before deploy.
+- Read-only runtime verifier subagent confirmed a standalone status-only
+  verifier is the missing artifact and that public unauthenticated GET probes
+  are low data risk when bodies, headers, tokens, and cookies are omitted.
+
+Excluded data:
+
+- No live SQL, deploy, DB connection values, secret values, token values,
+  decoded JWTs, cookies, response bodies, production customer rows, address
+  rows, invoice rows, or authenticated smoke data.
+
+Boundary:
+
+- The verifier proves public route availability and guard behavior only. It
+  does not prove DB schema correctness, authenticated CRUD, consumer checkout
+  behavior, Orders snapshot semantics, or migration/backfill safety.
