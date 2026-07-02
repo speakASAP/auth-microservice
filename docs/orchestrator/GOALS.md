@@ -192,12 +192,12 @@ Chunks:
 - [x] 10.3 Implement Auth invoice profile storage, DTOs, endpoints, sanitization, and tests.
 - [x] 10.4 Implement Auth checkout aggregate read and legacy `profileAddress` projection.
 - [x] 10.5 Update Auth contract docs and source validation evidence; live SQL apply and deploy remain owner-approval gated.
-- [ ] 10.6 Integrate FlipFlop shared Auth client and user-service bridge with Auth address/invoice APIs.
-- [ ] 10.7 Integrate FlipFlop checkout/profile selectors while preserving guest checkout.
-- [ ] 10.8 Confirm Orders snapshot contract compatibility and add bounded Auth selected-profile metadata only if needed.
-- [ ] 10.9 Create Rent-a-box hosted Auth/profile migration plan before any code changes.
-- [ ] 10.10 Create Chytrakoupe checkout selector integration plan.
-- [ ] 10.11 Run cross-repo validation and record deployment plan.
+- [x] 10.6 Integrate FlipFlop shared Auth client and user-service bridge with Auth address/invoice APIs; runtime remains gated.
+- [x] 10.7 Integrate FlipFlop checkout/profile selectors while preserving guest checkout; runtime smoke remains gated.
+- [x] 10.8 Confirm Orders snapshot contract compatibility; no source change before approved wallet provenance semantics.
+- [x] 10.9 Create Rent-a-box hosted Auth/profile migration plan before any code changes.
+- [x] 10.10 Create Chytrakoupe checkout selector integration plan.
+- [x] 10.11 Run cross-repo validation and record deployment plan.
 
 Acceptance criteria:
 
@@ -213,4 +213,5 @@ Planning artifacts:
 
 - `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
 - `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
 - `implementation-goals/GOAL-10-auth-customer-data-wallet.md`

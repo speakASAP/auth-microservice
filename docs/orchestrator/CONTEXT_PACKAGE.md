@@ -263,3 +263,46 @@ Excluded data:
 
 - No live SQL, deploy, customer row reads, secret values, token values, decoded
   JWTs, or consumer source edits.
+
+## Current Task Addendum - 2026-07-02 Goal 10.11 Validation And Deployment Plan
+
+Target task: create the approval-gated cross-repo validation and deployment
+plan for Auth customer data wallet rollout without executing live SQL, deploys,
+rollback mutation, production DB access, consumer code edits, or live checkout
+smoke.
+
+Included source and documents:
+
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
+- `docs/orchestrator/GOALS.md`
+- `docs/orchestrator/PLAN.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/IMPLEMENTATION_STATE.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
+- Read-only subagent evidence for Auth live gate and consumer validation matrix.
+
+Included read-only runtime evidence:
+
+- Auth source HEAD `54743ed`, SQL checksum
+  `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`,
+  and deploy script checksum
+  `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
+- Live Auth backend/web `1/1` on old image `0d4282b-20260702102426`.
+- Public `/health` HTTP 200.
+- Wallet endpoints still HTTP 404 unauthenticated, confirming Goal 10 source is
+  not deployed and SQL is not applied.
+
+Excluded data:
+
+- DB connection values, Vault/Kubernetes secret values, JWTs, refresh tokens,
+  OAuth tokens, magic-link tokens, reset tokens, passwords, raw production user
+  records, customer rows, address rows, invoice rows, password hashes, and live
+  checkout payloads.
+
+Boundary:
+
+- This chunk is documentation/status only. Auth SQL preflight, SQL apply,
+  deploy, rollback mutation, synthetic authenticated smoke, FlipFlop runtime
+  smoke, Orders provenance changes, and Rent-a-box/ChytraKoupe code lanes remain
+  separately approval-gated.

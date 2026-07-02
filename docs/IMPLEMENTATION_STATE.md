@@ -1,3 +1,5 @@
+2026-07-02: Goal 10.11 cross-repo validation/deployment plan created in Auth docs. Read-only subagents confirmed Auth source is clean at `54743ed`, live Auth is healthy on old image `0d4282b-20260702102426`, wallet endpoints still return HTTP 404 unauthenticated, SQL is unapplied, FlipFlop source-prep must be deployed/smoked only after Auth wallet 401 smoke, Orders provenance is a separate dirty lane, and Rent-a-box/ChytraKoupe remain plan-only until their hosted Auth/client decisions are resolved. New plan: `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`. Validation passed: `git diff --check` and targeted dangerous literal-secret scan on changed Goal 10 documentation files. No SQL, deploy, Kubernetes mutation, production DB access, secret/token/password inspection, raw customer data inspection, consumer source edit, or live checkout smoke was performed. Next chunk: request explicit owner approval for schema-only DB preflight, use of DB connection env values without printing values, live SQL apply, Auth deploy from exact remote HEAD `54743ed`, and optional synthetic authenticated smoke.
+
 2026-07-02: Goal 10.9 and 10.10 repo-local consumer plans created from read-only subagent audits. Rent-a-box was clean at `fa1fc85`; plan `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` documents that migration is a full hosted Auth/profile/session/admin-role lane, not just address selectors, because source has local email/password auth, local JWT minting, local password hashes, local profile/contact/billing storage, and `customer_profiles.id` domain coupling. ChytraKoupe was clean at `4817528`; plan `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` documents Auth wallet checkout selector integration gated on Auth deploy, client-id decision, CORS/redirect allowlist, callback hardening, and order snapshot payload decisions. No consumer runtime code, SQL, deploy, live checkout submit, DB access, secret/token/password inspection, password hash inspection, or raw customer data inspection was performed. Repo-local plans were validated and committed as `rent-a-box` `fcfeb48` and `chytrakoupe` `a1dabca`. Next chunk: prepare Goal 10.11 cross-repo validation/deployment plan.
 
 
@@ -70,9 +72,9 @@ AUTH ORCHESTRATOR: implement goal number 6
 - Active goal: Goal 10 - Auth Customer Data Wallet.
 - Current wave: Wave 2 - Operational backlog
 - Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review, RBAC-REM-02 Consumer JWT Validation Standardization, RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard, RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review, RBAC-REM-05 School Committee Local-Role Contract Note, RBAC-REM-06 Internal Service-Token/API-Key Boundary Review, RBAC-REM-07 Logging Admin Role-Enforcement Verification, AUTH-ALPHA-01 Hosted Token Handoff URL Normalization, 09 Auth Contract Production Smoke Verification
-- Running goals: 10.1-10.5 Auth A1 source implementation validation and commit next.
-- Blocked goals: consumer implementation is dependency-gated on Auth source validation, owner-approved SQL apply, and Auth deploy.
-- Worker threads: schema/deploy-path explorer and consumer readiness monitor completed read-only for A1; three planning explorers previously completed for Auth, FlipFlop, and non-FlipFlop commerce consumers.
+- Running goals: Goal 10 live rollout gate; 10.11 plan is complete, live SQL/deploy/smoke remain approval-gated.
+- Blocked goals: consumer runtime implementation/deploy is dependency-gated on owner-approved Auth schema preflight, SQL apply, Auth deploy, wallet endpoint 401 smoke, and repo-local decisions.
+- Worker threads: Goal 10.11 Auth live-gate and consumer validation read-only subagents completed; previous schema/deploy-path and consumer readiness explorers completed.
 - Production status: `STATE.json` reports production health `ok`; `/reset-password` route fix deployed on 2026-06-26
 - Source of truth: `alfares:/home/ssf/Documents/Github/auth-microservice`
 - Local snapshot rule: `/Users/Sergej.Stasok/Documents/auth` is context only; future code and documentation changes must be made and committed on `alfares`.
@@ -83,6 +85,7 @@ AUTH ORCHESTRATOR: implement goal number 6
 - RBAC audit report: `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`
 - Goal 10 contract: `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
 - Goal 10 cross-repo plan: `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
+- Goal 10 validation/deployment plan: `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
 - DocsRAG mode: mandatory before broad ecosystem architecture or contract decisions when a service JWT is available.
 - IPS gate mode: mandatory before coding through `docs/orchestrator/PROJECT_INVARIANTS.md`, `PRE_CODING_GATE.md`, `CONTEXT_PACKAGE.md`, `EXECUTION_PLAN.md`, and `READINESS_GATES.md`.
 

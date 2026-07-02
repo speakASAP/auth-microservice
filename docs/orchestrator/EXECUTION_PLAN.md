@@ -232,6 +232,55 @@ commit `a1dabca`.
 Deployment plan: none. SQL apply, Auth deploy, consumer deploy, and live
 checkout smoke remain owner-approval gated.
 
+## Current Execution Addendum - 2026-07-02 Goal 10.11 Validation And Deployment Plan
+
+Selected goal and chunk: Goal 10.11 cross-repo validation and deployment plan.
+
+Pre-coding gate decision: pass for documentation-only coordination. The chunk
+does not change runtime code, schema, JWT, RBAC, OAuth, magic-link, CORS,
+internal-service contracts, or consumer source. Live SQL, Auth deploy, rollback
+mutation, synthetic authenticated smoke, and consumer runtime smoke are
+explicitly held for owner approval.
+
+Sensitive-data handling: source metadata and HTTP status only. No DB connection
+values, secret values, token values, passwords, decoded JWTs, password hashes,
+raw production customer rows, address rows, invoice rows, or live checkout
+payloads are read or recorded.
+
+Contract impact: no runtime contract change in this chunk. The plan preserves
+the existing Goal 10 contract: Auth owns reusable profile/address/invoice data;
+Orders owns immutable order snapshots; consumer storefronts render selectors
+and save back through Auth.
+
+Allowed files:
+
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
+- `docs/orchestrator/GOALS.md`
+- `docs/orchestrator/PLAN.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/orchestrator/CONTEXT_PACKAGE.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/IMPLEMENTATION_STATE.md`
+
+Parallel execution:
+
+- Auth live-gate subagent: complete, read-only.
+- Consumer validation subagent: complete, read-only.
+- Auth coordinator: creates and validates the plan/status updates.
+- Future Auth operator lane: dependency-gated on explicit owner approval for
+  schema-only DB preflight, SQL apply, deploy, rollback mutation, and synthetic
+  smoke.
+- Future consumer lanes: dependency-gated on Auth wallet 401 smoke and
+  repo-local decisions.
+
+Validation plan:
+
+- `git diff --check`
+- targeted dangerous literal-secret scan on changed documentation files
+- no build/test/deploy required for this docs-only chunk
+
 
 ## Current Execution Addendum - 2026-07-02 Auth Customer Data Wallet Pre-Approval Fixes
 

@@ -54,7 +54,7 @@ Auth customer data wallet:
 - [x] 10.8 Orders snapshot compatibility audit; no source change before provenance decision.
 - [x] 10.9 Rent-a-box hosted Auth/profile migration plan created in commit `fcfeb48`.
 - [x] 10.10 Chytrakoupe checkout selector integration plan created in commit `a1dabca`.
-- [ ] 10.11 Cross-repo validation and deployment plan.
+- [x] 10.11 Cross-repo validation and deployment plan.
 
 ## Acceptance Criteria
 
@@ -134,6 +134,23 @@ that repo's status/validation report.
 - `[MISSING: Rent-a-box hosted Auth token/session/admin-role migration decision before code changes]`
 - `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
 - `[UNKNOWN: final customer-checkout consumer repo set beyond FlipFlop, Chytrakoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-02 Goal 10.11 Validation And Deployment Plan Result
+
+- 2026-07-02: Goal 10.11 cross-repo validation and deployment plan created in
+  `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`.
+- Subagent read-only reviews confirmed Auth source is clean at `54743ed`, live
+  Auth is healthy on old image `0d4282b-20260702102426`, wallet routes still
+  return 404 unauthenticated, SQL remains unapplied, and live deployment is not
+  ready without explicit approvals.
+- The plan records repo-specific gates for Auth, FlipFlop, Orders,
+  Rent-a-box, ChytraKoupe, and Cliplot; merge/deploy order; rollback boundary;
+  sensitive-data rules; and exact `[MISSING: ...]` blockers.
+- Auth coordinator validation passed: `git diff --check` and targeted
+  dangerous literal-secret scan on changed Goal 10 documentation files.
+- No SQL, deploy, production DB access, secret/token/password inspection, raw
+  customer-data inspection, consumer code edit, or live checkout smoke was
+  performed for this chunk.
 
 ## Coding Prompt
 

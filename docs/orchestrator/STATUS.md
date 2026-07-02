@@ -1,3 +1,45 @@
+## 2026-07-02 - Goal 10.11 Cross-Repo Validation And Deployment Plan
+
+Current focus:
+
+- Convert the Auth customer data wallet rollout into an approval-gated
+  cross-repo validation/deployment plan.
+
+Evidence:
+
+- Auth live-gate subagent completed read-only review: Auth source is clean on
+  `main` at `54743ed`, ahead of `origin/main` by 5; wallet source commit
+  `b6c1585` is included; SQL checksum is
+  `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`;
+  deploy script checksum is
+  `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
+- Live Auth backend/web were both `1/1` on old image
+  `0d4282b-20260702102426`; public `/health` returned HTTP 200; wallet
+  endpoints still returned HTTP 404 unauthenticated, so Goal 10 source is not
+  deployed and SQL has not been applied.
+- Consumer validation subagent completed read-only matrix for `flipflop`,
+  `orders-microservice`, `rent-a-box`, `chytrakoupe`, and `cliplot`.
+- Created
+  `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
+  with repo matrix, merge/deploy order, Auth live runbook, FlipFlop runtime
+  smoke plan, rollback boundary, sensitive-data rules, parallel workstreams,
+  and exact `[MISSING: ...]` blockers.
+- Auth coordinator validation passed: `git diff --check` and targeted
+  dangerous literal-secret scan on the changed Goal 10 documentation files.
+
+Boundary:
+
+- Documentation/status only. No live SQL, deploy, Kubernetes mutation,
+  production DB access, secret/token/password inspection, raw customer data
+  inspection, consumer source edit, or live checkout smoke.
+
+Next unfinished chunk:
+
+- Request explicit owner approval for schema-only live DB preflight, use of DB
+  connection environment values without printing values, live SQL apply, Auth
+  deploy from exact remote HEAD `54743ed`, and synthetic authenticated smoke if
+  desired.
+
 ## 2026-07-02 - Goal 10.9 And 10.10 Consumer Plan Creation
 
 Current focus:

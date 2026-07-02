@@ -65,13 +65,17 @@ Current chunk:
 - 10.8 Orders compatibility audit is complete; no Orders source change before wallet provenance decision.
 - 10.9 Rent-a-box hosted Auth/profile migration plan is committed in `rent-a-box` commit `fcfeb48`.
 - 10.10 ChytraKoupe checkout selector integration plan is committed in `chytrakoupe` commit `a1dabca`.
-- Next ready planning chunk: 10.11 cross-repo validation and deployment plan.
+- 10.11 cross-repo validation and deployment plan is created in
+  `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`.
+- Next live chunk: owner-approved Auth schema-only DB preflight, SQL apply,
+  Auth deploy, and wallet endpoint 401 smoke.
 
 Planning artifacts:
 
 - `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
 - `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
 - `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
 - `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`
 - `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`
 

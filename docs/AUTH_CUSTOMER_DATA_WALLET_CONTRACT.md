@@ -4,6 +4,9 @@ Status: Auth and FlipFlop source-implemented; live SQL apply, deployment, and ru
 Owner: auth-microservice
 Created: 2026-07-02
 
+Validation/deployment plan:
+`docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
+
 ## Intent
 
 Auth is the Statex ecosystem source of truth for registered-user identity,
