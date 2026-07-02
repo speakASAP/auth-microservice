@@ -1,3 +1,50 @@
+## 2026-07-02 - Goal 10.27 Consumer Readiness Refresh After Auth 401 Gate
+
+Current focus:
+
+- Refresh dependency-gated consumer lanes after the completed Auth wallet
+  unauthenticated 401 gate so future workers do not treat the upstream endpoint
+  presence evidence as missing.
+
+Evidence:
+
+- Rent-a-box worker committed
+  `e93053ed36d03bb2a928b6cb003e645ff4adc2a1 docs: refresh goal 12 auth wallet readiness`.
+- ChytraKoupe worker committed
+  `baa0d3555b407591108badd848253ebc77956471 docs/test: refresh auth wallet checkout gate`.
+- Cliplot current clean `main` is `92c294f feat: add callback persistence approval packet`
+  and includes refreshed Auth wallet readiness evidence with
+  `authWalletPresenceGate.status=complete`.
+- Auth live wallet endpoint evidence remains Source Preflight HEAD
+  `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`, `/health` HTTP 200, and wallet
+  endpoint HTTP 401 unauthenticated.
+
+Validation:
+
+- Rent-a-box: `python3 -m py_compile
+  scripts/check_goal12_auth_wallet_readiness.py`; `python3
+  scripts/check_goal12_auth_wallet_readiness.py --root .`; `git diff --check`;
+  targeted literal-secret scan; stale Auth 401 blocker scan all passed.
+- ChytraKoupe: `npm run verify:auth-wallet-checkout-selectors`; `node --check
+  scripts/verify-auth-wallet-checkout-selectors.mjs`; `git diff --check`;
+  targeted dangerous literal-secret scan passed.
+- Cliplot: `npm run readiness:auth-wallet-checkout`; `node --check
+  scripts/auth-wallet-checkout-readiness.js`; `npm run check`; `git diff
+  --check`; stale-text scan; targeted dangerous literal-secret scan passed.
+
+Boundary:
+
+- No consumer deploy, DB access, secret/token/password/JWT/cookie inspection,
+  live checkout/order/payment mutation, Warehouse reservation, notification
+  send, Auth runtime change, or production customer-data inspection was
+  performed.
+
+Next unfinished chunk:
+
+- Synthetic authenticated Auth wallet and FlipFlop checkout/profile smoke if
+  required, or resolve the remaining consumer-specific decisions before
+  product-code migrations.
+
 ## 2026-07-02 - Goal 10.26 Post-Live Planning Doc Refresh
 
 Current focus:
@@ -111,6 +158,12 @@ Next unfinished chunk:
   ChytraKoupe, and Cliplot.
 
 ## 2026-07-02 - Goal 10.24 FlipFlop Main Target Source Revalidation
+
+Superseded source-head note:
+
+- Dependency-gated consumer heads in this section were refreshed again by Goal
+  10.27 after Auth wallet 401 evidence was consumed by Rent-a-box, ChytraKoupe,
+  and Cliplot readiness lanes.
 
 Current focus:
 

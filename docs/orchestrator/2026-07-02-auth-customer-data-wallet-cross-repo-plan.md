@@ -487,9 +487,9 @@ Plan:
 | F1 FlipFlop shared Auth client and user-service bridge | dependency-gated | FlipFlop backend worker  | Auth client, `/users/*` bridge                             | A1 API              | FlipFlop integration owner | 4                            |
 | F2 FlipFlop checkout/profile UX                        | dependency-gated | FlipFlop frontend worker | Checkout selectors, profile addresses UI                   | F1                  | FlipFlop integration owner | 5                            |
 | O1 Orders contract note/additive metadata              | dependency-gated | Orders worker            | Create-order contract docs/DTO if needed                   | A1 + F1 payload     | Orders owner               | 6                            |
-| R1 Rent-a-box hosted Auth migration plan               | plan-created     | Rent-a-box coordinator   | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Auth deploy + migration approval | Rent-a-box owner           | 7                            |
-| CK1 Chytrakoupe checkout selector integration          | plan-created     | Chytrakoupe worker       | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Auth deploy + client-id decision | Chytrakoupe owner          | 8                            |
-| C1 Cliplot plan                                        | blocked          | Cliplot coordinator      | Docs/guarded plan only                                     | Checkout approval   | Cliplot owner              | After live checkout approval |
+| R1 Rent-a-box hosted Auth migration plan               | post-live-gate-refreshed | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Hosted Auth/session/admin mapping + migration approval | Rent-a-box owner | 7 |
+| CK1 Chytrakoupe checkout selector integration          | post-live-gate-refreshed | Chytrakoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Client-id/allowlist/snapshot decisions | Chytrakoupe owner | 8 |
+| C1 Cliplot plan                                        | post-live-gate-refreshed | Cliplot coordinator | Docs/guarded plan only | Selector/session/PII/response-contract approvals | Cliplot owner | After live checkout approval |
 | M1 Marketplace order-snapshot audit                    | ready read-only  | Explorer                 | Allegro/Aukro/Bazos/Heureka/Catalog surface classification | None                | Coordinator                | No code merge                |
 
 Shared contracts:
@@ -725,4 +725,7 @@ Cross-repo:
   `companyId`, `vatId`, and `email` was source-prepared in Orders commit
   `3c7d0c3` and FlipFlop commit `20dd1f8`; authenticated runtime proof remains
   gated on synthetic account/token approval.
+- Rent-a-box, ChytraKoupe, and Cliplot readiness lanes now consume the completed
+  Auth wallet 401 endpoint evidence; product-code migrations remain gated by
+  repo-specific decisions.
 - `[UNKNOWN: final consumer repo set beyond FlipFlop and Cliplot checkout surfaces]`

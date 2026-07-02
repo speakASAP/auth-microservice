@@ -69,6 +69,8 @@ Auth customer data wallet:
 - [x] 10.23 Auth live approval gate exact target refreshed after docs checkpoints.
 - [x] 10.24 FlipFlop merged `main` target source revalidated.
 - [x] 10.25 Auth live wallet SQL, deploy, and unauthenticated 401 gate completed.
+- [x] 10.26 Post-live planning docs refreshed after completion audit.
+- [x] 10.27 Dependency-gated consumer readiness lanes refreshed against Auth wallet 401 evidence.
 
 ## Acceptance Criteria
 
@@ -107,9 +109,9 @@ marketplace operations.
 | F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | Auth deployed; authenticated runtime smoke gated | 4           |
 | F2 FlipFlop checkout/profile UX    | source-prepared    | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deployed; synthetic checkout/profile smoke gated | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
-| R1 Rent-a-box Auth migration plan  | plan+verifier-created | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | Auth deploy + migration approval | 7 |
-| CK1 ChytraKoupe checkout selectors | plan+verifier-created | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | Auth deploy + client-id decision | 8 |
-| C1 Cliplot plan                    | plan+verifier-created | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js` | checkout approval + Auth wallet live contract | later |
+| R1 Rent-a-box Auth migration plan  | post-live-gate-refreshed | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | hosted Auth/session/admin mapping + migration approval | 7 |
+| CK1 ChytraKoupe checkout selectors | post-live-gate-refreshed | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | client-id/allowlist/snapshot decisions | 8 |
+| C1 Cliplot plan                    | post-live-gate-refreshed | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js` | selector/session/PII/response-contract approvals | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
 ## Validation
@@ -149,6 +151,41 @@ that repo's status/validation report.
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
 
+## 2026-07-02 Goal 10.27 Consumer Readiness Refresh After Auth 401 Gate
+
+- 2026-07-02: Dependency-gated consumer readiness lanes were refreshed after
+  the Auth live wallet endpoint presence gate completed.
+- Rent-a-box commit `e93053e docs: refresh goal 12 auth wallet readiness`
+  removed the stale missing Auth 401 endpoint blocker from Goal 12 docs,
+  orchestration state, validation report, and verifier while preserving hosted
+  Auth browser/callback, backend token validation/introspection, wallet
+  read/write, admin role mapping, live migration/backfill, and production row
+  count blockers.
+- ChytraKoupe commit `baa0d35 docs/test: refresh auth wallet checkout gate`
+  removed the stale missing Auth 401 endpoint blocker from Goal 06 docs,
+  status, validation reports, and verifier while preserving Auth client-id,
+  CORS/redirect allowlist, Orders authenticated-versus-guest snapshot, invoice
+  payload, and callback fallback blockers.
+- Cliplot current `main` at `92c294f` includes the refreshed Goal 10 wallet
+  readiness state: the verifier reports `authWalletPresenceGate.status=complete`
+  with Auth Source Preflight HEAD `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`,
+  `/health` HTTP 200, and wallet endpoint HTTP 401 evidence, while preserving
+  selector behavior, authenticated browser/session, no-PII exposure, and
+  response-contract blockers.
+- Validation evidence recorded by the consumer lanes: Rent-a-box
+  `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py`,
+  `python3 scripts/check_goal12_auth_wallet_readiness.py --root .`,
+  `git diff --check`, and targeted literal-secret scan passed; ChytraKoupe
+  `npm run verify:auth-wallet-checkout-selectors`, `node --check
+  scripts/verify-auth-wallet-checkout-selectors.mjs`, `git diff --check`, and
+  targeted dangerous literal-secret scan passed; Cliplot `npm run
+  readiness:auth-wallet-checkout`, `node --check
+  scripts/auth-wallet-checkout-readiness.js`, `npm run check`, `git diff
+  --check`, stale-text scan, and targeted dangerous literal-secret scan passed.
+- No consumer deploy, DB access, secret/token/password/JWT/cookie inspection,
+  live checkout/order/payment mutation, Warehouse reservation, notification
+  send, or Auth runtime change was performed.
+
 ## 2026-07-02 Goal 10.25 Auth Live SQL Deploy And 401 Smoke Result
 
 - 2026-07-02: Owner approved Auth schema-only live DB preflight, live SQL apply,
@@ -187,6 +224,9 @@ that repo's status/validation report.
 
 ## 2026-07-02 Goal 10.24 FlipFlop Main Target Source Revalidation Result
 
+- Superseded source-head note: dependency-gated consumer heads in this section
+  were refreshed again by Goal 10.27 after Auth wallet 401 evidence was
+  consumed by Rent-a-box, ChytraKoupe, and Cliplot readiness lanes.
 - 2026-07-02: FlipFlop wallet lane is merged into `main` at `7e97e98`.
 - The prior `codex/orders-lifecycle-cabinet-flipflop-clean` target is
   superseded; the remaining dirty FlipFlop file is unrelated
