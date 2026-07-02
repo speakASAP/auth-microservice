@@ -65,6 +65,7 @@ Auth customer data wallet:
 - [x] 10.19 FlipFlop checkout explicit Auth wallet save-back source-prepared.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
+- [x] 10.22 Auth live approval gate source revalidated against current HEAD.
 
 ## Acceptance Criteria
 
@@ -147,6 +148,16 @@ that repo's status/validation report.
 - `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-02 Goal 10.22 Auth Live Approval Gate Revalidation Result
+
+- 2026-07-02: Current Auth live approval gate was source-revalidated from Auth HEAD `0dfd9eb`.
+- Auth preflight helper still confirms the wallet SQL shape and prints only allowlisted metadata/apply templates without reading environment values or connecting to the DB.
+- Auth runtime predeploy verifier still reports `/health` HTTP 200 and wallet endpoints HTTP 404 with no Authorization headers, cookies, request body, response body logging, or DB access.
+- Auth contract tests, build, lint, diff-check, and active-doc secret scan passed.
+- Orders create-order and invoice read-boundary verifiers still pass.
+- FlipFlop wallet checkout/profile verifiers still pass; unrelated unstaged shared-service files remain outside Goal 10 changes.
+- No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT value inspection, raw production customer data inspection, authenticated smoke, or live checkout submit was performed.
 
 ## 2026-07-02 Goal 10.21 FlipFlop Invoice Profile Navigation Result
 

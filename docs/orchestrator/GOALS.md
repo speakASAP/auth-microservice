@@ -208,6 +208,7 @@ Chunks:
 - [x] 10.19 Source-prepare explicit FlipFlop checkout save-back for Auth invoice profiles and delivery addresses.
 - [x] 10.20 Source-prepare FlipFlop account invoice profile management and Auth wallet default-method alignment.
 - [x] 10.21 Source-prepare FlipFlop account invoice profile navigation/discoverability.
+- [x] 10.22 Revalidate Auth live approval gate against current source HEAD.
 
 Acceptance criteria:
 

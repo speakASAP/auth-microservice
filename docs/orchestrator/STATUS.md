@@ -1,3 +1,34 @@
+## 2026-07-02 - Goal 10.22 Auth Live Approval Gate Revalidation
+
+Current focus:
+
+- Refresh source-only validation evidence for the current Auth approval gate before any owner-approved live DB/deploy step.
+
+Evidence:
+
+- Auth HEAD before this checkpoint: `0dfd9eb docs: record flipflop invoice navigation checkpoint`.
+- Auth worktree was clean and `main` was ahead of `origin/main` by 3 before this documentation update.
+- Runtime predeploy verifier confirmed live `/health` HTTP 200 and wallet routes still HTTP 404 unauthenticated, so Goal 10 wallet routes remain undeployed and protected live activation is still pending.
+- Orders immutable invoice snapshot verifiers still pass.
+- FlipFlop Auth wallet checkout/profile verifiers still pass; unrelated unstaged shared-service files remain in the FlipFlop worktree and were not touched by Goal 10.
+
+Validation:
+
+- Auth: `npm run check:customer-data-wallet-preflight` passed.
+- Auth: `npm run check:customer-data-wallet-runtime -- --expect=predeploy` passed with no Authorization header, cookies, request body, response body logging, or DB access.
+- Auth: `npm run test:auth-contract` passed, 3 suites / 27 tests.
+- Auth: `npm run build`, `npm run lint`, `git diff --check`, and targeted dangerous literal-secret scan on active Goal 10 docs passed.
+- Orders: `npm run verify:create-order-contract` and `npm run verify:invoices-read-boundary` passed.
+- FlipFlop: `npm run verify:auth-wallet-profile-ui` and `npm run verify:auth-wallet-checkout-selectors` passed.
+
+Boundary:
+
+- Source/validation/docs only. No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT value inspection, raw production customer data inspection, authenticated smoke, or live checkout submit.
+
+Next unfinished chunk:
+
+- Owner approval for Auth schema-only live DB preflight, live SQL apply, Auth deploy, wallet endpoint 401 smoke, and post-deploy FlipFlop checkout/profile runtime smoke.
+
 ## 2026-07-02 - Goal 10.21 FlipFlop Invoice Profile Navigation
 
 Current focus:
