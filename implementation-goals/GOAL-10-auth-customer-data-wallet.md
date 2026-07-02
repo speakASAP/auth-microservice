@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI, FlipFlop selectors/save-back/profile invoice management/navigation, and Orders/FlipFlop order snapshot support source-prepared; Rent-a-box/ChytraKoupe/Cliplot readiness lanes created; marketplace/channel audit complete; live SQL/deploy/runtime smoke approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; Rent-a-box/ChytraKoupe/Cliplot readiness lanes created; marketplace/channel audit complete; live SQL/deploy/unauthenticated 401 smoke completed; synthetic authenticated smoke and dependent consumer code lanes remain approval-gated
 
 ## Intent
 
@@ -102,11 +102,11 @@ marketplace operations.
 | Workstream                         | Status             | Owner role               | Files                                    | Dependencies              | Merge order |
 | ---------------------------------- | ------------------ | ------------------------ | ---------------------------------------- | ------------------------- | ----------- |
 | A0 Planning                        | complete           | Auth coordinator         | Auth docs only                           | None                      | 1           |
-| A1 Auth backend                    | source-implemented | Auth backend worker      | Auth source/docs/tests                   | SQL apply/deploy approval | 2           |
-| A2 Auth profile UI                 | source-prepared    | Auth frontend worker     | hosted Auth/profile UI                   | Auth deploy/runtime smoke | 3           |
-| F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | runtime smoke gated       | 4           |
-| F2 FlipFlop checkout/profile UX    | source-prepared    | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deploy/runtime smoke incl. manual-edit guard/save-back/profile CRUD | 5           |
-| O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth runtime deploy/smoke | 6           |
+| A1 Auth backend                    | live-deployed      | Auth backend worker      | Auth source/docs/tests                   | synthetic CRUD smoke optional-gated | 2           |
+| A2 Auth profile UI                 | live-deployed      | Auth frontend worker     | hosted Auth/profile UI                   | authenticated profile smoke gated | 3           |
+| F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | Auth deployed; authenticated runtime smoke gated | 4           |
+| F2 FlipFlop checkout/profile UX    | source-prepared    | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deployed; synthetic checkout/profile smoke gated | 5           |
+| O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
 | R1 Rent-a-box Auth migration plan  | plan+verifier-created | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | Auth deploy + migration approval | 7 |
 | CK1 ChytraKoupe checkout selectors | plan+verifier-created | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | Auth deploy + client-id decision | 8 |
 | C1 Cliplot plan                    | plan+verifier-created | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js` | checkout approval + Auth wallet live contract | later |
@@ -121,6 +121,7 @@ npm test -- --runTestsByPath src/auth/auth-contract.spec.ts
 npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts
 npm run test:auth-contract
 npm run check:customer-data-wallet-runtime -- --expect=predeploy
+npm run check:customer-data-wallet-runtime -- --expect=deployed
 npm run build
 npm run lint
 git diff --check

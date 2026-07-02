@@ -6,8 +6,8 @@ Scope: `auth-microservice` Goal 10 A1 live SQL apply and deployment.
 
 ## Purpose
 
-Prepare the live database and runtime deployment gate for the current Auth
-customer data wallet runtime source checkpoint:
+Record the live database and runtime deployment gate for the Auth customer data
+wallet runtime source checkpoint:
 
 ```text
 1a60240de3affb739cfbe1cac49dd95e5025582a docs: revalidate auth wallet live approval gate
@@ -21,56 +21,43 @@ verifier checkpoint. Source Preflight must capture the exact remote HEAD
 immediately before approved live execution because docs-only checkpoint commits
 may sit above this runtime source checkpoint.
 
-This runbook does not grant approval. It records the exact safe sequence to use
-after the owner approves schema-only DB preflight, SQL apply, and Auth deploy.
+This runbook records the exact safe sequence that was used after owner approval
+for schema-only DB preflight, SQL apply, Auth deploy, wallet endpoint 401
+smoke, and non-mutating FlipFlop post-deploy runtime smoke.
 
 ## Current Gate State
 
 - Auth source for delivery addresses, invoice profiles, checkout aggregate,
   hosted profile wallet management, and runtime wallet route gate exists in the
-  current runtime source checkpoint `1a60240`.
+  deployed Source Preflight HEAD
+  `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`.
 - `scripts/create-customer-data-wallet-tables.sql` is additive and idempotent.
 - Production uses `DB_SYNC=false`; do not set `DB_SYNC=true`.
 - Live SQL has been applied for `scripts/create-customer-data-wallet-tables.sql`.
-- Auth HEAD `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d` has been deployed.
+- Auth deploy completed with backend image
+  `localhost:5000/auth-microservice:2871a6f-20260702210100` and web image
+  `localhost:5000/auth-microservice-web:2871a6f-20260702210100`; both
+  deployments are `1/1`.
+- Post-deploy runtime smoke passed: `/health` returned HTTP 200 and wallet
+  endpoints returned HTTP 401 unauthenticated.
 - FlipFlop non-mutating post-deploy smoke passed; authenticated synthetic
   wallet and checkout smoke remains gated on synthetic account/token approval.
-- Runtime gate blocker observed after pre-approval fixes: Auth backend was
-  `0/1` on old image `0d4282b-20260702102426`, public health returned HTTP
-  503, and an Auth-only pod recreation still left the backend pod stuck before
-  init containers due cluster-wide `FailedCreatePodSandBox` / stale sandbox
-  reservation failures. Treat this as an operational gate: do not run SQL or
-  deploy until Auth backend health is restored or an owner-approved node/runtime
-  recovery window is completed.
-
-- Runtime repair follow-up: backend desired state was restored from
-  `spec.replicas=0` to `spec.replicas=1` on the same old image, the already
-  deleting Auth pod was force-deleted, and Kubernetes created a replacement pod
-  that remained `Init:0/2` / `PodInitializing` after the polling window. SQL/deploy remains blocked
-  until this replacement backend reaches healthy runtime or an owner-approved
-  node/container-runtime recovery completes.
-
-- Runtime drift follow-up: repeated safe restore attempts with
-  `kubectl scale deploy/auth-microservice --replicas=1` were reverted by live
-  state back to `spec.replicas=0` on the old image. HPA/KEDA were not found, and
-  source `k8s/deployment.yaml` still declares `replicas: 1`. Treat the external
-  replica drift as a hard live gate: do not run SQL or deploy until the backend
-  remains stable at `replicas=1` and public `/health` is healthy.
-
-- Runtime recovered follow-up: backend recovered on old image
-  `0d4282b-20260702102426` with backend and web both `1/1 Running`, and public
-  `/health` returned ok. Live wallet endpoint probes still returned HTTP 404,
-  confirming Goal 10 wallet code is not deployed. The live gate can proceed
-  only after owner approval for schema-only DB preflight, SQL apply, and Auth
-  deploy.
+- Historical pre-live Kubernetes/pod sandbox blockers listed in earlier
+  checkpoints were resolved before this live gate executed and are no longer
+  active gate blockers.
 
 ## Required Owner Approvals
 
-- Approval to run schema-only live DB preflight and verification.
-- Approval to use DB connection environment values without printing them.
-- Approval to apply `scripts/create-customer-data-wallet-tables.sql` in a live
-  DB change window.
-- Approval to deploy Auth with `./scripts/deploy.sh`.
+Completed approvals:
+
+- Schema-only live DB preflight and verification.
+- Use of DB connection environment values without printing them.
+- Live apply of `scripts/create-customer-data-wallet-tables.sql`.
+- Auth deploy with `./scripts/deploy.sh`.
+- Wallet endpoint 401 smoke and non-mutating FlipFlop post-deploy smoke.
+
+Still required:
+
 - Approval for any authenticated synthetic smoke that creates, updates,
   defaults, or deletes wallet rows.
 

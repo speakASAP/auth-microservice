@@ -1,6 +1,6 @@
 # Auth Customer Data Wallet Validation And Deployment Plan
 
-Status: plan-only; live SQL, Auth deploy, rollback mutation, synthetic authenticated smoke, and consumer deploys remain owner-approval gated
+Status: Auth live SQL/deploy and unauthenticated 401 smoke completed; rollback mutation, synthetic authenticated smoke, and consumer deploys remain owner-approval gated
 Created: 2026-07-02
 Owner: Auth coordinator
 
@@ -83,15 +83,19 @@ Consumers:
 
 - `flipflop`: the superseded
   `codex/orders-lifecycle-cabinet-flipflop-clean` lane is merged into `main`.
-  Current `main` is at `7e97e98` and includes wallet selector/save-back/profile
-  commits through `e499dd4`. Source verifiers
+  Current `main` is clean at `97b7e40`; the wallet lane was merged at
+  `7e97e98` and includes wallet selector/save-back/profile commits through
+  `e499dd4`. Source verifiers
   `npm run verify:auth-wallet-profile-ui` and
   `npm run verify:auth-wallet-checkout-selectors` passed on current `main`;
   `npm run verify:orders-hub-integration` also passed for order payload
   forwarding.
-  The only dirty file is unrelated `shared/health/health.service.ts`.
-  Deploy/runtime smoke remains gated until Auth wallet endpoints return 401
-  unauthenticated after Auth SQL/deploy.
+  Non-mutating post-deploy runtime smoke also passed after the Auth wallet 401
+  gate: `npm run verify:auth-wallet-profile-ui`,
+  `npm run verify:auth-wallet-checkout-selectors`,
+  `npm run verify:orders-hub-integration`, and
+  `npm run verify:guest-checkout-ui`. Authenticated synthetic
+  checkout/profile smoke remains gated on synthetic account/token approval.
 - `orders-microservice`: current clean `main` at `2111389` includes immutable
   order snapshot support for optional Auth invoice fields through commit
   `3c7d0c3`; it does not accept Auth wallet IDs. Goal 10 must not add Orders
@@ -115,8 +119,8 @@ Consumers:
 
 | Repo | Owner role | Current state | Required pre-deploy checks | Post-deploy/runtime checks | Blockers |
 | --- | --- | --- | --- | --- | --- |
-| `auth-microservice` | Auth coordinator | Runtime source checkpoint `1a60240`; exact deploy HEAD must be captured by Source Preflight; live still old image with wallet 404 | `npm run check:customer-data-wallet-preflight`; `npm run check:customer-data-wallet-runtime -- --expect=predeploy`; `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts src/users/users.service.spec.ts`; `npm run test:auth-contract`; `npm run build`; `npm run lint`; `git diff --check`; schema-only DB preflight after approval | rollout backend/web; `/health` 200; `npm run check:customer-data-wallet-runtime -- --expect=deployed`; optional synthetic CRUD/default/delete smoke | live DB preflight, SQL apply, deploy, synthetic account approvals |
-| `flipflop` | FlipFlop integration owner | `main` at `7e97e98`, wallet lane merged, with unrelated unstaged `shared/health/health.service.ts` | `npm run verify:auth-wallet-profile-ui` passed; `npm run verify:auth-wallet-checkout-selectors` passed; `npm run verify:orders-hub-integration` passed; earlier shared/frontend/order-service build evidence remains recorded in Goal 10.18-10.21 | guest checkout unchanged; authenticated checkout/profile selectors; wallet fallback on 404/failure; manual-edit-before-wallet-response guard; explicit selector override; profile address fallback; explicit wallet save-back; invoice profile CRUD/default UI; no wallet IDs in order payload unless approved | Auth wallet deploy; owner-approved synthetic account; runtime smoke |
+| `auth-microservice` | Auth coordinator | Source Preflight deploy HEAD `2871a6f`; live backend/web `1/1` on image tags `2871a6f-20260702210100`; wallet routes return HTTP 401 unauthenticated | `npm run check:customer-data-wallet-preflight` passed; predeploy runtime verifier passed with wallet 404; focused Auth/User specs passed; `npm run test:auth-contract` passed; `npm run build`; `npm run lint`; `git diff --check`; schema-only DB preflight passed; live SQL apply completed | `/health` 200; `npm run check:customer-data-wallet-runtime -- --expect=deployed` passed; optional synthetic CRUD/default/delete smoke remains gated | synthetic account/token approval for authenticated smoke |
+| `flipflop` | FlipFlop integration owner | Clean `main` at `97b7e40`; wallet lane merged at `7e97e98` | `npm run verify:auth-wallet-profile-ui` passed; `npm run verify:auth-wallet-checkout-selectors` passed; `npm run verify:orders-hub-integration` passed; earlier shared/frontend/order-service build evidence remains recorded in Goal 10.18-10.21 | non-mutating post-deploy smoke passed including guest checkout; authenticated checkout/profile selectors, manual-edit guard, explicit save-back, and invoice profile CRUD/default UI still need synthetic authenticated smoke before completion | owner-approved synthetic account/token; authenticated runtime smoke |
 | `orders-microservice` | Orders contract owner | Clean `main` at `2111389`; Auth subject aliases and immutable snapshots supported, including optional Auth invoice fields from `3c7d0c3` | `npm run verify:create-order-contract` passed; `npm run verify:invoices-read-boundary` passed; earlier build/full-test evidence remains recorded in Goal 10.18 | optional validate-create payload smoke and event privacy check after Auth deploy approval | optional future wallet provenance field names/idempotency semantics not approved |
 | `rent-a-box` | Rent-a-box migration owner | Clean `main` at `09dce2f`; plan and auth-wallet readiness verifier are dependency-gated | intent preflight, lint, tests, focused API/web checks, diff-check when code lane starts | hosted Auth callback/token/session/admin mapping; wallet read/write adapter; no backfill without approval | hosted Auth token/session/admin-role decision; DB migration/backfill approval; row counts unknown |
 | `chytrakoupe` | ChytraKoupe checkout owner | Plan/verifier commit `2838ebf`; selector UI still absent by design | `npm run verify:auth-wallet-checkout-selectors` passed; `npm run lint` passed; `npm run build` passed; `node --check scripts/verify-auth-wallet-checkout-selectors.mjs && git diff --check` passed; literal-secret scan passed | delivery/invoice selectors; guest fallback; order snapshot check; no live checkout submit without approval | Auth wallet deploy; client-id decision; CORS/redirect allowlist; Orders snapshot decisions |

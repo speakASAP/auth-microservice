@@ -1,9 +1,52 @@
+## 2026-07-02 - Goal 10.26 Post-Live Planning Doc Refresh
+
+Current focus:
+
+- Align Goal 10 planning docs with the completed Auth SQL/deploy/401 gate and
+  keep the next synthetic-authenticated gate explicit.
+
+Evidence:
+
+- Read-only completion audit confirmed Auth live SQL apply, deploy, and
+  unauthenticated wallet 401 smoke are complete.
+- Auth remote `main` was clean at
+  `a365ffe60ca07faae101a7aed6d6cf77cd98b65b` before this doc patch and ahead
+  of `origin/main` by 1.
+- FlipFlop `main` was clean at
+  `97b7e40835ff82bd1f22487826fefe647c3e5495`; wallet merge `7e97e98` is
+  included.
+- Goal 10 status, validation/deployment plan, live-gate runbook, and
+  cross-repo plan blockers now identify the completed live 401 gate separately
+  from remaining synthetic authenticated smoke.
+
+Validation:
+
+- `git diff --check` passed.
+- Stale live-gate blocker scan passed.
+- Targeted dangerous literal-secret scan passed on changed Goal 10 docs.
+- `npm run check:customer-data-wallet-runtime -- --expect=deployed` passed:
+  `/health` returned HTTP 200 and wallet endpoints returned HTTP 401 without
+  Authorization headers, cookies, request bodies, response body printing, or DB
+  reads.
+
+Boundary:
+
+- No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT
+  value inspection, raw production customer data inspection, authenticated
+  smoke, live checkout submit, or consumer repo edit was performed.
+
+Next unfinished chunk:
+
+- Owner-approved synthetic authenticated wallet CRUD/default/delete and
+  FlipFlop checkout/profile runtime smoke if required; otherwise proceed to
+  dependency-gated consumer migrations.
+
 ## 2026-07-02 - Goal 10.25 Auth Live SQL Deploy And 401 Smoke
 
 Current focus:
 
-- Execute the owner-approved Auth live DB/deploy gate and bounded post-deploy
-  smoke for Goal 10.
+- Record the completed owner-approved Auth live DB/deploy gate and bounded
+  post-deploy smoke for Goal 10.
 
 Evidence:
 

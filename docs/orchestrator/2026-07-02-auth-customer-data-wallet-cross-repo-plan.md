@@ -545,8 +545,10 @@ Expected output:
 
 Blockers:
 
-- `[MISSING: owner approval for live DB migration apply]`
-- `[MISSING: owner-approved Auth deploy after source validation and SQL apply]`
+- Auth live DB migration apply and Auth deploy were completed in Goal 10.25
+  from Source Preflight-captured HEAD
+  `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`; this worker lane now only
+  retains synthetic authenticated smoke and dependent consumer gates.
 
 ### Worker F1 - FlipFlop Backend Bridge
 
@@ -702,22 +704,25 @@ Cross-repo:
 ## Not Implemented In This Planning Pass
 
 - Runtime Auth code changes.
-- Database schema changes.
-- Production deployment.
+- Auth live schema and production deployment are now completed by Goal 10.25;
+  this original planning pass did not implement them.
 - Consumer repo changes.
 - Backfill/migration of existing FlipFlop local addresses.
 - Live test-account checkout.
 
 ## Open Blockers
 
-- `[MISSING: owner approval for live DB migration apply]`
-- `[MISSING: owner-approved Auth deploy after source validation and SQL apply]`
-- `[MISSING: approved schema-only DB verification command/session]`
+- Auth live schema apply, deploy, schema-only verification, and unauthenticated
+  wallet 401 smoke were completed in Goal 10.25 from Source Preflight-captured
+  HEAD `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`.
 - `[MISSING: owner-approved synthetic account for live cross-repo smoke]`
 - Auth invoice profile v1 field semantics are defined in
   `docs/UNIFIED_AUTH_CONTRACT.md` and
   `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`: `companyId` is the company
   registration identifier, `vatId` is the VAT/DIC-style identifier, `taxId` is
   a separate tax identifier, and invoice recipient email is `email`.
-- `[MISSING: consumer order snapshot support/validation for optional Auth invoice fields companyId, vatId, and email beyond the current companyName/taxId subset]`
+- Consumer order snapshot support/validation for optional Auth invoice fields
+  `companyId`, `vatId`, and `email` was source-prepared in Orders commit
+  `3c7d0c3` and FlipFlop commit `20dd1f8`; authenticated runtime proof remains
+  gated on synthetic account/token approval.
 - `[UNKNOWN: final consumer repo set beyond FlipFlop and Cliplot checkout surfaces]`
