@@ -12,7 +12,7 @@ Evidence:
   `e93053ed36d03bb2a928b6cb003e645ff4adc2a1 docs: refresh goal 12 auth wallet readiness`.
 - ChytraKoupe worker committed
   `baa0d3555b407591108badd848253ebc77956471 docs/test: refresh auth wallet checkout gate`.
-- Cliplot current clean `main` is `92c294f feat: add callback persistence approval packet`
+- Cliplot current clean `main` is `9f1be04 feat: aggregate live checkout approval evidence`
   and includes refreshed Auth wallet readiness evidence with
   `authWalletPresenceGate.status=complete`.
 - Auth live wallet endpoint evidence remains Source Preflight HEAD

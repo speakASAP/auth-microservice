@@ -110,7 +110,7 @@ Consumers:
   implementation remains blocked until Auth client-id, CORS/redirect allowlist,
   Orders snapshot, invoice payload, and callback fallback decisions are
   approved.
-- `cliplot`: current clean `main` at `92c294f` includes refreshed Auth wallet
+- `cliplot`: current clean `main` at `9f1be04` includes refreshed Auth wallet
   readiness evidence. Checkout mutation and wallet selector integration remain
   approval-gated on selector behavior, browser/session, PII exposure, and
   response-contract decisions.
@@ -128,14 +128,14 @@ Consumers:
 | `orders-microservice` | Orders contract owner | Clean `main` at `2111389`; Auth subject aliases and immutable snapshots supported, including optional Auth invoice fields from `3c7d0c3` | `npm run verify:create-order-contract` passed; `npm run verify:invoices-read-boundary` passed; earlier build/full-test evidence remains recorded in Goal 10.18 | optional validate-create payload smoke and event privacy check after Auth deploy approval | optional future wallet provenance field names/idempotency semantics not approved |
 | `rent-a-box` | Rent-a-box migration owner | Clean `main` ahead 1 at `e93053e`; Auth wallet 401 gate consumed by Goal 12 verifier | `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py` passed; `python3 scripts/check_goal12_auth_wallet_readiness.py --root .` passed with `pass_dependency_gated`; `git diff --check` and targeted literal-secret scan passed | hosted Auth callback/token/session/admin mapping; wallet read/write adapter; no backfill without approval | hosted Auth browser/callback, backend token validation/introspection, wallet read/write, admin role mapping, DB migration/backfill, row counts unknown |
 | `chytrakoupe` | ChytraKoupe checkout owner | Clean `main` ahead 1 at `baa0d35`; Auth wallet 401 gate consumed by Goal 06 verifier; selector UI still absent by design | `npm run verify:auth-wallet-checkout-selectors` passed; `node --check scripts/verify-auth-wallet-checkout-selectors.mjs` passed; `git diff --check` and targeted dangerous literal-secret scan passed | delivery/invoice selectors; guest fallback; order snapshot check; no live checkout submit without approval | Auth client-id decision, CORS/redirect allowlist, Orders snapshot decisions, invoice payload fields, callback fallback decision |
-| `cliplot` | Cliplot coordinator | Clean `main` at `92c294f`; Auth wallet 401 gate consumed by readiness verifier; checkout still guarded | `npm run readiness:auth-wallet-checkout` passed; `node --check scripts/auth-wallet-checkout-readiness.js` passed; `npm run check` passed; `git diff --check`, stale-text scan, and targeted literal-secret scan passed | no live order/payment/Warehouse/notification mutation without approval | selector behavior approval, authenticated browser/session contract, no-PII logging/frontend exposure review, response fields/version identifier |
+| `cliplot` | Cliplot coordinator | Clean `main` at `9f1be04`; Auth wallet 401 gate consumed by readiness verifier; checkout still guarded | `npm run readiness:auth-wallet-checkout` passed; `node --check scripts/auth-wallet-checkout-readiness.js` passed; `npm run check` passed; `git diff --check`, stale-text scan, and targeted literal-secret scan passed | no live order/payment/Warehouse/notification mutation without approval | selector behavior approval, authenticated browser/session contract, no-PII logging/frontend exposure review, response fields/version identifier |
 | marketplace/channel repos | Auth coordinator | `catalog-microservice` `311030d`, `allegro` `6c64a30`, `aukro` `ba61422`, `bazos` `cdcd739`, `heureka` `976a1a8`, `shop-assistant` `4ed76b1` | read-only status/head and bounded source/doc audit completed | no wallet back-write; preserve channel evidence and Orders snapshots | possible later Allegro raw-payload retention review; Bazos/Aukro provider-specific unknowns |
 
 ## Merge And Deployment Order
 
 1. Current source states are frozen in this plan: Auth `9c7894b`, FlipFlop
    `97b7e40`, Orders `2111389`, Rent-a-box `e93053e`, ChytraKoupe `baa0d35`,
-   and Cliplot `92c294f`.
+   and Cliplot `9f1be04`.
 2. Push or merge plan/source commits that are intentionally part of the release.
 3. Keep Orders unchanged for current snapshot support unless a separate
    wallet-provenance contract is approved.

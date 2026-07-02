@@ -166,7 +166,7 @@ that repo's status/validation report.
   status, validation reports, and verifier while preserving Auth client-id,
   CORS/redirect allowlist, Orders authenticated-versus-guest snapshot, invoice
   payload, and callback fallback blockers.
-- Cliplot current `main` at `92c294f` includes the refreshed Goal 10 wallet
+- Cliplot current `main` at `9f1be04` includes the refreshed Goal 10 wallet
   readiness state: the verifier reports `authWalletPresenceGate.status=complete`
   with Auth Source Preflight HEAD `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`,
   `/health` HTTP 200, and wallet endpoint HTTP 401 evidence, while preserving
