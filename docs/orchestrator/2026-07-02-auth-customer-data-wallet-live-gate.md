@@ -41,6 +41,13 @@ after the owner approves schema-only DB preflight, SQL apply, and Auth deploy.
   until this replacement backend reaches healthy runtime or an owner-approved
   node/container-runtime recovery completes.
 
+- Runtime drift follow-up: repeated safe restore attempts with
+  `kubectl scale deploy/auth-microservice --replicas=1` were reverted by live
+  state back to `spec.replicas=0` on the old image. HPA/KEDA were not found, and
+  source `k8s/deployment.yaml` still declares `replicas: 1`. Treat the external
+  replica drift as a hard live gate: do not run SQL or deploy until the backend
+  remains stable at `replicas=1` and public `/health` is healthy.
+
 ## Required Owner Approvals
 
 - Approval to run schema-only live DB preflight and verification.

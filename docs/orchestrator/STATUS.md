@@ -1,3 +1,60 @@
+## 2026-07-02 - Goal 10 Auth Customer Data Wallet Repeated Replica Drift
+
+Current focus:
+
+- Keep Goal 10 live SQL/deploy blocked until baseline Auth backend runtime is
+  stable.
+- Preserve consumer readiness evidence without starting dependency-gated
+  FlipFlop or Orders changes.
+
+Runtime evidence:
+
+- Remote source is clean on `main` at `f539476`; Goal 10 source remains
+  committed, but live SQL apply and Goal 10 deploy have not run.
+- Live `auth-microservice` backend remained on old image
+  `localhost:5000/auth-microservice:0d4282b-20260702102426` and public
+  `/health` continued to return HTTP 503 while `auth-microservice-web` stayed
+  `1/1 Running`.
+- `k8s/deployment.yaml` in source declares `replicas: 1`, but live backend
+  repeatedly drifted to `spec.replicas=0`.
+- HPA/KEDA resources were not found in `statex-apps`.
+- Manual runtime restore attempts used only `kubectl scale
+  deploy/auth-microservice --replicas=1` on the same old image. Both attempts
+  created replacement backend pods, but live state later scaled the ReplicaSet
+  down to `0` again before the backend app container became available.
+- Pod `auth-microservice-69cbc75f5b-qtl7t` reached `wait-postgres` init start
+  before being deleted by scale-down. Pod `auth-microservice-69cbc75f5b-bsl44`
+  likewise reached `wait-postgres` creation/start, then was killed after live
+  state returned to `spec.replicas=0`.
+- Cluster events also showed broader deployment scale activity and API/runtime
+  instability such as `database is locked`, endpoint update timeouts, stale
+  sandbox reservations, and context deadline errors.
+
+Consumer readiness evidence:
+
+- Read-only sidecar confirmed `flipflop` is clean on `main` at `5ed12ad` and
+  has no references to `/auth/profile/checkout-data`, `/delivery-addresses`, or
+  `/invoice-profiles` yet.
+- Read-only sidecar confirmed `orders-microservice` is clean on `main` at
+  `a218f33` and has no references to the new Auth wallet endpoints.
+- FlipFlop client/profile/checkout source work can be planned, but runtime
+  wiring and smoke remain dependency-gated on Auth live SQL/deploy. Orders
+  snapshot compatibility remains gated on the final FlipFlop selected-profile
+  payload shape.
+
+Boundary:
+
+- No SQL apply, source deploy, image update, manifest edit, production DB row
+  read, raw customer data read, secret/token/password/JWT value inspection, or
+  consumer source edit was performed.
+
+Next unfinished chunk:
+
+- Identify or stop the external source of live backend `spec.replicas=0`, or
+  have an operator restore Auth backend to stable `replicas=1`. Only after
+  public Auth health is stable should the owner approval request proceed for
+  schema-only DB preflight, SQL apply, Auth deploy, and consumer rollout.
+
 ## 2026-07-02 - Goal 10 Auth Customer Data Wallet Runtime Gate Blocker
 
 Current focus:
