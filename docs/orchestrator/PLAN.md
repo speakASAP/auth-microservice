@@ -56,26 +56,32 @@ Auth uses the same state-driven orchestration shape as Goalkeeper:
 
 ## Active Work
 
-Goal 10 - Auth Customer Data Wallet is in planning.
+Goal 10 - Auth Customer Data Wallet is active.
 
 Current chunk:
 
-- 10.0 Cross-repo plan and target Auth customer data wallet contract: active.
-- Next ready goal: 10.1 Auth schema migration path decision and bounded implementation plan.
+- 10.1-10.5 Auth backend/customer data wallet source is implemented and source-validated.
+- 10.6-10.7 FlipFlop client/selector source prep is complete and runtime-gated.
+- 10.8 Orders compatibility audit is complete; no Orders source change before wallet provenance decision.
+- 10.9 Rent-a-box hosted Auth/profile migration plan is committed in `rent-a-box` commit `fcfeb48`.
+- 10.10 ChytraKoupe checkout selector integration plan is committed in `chytrakoupe` commit `a1dabca`.
+- Next ready planning chunk: 10.11 cross-repo validation and deployment plan.
 
 Planning artifacts:
 
 - `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
 - `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
 - `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`
+- `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`
 
 Parallel execution summary:
 
-- Auth backend/storage work is first and contract-blocking.
-- FlipFlop backend bridge and checkout UX are dependency-gated on Auth APIs.
-- Orders contract compatibility is dependency-gated on Auth and FlipFlop payloads.
-- Rent-a-box needs a separate hosted Auth migration plan because it duplicates credentials/profile storage.
-- Chytrakoupe and Cliplot are later consumer checkout lanes.
+- Auth SQL apply/deploy remains owner-approval gated.
+- FlipFlop runtime smoke remains gated on Auth SQL/deploy.
+- Orders remains gated on final wallet provenance field decisions.
+- Rent-a-box code migration is gated on hosted Auth/session/admin-role and live data migration decisions.
+- ChytraKoupe selector implementation is gated on Auth wallet deploy, Auth client-id decision, CORS/redirect allowlist, and order snapshot payload decisions.
 - Marketplace/channel services stay read-only/audit-only until a real customer checkout surface is confirmed.
 
 ## Verification Commands

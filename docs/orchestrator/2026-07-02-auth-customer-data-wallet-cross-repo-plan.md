@@ -129,8 +129,8 @@ Dirty or ahead; future workers must inspect before editing:
 - `bazos`: ahead and dirty.
 - `marketing-microservice`: dirty.
 - `warehouse-microservice`: dirty.
-- `rent-a-box`: reported dirty by read-only explorer.
-- `chytrakoupe`: reported dirty by read-only explorer.
+- `rent-a-box`: clean at read-only Goal 10.9 audit, HEAD `fa1fc85`; repo-local plan committed at `fcfeb48`, file `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`.
+- `chytrakoupe`: clean at read-only Goal 10.10 audit, HEAD `4817528`; repo-local plan committed at `a1dabca`, file `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
 - `heureka`: reported dirty by read-only explorer.
 - `shop-assistant`: reported dirty by read-only explorer; lower priority
   because no local login/register controller was found.
@@ -368,33 +368,44 @@ Plan:
 
 #### Rent-a-box
 
-Status: high-priority after Auth API contract, separate migration lane.
+Status: plan-created; code migration dependency-gated.
 
 Reason:
 
 - Read-only discovery found local email/password auth, local JWT issuance,
-  local customer profiles, and billing address fields.
+  local password hash storage, local customer profiles, billing address fields,
+  and domain foreign keys coupled to local `customer_profiles.id`.
 
 Plan:
 
+- Repo-local migration plan: `rent-a-box` commit `fcfeb48`, file `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`.
 - Do not treat this as only an address selector upgrade.
-- First create a dedicated hosted Auth migration plan that retires local
-  credentials and maps local customer profiles to Auth identities without
-  printing production customer data.
+- First replace local credential/session ownership with hosted Auth behind a
+  compatibility boundary.
+- Preserve Rent-a-box domain ownership for boxes, reservations, rentals,
+  contracts, mock payments, PIN/access-code state, and immutable snapshots.
+- Do not drop or backfill local user/profile columns without owner-approved
+  reversible migration evidence.
 - Then integrate Auth address/invoice selectors for registered users.
 
 #### Chytrakoupe
 
-Status: dependency-gated consumer checkout lane.
+Status: plan-created; selector implementation dependency-gated.
 
 Reason:
 
-- Hosted Auth is present, but checkout still duplicates profile/contact/address
-  payloads.
+- Hosted Auth is present, but checkout is still guest-first/manual and duplicates
+  profile/contact/address payloads into order snapshots.
+- Read-only audit found no Auth wallet selector and no local profile/address DB
+  table, but did find Auth callback hardening and client-id decisions that must
+  be settled first.
 
 Plan:
 
+- Repo-local selector plan: `chytrakoupe` commit `a1dabca`, file `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
 - Verify the current Auth client id and callback state contract.
+- Harden token query cleanup/state handling before expanding authenticated
+  checkout behavior.
 - Replace registered-user checkout entry with Auth checkout-data selectors.
 - Preserve guest checkout and one-off order snapshots.
 
@@ -476,8 +487,8 @@ Plan:
 | F1 FlipFlop shared Auth client and user-service bridge | dependency-gated | FlipFlop backend worker  | Auth client, `/users/*` bridge                             | A1 API              | FlipFlop integration owner | 4                            |
 | F2 FlipFlop checkout/profile UX                        | dependency-gated | FlipFlop frontend worker | Checkout selectors, profile addresses UI                   | F1                  | FlipFlop integration owner | 5                            |
 | O1 Orders contract note/additive metadata              | dependency-gated | Orders worker            | Create-order contract docs/DTO if needed                   | A1 + F1 payload     | Orders owner               | 6                            |
-| R1 Rent-a-box hosted Auth migration plan               | dependency-gated | Rent-a-box coordinator   | Auth/profile migration plan                                | A1 contract         | Rent-a-box owner           | 7                            |
-| CK1 Chytrakoupe checkout selector integration          | dependency-gated | Chytrakoupe worker       | checkout/auth client                                       | A1 contract         | Chytrakoupe owner          | 8                            |
+| R1 Rent-a-box hosted Auth migration plan               | plan-created     | Rent-a-box coordinator   | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Auth deploy + migration approval | Rent-a-box owner           | 7                            |
+| CK1 Chytrakoupe checkout selector integration          | plan-created     | Chytrakoupe worker       | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Auth deploy + client-id decision | Chytrakoupe owner          | 8                            |
 | C1 Cliplot plan                                        | blocked          | Cliplot coordinator      | Docs/guarded plan only                                     | Checkout approval   | Cliplot owner              | After live checkout approval |
 | M1 Marketplace order-snapshot audit                    | ready read-only  | Explorer                 | Allegro/Aukro/Bazos/Heureka/Catalog surface classification | None                | Coordinator                | No code merge                |
 

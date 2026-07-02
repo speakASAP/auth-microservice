@@ -198,6 +198,43 @@ Boundary:
   checkout orchestration.
 - Live DB migration apply and deployment require separate owner approval.
 
+## Current Task Addendum - 2026-07-02 Goal 10.9 And 10.10 Consumer Planning
+
+Target task: create repo-local, dependency-gated plans for Rent-a-box hosted
+Auth/profile migration and ChytraKoupe Auth wallet checkout selectors without
+changing consumer runtime code.
+
+Included read-only source evidence:
+
+- Rent-a-box local auth/profile/token findings from `apps/api/app/api/auth.py`,
+  `apps/api/app/auth/security.py`, `apps/api/app/models/domain.py`,
+  `apps/api/app/services/auth.py`, `apps/api/app/services/post_rental.py`,
+  `apps/web/src/components/customer/AuthForm.tsx`, and session helpers.
+- ChytraKoupe hosted Auth and checkout findings from `lib/config/env.ts`,
+  `lib/auth/session.ts`, `app/auth/callback/AuthCallbackClient.tsx`,
+  `app/login/page.tsx`, `components/checkout/CheckoutClient.tsx`, and
+  `db/schema.ts`.
+
+Included documents:
+
+- `rent-a-box` commit `fcfeb48`, file `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`
+- `chytrakoupe` commit `a1dabca`, file `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`
+
+Excluded data:
+
+- No production DB rows, customer records, address records, invoice records,
+  password hashes, decoded JWTs, token values, cookies, secrets, contract
+  storage contents, or live checkout payloads.
+
+Boundary:
+
+- Auth remains reusable registered-user identity/profile/address/invoice owner.
+- Rent-a-box remains owner of storage-box domain, reservations, rentals,
+  contracts, mock payments, PIN/access-code state, and immutable snapshots.
+- ChytraKoupe remains owner of checkout UX, guest checkout, and snapshot
+  submission, not reusable profile truth.
+
+
 ## Current Task Addendum - 2026-07-02 Auth Customer Data Wallet Pre-Approval Fixes
 
 Target task: address deployment-review findings before requesting approval for

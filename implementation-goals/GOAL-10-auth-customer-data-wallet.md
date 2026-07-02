@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth + FlipFlop source prepared, live SQL/deploy/runtime smoke approval-gated
+Status: active; Auth + FlipFlop source prepared, Rent-a-box/Chytrakoupe plans created, live SQL/deploy/runtime smoke approval-gated
 
 ## Intent
 
@@ -52,8 +52,8 @@ Auth customer data wallet:
 - [x] 10.6 FlipFlop shared Auth client and user-service bridge source prep.
 - [x] 10.7 FlipFlop checkout/profile selectors source prep with checkout manual-edit guard.
 - [x] 10.8 Orders snapshot compatibility audit; no source change before provenance decision.
-- [ ] 10.9 Rent-a-box hosted Auth/profile migration plan.
-- [ ] 10.10 Chytrakoupe checkout selector integration plan.
+- [x] 10.9 Rent-a-box hosted Auth/profile migration plan created in commit `fcfeb48`.
+- [x] 10.10 Chytrakoupe checkout selector integration plan created in commit `a1dabca`.
 - [ ] 10.11 Cross-repo validation and deployment plan.
 
 ## Acceptance Criteria
@@ -93,8 +93,8 @@ marketplace operations.
 | F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | runtime smoke gated       | 4           |
 | F2 FlipFlop checkout UX            | source-prepared    | FlipFlop frontend worker | checkout/profile UI                      | Auth deploy/runtime smoke incl. manual-edit guard | 5           |
 | O1 Orders compatibility            | audit-complete     | Orders worker            | create-order contract/docs               | provenance decision       | 6           |
-| R1 Rent-a-box Auth migration plan  | dependency-gated   | Rent-a-box coordinator   | docs first                               | A1                        | 7           |
-| CK1 Chytrakoupe checkout selectors | dependency-gated   | Chytrakoupe worker       | checkout/auth client                     | A1                        | 8           |
+| R1 Rent-a-box Auth migration plan  | plan-created       | Rent-a-box coordinator   | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Auth deploy + migration approval | 7           |
+| CK1 Chytrakoupe checkout selectors | plan-created       | Chytrakoupe worker       | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Auth deploy + client-id decision | 8           |
 | C1 Cliplot plan                    | blocked            | Cliplot coordinator      | docs only                                | checkout approval         | later       |
 | M1 marketplace audit               | ready read-only    | explorer                 | Catalog/Allegro/Aukro/Bazos/Heureka docs | none                      | no code     |
 
@@ -131,6 +131,8 @@ that repo's status/validation report.
 - `[MISSING: post-deploy wallet endpoint 401 smoke]`
 - `[MISSING: post-deploy FlipFlop checkout/profile runtime smoke, including manual-edit-before-wallet-response and explicit selector override]`
 - `[MISSING: customer invoice profile/selection contract for company ID, tax ID, VAT ID, and invoice email fields]`
+- `[MISSING: Rent-a-box hosted Auth token/session/admin-role migration decision before code changes]`
+- `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
 - `[UNKNOWN: final customer-checkout consumer repo set beyond FlipFlop, Chytrakoupe, Rent-a-box, and Cliplot]`
 
 ## Coding Prompt
@@ -141,6 +143,31 @@ as order snapshot owner only. Preserve hosted Auth login/register and existing
 JWT/RBAC/OAuth/magic-link contracts. Do not print secrets, token values,
 passwords, decoded JWTs, raw production user data, or full customer address
 payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
+
+## 2026-07-02 Goal 10.9 And 10.10 Plan Results
+
+- 2026-07-02: Goal 10.9 Rent-a-box hosted Auth/profile migration plan created
+  in `rent-a-box` commit `fcfeb48`, file
+  `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`
+  with validation note
+  `rent-a-box/reports/validation/goal-12-auth-customer-data-wallet-migration-plan.md`.
+  Read-only audit confirmed local email/password auth, local JWT minting,
+  local password hash storage, local profile/contact/billing storage, and
+  domain foreign keys coupled to local `customer_profiles.id`; migration is
+  blocked from code changes until Auth wallet deploy and owner-approved
+  migration/backfill decisions.
+- 2026-07-02: Goal 10.10 ChytraKoupe checkout selector integration plan created
+  in `chytrakoupe` commit `a1dabca`, file
+  `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
+  Read-only audit confirmed hosted Auth exists, checkout remains guest-first and
+  manual, no wallet selectors or local profile/address tables exist, and code
+  changes are gated on Auth wallet deploy, client-id decision, CORS/redirect
+  allowlist confirmation, and order snapshot payload decisions.
+- No consumer source code, live checkout submit, SQL, deploy, production DB
+  access, secret/token/password inspection, or raw customer data inspection was
+  performed for these planning chunks.
+
+
 ## 2026-07-02 Goal 10.6 Source Prep Result
 
 - 2026-07-02: Goal 10.6 FlipFlop client bridge source prep completed in

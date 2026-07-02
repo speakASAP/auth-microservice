@@ -183,6 +183,56 @@ Deployment plan:
 - Do not apply `scripts/create-customer-data-wallet-tables.sql` without owner
   approval for live DB migration apply and schema-only verification.
 
+## Current Execution Addendum - 2026-07-02 Goal 10.9 And 10.10 Consumer Planning
+
+Selected goal and chunk: Goal 10.9 Rent-a-box hosted Auth/profile migration
+plan and Goal 10.10 ChytraKoupe checkout selector integration plan.
+
+Pre-coding gate decision: pass for documentation-only, repo-local planning.
+DocsRAG returned HTTP 200 from the running Auth pod with broad ownership
+context but no existing wallet-plan source. Subagents completed read-only audits
+of both consumer repos.
+
+Sensitive-data handling: source/docs only. No production user rows, customer
+addresses, invoice records, password hashes, decoded JWTs, secrets, token
+values, cookies, contract storage contents, or live checkout payloads are read
+or recorded.
+
+Contract impact: no runtime contract change. Plans define dependency gates for
+hosted Auth migration, Auth wallet endpoint deployment, Auth client-id/CORS
+decisions, and order snapshot payload decisions.
+
+Allowed files:
+
+- `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`
+- `rent-a-box/docs/goals/README.md`
+- `rent-a-box/docs/goals/ORCHESTRATION_STATE.md`
+- `rent-a-box/reports/validation/goal-12-auth-customer-data-wallet-migration-plan.md`
+- `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`
+- `chytrakoupe/implementation-goals/README.md`
+- `chytrakoupe/docs/goal-driven/STATUS.md`
+- Auth coordinator docs/status/state.
+
+Validation plan:
+
+- Rent-a-box: `./scripts/intent_preflight.sh`,
+  `python3 scripts/check_no_cyrillic.py docs AGENTS.md README.md`,
+  `git diff --check`.
+- ChytraKoupe: `git diff --check` plus dangerous literal-secret marker scan on
+  changed docs.
+- Auth: `git diff --check` plus dangerous literal-secret marker scan on changed
+  coordinator docs.
+
+Validation evidence: Rent-a-box repo-local validation passed
+`./scripts/intent_preflight.sh`, no-Cyrillic scan, `git diff --check`, and a
+literal-secret marker scan before commit `fcfeb48`. ChytraKoupe repo-local
+validation passed `git diff --check` and a literal-secret marker scan before
+commit `a1dabca`.
+
+Deployment plan: none. SQL apply, Auth deploy, consumer deploy, and live
+checkout smoke remain owner-approval gated.
+
+
 ## Current Execution Addendum - 2026-07-02 Auth Customer Data Wallet Pre-Approval Fixes
 
 Selected goal and chunk: Goal 10 pre-approval hardening after A1 source

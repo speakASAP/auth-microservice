@@ -1,3 +1,49 @@
+## 2026-07-02 - Goal 10.9 And 10.10 Consumer Plan Creation
+
+Current focus:
+
+- Create repo-local plans for the next dependency-gated consumer lanes without
+  touching consumer runtime code.
+
+Evidence:
+
+- DocsRAG queried from the running Auth pod with the projected JWT token and
+  returned HTTP 200. Retrieved headings were broad ownership references:
+  Auth marketing preferences ownership, Catalog product truth, and general
+  service contract material; no existing Goal 10 wallet plan source was found.
+- Rent-a-box read-only audit: repo clean at `fa1fc85`. It has local
+  email/password auth, local JWT minting, local password hash storage, local
+  registered-user profile/contact/billing storage, contract PDFs embedding local
+  billing data, and domain rows coupled to local `customer_profiles.id`.
+- Rent-a-box repo-local plan committed as `fcfeb48`:
+  `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`.
+- Rent-a-box validation passed: `./scripts/intent_preflight.sh`,
+  `python3 scripts/check_no_cyrillic.py docs AGENTS.md README.md`,
+  `git diff --check`, and a targeted dangerous literal-secret marker scan.
+- ChytraKoupe read-only audit: repo clean at `4817528`. Hosted Auth exists,
+  checkout remains guest-first/manual, Auth wallet selectors are absent, and
+  client-id/callback hardening decisions must precede selector implementation.
+- ChytraKoupe repo-local plan committed as `a1dabca`:
+  `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
+- ChytraKoupe validation passed: `git diff --check` and a targeted dangerous
+  literal-secret marker scan. Validation report:
+  `chytrakoupe/reports/validation/auth-wallet-checkout-selectors-plan.md`.
+- Auth coordinator validation passed: `git diff --check` and a targeted
+  dangerous literal-secret marker scan on changed Goal 10 coordinator docs.
+
+Boundary:
+
+- Planning/docs only. No consumer source code, live checkout submit, SQL,
+  deploy, production DB access, secret inspection, token/password inspection,
+  password hash inspection, contract storage inspection, or raw customer data
+  inspection.
+
+Next unfinished chunk:
+
+- Goal 10.11 cross-repo validation and deployment plan, while live SQL/deploy
+  remains owner-approval gated.
+
+
 ## 2026-07-02 - Goal 10 Coordinator Status Normalization
 
 Current focus:
