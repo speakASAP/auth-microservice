@@ -182,6 +182,42 @@ Deployment plan:
 - Do not deploy in this source implementation pass.
 - Do not apply `scripts/create-customer-data-wallet-tables.sql` without owner
   approval for live DB migration apply and schema-only verification.
+
+## Current Execution Addendum - 2026-07-02 Auth Customer Data Wallet Pre-Approval Fixes
+
+Selected goal and chunk: Goal 10 pre-approval hardening after A1 source
+implementation.
+
+Pre-coding gate decision: pass. Read-only sidecars identified concrete
+pre-approval defects: wallet path params lacked UUID validation and
+`docs/orchestrator/GOALS.md` lagged behind the source-implemented state.
+
+Sensitive-data handling: source/docs/runtime metadata only. No production user
+rows, customer addresses, invoice data, decoded JWTs, secrets, token values,
+passwords, or raw customer logs are read or recorded.
+
+Contract impact: wallet endpoints now reject malformed UUID path params at the
+controller boundary. This is a defensive validation improvement and does not
+change JWT, RBAC, OAuth, magic-link, CORS, internal-service, token, credential,
+or consumer-service contracts.
+
+Validation plan:
+
+- `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts
+src/users/users.service.spec.ts`
+- `npm run test:auth-contract`
+- `npm run build`
+- `npm run lint`
+- `git diff --check`
+- documentation missing-marker scan, allowing documented blockers only
+- documentation/source secret-pattern scan
+
+Deployment plan:
+
+- No deploy in this pre-approval fix pass.
+- First restore/confirm current Auth runtime health on the existing deployed
+  image, then request owner approval for schema-only DB preflight, SQL apply,
+  and deploy.
 - `npm run build`
 - `npm run lint`
 - deploy with `./scripts/deploy.sh` after source validation

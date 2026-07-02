@@ -2,7 +2,7 @@
  * Auth Controller
  */
 
-import { Controller, Delete, Post, Get, Patch, Param, Body, UseGuards, Request, Query, Res, UnauthorizedException } from '@nestjs/common';
+import { Controller, Delete, Post, Get, Patch, Param, Body, UseGuards, Request, Query, Res, UnauthorizedException, ParseUUIDPipe } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -122,7 +122,7 @@ export class AuthController {
 
   @Get('profile/delivery-addresses/:addressId')
   @UseGuards(JwtAuthGuard)
-  async getDeliveryAddress(@Request() req, @Param('addressId') addressId: string) {
+  async getDeliveryAddress(@Request() req, @Param('addressId', new ParseUUIDPipe({ version: '4' })) addressId: string) {
     return {
       deliveryAddress: await this.authService.getDeliveryAddress(req.user.id, addressId),
     };
@@ -130,7 +130,7 @@ export class AuthController {
 
   @Patch('profile/delivery-addresses/:addressId')
   @UseGuards(JwtAuthGuard)
-  async updateDeliveryAddress(@Request() req, @Param('addressId') addressId: string, @Body() dto: UpdateDeliveryAddressDto) {
+  async updateDeliveryAddress(@Request() req, @Param('addressId', new ParseUUIDPipe({ version: '4' })) addressId: string, @Body() dto: UpdateDeliveryAddressDto) {
     return {
       deliveryAddress: await this.authService.updateDeliveryAddress(req.user.id, addressId, dto),
     };
@@ -138,13 +138,13 @@ export class AuthController {
 
   @Delete('profile/delivery-addresses/:addressId')
   @UseGuards(JwtAuthGuard)
-  async deleteDeliveryAddress(@Request() req, @Param('addressId') addressId: string) {
+  async deleteDeliveryAddress(@Request() req, @Param('addressId', new ParseUUIDPipe({ version: '4' })) addressId: string) {
     return await this.authService.deleteDeliveryAddress(req.user.id, addressId);
   }
 
   @Post('profile/delivery-addresses/:addressId/default')
   @UseGuards(JwtAuthGuard)
-  async setDefaultDeliveryAddress(@Request() req, @Param('addressId') addressId: string) {
+  async setDefaultDeliveryAddress(@Request() req, @Param('addressId', new ParseUUIDPipe({ version: '4' })) addressId: string) {
     return {
       deliveryAddress: await this.authService.setDefaultDeliveryAddress(req.user.id, addressId),
     };
@@ -168,7 +168,7 @@ export class AuthController {
 
   @Get('profile/invoice-profiles/:profileId')
   @UseGuards(JwtAuthGuard)
-  async getInvoiceProfile(@Request() req, @Param('profileId') profileId: string) {
+  async getInvoiceProfile(@Request() req, @Param('profileId', new ParseUUIDPipe({ version: '4' })) profileId: string) {
     return {
       invoiceProfile: await this.authService.getInvoiceProfile(req.user.id, profileId),
     };
@@ -176,7 +176,7 @@ export class AuthController {
 
   @Patch('profile/invoice-profiles/:profileId')
   @UseGuards(JwtAuthGuard)
-  async updateInvoiceProfile(@Request() req, @Param('profileId') profileId: string, @Body() dto: UpdateInvoiceProfileDto) {
+  async updateInvoiceProfile(@Request() req, @Param('profileId', new ParseUUIDPipe({ version: '4' })) profileId: string, @Body() dto: UpdateInvoiceProfileDto) {
     return {
       invoiceProfile: await this.authService.updateInvoiceProfile(req.user.id, profileId, dto),
     };
@@ -184,13 +184,13 @@ export class AuthController {
 
   @Delete('profile/invoice-profiles/:profileId')
   @UseGuards(JwtAuthGuard)
-  async deleteInvoiceProfile(@Request() req, @Param('profileId') profileId: string) {
+  async deleteInvoiceProfile(@Request() req, @Param('profileId', new ParseUUIDPipe({ version: '4' })) profileId: string) {
     return await this.authService.deleteInvoiceProfile(req.user.id, profileId);
   }
 
   @Post('profile/invoice-profiles/:profileId/default')
   @UseGuards(JwtAuthGuard)
-  async setDefaultInvoiceProfile(@Request() req, @Param('profileId') profileId: string) {
+  async setDefaultInvoiceProfile(@Request() req, @Param('profileId', new ParseUUIDPipe({ version: '4' })) profileId: string) {
     return {
       invoiceProfile: await this.authService.setDefaultInvoiceProfile(req.user.id, profileId),
     };

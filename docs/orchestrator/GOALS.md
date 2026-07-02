@@ -180,18 +180,18 @@ Acceptance criteria:
 
 ## Goal 10 - Auth Customer Data Wallet
 
-Status: planning
+Status: active
 
 Intent: Auth must be the single editable source of truth for registered-user profile data, delivery address books, and invoice/billing profiles, while Orders keeps immutable order snapshots and consumer checkouts use Auth selectors instead of app-local reusable profile stores.
 
 Chunks:
 
 - [x] 10.0 Document cross-repo plan, target contract, current gaps, and parallel workstreams.
-- [ ] 10.1 Decide and document the production-safe Auth schema migration path for address and invoice profile storage.
-- [ ] 10.2 Implement Auth delivery address book storage, DTOs, endpoints, sanitization, and tests.
-- [ ] 10.3 Implement Auth invoice profile storage, DTOs, endpoints, sanitization, and tests.
-- [ ] 10.4 Implement Auth checkout aggregate read and legacy `profileAddress` projection.
-- [ ] 10.5 Update Auth contract docs and deploy only after source validation plus owner approval.
+- [x] 10.1 Decide and document the production-safe Auth schema migration path for address and invoice profile storage.
+- [x] 10.2 Implement Auth delivery address book storage, DTOs, endpoints, sanitization, and tests.
+- [x] 10.3 Implement Auth invoice profile storage, DTOs, endpoints, sanitization, and tests.
+- [x] 10.4 Implement Auth checkout aggregate read and legacy `profileAddress` projection.
+- [x] 10.5 Update Auth contract docs and source validation evidence; live SQL apply and deploy remain owner-approval gated.
 - [ ] 10.6 Integrate FlipFlop shared Auth client and user-service bridge with Auth address/invoice APIs.
 - [ ] 10.7 Integrate FlipFlop checkout/profile selectors while preserving guest checkout.
 - [ ] 10.8 Confirm Orders snapshot contract compatibility and add bounded Auth selected-profile metadata only if needed.

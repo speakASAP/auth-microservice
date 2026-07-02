@@ -1,0 +1,172 @@
+# Auth Customer Data Wallet Live Gate
+
+Status: approval-gated
+Created: 2026-07-02
+Scope: `auth-microservice` Goal 10 A1 live SQL apply and deployment.
+
+## Purpose
+
+Prepare the live database and runtime deployment gate for the Auth customer data
+wallet source commit:
+
+```text
+b6c1585 feat: add auth customer data wallet api
+```
+
+This runbook does not grant approval. It records the exact safe sequence to use
+after the owner approves schema-only DB preflight, SQL apply, and Auth deploy.
+
+## Current Gate State
+
+- Auth source for delivery addresses, invoice profiles, and checkout aggregate
+  exists in `b6c1585`.
+- `scripts/create-customer-data-wallet-tables.sql` is additive and idempotent.
+- Production uses `DB_SYNC=false`; do not set `DB_SYNC=true`.
+- Live SQL has not been applied.
+- Auth `b6c1585` has not been deployed in this runbook.
+- FlipFlop and other consumer runtime work remains dependency-gated until Auth
+  SQL and deploy are live.
+
+## Required Owner Approvals
+
+- Approval to run schema-only live DB preflight and verification.
+- Approval to use DB connection environment values without printing them.
+- Approval to apply `scripts/create-customer-data-wallet-tables.sql` in a live
+  DB change window.
+- Approval to deploy Auth with `./scripts/deploy.sh`.
+- Approval for any authenticated synthetic smoke that creates, updates,
+  defaults, or deletes wallet rows.
+
+## Source Preflight
+
+Run before any DB action:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && git status -sb --ahead-behind && git status --porcelain=v1 && git rev-parse HEAD && git rev-parse origin/main && git log -1 --oneline && sha256sum scripts/create-customer-data-wallet-tables.sql scripts/deploy.sh'
+```
+
+Expected:
+
+- `HEAD` and `origin/main` are the approved commit.
+- No dirty tracked source files.
+- Any unrelated untracked files are identified and left untouched.
+- SQL and deploy script checksums are recorded.
+
+Rerun source validation before approval execution:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && npm test -- --runTestsByPath src/auth/auth-contract.spec.ts src/users/users.service.spec.ts && npm run test:auth-contract && npm run build && npm run lint && git diff --check'
+```
+
+## Schema-Only DB Preflight
+
+Do not run until approved. Do not print DB secrets.
+
+Check that the base users table exists, wallet tables are not already present
+with an incompatible schema, and `gen_random_uuid()` is available:
+
+```sql
+SELECT to_regclass('public.users');
+SELECT to_regclass('public.user_delivery_addresses');
+SELECT to_regclass('public.user_invoice_profiles');
+SELECT to_regproc('gen_random_uuid');
+```
+
+Abort if:
+
+- `public.users` is missing.
+- Existing wallet tables have an incompatible schema.
+- `gen_random_uuid` is missing and extension creation is not separately
+  approved.
+
+## SQL Apply Shape
+
+Preferred shape when DB environment variables are already available in the
+remote shell:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && PGPASSWORD="$DB_PASSWORD" psql --host="$DB_HOST" --port="${DB_PORT:-5432}" --username="$DB_USER" --dbname="${DB_NAME:-auth}" --set=ON_ERROR_STOP=1 --single-transaction --file=scripts/create-customer-data-wallet-tables.sql'
+```
+
+If DB variables are only available in the running Auth pod, first verify the
+pod is healthy and has a `psql` client. If not, use an approved operator
+environment that has `psql` and the same DB env values. Do not print DB env
+values.
+
+## Post-Apply Schema Verification
+
+Do not inspect customer rows. Use schema metadata only:
+
+```sql
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+AND table_name IN ('user_delivery_addresses', 'user_invoice_profiles');
+
+SELECT table_name, column_name, data_type, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_schema = 'public'
+AND table_name IN ('user_delivery_addresses', 'user_invoice_profiles')
+ORDER BY table_name, ordinal_position;
+
+SELECT tablename, indexname, indexdef
+FROM pg_indexes
+WHERE schemaname = 'public'
+AND tablename IN ('user_delivery_addresses', 'user_invoice_profiles')
+ORDER BY tablename, indexname;
+```
+
+Expected:
+
+- Both wallet tables exist.
+- Foreign keys point to `users(id)`.
+- Partial unique indexes enforce one active default delivery address and invoice
+  profile per user.
+- No customer data is selected or printed.
+
+## Deploy
+
+Deploy only after SQL verification:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && ./scripts/deploy.sh'
+```
+
+Post-deploy checks:
+
+```bash
+ssh alfares 'kubectl rollout status deploy/auth-microservice -n statex-apps && kubectl rollout status deploy/auth-microservice-web -n statex-apps'
+curl -fsS https://auth.alfares.cz/health
+curl -i https://auth.alfares.cz/auth/profile
+curl -i https://auth.alfares.cz/auth/profile/checkout-data
+curl -i https://auth.alfares.cz/auth/profile/delivery-addresses
+curl -i https://auth.alfares.cz/auth/profile/invoice-profiles
+```
+
+Expected unauthenticated result for profile and wallet endpoints: `401`, not
+`500`.
+
+## Abort And Rollback Boundaries
+
+Abort before SQL on:
+
+- Dirty tracked source files.
+- Wrong commit or branch.
+- Missing `users` table.
+- Missing `gen_random_uuid` without separate extension approval.
+- Existing incompatible wallet tables.
+- Auth runtime not healthy enough to support a safe deploy window.
+
+If SQL fails, `--single-transaction` should roll back the failed SQL. After SQL
+succeeds, do not drop tables as rollback without explicit destructive approval.
+Prefer app rollback through Kubernetes rollout undo or a forward source fix.
+
+## Consumer Gate
+
+Consumer code remains gated as follows:
+
+- FlipFlop typed wallet client work may be prepared source-only only when its
+  repo ownership is clean.
+- FlipFlop checkout/profile runtime wiring waits for Auth SQL and deploy.
+- Orders work waits for Auth deployment, FlipFlop payload shape, and resolution
+  of unrelated dirty event/order changes in `orders-microservice`.

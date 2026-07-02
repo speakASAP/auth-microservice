@@ -197,3 +197,32 @@ Boundary:
 - Orders and consumer services keep only order-specific snapshots and UX/guest
   checkout orchestration.
 - Live DB migration apply and deployment require separate owner approval.
+
+## Current Task Addendum - 2026-07-02 Auth Customer Data Wallet Pre-Approval Fixes
+
+Target task: address deployment-review findings before requesting approval for
+live SQL apply and Auth deploy.
+
+Included source:
+
+- `src/auth/auth.controller.ts`
+- `docs/orchestrator/GOALS.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-live-gate.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/IMPLEMENTATION_STATE.md`
+
+Included evidence:
+
+- Read-only Auth deploy reviewer found missing UUID path-param validation,
+  stale Goal 10 state in `docs/orchestrator/GOALS.md`, and a required
+  `gen_random_uuid` preflight gate.
+- Read-only FlipFlop reviewer found staged checkout changes owned by another
+  session, so consumer UI wiring remains gated.
+- Runtime read-only checks found current Auth production runtime unhealthy on
+  old image `0d4282b-20260702102426`, with cluster-wide slow image pull and
+  container creation backlog. No Goal 10 deploy was run.
+
+Excluded data:
+
+- No live SQL, deploy, customer row reads, secret values, token values, decoded
+  JWTs, or consumer source edits.

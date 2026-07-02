@@ -71,6 +71,44 @@ Next unfinished chunk:
 - Commit Auth A1 source. Live SQL apply and deployment remain
   owner-approval-gated.
 
+## 2026-07-02 - Goal 10 Auth Customer Data Wallet Pre-Approval Fixes
+
+Current focus:
+
+- Close pre-approval issues found by read-only deployment/consumer sidecars
+  before requesting SQL/deploy approval.
+
+Implementation evidence:
+
+- Added `ParseUUIDPipe` to delivery address and invoice profile path params so
+  malformed wallet UUIDs fail at the Auth controller boundary instead of
+  reaching Postgres UUID columns.
+- Updated `docs/orchestrator/GOALS.md` so Goal 10.1-10.5 reflect the
+  source-implemented state and live SQL/deploy remain gated.
+- Added `docs/orchestrator/2026-07-02-auth-customer-data-wallet-live-gate.md`
+  with explicit preflight, owner approvals, SQL apply shape, schema-only
+  verification, deploy smoke, rollback boundaries, and consumer gates.
+
+Runtime evidence:
+
+- Live Auth production runtime was observed unhealthy during this pass, but it
+  was still running image `0d4282b-20260702102426`; `b6c1585` was not deployed.
+  The outage appeared cluster-wide with many pods in image pull/container
+  creation backlog, not a failure of the new Goal 10 source.
+
+Boundary:
+
+- No live SQL apply, deployment, production DB row read, raw customer data read,
+  secret/token/password/JWT value inspection, JWT payload change, RBAC change,
+  OAuth/magic-link/CORS/internal-service contract change, or consumer-service
+  source edit was performed.
+
+Next unfinished chunk:
+
+- Validate and commit the pre-approval fixes, then request owner approval for
+  schema-only DB preflight, live SQL apply, and Auth deploy only after current
+  Auth runtime health is safe.
+
 ## 2026-07-02 - Goal 10 Auth Customer Data Wallet Cross-Repo Planning
 
 Current focus:
