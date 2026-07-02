@@ -85,14 +85,13 @@ Auth:
 
 Consumers:
 
-- `flipflop`: continuation review found active branch
-  `codex/orders-lifecycle-cabinet-flipflop-clean` initially missed the wallet
-  source series. The active target is now source-integrated with commits
-  `a8425a9`, `15fb1ee`, `f4af318`, validation report commit `223db57`,
-  checkout save-back commit `0f04931`, invoice management commit `87e47ee`,
-  and account navigation commit `e499dd4`. The branch is currently ahead of
-  origin by 3, behind by 1, with unrelated unstaged
-  `shared/health/health.service.ts` changes outside Goal 10.
+- `flipflop`: the superseded
+  `codex/orders-lifecycle-cabinet-flipflop-clean` lane is merged into `main`.
+  Current `main` is at `7e97e98` and includes wallet selector/save-back/profile
+  commits through `e499dd4`. Source verifiers
+  `npm run verify:auth-wallet-profile-ui` and
+  `npm run verify:auth-wallet-checkout-selectors` passed on current `main`.
+  The only dirty file is unrelated `shared/health/health.service.ts`.
   Deploy/runtime smoke remains gated until Auth wallet endpoints return 401
   unauthenticated after Auth SQL/deploy.
 - `orders-microservice`: current clean `main` at `2111389` includes immutable
@@ -116,8 +115,8 @@ Consumers:
 | Repo | Owner role | Current state | Required pre-deploy checks | Post-deploy/runtime checks | Blockers |
 | --- | --- | --- | --- | --- | --- |
 | `auth-microservice` | Auth coordinator | Runtime source checkpoint `1a60240`; exact deploy HEAD must be captured by Source Preflight; live still old image with wallet 404 | `npm run check:customer-data-wallet-preflight`; `npm run check:customer-data-wallet-runtime -- --expect=predeploy`; `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts src/users/users.service.spec.ts`; `npm run test:auth-contract`; `npm run build`; `npm run lint`; `git diff --check`; schema-only DB preflight after approval | rollout backend/web; `/health` 200; `npm run check:customer-data-wallet-runtime -- --expect=deployed`; optional synthetic CRUD/default/delete smoke | live DB preflight, SQL apply, deploy, synthetic account approvals |
-| `flipflop` | FlipFlop integration owner | Active target `codex/orders-lifecycle-cabinet-flipflop-clean` at `e499dd4`, ahead 3/behind 1, with unrelated unstaged `shared/health/health.service.ts` | pre-coding gate passed; strict doc audit passed 100/100; shared build passed; frontend `tsc --noEmit` passed; frontend build passed; `git diff --check` passed; wallet checkout/profile verifiers passed in later chunks | guest checkout unchanged; authenticated checkout/profile selectors; wallet fallback on 404/failure; manual-edit-before-wallet-response guard; explicit selector override; profile address fallback; explicit wallet save-back; invoice profile CRUD/default UI; no wallet IDs in order payload unless approved | Auth wallet deploy; owner-approved synthetic account; runtime smoke; branch ahead/behind decision |
-| `orders-microservice` | Orders contract owner | Clean `main` at `2111389`; Auth subject aliases and immutable snapshots supported, including optional Auth invoice fields from `3c7d0c3` | `npm run build`, `npm run verify:create-order-contract`, `npm run verify:invoices-read-boundary`, full tests, and secret scan passed for the snapshot-support lane | optional validate-create payload smoke and event privacy check after contract approval | wallet provenance field names/idempotency semantics not approved |
+| `flipflop` | FlipFlop integration owner | `main` at `7e97e98`, wallet lane merged, with unrelated unstaged `shared/health/health.service.ts` | `npm run verify:auth-wallet-profile-ui` passed; `npm run verify:auth-wallet-checkout-selectors` passed; earlier shared/frontend/order-service build evidence remains recorded in Goal 10.18-10.21 | guest checkout unchanged; authenticated checkout/profile selectors; wallet fallback on 404/failure; manual-edit-before-wallet-response guard; explicit selector override; profile address fallback; explicit wallet save-back; invoice profile CRUD/default UI; no wallet IDs in order payload unless approved | Auth wallet deploy; owner-approved synthetic account; runtime smoke |
+| `orders-microservice` | Orders contract owner | Clean `main` at `2111389`; Auth subject aliases and immutable snapshots supported, including optional Auth invoice fields from `3c7d0c3` | `npm run verify:create-order-contract` passed; `npm run verify:invoices-read-boundary` passed; earlier build/full-test evidence remains recorded in Goal 10.18 | optional validate-create payload smoke and event privacy check after Auth deploy approval | optional future wallet provenance field names/idempotency semantics not approved |
 | `rent-a-box` | Rent-a-box migration owner | Plan-only commit `fcfeb48` | intent preflight, lint, tests, focused API/web checks, diff-check when code lane starts | hosted Auth callback/token/session/admin mapping; wallet read/write adapter; no backfill without approval | hosted Auth token/session/admin-role decision; DB migration/backfill approval; row counts unknown |
 | `chytrakoupe` | ChytraKoupe checkout owner | Plan/verifier commit `2838ebf`; selector UI still absent by design | `npm run verify:auth-wallet-checkout-selectors` passed; `npm run lint` passed; `npm run build` passed; `node --check scripts/verify-auth-wallet-checkout-selectors.mjs && git diff --check` passed; literal-secret scan passed | delivery/invoice selectors; guest fallback; order snapshot check; no live checkout submit without approval | Auth wallet deploy; client-id decision; CORS/redirect allowlist; Orders snapshot decisions |
 | `cliplot` | Cliplot coordinator | Readiness commit `01f6dea`; checkout still guarded | `npm run readiness:auth-wallet-checkout` passed; `node --check scripts/auth-wallet-checkout-readiness.js && git diff --check` passed; `npm run check` passed; literal-secret scan passed | no live order/payment/Warehouse/notification mutation without approval | checkout approval, Auth wallet live contract, authenticated session contract, no-PII logging/frontend exposure review |
@@ -126,12 +125,12 @@ Consumers:
 ## Merge And Deployment Order
 
 1. Freeze current source states and decide target branches/SHAs for Auth,
-   Rent-a-box, ChytraKoupe, Orders, and Cliplot. FlipFlop active target is
-   currently `codex/orders-lifecycle-cabinet-flipflop-clean` at `e499dd4`
-   with an ahead/behind branch decision still pending.
+   Rent-a-box, ChytraKoupe, Orders, and Cliplot. FlipFlop current runtime-smoke
+   target is `main` at `7e97e98`; the previous
+   `codex/orders-lifecycle-cabinet-flipflop-clean` lane is superseded.
 2. Push or merge plan/source commits that are intentionally part of the release.
-3. Resolve or isolate the dirty Orders provenance lane before any Orders
-   deployment decision.
+3. Keep Orders unchanged for current snapshot support unless a separate
+   wallet-provenance contract is approved.
 4. Re-run Auth source validation on the exact target Auth commit.
 5. After owner approval, run schema-only DB preflight without printing
    credentials, customer rows, passwords, token values, or raw address data.
@@ -253,11 +252,13 @@ Run only after Auth wallet endpoint 401 smoke passes.
 - `[MISSING: owner approval for Kubernetes rollback mutation if rollback is needed]`
 - `[MISSING: destructive DB rollback/drop approval; do not drop wallet tables by default]`
 - `[MISSING: owner-approved synthetic account/token for authenticated Auth wallet and cross-repo checkout smoke]`
-- `[MISSING: FlipFlop target branch decision before runtime deployment]`
-- `[MISSING: final wallet provenance contract for Orders field names and idempotency semantics]`
+- `[MISSING: post-deploy FlipFlop runtime smoke after Auth wallet 401 gate]`
+- `[MISSING: optional future wallet provenance contract for Orders field names and idempotency semantics]`
 - Auth invoice profile v1 field semantics are source-defined:
   `companyId`, `taxId`, `vatId`, and invoice recipient `email`.
-- `[MISSING: consumer order snapshot support/validation for optional Auth invoice fields companyId, vatId, and email beyond the current companyName/taxId subset]`
+- Consumer order snapshot support/validation for optional Auth invoice fields
+  `companyId`, `vatId`, and `email` is source-prepared and verified in Orders
+  through `3c7d0c3` and current `2111389`.
 - `[MISSING: Rent-a-box hosted Auth token/session/admin-role migration decision before code changes]`
 - `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
 - `[UNKNOWN: final customer-checkout consumer repo set beyond FlipFlop, Chytrakoupe, Rent-a-box, and Cliplot]`

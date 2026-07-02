@@ -67,6 +67,7 @@ Auth customer data wallet:
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
 - [x] 10.23 Auth live approval gate exact target refreshed after docs checkpoints.
+- [x] 10.24 FlipFlop merged `main` target source revalidated.
 
 ## Acceptance Criteria
 
@@ -150,6 +151,22 @@ that repo's status/validation report.
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
 
+## 2026-07-02 Goal 10.24 FlipFlop Main Target Source Revalidation Result
+
+- 2026-07-02: FlipFlop wallet lane is merged into `main` at `7e97e98`.
+- The prior `codex/orders-lifecycle-cabinet-flipflop-clean` target is
+  superseded; the remaining dirty FlipFlop file is unrelated
+  `shared/health/health.service.ts`.
+- FlipFlop source verifiers passed on current `main`:
+  `npm run verify:auth-wallet-profile-ui` and
+  `npm run verify:auth-wallet-checkout-selectors`.
+- Orders current `main` remains clean at `2111389`; `npm run
+  verify:create-order-contract` and `npm run verify:invoices-read-boundary`
+  passed.
+- No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT
+  value inspection, raw production customer data inspection, authenticated
+  smoke, or live checkout submit was performed.
+
 ## 2026-07-02 Goal 10.23 Auth Live Approval Gate Target Refresh Result
 
 - 2026-07-02: Active Auth approval gate updated so live execution captures the
@@ -162,9 +179,9 @@ that repo's status/validation report.
   commits are source-only documentation/checkpoint updates.
 - Active validation/deployment and live-gate docs now request owner approval for
   the exact preflight-captured remote HEAD, not stale `9ff1099`.
-- Current cross-repo source state recorded: FlipFlop target branch is at
-  `e499dd4`, ahead 3/behind 1 with unrelated unstaged
-  `shared/health/health.service.ts`; Orders `main` is clean at `2111389`.
+- Current cross-repo source state at that checkpoint recorded the then-active
+  FlipFlop target branch at `e499dd4`; this is superseded by Goal 10.24 after
+  the lane merged into FlipFlop `main`.
 - No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT
   value inspection, raw production customer data inspection, authenticated
   smoke, or live checkout submit was performed.

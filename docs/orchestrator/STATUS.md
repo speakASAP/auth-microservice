@@ -1,3 +1,41 @@
+## 2026-07-02 - Goal 10.24 FlipFlop Main Target Source Revalidation
+
+Current focus:
+
+- Refresh the Goal 10 consumer gate after the FlipFlop wallet lane was merged
+  into `main`.
+
+Evidence:
+
+- Auth current HEAD at audit time: `f86621f docs: refresh auth wallet live
+  deploy target`; worktree clean and `main` ahead of `origin/main` by 5.
+- FlipFlop current `main` is `7e97e98 merge: close superseded flipflop orders
+  lifecycle branch`.
+- FlipFlop `git status --short --branch` is `main...origin/main` with one
+  unrelated dirty file: `shared/health/health.service.ts`.
+- Orders current `main` is clean at `2111389`.
+
+Validation:
+
+- FlipFlop: `npm run verify:auth-wallet-profile-ui` passed and reported
+  `nonMutating: true`.
+- FlipFlop: `npm run verify:auth-wallet-checkout-selectors` passed and reported
+  `nonMutating: true`.
+- Orders: `npm run verify:create-order-contract` passed.
+- Orders: `npm run verify:invoices-read-boundary` passed.
+
+Boundary:
+
+- Source/docs/verifier work only. No SQL, deploy, Kubernetes mutation, DB
+  access, secret/token/password/JWT value inspection, raw production customer
+  data inspection, authenticated smoke, or live checkout submit.
+
+Next unfinished chunk:
+
+- Owner approval for Auth schema-only live DB preflight, live SQL apply, Auth
+  deploy from the exact remote HEAD captured by Source Preflight, wallet
+  endpoint 401 smoke, and post-deploy FlipFlop checkout/profile runtime smoke.
+
 ## 2026-07-02 - Goal 10.23 Auth Live Approval Gate Target Refresh
 
 Current focus:
