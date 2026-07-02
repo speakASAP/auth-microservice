@@ -147,7 +147,7 @@ Dirty or ahead; future workers must inspect before editing:
 
 Clean but gated by its own checkout approvals:
 
-- `cliplot`: clean at `decfb63`, but checkout mutation remains guarded and
+- `cliplot`: clean at `f4ceca1`, but checkout mutation remains guarded and
   approval-gated; runtime wallet integration is absent, response fields are
   known, and the stable wallet response version identifier remains unknown.
 
