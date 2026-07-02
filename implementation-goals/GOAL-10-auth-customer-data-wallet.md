@@ -173,6 +173,22 @@ that repo's status/validation report.
   raw customer-data inspection, Orders edit, or live checkout smoke was
   performed.
 
+## 2026-07-02 Source-Only Wallet DB Preflight Helper Result
+
+- Added `scripts/check-customer-data-wallet-preflight.js` and
+  `npm run check:customer-data-wallet-preflight`.
+- The helper validates the checked-in wallet SQL shape, rejects DML/drop-style
+  lines, and prints the allowlisted schema metadata SQL plus the apply command
+  template.
+- The helper does not read DB environment values, connect to the database,
+  apply SQL, inspect customer rows, or replace the owner-approved live
+  schema-only preflight.
+- Validation passed: helper syntax check, `npm run
+  check:customer-data-wallet-preflight`, diff-check, targeted dangerous
+  literal-secret scan, build, and lint.
+- Live SQL apply, Auth deploy, wallet endpoint 401 smoke, and synthetic
+  authenticated smoke remain approval-gated.
+
 ## Coding Prompt
 
 Implement only the assigned chunk. Preserve Auth as the source of truth for

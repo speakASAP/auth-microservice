@@ -86,6 +86,17 @@ Rerun source validation before approval execution:
 ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && npm test -- --runTestsByPath src/auth/auth-contract.spec.ts src/users/users.service.spec.ts && npm run test:auth-contract && npm run build && npm run lint && git diff --check'
 ```
 
+Source-only preflight helper:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && npm run check:customer-data-wallet-preflight'
+```
+
+This helper validates the checked-in SQL file shape and prints the allowlisted
+metadata SQL plus apply command template. It does not read DB environment
+values, connect to the database, apply SQL, or replace the approved live
+schema-only preflight.
+
 ## Schema-Only DB Preflight
 
 Do not run until approved. Do not print DB secrets.

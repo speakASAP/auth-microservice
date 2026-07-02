@@ -1,3 +1,36 @@
+## 2026-07-02 - Goal 10 Source-Only Wallet DB Preflight Helper
+
+Current focus:
+
+- Add a non-live helper for the Auth customer data wallet DB approval gate.
+
+Evidence:
+
+- Added `scripts/check-customer-data-wallet-preflight.js`.
+- Added `npm run check:customer-data-wallet-preflight`.
+- The helper validates the checked-in
+  `scripts/create-customer-data-wallet-tables.sql` shape, rejects DML/drop-style
+  lines, and prints the allowlisted schema metadata SQL and apply command
+  template.
+- The helper does not read DB environment values, connect to the database, apply
+  SQL, inspect customer rows, or replace the owner-approved live DB preflight.
+- Validation passed: `node --check scripts/check-customer-data-wallet-preflight.js`,
+  `npm run check:customer-data-wallet-preflight`, `git diff --check`, targeted
+  dangerous literal-secret scan on changed helper/docs, `npm run build`, and
+  `npm run lint`.
+
+Boundary:
+
+- Source/docs only. No live SQL, deploy, Kubernetes mutation, production DB
+  access, secret/token/password inspection, raw customer data inspection, or
+  live checkout smoke.
+
+Next unfinished chunk:
+
+- Owner approval for schema-only live DB preflight, DB env use without printing
+  values, live SQL apply, Auth deploy from current approved Auth HEAD, wallet
+  endpoint 401 smoke, and optional synthetic authenticated smoke.
+
 ## 2026-07-02 - Goal 10 Continuation Source Validation And Active FlipFlop Target Integration
 
 Current focus:
