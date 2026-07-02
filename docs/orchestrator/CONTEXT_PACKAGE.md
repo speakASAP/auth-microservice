@@ -284,9 +284,11 @@ Included source and documents:
 
 Included read-only runtime evidence:
 
-- Auth source HEAD `54743ed`, SQL checksum
+- Auth source HEAD `9ff1099bbee18836c40d9276d3b96a15e5e522fb`, SQL checksum
   `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`,
-  and deploy script checksum
+  runtime verifier checksum
+  `3786afab774e58dd9800272507ca919b7cfdf8d80a16fb4f09ef1541e482ec26`, and
+  deploy script checksum
   `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
 - Live Auth backend/web `1/1` on old image `0d4282b-20260702102426`.
 - Public `/health` HTTP 200.

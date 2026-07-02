@@ -67,7 +67,12 @@ Current chunk:
 - 10.10 ChytraKoupe checkout selector integration plan is committed in `chytrakoupe` commit `a1dabca`.
 - 10.11 cross-repo validation and deployment plan is created in
   `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`.
-- Continuation update: Auth exact HEAD `39b59d7` source validation passed, and
+- 10.14 Auth hosted `/profile` wallet management UI is source-prepared in
+  `4bdbd27`.
+- 10.15 Auth wallet runtime 401 smoke verifier is source-prepared in
+  `9ff1099`.
+- Continuation update: Auth exact HEAD `9ff1099bbee18836c40d9276d3b96a15e5e522fb`
+  is the current deploy candidate, source validation passed, and
   active FlipFlop target branch
   `codex/orders-lifecycle-cabinet-flipflop-clean` now contains wallet source
   commits `a8425a9`, `15fb1ee`, `f4af318`, plus validation report commit

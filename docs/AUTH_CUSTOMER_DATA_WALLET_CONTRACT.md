@@ -1,6 +1,6 @@
 # Auth Customer Data Wallet Contract
 
-Status: Auth and FlipFlop source-implemented; live SQL apply, deployment, and runtime smoke approval-gated
+Status: Auth API, hosted profile UI, runtime gate, and FlipFlop source-prepared; live SQL apply, deployment, and runtime smoke approval-gated
 Owner: auth-microservice
 Created: 2026-07-02
 
@@ -45,6 +45,10 @@ Implemented now:
 - FlipFlop source now includes typed Auth wallet clients, defensive checkout/profile selectors,
   and a checkout manual-edit guard that fall back to existing local/manual flows until
   the Auth wallet endpoints are deployed.
+- Auth hosted `/profile` source now includes wallet management for canonical
+  profile fields, delivery address book entries, and invoice profiles.
+- Auth source now includes `npm run check:customer-data-wallet-runtime` for the
+  predeploy 404 and post-deploy 401 wallet route gate.
 
 Not implemented or deployed yet:
 

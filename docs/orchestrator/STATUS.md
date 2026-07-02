@@ -218,6 +218,9 @@ Evidence:
   `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`;
   deploy script checksum is
   `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
+- Supersession note: the active deploy candidate was refreshed after Goal 10.14
+  and 10.15 to `9ff1099bbee18836c40d9276d3b96a15e5e522fb`; do not use the
+  historical `54743ed` value as the current deploy target.
 - Live Auth backend/web were both `1/1` on old image
   `0d4282b-20260702102426`; public `/health` returned HTTP 200; wallet
   endpoints still returned HTTP 404 unauthenticated, so Goal 10 source is not
@@ -242,8 +245,8 @@ Next unfinished chunk:
 
 - Request explicit owner approval for schema-only live DB preflight, use of DB
   connection environment values without printing values, live SQL apply, Auth
-  deploy from exact remote HEAD `54743ed`, and synthetic authenticated smoke if
-  desired.
+  deploy from the current approved remote HEAD, and synthetic authenticated
+  smoke if desired.
 
 ## 2026-07-02 - Goal 10.9 And 10.10 Consumer Plan Creation
 
@@ -1799,6 +1802,70 @@ Verification evidence:
 - `git diff --check` passed.
 - Targeted dangerous literal-secret scan on changed verifier/docs returned no
   secret values.
+
+Boundary:
+
+- No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT
+  value inspection, raw production customer data inspection, response body
+  capture, authenticated smoke, or consumer repo edit was performed.
+
+Next unfinished chunks:
+
+- Owner approval is still required for schema-only DB preflight, SQL apply,
+  Auth deploy, strict wallet endpoint 401 smoke, and optional synthetic
+  authenticated wallet smoke.
+
+## 2026-07-02 - Goal 10.16 Auth Release Gate Head Refresh
+
+Current focus:
+
+- Goal 10 release gate documentation refreshed to current Auth deploy candidate
+  `9ff1099bbee18836c40d9276d3b96a15e5e522fb`.
+- Live SQL apply, Auth deploy, strict post-deploy wallet 401 smoke, and
+  synthetic authenticated wallet smoke remain owner-approval gated.
+
+Source evidence:
+
+- `git status --short --branch` returned `main...origin/main [ahead 13]`.
+- `git rev-parse HEAD` returned
+  `9ff1099bbee18836c40d9276d3b96a15e5e522fb`.
+- `git merge-base --is-ancestor b6c1585 HEAD` passed, confirming the original
+  wallet API source is included in the current deploy candidate.
+- Current checksums:
+  - wallet SQL:
+    `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`;
+  - runtime verifier:
+    `3786afab774e58dd9800272507ca919b7cfdf8d80a16fb4f09ef1541e482ec26`;
+  - deploy script:
+    `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
+
+Implementation evidence:
+
+- Updated the Goal 10 validation/deployment plan so the Auth source row,
+  evidence section, and open deploy approval blocker point to exact HEAD
+  `9ff1099bbee18836c40d9276d3b96a15e5e522fb`, not the earlier `54743ed`.
+- Updated the live-gate runbook so the current deploy candidate includes wallet
+  API commit `b6c1585`, hosted profile wallet UI commit `4bdbd27`, and runtime
+  verifier commit `9ff1099`.
+- Updated the live-gate preflight command to record SQL, runtime verifier, and
+  deploy script checksums and to run the source-only predeploy runtime gate.
+- Updated `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`,
+  `docs/orchestrator/PLAN.md`, and context/status state to describe the Auth
+  API, hosted profile UI, runtime gate, and FlipFlop source-prepared state.
+
+Verification evidence:
+
+- `npm run check:customer-data-wallet-runtime` passed and reported
+  `dependency_gated_wallet_routes_not_deployed` with `/health` 200 and wallet
+  endpoints 404.
+- `npm run check:customer-data-wallet-preflight` passed and confirmed the
+  checked-in wallet SQL shape without reading env values or connecting to the
+  database.
+- `git diff --check` passed.
+- Targeted active stale-deploy-reference scan found no operator-facing
+  instruction to deploy the superseded `54743ed`/`39b59d7` snapshots.
+- Targeted dangerous literal-secret scan on changed Goal 10 docs found no
+  secret/token/password/JWT values.
 
 Boundary:
 

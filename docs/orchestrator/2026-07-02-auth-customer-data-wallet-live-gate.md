@@ -6,24 +6,29 @@ Scope: `auth-microservice` Goal 10 A1 live SQL apply and deployment.
 
 ## Purpose
 
-Prepare the live database and runtime deployment gate for the Auth customer data
-wallet source commit:
+Prepare the live database and runtime deployment gate for the current Auth
+customer data wallet deploy candidate:
 
 ```text
-b6c1585 feat: add auth customer data wallet api
+9ff1099bbee18836c40d9276d3b96a15e5e522fb test: add auth wallet runtime gate
 ```
+
+This deploy candidate includes the wallet API source commit `b6c1585`, hosted
+profile wallet UI commit `4bdbd27`, and runtime 401 smoke verifier commit
+`9ff1099`.
 
 This runbook does not grant approval. It records the exact safe sequence to use
 after the owner approves schema-only DB preflight, SQL apply, and Auth deploy.
 
 ## Current Gate State
 
-- Auth source for delivery addresses, invoice profiles, and checkout aggregate
-  exists in `b6c1585`.
+- Auth source for delivery addresses, invoice profiles, checkout aggregate,
+  hosted profile wallet management, and runtime wallet route gate exists in the
+  current deploy candidate `9ff1099`.
 - `scripts/create-customer-data-wallet-tables.sql` is additive and idempotent.
 - Production uses `DB_SYNC=false`; do not set `DB_SYNC=true`.
 - Live SQL has not been applied.
-- Auth `b6c1585` has not been deployed in this runbook.
+- Auth `9ff1099` has not been deployed in this runbook.
 - FlipFlop and other consumer runtime work remains dependency-gated until Auth
   SQL and deploy are live.
 - Runtime gate blocker observed after pre-approval fixes: Auth backend was
@@ -70,20 +75,21 @@ after the owner approves schema-only DB preflight, SQL apply, and Auth deploy.
 Run before any DB action:
 
 ```bash
-ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && git status -sb --ahead-behind && git status --porcelain=v1 && git rev-parse HEAD && git rev-parse origin/main && git log -1 --oneline && sha256sum scripts/create-customer-data-wallet-tables.sql scripts/deploy.sh'
+ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && git status -sb --ahead-behind && git status --porcelain=v1 && git rev-parse HEAD && git rev-parse origin/main && git log -1 --oneline && sha256sum scripts/create-customer-data-wallet-tables.sql scripts/check-customer-data-wallet-runtime-smoke.js scripts/deploy.sh'
 ```
 
 Expected:
 
-- `HEAD` and `origin/main` are the approved commit.
+- `HEAD` is the exact owner-approved deploy candidate; if `origin/main`
+  differs, record the ahead/behind state and do not substitute another commit.
 - No dirty tracked source files.
 - Any unrelated untracked files are identified and left untouched.
-- SQL and deploy script checksums are recorded.
+- SQL, runtime verifier, and deploy script checksums are recorded.
 
 Rerun source validation before approval execution:
 
 ```bash
-ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && npm test -- --runTestsByPath src/auth/auth-contract.spec.ts src/users/users.service.spec.ts && npm run test:auth-contract && npm run build && npm run lint && git diff --check'
+ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && npm run check:customer-data-wallet-preflight && npm run check:customer-data-wallet-runtime -- --expect=predeploy && npm test -- --runTestsByPath src/auth/auth-contract.spec.ts src/users/users.service.spec.ts && npm run test:auth-contract && npm run build && npm run lint && git diff --check'
 ```
 
 Source-only preflight helper:

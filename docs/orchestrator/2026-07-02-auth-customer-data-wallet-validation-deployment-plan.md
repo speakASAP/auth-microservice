@@ -40,7 +40,7 @@ bounded operation:
 - schema-only live DB preflight;
 - use of DB connection environment values without printing values;
 - live SQL apply for `scripts/create-customer-data-wallet-tables.sql`;
-- Auth deploy from exact remote HEAD;
+- Auth deploy from exact remote HEAD `9ff1099bbee18836c40d9276d3b96a15e5e522fb`;
 - Kubernetes rollback mutation if rollback is needed;
 - synthetic authenticated account/token for cross-repo smoke;
 - consumer deploy/runtime checkout smoke.
@@ -50,10 +50,16 @@ bounded operation:
 Auth:
 
 - Repo: `alfares:/home/ssf/Documents/Github/auth-microservice`.
-- Current source: `main` at `54743ed`, ahead of `origin/main` by 5.
-- Wallet feature source commit `b6c1585` is an ancestor of current HEAD.
+- Current source: `main` at
+  `9ff1099bbee18836c40d9276d3b96a15e5e522fb`, ahead of `origin/main` by
+  13.
+- Wallet API source commit `b6c1585`, hosted profile wallet UI commit
+  `4bdbd27`, and runtime gate verifier commit `9ff1099` are ancestors of the
+  current deploy candidate.
 - SQL checksum:
   `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`.
+- Runtime gate verifier checksum:
+  `3786afab774e58dd9800272507ca919b7cfdf8d80a16fb4f09ef1541e482ec26`.
 - SQL shape is additive/idempotent: `CREATE TABLE IF NOT EXISTS` for
   `user_delivery_addresses` and `user_invoice_profiles`, FK to `users(id)`,
   normal indexes, and partial unique indexes for one active default per user.
@@ -99,7 +105,7 @@ Consumers:
 
 | Repo | Owner role | Current state | Required pre-deploy checks | Post-deploy/runtime checks | Blockers |
 | --- | --- | --- | --- | --- | --- |
-| `auth-microservice` | Auth coordinator | Source ready at `54743ed`; live still old image with wallet 404 | `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts src/users/users.service.spec.ts`; `npm run test:auth-contract`; `npm run build`; `npm run lint`; `git diff --check`; schema-only DB preflight after approval | rollout backend/web; `/health` 200; wallet endpoints unauthenticated 401; optional synthetic CRUD/default/delete smoke | live DB preflight, SQL apply, deploy, synthetic account approvals |
+| `auth-microservice` | Auth coordinator | Source ready at `9ff1099`; live still old image with wallet 404 | `npm run check:customer-data-wallet-preflight`; `npm run check:customer-data-wallet-runtime -- --expect=predeploy`; `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts src/users/users.service.spec.ts`; `npm run test:auth-contract`; `npm run build`; `npm run lint`; `git diff --check`; schema-only DB preflight after approval | rollout backend/web; `/health` 200; `npm run check:customer-data-wallet-runtime -- --expect=deployed`; optional synthetic CRUD/default/delete smoke | live DB preflight, SQL apply, deploy, synthetic account approvals |
 | `flipflop` | FlipFlop integration owner | Active target `codex/orders-lifecycle-cabinet-flipflop-clean` source-integrated at `223db57` | pre-coding gate passed; strict doc audit passed 100/100; shared build passed; frontend `tsc --noEmit` passed; frontend build passed; `git diff --check` passed | guest checkout unchanged; authenticated checkout/profile selectors; wallet fallback on 404/failure; manual-edit-before-wallet-response guard; explicit selector override; profile address fallback; no wallet IDs in order payload unless approved | Auth wallet deploy; owner-approved synthetic account; runtime smoke |
 | `orders-microservice` | Orders contract owner | Clean `main` at `c5e6dd6`; Auth subject aliases and immutable snapshots already supported | if provenance fields are approved, run build, create-order contract verifier, event verifier, lifecycle/invoice verifiers, full tests, and secret scan | optional validate-create payload smoke and event privacy check after contract approval | wallet provenance field names/idempotency semantics not approved |
 | `rent-a-box` | Rent-a-box migration owner | Plan-only commit `fcfeb48` | intent preflight, lint, tests, focused API/web checks, diff-check when code lane starts | hosted Auth callback/token/session/admin mapping; wallet read/write adapter; no backfill without approval | hosted Auth token/session/admin-role decision; DB migration/backfill approval; row counts unknown |
@@ -232,7 +238,7 @@ Run only after Auth wallet endpoint 401 smoke passes.
 - `[MISSING: owner approval to run schema-only live DB preflight]`
 - `[MISSING: approval to use DB connection environment values without printing them]`
 - `[MISSING: owner approval to apply live SQL]`
-- `[MISSING: owner approval to deploy exact Auth remote HEAD 54743ed]`
+- `[MISSING: owner approval to deploy exact Auth remote HEAD 9ff1099bbee18836c40d9276d3b96a15e5e522fb]`
 - `[MISSING: owner approval for Kubernetes rollback mutation if rollback is needed]`
 - `[MISSING: destructive DB rollback/drop approval; do not drop wallet tables by default]`
 - `[MISSING: owner-approved synthetic account/token for authenticated Auth wallet and cross-repo checkout smoke]`

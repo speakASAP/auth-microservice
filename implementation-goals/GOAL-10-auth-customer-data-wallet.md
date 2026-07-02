@@ -59,6 +59,7 @@ Auth customer data wallet:
 - [x] 10.13 Marketplace/channel audit completed; no repo-local wallet plans needed now for Catalog, Allegro, Aukro, Bazos, Heureka, or Shop Assistant.
 - [x] 10.14 Auth hosted `/profile` wallet management UI source-prepared.
 - [x] 10.15 Auth wallet runtime 401 smoke verifier source-prepared.
+- [x] 10.16 Auth release gate exact HEAD refreshed to current deploy candidate.
 
 ## Acceptance Criteria
 
@@ -170,6 +171,28 @@ that repo's status/validation report.
   value inspection, raw production customer data inspection, authenticated
   smoke, or consumer repo edit was performed.
 
+## 2026-07-02 Goal 10.16 Auth Release Gate Head Refresh Result
+
+- 2026-07-02: Goal 10 operator-facing release-gate docs refreshed to current
+  Auth deploy candidate `9ff1099bbee18836c40d9276d3b96a15e5e522fb`.
+- The current deploy candidate includes wallet API source commit `b6c1585`,
+  hosted profile wallet UI commit `4bdbd27`, and runtime gate verifier commit
+  `9ff1099`.
+- Updated the validation/deployment plan, live-gate runbook, Auth wallet
+  contract, active plan, context package, status log, and implementation state
+  so the active deploy approval gate no longer points to stale exact HEAD
+  `54743ed` or continuation validation commit `39b59d7`.
+- Current checksums recorded:
+  - wallet SQL:
+    `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`;
+  - runtime verifier:
+    `3786afab774e58dd9800272507ca919b7cfdf8d80a16fb4f09ef1541e482ec26`;
+  - deploy script:
+    `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
+- No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT
+  value inspection, raw production customer data inspection, authenticated
+  smoke, or consumer repo edit was performed.
+
 ## 2026-07-02 Goal 10.14 Auth Hosted Profile Wallet UI Result
 
 - 2026-07-02: Auth hosted `/profile` source now manages Auth-owned canonical
@@ -208,6 +231,9 @@ that repo's status/validation report.
   Auth is healthy on old image `0d4282b-20260702102426`, wallet routes still
   return 404 unauthenticated, SQL remains unapplied, and live deployment is not
   ready without explicit approvals.
+- Supersession note: `54743ed` was the Goal 10.11 planning snapshot; the active
+  deploy approval target is now
+  `9ff1099bbee18836c40d9276d3b96a15e5e522fb` after Goal 10.16.
 - The plan records repo-specific gates for Auth, FlipFlop, Orders,
   Rent-a-box, ChytraKoupe, and Cliplot; merge/deploy order; rollback boundary;
   sensitive-data rules; and exact `[MISSING: ...]` blockers.
