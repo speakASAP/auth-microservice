@@ -1844,8 +1844,9 @@ Prompt -> Code -> Validation:
   `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`,
   `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`,
   and `docs/IMPLEMENTATION_STATE.md`.
-- Validation: pending final `git diff --check`, invoice field contract scan, and
-  dangerous literal-secret scan before commit.
+- Validation: passed. Commands: `git diff --check`, targeted stale invoice
+  contract scan, targeted canonical invoice field scan, and targeted dangerous
+  literal-secret scan on changed Goal 10 docs.
 
 Evidence:
 
