@@ -2,7 +2,9 @@
 
 ## Backlog
 
-- Owner-select next Auth remediation or implementation chunk after Goal 09 verification (priority: 3)
+- Goal 10.1 Auth customer data wallet schema migration path decision and implementation plan (priority: 2)
+- Goal 10.2 Auth delivery address book and invoice profile API implementation after schema path is approved (priority: 2)
+- Goal 10 consumer rollout: FlipFlop first, then Orders compatibility, Rent-a-box plan, Chytrakoupe plan, Cliplot gated plan, marketplace audit (priority: 3)
 
 ## Completed
 

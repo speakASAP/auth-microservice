@@ -111,3 +111,41 @@ Excluded data:
 - No production user rows, decoded JWTs, refresh tokens, OAuth tokens, reset tokens, magic-link tokens, secrets, or passwords are recorded. Browser evidence records token presence only, never token values.
 
 Boundary: Auth hosted login/register UI remains Auth-owned. No Catalog, warehouse, orders, payment, leads, notifications, logging, gateway, database schema, JWT payload, RBAC, OAuth, magic-link, CORS, or internal-service ownership changes.
+
+## Current Task Addendum - 2026-07-02 Auth Customer Data Wallet Planning
+
+Target task: owner-selected cross-repo plan for making Auth the single source of truth for registered-user profile/contact data, delivery address books, and invoice/billing profiles, with consumer checkouts selecting Auth-owned entries and Orders storing immutable snapshots.
+
+Included source:
+
+- Auth `src/auth/auth.controller.ts`
+- Auth `src/auth/auth.service.ts`
+- Auth `src/auth/dto/update-profile.dto.ts`
+- Auth `src/users/entities/user.entity.ts`
+- Auth `src/auth/auth-contract.spec.ts`
+- FlipFlop `services/frontend/app/checkout/page.tsx`
+- FlipFlop `services/frontend/lib/api/auth.ts`
+- FlipFlop `services/frontend/lib/api/addresses.ts`
+- FlipFlop `services/user-service/src/users/users.service.ts`
+- FlipFlop `prisma/schema.prisma`
+- Orders `src/orders/create-order.dto.ts`
+- Orders `src/orders/order.entity.ts`
+- Orders `docs/orchestrator/CHANNEL_ORDER_CREATE_CONTRACT.md`
+
+Included read-only subagent evidence:
+
+- Auth data-wallet readiness scan.
+- FlipFlop checkout/profile integration scan.
+- Non-FlipFlop commerce consumer scan.
+
+Excluded data:
+
+- No production user rows, order rows, customer addresses, invoice rows, decoded JWTs, secrets, token values, passwords, raw logs with customer data, or DB writes.
+
+Boundary:
+
+- Auth owns reusable registered-user profile, address book, invoice profile, hosted identity, tokens, RBAC, and preferences.
+- Orders owns order snapshots and lifecycle.
+- Payments owns provider/payment state.
+- Consumer storefronts own UX and guest checkout orchestration, not reusable profile truth.
+- Catalog, Warehouse, Leads, Marketing, Notifications, Logging, database infrastructure, and gateways remain out of Auth ownership.

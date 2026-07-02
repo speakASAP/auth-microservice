@@ -1,3 +1,63 @@
+## 2026-07-02 - Goal 10 Auth Customer Data Wallet Cross-Repo Planning
+
+Current focus:
+
+- Owner-selected cross-repo plan for Auth as the single editable source of truth for registered-user profile/contact data, delivery address books, and invoice/billing profiles.
+- Preserved Auth ownership: profile/contact/address/invoice profile truth moves to Auth; Orders keeps order snapshots; Payments keeps payment/provider state; consumer checkouts keep UX and guest checkout orchestration.
+
+DocsRAG evidence:
+
+- Queried DocsRAG from the running Auth pod with projected `JWT_TOKEN`; HTTP 200 returned broad source headings for Auth identity/profile boundary, Catalog product truth, Orders order truth, Payments payment/VS truth, FlipFlop consumer architecture, Marketing preferences, and shared e-commerce ownership. No already-complete Auth address-book or invoice-profile contract was found.
+
+Source evidence:
+
+- Auth `POST /auth/register` stores `email`, `firstName`, `lastName`, and `phone` in `users`.
+- Auth `GET /auth/profile` returns a fresh sanitized Auth database profile.
+- Auth `PATCH /auth/profile` updates profile fields and one `perApplicationPreferences.canonicalProfile.address`, exposed as `profileAddress`.
+- Auth has no first-class multi-address delivery address book or invoice/billing profile CRUD.
+- FlipFlop already uses hosted Auth login/register and a shared Auth client for `/auth/profile`, but it still exposes local `/users/addresses`, mirrors one default address into local `delivery_addresses`, and collects checkout billing/delivery data inline.
+- FlipFlop guest order creation creates a local order/address snapshot; when billing and delivery differ, current source evidence indicates billing is not stored separately and central Orders can receive the same bounded address for shipping and billing.
+- Orders accepts `customer`, `shippingAddress`, and `billingAddress` as order creation snapshots and documents that order events must not include raw customer/address/payment payloads.
+- Read-only consumer discovery also found `rent-a-box` as a high-risk local-auth/profile duplication repo, `chytrakoupe` as hosted-Auth checkout with duplicated contact/address payloads, `cliplot` as guarded checkout, and Allegro/Aukro/Bazos/Heureka as marketplace/channel order ingestion surfaces that should preserve external buyer/order evidence without back-writing marketplace buyer data to Auth.
+
+Planning artifacts created:
+
+- `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+
+Planning/index artifacts updated:
+
+- `implementation-goals/README.md`
+- `docs/orchestrator/GOALS.md`
+- `docs/orchestrator/PLAN.md`
+- `docs/orchestrator/CONTEXT_PACKAGE.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/IMPLEMENTATION_STATE.md`
+- `TASKS.md`
+
+Subagents used:
+
+- Auth data-wallet readiness explorer: completed read-only.
+- FlipFlop checkout/profile explorer: completed read-only.
+- Non-FlipFlop commerce consumer explorer: completed read-only.
+
+Validation evidence:
+
+- Planning artifacts presence scan returned the three new files.
+- Missing-marker scan returned only documented Goal 10 blockers.
+- Secret-pattern scan returned no matches.
+- `STATE.json` parsed successfully with `STATE_JSON_OK`.
+- `git diff --check` passed.
+
+Boundary:
+
+- No runtime Auth code, DB schema, production DB rows, raw customer data, secrets, token values, passwords, decoded JWTs, consumer source code, deployment, or live checkout smoke was changed or run in this planning pass.
+
+Next unfinished chunk:
+
+- Goal 10.1: resolve `[MISSING: production-safe Auth schema migration path]`, then implement Auth-owned delivery address book and invoice profile APIs before consumer code changes.
+
 ## 2026-07-02 - Auth Validate Logging Loop Source Fix
 
 Current focus:

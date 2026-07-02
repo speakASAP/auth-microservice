@@ -177,3 +177,40 @@ Acceptance criteria:
 - Synthetic invalid-token and safe redirect-validation checks behave safely.
 - Build, frontend syntax, documentation scans, and diff-check pass.
 - No runtime, deployment, database, contract, secret, token, or production user-data change is made.
+
+## Goal 10 - Auth Customer Data Wallet
+
+Status: planning
+
+Intent: Auth must be the single editable source of truth for registered-user profile data, delivery address books, and invoice/billing profiles, while Orders keeps immutable order snapshots and consumer checkouts use Auth selectors instead of app-local reusable profile stores.
+
+Chunks:
+
+- [x] 10.0 Document cross-repo plan, target contract, current gaps, and parallel workstreams.
+- [ ] 10.1 Decide and document the production-safe Auth schema migration path for address and invoice profile storage.
+- [ ] 10.2 Implement Auth delivery address book storage, DTOs, endpoints, sanitization, and tests.
+- [ ] 10.3 Implement Auth invoice profile storage, DTOs, endpoints, sanitization, and tests.
+- [ ] 10.4 Implement Auth checkout aggregate read and legacy `profileAddress` projection.
+- [ ] 10.5 Update Auth contract docs and deploy only after source validation plus owner approval.
+- [ ] 10.6 Integrate FlipFlop shared Auth client and user-service bridge with Auth address/invoice APIs.
+- [ ] 10.7 Integrate FlipFlop checkout/profile selectors while preserving guest checkout.
+- [ ] 10.8 Confirm Orders snapshot contract compatibility and add bounded Auth selected-profile metadata only if needed.
+- [ ] 10.9 Create Rent-a-box hosted Auth/profile migration plan before any code changes.
+- [ ] 10.10 Create Chytrakoupe checkout selector integration plan.
+- [ ] 10.11 Run cross-repo validation and record deployment plan.
+
+Acceptance criteria:
+
+- Auth supports multiple delivery addresses and multiple invoice profiles per authenticated user.
+- Auth enforces per-user ownership, default selection, DTO validation, and sanitized output.
+- Auth does not put address or billing data into JWT claims.
+- FlipFlop authenticated checkout can select saved Auth delivery and invoice entries; guest checkout remains explicit and works.
+- Orders receives immutable order snapshots and does not become reusable profile source of truth.
+- Marketplace/channel order ingestion preserves external buyer/order evidence and does not back-write marketplace buyer data into Auth.
+- No docs, logs, prompts, tests, reports, lifecycle events, or frontend bundles expose secrets, tokens, passwords, decoded JWTs, raw production user data, or full production customer address payloads.
+
+Planning artifacts:
+
+- `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`

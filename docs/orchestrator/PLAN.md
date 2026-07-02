@@ -56,12 +56,27 @@ Auth uses the same state-driven orchestration shape as Goalkeeper:
 
 ## Active Work
 
-No active goal.
+Goal 10 - Auth Customer Data Wallet is in planning.
 
 Current chunk:
 
-- Goal 6 - RBAC Consuming Services Audit: done.
-- Next ready goal: owner selection for RBAC remediation chunks from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
+- 10.0 Cross-repo plan and target Auth customer data wallet contract: active.
+- Next ready goal: 10.1 Auth schema migration path decision and bounded implementation plan.
+
+Planning artifacts:
+
+- `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+
+Parallel execution summary:
+
+- Auth backend/storage work is first and contract-blocking.
+- FlipFlop backend bridge and checkout UX are dependency-gated on Auth APIs.
+- Orders contract compatibility is dependency-gated on Auth and FlipFlop payloads.
+- Rent-a-box needs a separate hosted Auth migration plan because it duplicates credentials/profile storage.
+- Chytrakoupe and Cliplot are later consumer checkout lanes.
+- Marketplace/channel services stay read-only/audit-only until a real customer checkout surface is confirmed.
 
 ## Verification Commands
 

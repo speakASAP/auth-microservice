@@ -113,3 +113,43 @@ Validation plan:
 - `npm run lint`
 - deploy with `./scripts/deploy.sh` after source validation
 - post-deploy hosted register/login browser CDP flow and fail-closed race check
+
+## Current Execution Addendum - 2026-07-02 Auth Customer Data Wallet Planning
+
+Selected goal and chunk: Goal 10.0 - plan Auth-owned profile, delivery address book, invoice profile, and cross-repo checkout selector rollout.
+
+Pre-coding gate decision: pass for documentation-only planning. Runtime coding is blocked until Goal 10.1 resolves `[MISSING: production-safe Auth schema migration path]`.
+
+Sensitive-data handling: source and docs only. No production user rows, addresses, invoices, tokens, passwords, decoded JWTs, secrets, or raw customer payloads are read or recorded.
+
+Contract impact: planned additive Auth APIs for address book, invoice profiles, and checkout aggregate. Existing JWT, RBAC, OAuth, magic-link, hosted token handoff, CORS, internal-service, and `/auth/profile` contracts remain unchanged in this planning pass.
+
+Allowed files:
+
+- `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `implementation-goals/README.md`
+- `docs/orchestrator/GOALS.md`
+- `docs/orchestrator/PLAN.md`
+- `docs/orchestrator/CONTEXT_PACKAGE.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/IMPLEMENTATION_STATE.md`
+- `TASKS.md`
+
+Parallel execution:
+
+- Auth backend/storage is first and contract-blocking.
+- FlipFlop backend bridge and frontend selectors are dependency-gated on Auth APIs.
+- Orders compatibility is dependency-gated on Auth/FlipFlop payload shape.
+- Rent-a-box gets a separate hosted Auth migration plan due local credential/profile duplication.
+- Chytrakoupe and Cliplot are later checkout lanes.
+- Marketplace services remain audit-only unless a customer checkout surface is confirmed.
+
+Validation plan:
+
+- `find docs implementation-goals -maxdepth 3 -type f \\( -name '*CUSTOMER_DATA_WALLET*' -o -name '*customer-data-wallet*' -o -name 'GOAL-10-auth-customer-data-wallet.md' \\) -print`
+- `rg '\\[(MISSING|UNKNOWN):' docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md implementation-goals/GOAL-10-auth-customer-data-wallet.md docs/orchestrator/GOALS.md docs/orchestrator/PLAN.md`
+- `rg -n 'Authorization: Bearer [A-Za-z0-9_./+=:-]{12,}|(access[_-]?token|client[_-]?secret|password|private[_-]?key)\\s*[:=]\\s*['\"'\"'\"]?[A-Za-z0-9_./+=:-]{12,}' docs implementation-goals AGENTS.md TASKS.md`
+- `git diff --check`
