@@ -25,6 +25,18 @@ Runtime evidence:
   pods in `ContainerCreating` plus additional init states, so the gate is a
   cluster/container-runtime issue rather than a Goal 10 source regression.
 
+
+Runtime repair evidence after blocker documentation:
+
+- `auth-microservice` was found with `spec.replicas=0` and no HPA in the
+  namespace. It was scaled back to `spec.replicas=1` using the same old image;
+  this was a runtime restoration action, not a source deploy.
+- The already deleting pod `auth-microservice-69cbc75f5b-x9vwc` blocked fresh
+  pod creation and was force-deleted from the Kubernetes API.
+- The Deployment then created `auth-microservice-69cbc75f5b-qtl7t`; after the
+  polling window it was scheduled to node `alfares` but still `Init:0/2` /
+  `PodInitializing` with no pod IP, so backend availability remained blocked before init/container start.
+
 Boundary:
 
 - No live SQL apply, deployment, production DB row read, raw customer data read,
@@ -33,10 +45,10 @@ Boundary:
 
 Next unfinished chunk:
 
-- Restore or operator-confirm Auth backend runtime health. If the container
-  runtime continues to hold stale sandbox reservations, the next recovery step
-  needs owner-approved node/runtime action before the Auth Customer Data Wallet
-  SQL/deploy approval request can proceed.
+- Auth backend desired state has been restored to `spec.replicas=1`, but
+  the replacement pod remains blocked before init/container start. Continue
+  runtime recovery or operator-confirm the container runtime state before the
+  Auth Customer Data Wallet SQL/deploy approval request can proceed.
 
 ## 2026-07-02 - Goal 10 Auth Customer Data Wallet A1 Source Implementation
 

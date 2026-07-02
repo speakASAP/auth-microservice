@@ -34,6 +34,13 @@ after the owner approves schema-only DB preflight, SQL apply, and Auth deploy.
   deploy until Auth backend health is restored or an owner-approved node/runtime
   recovery window is completed.
 
+- Runtime repair follow-up: backend desired state was restored from
+  `spec.replicas=0` to `spec.replicas=1` on the same old image, the already
+  deleting Auth pod was force-deleted, and Kubernetes created a replacement pod
+  that remained `Init:0/2` / `PodInitializing` after the polling window. SQL/deploy remains blocked
+  until this replacement backend reaches healthy runtime or an owner-approved
+  node/container-runtime recovery completes.
+
 ## Required Owner Approvals
 
 - Approval to run schema-only live DB preflight and verification.
