@@ -1,3 +1,76 @@
+## 2026-07-02 - Goal 10 Auth Customer Data Wallet A1 Source Implementation
+
+Current focus:
+
+- Implement Auth as the source of truth for reusable registered-user delivery
+  address books and invoice/billing profiles.
+- Preserve Orders as immutable order snapshot owner and consumer services as UX
+  and guest-checkout orchestrators.
+
+Schema-path evidence:
+
+- Live non-secret Auth config uses `NODE_ENV=production` and `DB_SYNC=false`.
+- `shared/database/database.module.ts` controls TypeORM schema sync only through
+  `synchronize: process.env.DB_SYNC === 'true'`.
+- No formal TypeORM migration runner, migration scripts, DataSource, or deploy
+  migration step exists in the repo.
+- Existing safe precedent is checked-in idempotent SQL such as
+  `scripts/create-magic-link-table.sql`.
+
+Implementation evidence:
+
+- Added idempotent SQL source file
+  `scripts/create-customer-data-wallet-tables.sql` for
+  `user_delivery_addresses` and `user_invoice_profiles`, with FK ownership,
+  active-row indexes, and one-default-per-user partial unique indexes.
+- Added TypeORM entities for delivery addresses and invoice profiles and
+  registered them in `UsersModule` and `DatabaseModule`.
+- Added DTOs for delivery address and invoice profile create/update payloads.
+- Added user-scoped CRUD, soft-delete, and default-selection methods in
+  `UsersService`.
+- Added authenticated Auth endpoints under `/auth/profile/delivery-addresses`,
+  `/auth/profile/invoice-profiles`, and `/auth/profile/checkout-data`.
+- Added sanitization so wallet responses omit `userId` and `deletedAt`.
+- Extended Auth contract tests for checkout aggregate, delivery mutation, and
+  invoice mutation boundaries using synthetic data.
+- Updated service info and Auth contract docs for the new endpoints.
+
+Subagents used:
+
+- Auth schema/deploy-path explorer: completed read-only and confirmed the
+  source-only SQL path with live SQL apply blocked.
+- Consumer readiness monitor: completed read-only and confirmed FlipFlop is the
+  first clean dependency-gated consumer candidate, while Orders is blocked by
+  unrelated dirty event/order changes.
+
+Validation evidence:
+
+- `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts` passed: 13
+  tests.
+- `npm test -- --runTestsByPath src/users/users.service.spec.ts
+src/auth/auth-contract.spec.ts` passed: 2 suites, 15 tests.
+- `npm run test:auth-contract` passed: 3 suites, 25 tests.
+- `npm run build` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
+- Missing-marker scan returned only documented Goal 10 approval/follow-up
+  blockers after removing the resolved schema-path blocker.
+- Secret-pattern scan returned no secret values; matches were limited to
+  synthetic test `password` fields and existing source references such as
+  `DB_PASSWORD`.
+
+Boundary:
+
+- No live SQL apply, deployment, production DB row read, raw customer data read,
+  secret/token/password/JWT value inspection, JWT payload change, RBAC change,
+  OAuth/magic-link/CORS/internal-service contract change, or consumer-service
+  source edit was performed.
+
+Next unfinished chunk:
+
+- Commit Auth A1 source. Live SQL apply and deployment remain
+  owner-approval-gated.
+
 ## 2026-07-02 - Goal 10 Auth Customer Data Wallet Cross-Repo Planning
 
 Current focus:
@@ -56,7 +129,8 @@ Boundary:
 
 Next unfinished chunk:
 
-- Goal 10.1: resolve `[MISSING: production-safe Auth schema migration path]`, then implement Auth-owned delivery address book and invoice profile APIs before consumer code changes.
+- Goal 10.1 was later resolved by the A1 source implementation. Consumer code
+  changes remain gated on owner-approved SQL apply and Auth deployment.
 
 ## 2026-07-02 - Auth Validate Logging Loop Source Fix
 
@@ -115,6 +189,7 @@ Next unfinished chunks:
 2026-06-29: Catalog-to-Warehouse service role provisioning helper prepared. Change: added source-only support for `internal:<service>:<role>` parsing and `--dry-run` to `scripts/assign-role-by-email.ts`, with wrapper usage documentation. This prepares the approved Auth-compatible bearer-token path for the stock acceptance blocker without running any production provisioning. The exact future role shape needed by Warehouse is `internal:warehouse-microservice:admin`; the target principal/email and token/secret rotation path remain owner-approved runtime operations, not source defaults. Validation: `npx tsc --noEmit --skipLibCheck --experimentalDecorators --emitDecoratorMetadata --module commonjs --target es2020 --moduleResolution node --esModuleInterop scripts/assign-role-by-email.ts` passed; `bash -n scripts/assign-role-by-email.sh` passed; `git diff --check` passed; `npm run build` passed. Boundary: no Auth DB mutation, role assignment, user/service-principal creation, token issuance, Vault/Kubernetes secret mutation, deployment, decoded secret/JWT inspection, or production user data read was performed. Warehouse still requires an Auth-valid bearer credential; adding a Warehouse static-token receiver remains an owner-approved contract change and was not implemented. Next action: with explicit owner approval, create or identify the Catalog service principal, assign `internal:warehouse-microservice:admin` using the helper, issue/rotate an Auth-compatible runtime token without printing it, update Catalog runtime config, then rerun Catalog `npm run verify:stock-acceptance:gates`.
 
 2026-06-29: Auth admin Users application-filter production remediation implemented and deployed on `alfares`. Vision: Auth remains the Statex identity and RBAC authority. Goal Impact: `/admin` Users application filters load without the backend 500 caused by SQL alias parsing. System: Auth admin Users API. Feature: server-side admin user list filtering. Task: fix SQL generated by `UsersService.findAdminListPage` for application and app-admin filters. Execution Plan: bounded production remediation from owner screenshot and live backend log evidence; patch only `src/users/users.service.ts`, add focused regression coverage in `src/users/users.service.spec.ts`, validate, deploy after owner approval, and verify live runtime. Coding Prompt: do not print or record secrets, tokens, passwords, raw production user rows, or change Auth contracts. Code: quoted the reserved TypeORM alias as `"user"."id"` in both raw subqueries. Validation: live logs showed `QueryFailedError: syntax error at or near "."` before the fix; `npm test -- --runTestsByPath src/users/users.service.spec.ts` passed 2 tests; `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts src/users/users.service.spec.ts` passed 8 tests; `npm run build` passed; `npm run lint` passed; `git diff --check` passed; deploy-script Auth contract tests passed 16 tests; Kubernetes rollout completed; live `/admin` returned HTTP 200; live `/health` returned ok; deployed images `localhost:5000/auth-microservice:9a309b0-20260629000608` and `localhost:5000/auth-microservice-web:9a309b0-20260629000608`; running pod compiled code contains both quoted alias clauses; post-deploy log scan showed no recurrence of the previous SQL error. Boundary: no database schema, JWT payload, RBAC assignment semantics, OAuth, magic-link, password reset, CORS, internal-service contract, decoded secrets, tokens, passwords, raw production user data, or consumer-service code changed. Next unfinished chunk: none.
+
 # 2026-06-28 - Hosted Password Reset Success UX Fix
 
 Current focus:
@@ -166,6 +241,7 @@ Intent Compliance Report:
 - Next action: owner verifies the hosted reset/login flow in browser.
 
 2026-06-28: Owner-selected Auth admin Users role/application checkbox management implemented and deployed on `alfares`. Gate decision: accept before deployment. Scope: `src/auth/admin-users.controller.ts`, `src/users/users.service.ts`, `web/public/admin.html`, `web/public/js/admin.js`, `web/public/css/style.css`, `docs/orchestrator/CONTEXT_PACKAGE.md`, `docs/orchestrator/EXECUTION_PLAN.md`, `docs/IMPLEMENTATION_STATE.md`, `docs/orchestrator/STATUS.md`. Implemented server-side `GET /auth/admin/users` filters for search text, application, active/inactive status, verified/unverified status, and application-admin-only; added per-user application and admin-application summaries; added `GET /auth/admin/users/application-admins` for admins grouped across every registered application; updated the selected-user roles panel so all global and per-application roles render as checkboxes; added application registration checkboxes that assign the default application `user` role and remove all assigned roles for that application when unchecked; reused existing `GET /auth/admin/roles`, `GET/POST/DELETE /auth/admin/users/:userId/roles`, and `GET /auth/admin/applications` contracts. Validation passed: `node --check web/public/js/admin.js`, `node --check web/server.js`, `git diff --check`, `npm run build`, `npm run lint`, and `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts` (6 tests). No production database writes by agents, role mutations by agents, decoded secrets, JWTs, refresh tokens, OAuth tokens, magic-link tokens, reset tokens, passwords, raw production user-data dumps, consumer-service code, JWT payload changes, RBAC assignment semantic changes, OAuth, magic-link, CORS, internal-service contracts, or database schema changes. Deployment completed with backend image `localhost:5000/auth-microservice:bf7e63c-20260628214651` after the post-deploy restart and web image `localhost:5000/auth-microservice-web:bf7e63c-20260628214214`. Live verification passed: `curl -I -H Cache-Control: no-cache https://auth.alfares.cz/admin` returned HTTP 200; served `/admin` HTML contains `View and update the selected user` and `/js/admin.js?v=20260628235000`; served admin JS contains `cachedRoles`, `/auth/admin/roles`, and `toggleApplicationMembership`; unauthenticated `GET /auth/admin/users/application-admins` returned HTTP 401, confirming the route is present and protected. Next unfinished task: owner browser-verifies checkbox assignment behavior with an authenticated admin session.
+
 # 2026-06-28 - Admin Users Layout Width Fix
 
 Current focus:
@@ -336,7 +412,6 @@ Next action:
 
 - Owner selection for the next Auth remediation or implementation chunk after production deployment.
 
-
 ## 2026-06-13 - AUTH-ALPHA-01 Hosted Token Handoff URL Normalization Completed
 
 Current focus:
@@ -372,7 +447,6 @@ Next action:
 
 - Owner selection for the next Auth remediation or implementation chunk after AUTH-ALPHA-01.
 
-
 ## 2026-06-13 - RBAC-REM-07 Logging Admin Role-Enforcement Verification Completed
 
 Current focus:
@@ -407,7 +481,6 @@ Validation evidence:
 Next action:
 
 - Owner selection for the next Auth remediation or implementation chunk.
-
 
 ## 2026-06-13 - RBAC-REM-06 Internal Service-Token/API-Key Boundary Review Completed
 
@@ -731,7 +804,6 @@ Next action:
 
 - Owner should select one remediation chunk from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`, starting with `RBAC-REM-01` secret-source alignment review for direct JWT consumers.
 
-
 ## 2026-06-12 - IPS Documentation Compliance Update
 
 Current focus:
@@ -968,8 +1040,6 @@ Next unfinished chunks:
 
 - Goal 4: review Auth-sensitive logs for login, refresh, password reset, magic link, OAuth, admin user management, and role changes.
 
-
 2026-07-02: Owner-reported Catalog hosted Auth loop investigated. Clean headless Chrome CDP flow from `https://catalog.alfares.cz/login` completed hosted register and hosted login to `https://catalog.alfares.cz/dashboard`; dashboard rendered the synthetic user, `auth_token` was present, `/api/auth/profile` returned HTTP 200, and Catalog dashboard data requests returned HTTP 200. Internal Catalog pod probe confirmed `/api/auth/register` returned `accessToken` and `/api/auth/profile` returned HTTP 200 with nested `user`. A separate premature/native form-submit race reproduced an Auth-side fail-open fallback: before hosted UI JS/return-url validation was ready, the browser performed a default GET form submit, dropped `return_url/state`, and returned to `/login` with `Redirect target: (required by application)`. Source fix implemented in `web/public/index.html`: hosted form now has `onsubmit="return false;"`, submit and contact-code buttons are disabled until `return_url` validation succeeds, and validation success explicitly enables them. Regression added in `src/auth/hosted-auth-web.spec.ts`. Pre-deploy validation passed: DocsRAG query from running Auth pod returned HTTP 200 with 10 sources; `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts` passed 7 tests; `node --check web/server.js`; `node --check web/public/js/admin.js`; `git diff --check`; `npm run build`; and `npm run lint` passed. No production DB mutation, raw production user-data read, token/secret/password/JWT value inspection, JWT payload change, RBAC/OAuth/magic-link/CORS/internal-service/database schema change, or consumer-service source edit was performed. Deployment and post-deploy race validation pending.
-
 
 2026-07-02: Hosted Auth form fail-closed hardening deployed to production. Commit `0d4282b` deployed with backend image `localhost:5000/auth-microservice:0d4282b-20260702102426` digest `sha256:3c745e83dd9a62656ca1cf103b624fbe410c1633782b160f2cb3a60eca4fef1e` and web image `localhost:5000/auth-microservice-web:0d4282b-20260702102426` digest `sha256:262637d2d2772549db47b4b9585b607bb58cf9880cb165f0e892c75c9e9d51a5`. Deploy-script focused Auth contract tests passed 3 suites/22 tests; backend and web rollouts completed; public `/login` returned HTTP 200 with `last-modified: Thu, 02 Jul 2026 10:22:52 GMT`; in-cluster served HTML check returned `formFailClosed=true`, `submitDisabled=true`, `magicDisabled=true`, and `enablesAfterValidation=true`. Post-deploy headless Chrome CDP verification from `https://catalog.alfares.cz/login` completed hosted register and hosted login to `https://catalog.alfares.cz/dashboard`; `auth_token` was present, `/api/auth/profile` returned HTTP 200, and the dashboard rendered the synthetic user plus product/category/attribute counters. No token, refresh token, password, decoded JWT, secret, raw production user data, production DB mutation, JWT payload change, RBAC/OAuth/magic-link/CORS/internal-service/database schema change, or consumer-service source edit was performed.

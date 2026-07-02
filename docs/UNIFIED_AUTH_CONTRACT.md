@@ -32,20 +32,34 @@ The backend serves `/login`, `/register`, and `/reset-password` from `web/public
 
 All JSON endpoints are under `/auth`.
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `POST` | `/auth/register` | Create an email/password user and return tokens. |
-| `POST` | `/auth/login` | Authenticate email or phone identifier plus password and return tokens. Legacy `email` payloads remain supported. |
-| `POST` | `/auth/validate` | Validate an access token. |
-| `POST` | `/auth/refresh` | Exchange a valid refresh token for a new token pair. |
-| `GET` | `/auth/profile` | Return the authenticated user's canonical sanitized Auth profile from the Auth database. Requires bearer auth. |
-| `POST` | `/auth/password-reset-request` | Create a password-reset token and request notification delivery. |
-| `POST` | `/auth/password-reset-confirm` | Consume a password-reset token and set a new password. |
-| `POST` | `/auth/password-change` | Change password for the authenticated user. Requires bearer auth. |
-| `POST` | `/auth/password-set` | Set the first password for an authenticated passwordless user. Requires bearer auth. |
-| `POST` | `/auth/register-contact` | Provision or update a contact-based user profile. This is not authentication and does not return JWTs. |
-| `POST` | `/auth/login-contact` | Deprecated contact-login compatibility endpoint. It never issues ecosystem auth without verified proof. |
-| `GET` | `/auth/validate-return-url` | Validate a candidate `return_url`. |
+| Method   | Path                                                  | Purpose                                                                                                                          |
+| -------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `POST`   | `/auth/register`                                      | Create an email/password user and return tokens.                                                                                 |
+| `POST`   | `/auth/login`                                         | Authenticate email or phone identifier plus password and return tokens. Legacy `email` payloads remain supported.                |
+| `POST`   | `/auth/validate`                                      | Validate an access token.                                                                                                        |
+| `POST`   | `/auth/refresh`                                       | Exchange a valid refresh token for a new token pair.                                                                             |
+| `GET`    | `/auth/profile`                                       | Return the authenticated user's canonical sanitized Auth profile from the Auth database. Requires bearer auth.                   |
+| `PATCH`  | `/auth/profile`                                       | Update Auth-owned profile/contact fields and legacy canonical profile metadata. Requires bearer auth.                            |
+| `GET`    | `/auth/profile/checkout-data`                         | Return sanitized Auth profile, delivery addresses, invoice profiles, and default IDs for checkout prefill. Requires bearer auth. |
+| `GET`    | `/auth/profile/delivery-addresses`                    | List the authenticated user's Auth-owned delivery address book. Requires bearer auth.                                            |
+| `POST`   | `/auth/profile/delivery-addresses`                    | Create a delivery address book entry for the authenticated user. Requires bearer auth.                                           |
+| `GET`    | `/auth/profile/delivery-addresses/:addressId`         | Read one owned delivery address. Requires bearer auth.                                                                           |
+| `PATCH`  | `/auth/profile/delivery-addresses/:addressId`         | Update one owned delivery address. Requires bearer auth.                                                                         |
+| `DELETE` | `/auth/profile/delivery-addresses/:addressId`         | Soft-delete one owned delivery address. Requires bearer auth.                                                                    |
+| `POST`   | `/auth/profile/delivery-addresses/:addressId/default` | Mark one owned delivery address as default. Requires bearer auth.                                                                |
+| `GET`    | `/auth/profile/invoice-profiles`                      | List the authenticated user's Auth-owned invoice/billing profiles. Requires bearer auth.                                         |
+| `POST`   | `/auth/profile/invoice-profiles`                      | Create an invoice/billing profile for the authenticated user. Requires bearer auth.                                              |
+| `GET`    | `/auth/profile/invoice-profiles/:profileId`           | Read one owned invoice/billing profile. Requires bearer auth.                                                                    |
+| `PATCH`  | `/auth/profile/invoice-profiles/:profileId`           | Update one owned invoice/billing profile. Requires bearer auth.                                                                  |
+| `DELETE` | `/auth/profile/invoice-profiles/:profileId`           | Soft-delete one owned invoice/billing profile. Requires bearer auth.                                                             |
+| `POST`   | `/auth/profile/invoice-profiles/:profileId/default`   | Mark one owned invoice/billing profile as default. Requires bearer auth.                                                         |
+| `POST`   | `/auth/password-reset-request`                        | Create a password-reset token and request notification delivery.                                                                 |
+| `POST`   | `/auth/password-reset-confirm`                        | Consume a password-reset token and set a new password.                                                                           |
+| `POST`   | `/auth/password-change`                               | Change password for the authenticated user. Requires bearer auth.                                                                |
+| `POST`   | `/auth/password-set`                                  | Set the first password for an authenticated passwordless user. Requires bearer auth.                                             |
+| `POST`   | `/auth/register-contact`                              | Provision or update a contact-based user profile. This is not authentication and does not return JWTs.                           |
+| `POST`   | `/auth/login-contact`                                 | Deprecated contact-login compatibility endpoint. It never issues ecosystem auth without verified proof.                          |
+| `GET`    | `/auth/validate-return-url`                           | Validate a candidate `return_url`.                                                                                               |
 
 Email/password `register` and `login` responses include:
 
@@ -71,17 +85,45 @@ When the identifier is an email address, Auth looks up the canonical email. When
 
 `GET /auth/profile` is the canonical profile read for consuming applications after hosted Auth handoff. Consumers must initialize or refresh local application profile views from this Auth-owned response, not from application-local registration forms or stale JWT claims. The response is read from the Auth `users` table for the authenticated subject and is sanitized before return; it includes Auth-owned identity/contact fields such as `email`, `firstName`, `lastName`, `phone`, `contactInfo`, and Auth-owned preference/source metadata when present, and never includes `password`.
 
+Auth also owns reusable customer data wallet entries for authenticated users.
+Consumers should call `GET /auth/profile/checkout-data` before rendering
+authenticated checkout forms. The response contains:
+
+```json
+{
+  "user": {},
+  "deliveryAddresses": [],
+  "invoiceProfiles": [],
+  "defaults": {
+    "deliveryAddressId": "uuid-or-null",
+    "invoiceProfileId": "uuid-or-null"
+  }
+}
+```
+
+Delivery address and invoice profile CRUD endpoints are scoped to the bearer
+subject. Responses are sanitized and do not expose `userId`, `deletedAt`,
+passwords, tokens, provider details, payment details, or raw audit data.
+Consumers may submit selected entries as immutable order snapshots, but they
+must update reusable profile, delivery, and invoice data through Auth rather
+than creating app-local editable address books for registered users.
+
+The production database uses `DB_SYNC=false`. New customer data wallet tables
+are represented in source by `scripts/create-customer-data-wallet-tables.sql`
+and must be applied only in an owner-approved database change window before
+deploying code that depends on them.
+
 `POST /auth/register-contact` remains a provisioning endpoint for Marathon, SpeakASAP, and similar callers. It creates or updates the Auth user and returns the canonical `userId`, `authenticated: false`, `provisioning: true`, and sanitized `user`. Any legacy `sessionId` in this response is compatibility metadata only; consumers must not treat it as an Auth JWT, refresh token, cookie session, or ecosystem authentication proof. For new users, `source` records the initial provisioning source. For existing users, Auth preserves the original `source` and records additional provisioning sources under `perApplicationPreferences.authSources.<source>`, for example `perApplicationPreferences.authSources.marathon`, so one central identity can belong to several Alfares applications without losing origin history.
 
 `POST /auth/login-contact` is deprecated for ecosystem authentication. It may confirm that contact data exists only after normal lookup, but it does not update activity or return `sessionId`, `accessToken`, or `refreshToken`. Consumers must use `/auth/login` with password or a verified Auth-owned passwordless flow such as email magic-link before treating the user as authenticated. Phone code delivery is owned by Auth through Notifications. The default live channel is `whatsapp`, and deployments may route through `AUTH_CONTACT_CODE_PHONE_CHANNEL_KEY` if the Notifications channel registry owns the policy. If the provider is not configured or delivery fails, requests are accepted and audited as `created_not_sent` rather than falling back to consumer-local login.
 
 Contact-code delivery runtime keys:
 
-| Key | Default | Purpose |
-| --- | --- | --- |
-| `AUTH_CONTACT_CODE_PHONE_CHANNEL` | `whatsapp` | Direct Notifications channel for phone identifiers. Current supported practical values are `whatsapp` or `telegram`; `sms` must not be used until notifications-microservice implements SMS dispatch. |
-| `AUTH_CONTACT_CODE_PHONE_CHANNEL_KEY` | empty | Optional Notifications channel registry key for phone code policy. When set, Auth sends `channelKey` instead of a direct channel. |
-| `AUTH_CONTACT_CODE_EMAIL_CHANNEL_KEY` | empty | Optional Notifications channel registry key for email code policy. |
+| Key                                   | Default    | Purpose                                                                                                                                                                                               |
+| ------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_CONTACT_CODE_PHONE_CHANNEL`     | `whatsapp` | Direct Notifications channel for phone identifiers. Current supported practical values are `whatsapp` or `telegram`; `sms` must not be used until notifications-microservice implements SMS dispatch. |
+| `AUTH_CONTACT_CODE_PHONE_CHANNEL_KEY` | empty      | Optional Notifications channel registry key for phone code policy. When set, Auth sends `channelKey` instead of a direct channel.                                                                     |
+| `AUTH_CONTACT_CODE_EMAIL_CHANNEL_KEY` | empty      | Optional Notifications channel registry key for email code policy.                                                                                                                                    |
 
 `POST /auth/validate` accepts:
 
@@ -150,10 +192,10 @@ OAuth init accepts `return_url`, optional `client_id`, and optional caller `stat
 
 Provider support currently implemented in code:
 
-| Provider | Scope | Required runtime keys |
-| --- | --- | --- |
-| Google | `openid email profile` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
-| Facebook | `email` | `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` |
+| Provider | Scope                  | Required runtime keys                          |
+| -------- | ---------------------- | ---------------------------------------------- |
+| Google   | `openid email profile` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`     |
+| Facebook | `email`                | `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` |
 
 Callback redirect URI is computed as:
 
@@ -248,12 +290,12 @@ This is the preferred contract for new machine-auth paths. Existing service-loca
 
 Registered-user communication preferences are Auth-owned and exposed only through internal Auth APIs:
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/auth/internal/users/:userId/preferences` | Read registered-user communication preferences. |
-| `PATCH` | `/auth/internal/users/:userId/preferences` | Update registered-user communication preferences. |
-| `POST` | `/auth/internal/users/:userId/unsubscribe` | Mark a registered user unsubscribed/transactional-only. |
-| `GET` | `/auth/internal/check-email?email=...` | Check whether an email exists in Auth. |
+| Method  | Path                                       | Purpose                                                 |
+| ------- | ------------------------------------------ | ------------------------------------------------------- |
+| `GET`   | `/auth/internal/users/:userId/preferences` | Read registered-user communication preferences.         |
+| `PATCH` | `/auth/internal/users/:userId/preferences` | Update registered-user communication preferences.       |
+| `POST`  | `/auth/internal/users/:userId/unsubscribe` | Mark a registered user unsubscribed/transactional-only. |
+| `GET`   | `/auth/internal/check-email?email=...`     | Check whether an email exists in Auth.                  |
 
 Marketing may read/update registered-user preferences only through these APIs. Leads remain responsible for non-registered contact records. Notifications remains responsible for outbound sending.
 

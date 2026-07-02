@@ -2,15 +2,7 @@
  * Auth Service
  */
 
-import {
-  Injectable,
-  UnauthorizedException,
-  ConflictException,
-  BadRequestException,
-  NotFoundException,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -38,7 +30,11 @@ import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
 import { ContactCodeRequestDto } from './dto/contact-code-request.dto';
 import { ContactCodeVerifyDto } from './dto/contact-code-verify.dto';
 import { UpdateUserMarketingPreferencesDto } from './dto/update-user-marketing-preferences.dto';
+import { CreateDeliveryAddressDto, UpdateDeliveryAddressDto } from './dto/delivery-address.dto';
+import { CreateInvoiceProfileDto, UpdateInvoiceProfileDto } from './dto/invoice-profile.dto';
 import { Response } from 'express';
+import { UserDeliveryAddress } from '../users/entities/user-delivery-address.entity';
+import { UserInvoiceProfile } from '../users/entities/user-invoice-profile.entity';
 
 @Injectable()
 export class AuthService {
@@ -53,7 +49,16 @@ export class AuthService {
   private readonly contactCodePhoneChannelKey: string;
   private readonly contactCodePhoneChannel: 'whatsapp' | 'telegram' | 'sms';
   private readonly allowedRedirectOrigins: string[];
-  private readonly oauthStateStore = new Map<string, { provider: string; returnUrl: string; clientId?: string; appState?: string; createdAt: number }>();
+  private readonly oauthStateStore = new Map<
+    string,
+    {
+      provider: string;
+      returnUrl: string;
+      clientId?: string;
+      appState?: string;
+      createdAt: number;
+    }
+  >();
   private readonly rateLimitStore = new Map<string, { count: number; windowStart: number }>();
 
   constructor(
@@ -93,13 +98,7 @@ export class AuthService {
       .filter((o) => o.length > 0);
   }
 
-  private audit(
-    level: 'info' | 'warn' | 'error',
-    operation: string,
-    outcome: string,
-    details: Record<string, string | number | boolean | undefined | null> = {},
-    trace?: string,
-  ): void {
+  private audit(level: 'info' | 'warn' | 'error', operation: string, outcome: string, details: Record<string, string | number | boolean | undefined | null> = {}, trace?: string): void {
     const fields: Record<string, string | number | boolean | undefined | null> = {
       service: 'auth-microservice',
       operation,
@@ -183,9 +182,7 @@ export class AuthService {
         throw new UnauthorizedException('Invalid credentials');
       }
 
-      let user = isEmailIdentifier
-        ? await this.usersService.findByEmail(lookupIdentifier)
-        : await this.usersService.findByPhone(lookupIdentifier);
+      let user = isEmailIdentifier ? await this.usersService.findByEmail(lookupIdentifier) : await this.usersService.findByPhone(lookupIdentifier);
       let authenticatedVia = 'password';
 
       if (user) {
@@ -194,9 +191,7 @@ export class AuthService {
           try {
             const isPasswordValid = await bcryptjs.compare(loginDto.password, user.password);
             if (!isPasswordValid) {
-              user = isEmailIdentifier
-                ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password)
-                : null;
+              user = isEmailIdentifier ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password) : null;
               authenticatedVia = 'legacy_password';
             }
           } catch (err) {
@@ -205,21 +200,15 @@ export class AuthService {
               reason: (err as Error).message,
               duration_ms: Date.now() - startedAt,
             });
-            user = isEmailIdentifier
-              ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password)
-              : null;
+            user = isEmailIdentifier ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password) : null;
             authenticatedVia = 'legacy_password';
           }
         } else {
-          user = isEmailIdentifier
-            ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password)
-            : null;
+          user = isEmailIdentifier ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password) : null;
           authenticatedVia = 'legacy_password';
         }
       } else {
-        user = isEmailIdentifier
-          ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password)
-          : null;
+        user = isEmailIdentifier ? await this.tryLegacyPasswordLogin(lookupIdentifier, loginDto.password) : null;
         authenticatedVia = 'legacy_password';
       }
 
@@ -255,11 +244,17 @@ export class AuthService {
       };
     } catch (err) {
       if (err instanceof UnauthorizedException) throw err;
-      this.audit('error', 'login', 'failure', {
-        identifier: lookupIdentifier,
-        reason: (err as Error).message,
-        duration_ms: Date.now() - startedAt,
-      }, (err as Error).stack);
+      this.audit(
+        'error',
+        'login',
+        'failure',
+        {
+          identifier: lookupIdentifier,
+          reason: (err as Error).message,
+          duration_ms: Date.now() - startedAt,
+        },
+        (err as Error).stack,
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
   }
@@ -307,17 +302,22 @@ export class AuthService {
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) throw error;
-      this.audit('error', 'validate_token', 'failure', {
-        reason: error.message,
-        duration_ms: Date.now() - startedAt,
-      }, error.stack);
+      this.audit(
+        'error',
+        'validate_token',
+        'failure',
+        {
+          reason: error.message,
+          duration_ms: Date.now() - startedAt,
+        },
+        error.stack,
+      );
       throw new UnauthorizedException('Invalid token');
     }
   }
 
   private isUuid(value: unknown): value is string {
-    return typeof value === 'string'
-      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   }
 
   async refreshToken(refreshToken: string) {
@@ -352,10 +352,16 @@ export class AuthService {
         ...tokens,
       };
     } catch (error) {
-      this.audit('error', 'refresh_token', 'failure', {
-        reason: error.message,
-        duration_ms: Date.now() - startedAt,
-      }, error.stack);
+      this.audit(
+        'error',
+        'refresh_token',
+        'failure',
+        {
+          reason: error.message,
+          duration_ms: Date.now() - startedAt,
+        },
+        error.stack,
+      );
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
@@ -404,7 +410,11 @@ export class AuthService {
   }
 
   private normalizeContactInfo(
-    contacts: Array<{ type: string; value: string; isPrimary?: boolean | string }>,
+    contacts: Array<{
+      type: string;
+      value: string;
+      isPrimary?: boolean | string;
+    }>,
   ): Array<{ type: string; value: string; isPrimary?: boolean }> {
     return contacts
       .map((contact) => {
@@ -416,10 +426,7 @@ export class AuthService {
       .filter((contact) => Boolean(contact.type && contact.value));
   }
 
-  private findPrimaryContact(
-    contacts: Array<{ type: string; value: string; isPrimary?: boolean }>,
-    type: 'email' | 'phone',
-  ): { type: string; value: string; isPrimary?: boolean } | undefined {
+  private findPrimaryContact(contacts: Array<{ type: string; value: string; isPrimary?: boolean }>, type: 'email' | 'phone'): { type: string; value: string; isPrimary?: boolean } | undefined {
     return contacts.find((contact) => contact.type === type && contact.isPrimary) || contacts.find((contact) => contact.type === type);
   }
 
@@ -430,23 +437,14 @@ export class AuthService {
     return this.normalizeContactValue(leftType, leftValue) === this.normalizeContactValue(rightType, rightValue);
   }
 
-  private mergeProvisioningSource(
-    preferences: Record<string, unknown> | null | undefined,
-    source?: string,
-    sessionId?: string,
-  ): Record<string, unknown> | null {
+  private mergeProvisioningSource(preferences: Record<string, unknown> | null | undefined, source?: string, sessionId?: string): Record<string, unknown> | null {
     const normalizedSource = (source || '').trim();
     if (!normalizedSource) {
       return preferences || null;
     }
 
-    const current = preferences && typeof preferences === 'object' && !Array.isArray(preferences)
-      ? { ...preferences }
-      : {};
-    const currentSources =
-      current.authSources && typeof current.authSources === 'object' && !Array.isArray(current.authSources)
-        ? { ...(current.authSources as Record<string, unknown>) }
-        : {};
+    const current = preferences && typeof preferences === 'object' && !Array.isArray(preferences) ? { ...preferences } : {};
+    const currentSources = current.authSources && typeof current.authSources === 'object' && !Array.isArray(current.authSources) ? { ...(current.authSources as Record<string, unknown>) } : {};
 
     currentSources[normalizedSource] = {
       source: normalizedSource,
@@ -466,8 +464,12 @@ export class AuthService {
     const mappings = await this.legacyIdentityMappingRepository
       .createQueryBuilder('mapping')
       .addSelect('mapping.legacyPasswordHash')
-      .where('mapping.legacySystem = :legacySystem', { legacySystem: 'speakasap-portal' })
-      .andWhere('mapping.normalizedEmail = :normalizedEmail', { normalizedEmail })
+      .where('mapping.legacySystem = :legacySystem', {
+        legacySystem: 'speakasap-portal',
+      })
+      .andWhere('mapping.normalizedEmail = :normalizedEmail', {
+        normalizedEmail,
+      })
       .andWhere('mapping.authUserId IS NOT NULL')
       .orderBy('mapping.legacyUserId', 'ASC')
       .getMany();
@@ -563,7 +565,9 @@ export class AuthService {
         identifier: passwordResetRequestDto.email,
         duration_ms: Date.now() - startedAt,
       });
-      return { message: 'If the email exists, a password reset link has been sent.' };
+      return {
+        message: 'If the email exists, a password reset link has been sent.',
+      };
     }
 
     // Generate reset token
@@ -603,7 +607,11 @@ export class AuthService {
             subject: 'Password Reset Request',
             message: `Click the following link to reset your password: ${resetUrl}\n\nThis link will expire in 1 hour.`,
           },
-          { headers: { Authorization: `Bearer ${this.notificationServiceToken}` } },
+          {
+            headers: {
+              Authorization: `Bearer ${this.notificationServiceToken}`,
+            },
+          },
         ),
       );
       this.audit('info', 'password_reset_request', 'email_sent', {
@@ -612,16 +620,24 @@ export class AuthService {
         duration_ms: Date.now() - startedAt,
       });
     } catch (error) {
-      this.audit('error', 'password_reset_request', 'email_send_failed', {
-        identifier: user.email,
-        user_id: user.id,
-        reason: error.message,
-        duration_ms: Date.now() - startedAt,
-      }, error.stack);
+      this.audit(
+        'error',
+        'password_reset_request',
+        'email_send_failed',
+        {
+          identifier: user.email,
+          user_id: user.id,
+          reason: error.message,
+          duration_ms: Date.now() - startedAt,
+        },
+        error.stack,
+      );
       // Continue even if email fails - token is still generated
     }
 
-    return { message: 'If the email exists, a password reset link has been sent.' };
+    return {
+      message: 'If the email exists, a password reset link has been sent.',
+    };
   }
 
   async confirmPasswordReset(passwordResetConfirmDto: PasswordResetConfirmDto) {
@@ -769,9 +785,7 @@ export class AuthService {
       const newContacts = [...existingContacts];
 
       for (const newContact of normalizedContacts) {
-        const contactExists = existingContacts.some(
-          (contact) => this.contactsMatch(contact.type, contact.value, newContact.type, newContact.value),
-        );
+        const contactExists = existingContacts.some((contact) => this.contactsMatch(contact.type, contact.value, newContact.type, newContact.value));
         if (!contactExists) {
           newContacts.push(newContact);
         }
@@ -785,11 +799,7 @@ export class AuthService {
       existingUser.name = contactRegisterDto.name || existingUser.name;
       existingUser.lastActivity = new Date();
       existingUser.source = existingUser.source || contactRegisterDto.source;
-      existingUser.perApplicationPreferences = this.mergeProvisioningSource(
-        existingUser.perApplicationPreferences,
-        contactRegisterDto.source,
-        contactRegisterDto.sessionId,
-      );
+      existingUser.perApplicationPreferences = this.mergeProvisioningSource(existingUser.perApplicationPreferences, contactRegisterDto.source, contactRegisterDto.sessionId);
       existingUser.sessionId = contactRegisterDto.sessionId || existingUser.sessionId;
 
       const updatedUser = await this.usersService.update(existingUser.id, existingUser);
@@ -854,13 +864,13 @@ export class AuthService {
     const nextFirstName = this.cleanOptionalString(dto.firstName);
     const nextLastName = this.cleanOptionalString(dto.lastName);
     const nextPhone = this.normalizePhone(dto.phone);
-    const nextPreferences = this.mergeCanonicalProfile(
-      user.perApplicationPreferences,
-      dto.profile,
-      dto.address,
-    );
+    const nextPreferences = this.mergeCanonicalProfile(user.perApplicationPreferences, dto.profile, dto.address);
     const nextContacts = nextPhone
-      ? this.upsertPrimaryContact(user.contactInfo || [], { type: 'phone', value: nextPhone, isPrimary: true })
+      ? this.upsertPrimaryContact(user.contactInfo || [], {
+          type: 'phone',
+          value: nextPhone,
+          isPrimary: true,
+        })
       : user.contactInfo;
 
     await this.usersService.update(userId, {
@@ -878,29 +888,84 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    this.logger.log(
-      `Authenticated profile updated user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`,
-      'AuthService',
-    );
+    this.logger.log(`Authenticated profile updated user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`, 'AuthService');
     return this.sanitizeUser(updatedUser);
   }
 
-  private mergeCanonicalProfile(
-    existing: Record<string, unknown> | null | undefined,
-    profilePatch?: Record<string, unknown>,
-    addressPatch?: UpdateProfileDto['address'],
-  ): Record<string, unknown> {
+  async getProfileCheckoutData(userId: string) {
+    const [user, deliveryAddresses, invoiceProfiles] = await Promise.all([this.usersService.findById(userId), this.usersService.listDeliveryAddresses(userId), this.usersService.listInvoiceProfiles(userId)]);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      user: this.sanitizeUser(user),
+      deliveryAddresses: deliveryAddresses.map((address) => this.sanitizeDeliveryAddress(address)),
+      invoiceProfiles: invoiceProfiles.map((profile) => this.sanitizeInvoiceProfile(profile)),
+      defaults: {
+        deliveryAddressId: deliveryAddresses.find((address) => address.isDefault)?.id || null,
+        invoiceProfileId: invoiceProfiles.find((profile) => profile.isDefault)?.id || null,
+      },
+    };
+  }
+
+  async listDeliveryAddresses(userId: string) {
+    const addresses = await this.usersService.listDeliveryAddresses(userId);
+    return addresses.map((address) => this.sanitizeDeliveryAddress(address));
+  }
+
+  async getDeliveryAddress(userId: string, addressId: string) {
+    return this.sanitizeDeliveryAddress(await this.usersService.getDeliveryAddress(userId, addressId));
+  }
+
+  async createDeliveryAddress(userId: string, dto: CreateDeliveryAddressDto) {
+    return this.sanitizeDeliveryAddress(await this.usersService.createDeliveryAddress(userId, dto));
+  }
+
+  async updateDeliveryAddress(userId: string, addressId: string, dto: UpdateDeliveryAddressDto) {
+    return this.sanitizeDeliveryAddress(await this.usersService.updateDeliveryAddress(userId, addressId, dto));
+  }
+
+  async deleteDeliveryAddress(userId: string, addressId: string) {
+    await this.usersService.deleteDeliveryAddress(userId, addressId);
+    return { success: true };
+  }
+
+  async setDefaultDeliveryAddress(userId: string, addressId: string) {
+    return this.sanitizeDeliveryAddress(await this.usersService.setDefaultDeliveryAddress(userId, addressId));
+  }
+
+  async listInvoiceProfiles(userId: string) {
+    const profiles = await this.usersService.listInvoiceProfiles(userId);
+    return profiles.map((profile) => this.sanitizeInvoiceProfile(profile));
+  }
+
+  async getInvoiceProfile(userId: string, profileId: string) {
+    return this.sanitizeInvoiceProfile(await this.usersService.getInvoiceProfile(userId, profileId));
+  }
+
+  async createInvoiceProfile(userId: string, dto: CreateInvoiceProfileDto) {
+    return this.sanitizeInvoiceProfile(await this.usersService.createInvoiceProfile(userId, dto));
+  }
+
+  async updateInvoiceProfile(userId: string, profileId: string, dto: UpdateInvoiceProfileDto) {
+    return this.sanitizeInvoiceProfile(await this.usersService.updateInvoiceProfile(userId, profileId, dto));
+  }
+
+  async deleteInvoiceProfile(userId: string, profileId: string) {
+    await this.usersService.deleteInvoiceProfile(userId, profileId);
+    return { success: true };
+  }
+
+  async setDefaultInvoiceProfile(userId: string, profileId: string) {
+    return this.sanitizeInvoiceProfile(await this.usersService.setDefaultInvoiceProfile(userId, profileId));
+  }
+
+  private mergeCanonicalProfile(existing: Record<string, unknown> | null | undefined, profilePatch?: Record<string, unknown>, addressPatch?: UpdateProfileDto['address']): Record<string, unknown> {
     const base = existing && typeof existing === 'object' && !Array.isArray(existing) ? existing : {};
-    const existingCanonical = base.canonicalProfile &&
-      typeof base.canonicalProfile === 'object' &&
-      !Array.isArray(base.canonicalProfile)
-      ? base.canonicalProfile as Record<string, unknown>
-      : {};
-    const existingAddress = existingCanonical.address &&
-      typeof existingCanonical.address === 'object' &&
-      !Array.isArray(existingCanonical.address)
-      ? existingCanonical.address as Record<string, unknown>
-      : {};
+    const existingCanonical = base.canonicalProfile && typeof base.canonicalProfile === 'object' && !Array.isArray(base.canonicalProfile) ? (base.canonicalProfile as Record<string, unknown>) : {};
+    const existingAddress = existingCanonical.address && typeof existingCanonical.address === 'object' && !Array.isArray(existingCanonical.address) ? (existingCanonical.address as Record<string, unknown>) : {};
     const cleanedAddress = this.cleanAddress(addressPatch);
     const nextCanonical: Record<string, unknown> = {
       ...existingCanonical,
@@ -944,17 +1009,10 @@ export class AuthService {
     return String(value).trim();
   }
 
-  private upsertPrimaryContact(
-    contacts: Array<{ type: string; value: string; isPrimary?: boolean }>,
-    nextContact: { type: string; value: string; isPrimary?: boolean },
-  ) {
+  private upsertPrimaryContact(contacts: Array<{ type: string; value: string; isPrimary?: boolean }>, nextContact: { type: string; value: string; isPrimary?: boolean }) {
     const normalized = this.normalizeContactInfo(contacts || []);
-    const withoutSameType = normalized.map((contact) => (
-      contact.type === nextContact.type ? { ...contact, isPrimary: false } : contact
-    ));
-    const existingIndex = withoutSameType.findIndex((contact) =>
-      this.contactsMatch(contact.type, contact.value, nextContact.type, nextContact.value),
-    );
+    const withoutSameType = normalized.map((contact) => (contact.type === nextContact.type ? { ...contact, isPrimary: false } : contact));
+    const existingIndex = withoutSameType.findIndex((contact) => this.contactsMatch(contact.type, contact.value, nextContact.type, nextContact.value));
 
     if (existingIndex >= 0) {
       withoutSameType[existingIndex] = nextContact;
@@ -991,9 +1049,7 @@ export class AuthService {
       contact_type: normalizedType,
     });
 
-    throw new UnauthorizedException(
-      'Contact login requires verified authentication. Use /auth/login with a password or the verified magic-link flow.',
-    );
+    throw new UnauthorizedException('Contact login requires verified authentication. Use /auth/login with a password or the verified magic-link flow.');
   }
 
   async getUserMarketingPreferences(userId: string) {
@@ -1002,10 +1058,7 @@ export class AuthService {
     if (!prefs) {
       throw new NotFoundException('User not found');
     }
-    this.logger.log(
-      `Internal preferences read for user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`,
-      'AuthService',
-    );
+    this.logger.log(`Internal preferences read for user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`, 'AuthService');
     return prefs;
   }
 
@@ -1015,10 +1068,7 @@ export class AuthService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    this.logger.log(
-      `Internal preferences updated for user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`,
-      'AuthService',
-    );
+    this.logger.log(`Internal preferences updated for user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`, 'AuthService');
     return this.sanitizeUser(user);
   }
 
@@ -1031,10 +1081,7 @@ export class AuthService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    this.logger.log(
-      `User unsubscribed via internal API user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`,
-      'AuthService',
-    );
+    this.logger.log(`User unsubscribed via internal API user=${userId} timestamp=${new Date().toISOString()} duration_ms=${Date.now() - startedAt}`, 'AuthService');
     return { userId, unsubscribedAt: user.unsubscribedAt };
   }
 
@@ -1043,7 +1090,11 @@ export class AuthService {
 
     let user = await this.usersService.findByEmail(email);
     if (!user) {
-      user = await this.usersService.create({ email, isActive: true, isVerified: false });
+      user = await this.usersService.create({
+        email,
+        isActive: true,
+        isVerified: false,
+      });
     }
 
     const token = crypto.randomBytes(32).toString('hex');
@@ -1122,9 +1173,7 @@ export class AuthService {
       throw new BadRequestException('Magic link base URL is not configured');
     }
 
-    const verifyUrl = `${baseUrl}/auth/magic-link/verify?token=${encodeURIComponent(
-      token,
-    )}&return_url=${encodeURIComponent(validReturnUrl)}`;
+    const verifyUrl = `${baseUrl}/auth/magic-link/verify?token=${encodeURIComponent(token)}&return_url=${encodeURIComponent(validReturnUrl)}`;
 
     const durationMs = Date.now() - startedAt;
     if (this.notificationsServiceUrl) {
@@ -1150,7 +1199,11 @@ export class AuthService {
               contentType: 'text/html',
               fromName: fromDomain,
             },
-            { headers: { Authorization: `Bearer ${this.notificationServiceToken}` } },
+            {
+              headers: {
+                Authorization: `Bearer ${this.notificationServiceToken}`,
+              },
+            },
           ),
         );
         this.audit('info', 'magic_link_request', 'email_sent', {
@@ -1160,13 +1213,19 @@ export class AuthService {
           duration_ms: durationMs,
         });
       } catch (error) {
-        this.audit('error', 'magic_link_request', 'email_send_failed', {
-          identifier: dto.email,
-          user_id: user.id,
-          client_id: dto.client_id,
-          reason: (error as Error).message,
-          duration_ms: durationMs,
-        }, (error as Error).stack);
+        this.audit(
+          'error',
+          'magic_link_request',
+          'email_send_failed',
+          {
+            identifier: dto.email,
+            user_id: user.id,
+            client_id: dto.client_id,
+            reason: (error as Error).message,
+            duration_ms: durationMs,
+          },
+          (error as Error).stack,
+        );
       }
     } else {
       this.audit('warn', 'magic_link_request', 'created_email_not_sent', {
@@ -1180,7 +1239,6 @@ export class AuthService {
 
     return { success: true };
   }
-
 
   private contactCodeHash(identifier: string, code: string): string {
     return crypto
@@ -1204,12 +1262,7 @@ export class AuthService {
     return 'whatsapp';
   }
 
-  private async sendContactCode(
-    contactType: 'email' | 'phone',
-    identifier: string,
-    code: string,
-    appDomain?: string,
-  ): Promise<boolean> {
+  private async sendContactCode(contactType: 'email' | 'phone', identifier: string, code: string, appDomain?: string): Promise<boolean> {
     if (!this.notificationsServiceUrl) {
       return false;
     }
@@ -1232,11 +1285,9 @@ export class AuthService {
     };
 
     await firstValueFrom(
-      this.httpService.post(
-        `${this.notificationsServiceUrl}/notifications/send`,
-        payload,
-        { headers: { Authorization: `Bearer ${this.notificationServiceToken}` } },
-      ),
+      this.httpService.post(`${this.notificationsServiceUrl}/notifications/send`, payload, {
+        headers: { Authorization: `Bearer ${this.notificationServiceToken}` },
+      }),
     );
     return true;
   }
@@ -1245,8 +1296,7 @@ export class AuthService {
     const startedAt = Date.now();
     const rawIdentifier = this.normalizeIdentifier(dto.identifier);
     const contactType: 'email' | 'phone' = this.isEmailIdentifier(rawIdentifier) ? 'email' : 'phone';
-    const identifier =
-      contactType === 'email' ? this.normalizeEmail(rawIdentifier) : this.normalizePhone(rawIdentifier);
+    const identifier = contactType === 'email' ? this.normalizeEmail(rawIdentifier) : this.normalizePhone(rawIdentifier);
 
     if (!identifier) {
       throw new BadRequestException('Identifier is required');
@@ -1256,9 +1306,7 @@ export class AuthService {
     this.checkRateLimit(`contact_code:${contactType}:${identifier}`, this.magicLinkRateLimitPerEmail);
 
     const validReturnUrl = this.validateReturnUrl(dto.return_url);
-    const user = contactType === 'email'
-      ? await this.usersService.findByEmail(identifier)
-      : await this.usersService.findByPhone(identifier);
+    const user = contactType === 'email' ? await this.usersService.findByEmail(identifier) : await this.usersService.findByPhone(identifier);
 
     if (!user || !user.isActive) {
       this.audit('warn', 'contact_code_request', 'accepted_unknown_or_inactive_user', {
@@ -1289,14 +1337,20 @@ export class AuthService {
     try {
       delivered = await this.sendContactCode(contactType, identifier, code, dto.app_domain);
     } catch (error) {
-      this.audit('error', 'contact_code_request', 'delivery_failed', {
-        identifier,
-        contact_type: contactType,
-        user_id: user.id,
-        client_id: dto.client_id,
-        reason: (error as Error).message,
-        duration_ms: Date.now() - startedAt,
-      }, (error as Error).stack);
+      this.audit(
+        'error',
+        'contact_code_request',
+        'delivery_failed',
+        {
+          identifier,
+          contact_type: contactType,
+          user_id: user.id,
+          client_id: dto.client_id,
+          reason: (error as Error).message,
+          duration_ms: Date.now() - startedAt,
+        },
+        (error as Error).stack,
+      );
     }
 
     this.audit(delivered ? 'info' : 'warn', 'contact_code_request', delivered ? 'sent' : 'created_not_sent', {
@@ -1315,8 +1369,7 @@ export class AuthService {
     const startedAt = Date.now();
     const rawIdentifier = this.normalizeIdentifier(dto.identifier);
     const contactType: 'email' | 'phone' = this.isEmailIdentifier(rawIdentifier) ? 'email' : 'phone';
-    const identifier =
-      contactType === 'email' ? this.normalizeEmail(rawIdentifier) : this.normalizePhone(rawIdentifier);
+    const identifier = contactType === 'email' ? this.normalizeEmail(rawIdentifier) : this.normalizePhone(rawIdentifier);
     const code = (dto.code || '').trim();
 
     if (!identifier || !/^\d{6}$/.test(code)) {
@@ -1372,7 +1425,6 @@ export class AuthService {
     };
   }
 
-
   async verifyMagicLink(dto: MagicLinkVerifyDto, res: Response) {
     const startedAt = Date.now();
 
@@ -1383,10 +1435,16 @@ export class AuthService {
         relations: ['user'],
       });
     } catch (err) {
-      this.audit('error', 'magic_link_verify', 'failure', {
-        reason: (err as Error).message,
-        duration_ms: Date.now() - startedAt,
-      }, (err as Error).stack);
+      this.audit(
+        'error',
+        'magic_link_verify',
+        'failure',
+        {
+          reason: (err as Error).message,
+          duration_ms: Date.now() - startedAt,
+        },
+        (err as Error).stack,
+      );
       this.renderSafeError(res, 'Invalid or expired magic link.');
       return;
     }
@@ -1444,11 +1502,7 @@ export class AuthService {
     res.redirect(302, redirectUrl);
   }
 
-  async oauthInit(
-    provider: string,
-    rawQuery: any,
-    ip: string,
-  ): Promise<string> {
+  async oauthInit(provider: string, rawQuery: any, ip: string): Promise<string> {
     const startedAt = Date.now();
     this.checkRateLimit(`oauth_init:ip:${ip}`, this.oauthInitRateLimitPerIp);
 
@@ -1487,11 +1541,7 @@ export class AuthService {
     return url.toString();
   }
 
-  async oauthCallback(
-    provider: string,
-    rawQuery: any,
-    res: Response,
-  ): Promise<void> {
+  async oauthCallback(provider: string, rawQuery: any, res: Response): Promise<void> {
     const startedAt = Date.now();
     const code = String(rawQuery.code || '');
     const state = String(rawQuery.state || '');
@@ -1563,14 +1613,20 @@ export class AuthService {
     } catch (error: any) {
       const fbMessage = error?.response?.data?.error?.message || error?.response?.data?.error_description || error?.message;
       const fbCode = error?.response?.data?.error?.code;
-      this.audit('error', 'oauth_callback', 'failure', {
-        provider,
-        client_id: stateEntry.clientId,
-        reason: fbMessage,
-        provider_error_code: fbCode,
-        redirect_uri: redirectUri,
-        duration_ms: Date.now() - startedAt,
-      }, error?.stack);
+      this.audit(
+        'error',
+        'oauth_callback',
+        'failure',
+        {
+          provider,
+          client_id: stateEntry.clientId,
+          reason: fbMessage,
+          provider_error_code: fbCode,
+          redirect_uri: redirectUri,
+          duration_ms: Date.now() - startedAt,
+        },
+        error?.stack,
+      );
       this.renderSafeError(res, 'OAuth authentication failed.');
       return;
     }
@@ -1613,21 +1669,29 @@ export class AuthService {
   private sanitizeUser(user: User) {
     const { password, ...sanitized } = user;
     const preferences = user.perApplicationPreferences as Record<string, unknown> | null | undefined;
-    const canonicalProfile = preferences?.canonicalProfile &&
-      typeof preferences.canonicalProfile === 'object' &&
-      !Array.isArray(preferences.canonicalProfile)
-      ? preferences.canonicalProfile as Record<string, unknown>
-      : undefined;
-    const profileAddress = canonicalProfile?.address &&
-      typeof canonicalProfile.address === 'object' &&
-      !Array.isArray(canonicalProfile.address)
-      ? canonicalProfile.address
-      : undefined;
+    const canonicalProfile = preferences?.canonicalProfile && typeof preferences.canonicalProfile === 'object' && !Array.isArray(preferences.canonicalProfile) ? (preferences.canonicalProfile as Record<string, unknown>) : undefined;
+    const profileAddress = canonicalProfile?.address && typeof canonicalProfile.address === 'object' && !Array.isArray(canonicalProfile.address) ? canonicalProfile.address : undefined;
 
     return {
       ...sanitized,
       ...(profileAddress ? { profileAddress } : {}),
     };
+  }
+
+  private sanitizeDeliveryAddress(address: UserDeliveryAddress) {
+    const { user, userId, deletedAt, ...sanitized } = address as UserDeliveryAddress & {
+      user?: User;
+      deletedAt?: Date | null;
+    };
+    return sanitized;
+  }
+
+  private sanitizeInvoiceProfile(profile: UserInvoiceProfile) {
+    const { user, userId, deletedAt, ...sanitized } = profile as UserInvoiceProfile & {
+      user?: User;
+      deletedAt?: Date | null;
+    };
+    return sanitized;
   }
 
   private resolveServiceIdentity(user: User) {
@@ -1636,7 +1700,13 @@ export class AuthService {
     }
 
     const preferences = user.perApplicationPreferences as
-      | { serviceIdentity?: { serviceName?: unknown; clientId?: unknown; authMethod?: unknown } }
+      | {
+          serviceIdentity?: {
+            serviceName?: unknown;
+            clientId?: unknown;
+            authMethod?: unknown;
+          };
+        }
       | null
       | undefined;
     const identity = preferences?.serviceIdentity;
@@ -1656,16 +1726,12 @@ export class AuthService {
     };
   }
 
-  private buildTokenHandoffUrl(
-    returnUrl: string,
-    tokens: { accessToken: string; refreshToken?: string },
-    authMethod: string,
-    state?: string,
-  ): string {
+  private buildTokenHandoffUrl(returnUrl: string, tokens: { accessToken: string; refreshToken?: string }, authMethod: string, state?: string): string {
     const redirectUrl = new URL(returnUrl);
-    const decoded = this.jwtService.decode(tokens.accessToken) as { exp?: number } | null;
-    const expiresAtIso =
-      decoded && decoded.exp ? new Date(decoded.exp * 1000).toISOString() : new Date().toISOString();
+    const decoded = this.jwtService.decode(tokens.accessToken) as {
+      exp?: number;
+    } | null;
+    const expiresAtIso = decoded && decoded.exp ? new Date(decoded.exp * 1000).toISOString() : new Date().toISOString();
     const fragment = new URLSearchParams();
 
     fragment.set('access_token', tokens.accessToken);
@@ -1719,9 +1785,7 @@ export class AuthService {
   }
 
   private renderSafeError(res: Response, message: string): void {
-    res.status(400).send(
-      `<html><body><h1>Authentication error</h1><p>${message}</p></body></html>`,
-    );
+    res.status(400).send(`<html><body><h1>Authentication error</h1><p>${message}</p></body></html>`);
   }
 
   private buildMagicLinkHtml(verifyUrl: string, domain: string, ttlMinutes: number): string {
@@ -1802,8 +1866,7 @@ export class AuthService {
       return {
         authUrl: process.env.GOOGLE_OAUTH_AUTH_URL || 'https://accounts.google.com/o/oauth2/v2/auth',
         tokenUrl: process.env.GOOGLE_OAUTH_TOKEN_URL || 'https://oauth2.googleapis.com/token',
-        profileUrl:
-          process.env.GOOGLE_OAUTH_PROFILE_URL || 'https://openidconnect.googleapis.com/v1/userinfo',
+        profileUrl: process.env.GOOGLE_OAUTH_PROFILE_URL || 'https://openidconnect.googleapis.com/v1/userinfo',
         clientId,
         clientSecret,
         scope: 'openid email profile',
@@ -1820,9 +1883,7 @@ export class AuthService {
       return {
         authUrl: process.env.FACEBOOK_OAUTH_AUTH_URL || 'https://www.facebook.com/v12.0/dialog/oauth',
         tokenUrl: process.env.FACEBOOK_OAUTH_TOKEN_URL || 'https://graph.facebook.com/v12.0/oauth/access_token',
-        profileUrl:
-          process.env.FACEBOOK_OAUTH_PROFILE_URL ||
-          'https://graph.facebook.com/me?fields=id,name,email',
+        profileUrl: process.env.FACEBOOK_OAUTH_PROFILE_URL || 'https://graph.facebook.com/me?fields=id,name,email',
         clientId,
         clientSecret,
         scope: 'email',

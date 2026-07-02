@@ -1,6 +1,7 @@
 # Auth Execution Plan
 
 YAML metadata:
+
 - id: AUTH-EXECUTION-PLAN
 - status: validated-source
 - owner: owner-selected-profile-single-source-audit
@@ -97,6 +98,7 @@ Sensitive-data handling: synthetic browser accounts only; no token/password valu
 Contract impact: no API, JWT, RBAC, OAuth, magic-link, CORS, internal-service, database schema, or consumer-service contract change. Hosted UI behavior is hardened so the form is disabled/fail-closed until `return_url` validation succeeds and native submit cannot leak credential fields or lose `state`.
 
 Allowed files:
+
 - `web/public/index.html`
 - `src/auth/hosted-auth-web.spec.ts`
 - `docs/orchestrator/CONTEXT_PACKAGE.md`
@@ -105,10 +107,81 @@ Allowed files:
 - `docs/IMPLEMENTATION_STATE.md`
 
 Validation plan:
+
 - `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts`
 - `node --check web/server.js`
 - `node --check web/public/js/admin.js`
 - `git diff --check`
+
+## Current Execution Addendum - 2026-07-02 Auth Customer Data Wallet A1 Source Implementation
+
+Selected goal and chunk: Goal 10.1-10.5 - implement Auth storage model,
+delivery address book API, invoice profile API, checkout aggregate, contract
+docs, and regression coverage.
+
+Pre-coding gate decision: pass. DocsRAG was queried from the running Auth pod
+and returned broad ecosystem ownership context with no existing address-book or
+invoice-profile contract. Subagent evidence and source inspection resolved the
+production schema path: live `DB_SYNC=false`, no migration runner, and existing
+precedent is source-only idempotent SQL. Runtime SQL apply remains blocked until
+owner approval.
+
+Sensitive-data handling: synthetic tests and source/docs only. No production
+user rows, customer addresses, invoice data, decoded JWTs, secrets, token
+values, passwords, or raw customer logs are read or recorded.
+
+Contract impact: additive Auth endpoints under `/auth/profile/...`; no JWT
+shape, RBAC, OAuth, magic-link, CORS, internal-service, token, credential, or
+consumer-service contract changes.
+
+Allowed files:
+
+- `scripts/create-customer-data-wallet-tables.sql`
+- `src/users/entities/user-delivery-address.entity.ts`
+- `src/users/entities/user-invoice-profile.entity.ts`
+- `src/auth/dto/delivery-address.dto.ts`
+- `src/auth/dto/invoice-profile.dto.ts`
+- `src/users/users.module.ts`
+- `src/users/users.service.ts`
+- `shared/database/database.module.ts`
+- `src/auth/auth.controller.ts`
+- `src/auth/auth.service.ts`
+- `src/auth/auth-contract.spec.ts`
+- `src/info/info.controller.ts`
+- `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
+- `docs/UNIFIED_AUTH_CONTRACT.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/orchestrator/CONTEXT_PACKAGE.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/IMPLEMENTATION_STATE.md`
+
+Parallel execution:
+
+- Auth A1 source implementation: active in original thread, write scope Auth
+  source/docs/tests only.
+- Auth schema/deploy-path explorer: complete, read-only.
+- Consumer readiness monitor: complete, read-only.
+- FlipFlop implementation: dependency-gated until Auth source validates and
+  deployment gate is approved.
+- Orders implementation: blocked by unrelated dirty worktree/event-contract
+  changes plus Auth/FlipFlop dependency.
+
+Validation plan:
+
+- `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts`
+- `npm run test:auth-contract`
+- `npm run build`
+- `npm run lint`
+- `git diff --check`
+- documentation missing-marker scan, allowing documented blockers only
+- documentation/source secret-pattern scan
+
+Deployment plan:
+
+- Do not deploy in this source implementation pass.
+- Do not apply `scripts/create-customer-data-wallet-tables.sql` without owner
+  approval for live DB migration apply and schema-only verification.
 - `npm run build`
 - `npm run lint`
 - deploy with `./scripts/deploy.sh` after source validation

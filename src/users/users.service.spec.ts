@@ -17,9 +17,10 @@ describe('UsersService admin list query filters', () => {
     const repository = {
       createQueryBuilder: jest.fn().mockReturnValue(query),
     };
+    const walletRepository = {};
 
     return {
-      service: new UsersService(repository as any),
+      service: new UsersService(repository as any, walletRepository as any, walletRepository as any),
       query,
       whereClauses,
     };
@@ -38,7 +39,10 @@ describe('UsersService admin list query filters', () => {
   it('quotes the reserved user alias in app-admin filter subqueries', async () => {
     const { service, whereClauses } = makeService();
 
-    await service.findAdminListPage(100, 0, { applicationId: 'app-1', adminOnly: true });
+    await service.findAdminListPage(100, 0, {
+      applicationId: 'app-1',
+      adminOnly: true,
+    });
 
     const adminClause = whereClauses.find((clause) => clause.includes('INNER JOIN roles role'));
     expect(adminClause).toContain('ur."userId" = "user"."id"');

@@ -468,18 +468,18 @@ Plan:
 
 ## Parallel Execution Plan
 
-| Workstream | Status | Owner role | Scope | Dependencies | Validation owner | Merge order |
-| --- | --- | --- | --- | --- | --- | --- |
-| A0 Auth planning docs | active | Coordinator | Auth docs only | None | Coordinator | 1 |
-| A1 Auth data wallet backend | ready after A0 | Auth backend worker | Auth endpoints, DTOs, entities, docs, tests | Confirm schema path | Auth coordinator | 2 |
-| A2 Auth hosted/profile UI | dependency-gated | Auth frontend worker | Auth-hosted account/profile management UI | A1 API | Auth coordinator | 3 |
-| F1 FlipFlop shared Auth client and user-service bridge | dependency-gated | FlipFlop backend worker | Auth client, `/users/*` bridge | A1 API | FlipFlop integration owner | 4 |
-| F2 FlipFlop checkout/profile UX | dependency-gated | FlipFlop frontend worker | Checkout selectors, profile addresses UI | F1 | FlipFlop integration owner | 5 |
-| O1 Orders contract note/additive metadata | dependency-gated | Orders worker | Create-order contract docs/DTO if needed | A1 + F1 payload | Orders owner | 6 |
-| R1 Rent-a-box hosted Auth migration plan | dependency-gated | Rent-a-box coordinator | Auth/profile migration plan | A1 contract | Rent-a-box owner | 7 |
-| CK1 Chytrakoupe checkout selector integration | dependency-gated | Chytrakoupe worker | checkout/auth client | A1 contract | Chytrakoupe owner | 8 |
-| C1 Cliplot plan | blocked | Cliplot coordinator | Docs/guarded plan only | Checkout approval | Cliplot owner | After live checkout approval |
-| M1 Marketplace order-snapshot audit | ready read-only | Explorer | Allegro/Aukro/Bazos/Heureka/Catalog surface classification | None | Coordinator | No code merge |
+| Workstream                                             | Status           | Owner role               | Scope                                                      | Dependencies        | Validation owner           | Merge order                  |
+| ------------------------------------------------------ | ---------------- | ------------------------ | ---------------------------------------------------------- | ------------------- | -------------------------- | ---------------------------- |
+| A0 Auth planning docs                                  | active           | Coordinator              | Auth docs only                                             | None                | Coordinator                | 1                            |
+| A1 Auth data wallet backend                            | ready after A0   | Auth backend worker      | Auth endpoints, DTOs, entities, docs, tests                | Confirm schema path | Auth coordinator           | 2                            |
+| A2 Auth hosted/profile UI                              | dependency-gated | Auth frontend worker     | Auth-hosted account/profile management UI                  | A1 API              | Auth coordinator           | 3                            |
+| F1 FlipFlop shared Auth client and user-service bridge | dependency-gated | FlipFlop backend worker  | Auth client, `/users/*` bridge                             | A1 API              | FlipFlop integration owner | 4                            |
+| F2 FlipFlop checkout/profile UX                        | dependency-gated | FlipFlop frontend worker | Checkout selectors, profile addresses UI                   | F1                  | FlipFlop integration owner | 5                            |
+| O1 Orders contract note/additive metadata              | dependency-gated | Orders worker            | Create-order contract docs/DTO if needed                   | A1 + F1 payload     | Orders owner               | 6                            |
+| R1 Rent-a-box hosted Auth migration plan               | dependency-gated | Rent-a-box coordinator   | Auth/profile migration plan                                | A1 contract         | Rent-a-box owner           | 7                            |
+| CK1 Chytrakoupe checkout selector integration          | dependency-gated | Chytrakoupe worker       | checkout/auth client                                       | A1 contract         | Chytrakoupe owner          | 8                            |
+| C1 Cliplot plan                                        | blocked          | Cliplot coordinator      | Docs/guarded plan only                                     | Checkout approval   | Cliplot owner              | After live checkout approval |
+| M1 Marketplace order-snapshot audit                    | ready read-only  | Explorer                 | Allegro/Aukro/Bazos/Heureka/Catalog surface classification | None                | Coordinator                | No code merge                |
 
 Shared contracts:
 
@@ -534,7 +534,8 @@ Expected output:
 
 Blockers:
 
-- `[MISSING: production-safe schema migration path]`
+- `[MISSING: owner approval for live DB migration apply]`
+- `[MISSING: owner-approved Auth deploy after source validation and SQL apply]`
 
 ### Worker F1 - FlipFlop Backend Bridge
 
@@ -698,8 +699,9 @@ Cross-repo:
 
 ## Open Blockers
 
-- `[MISSING: production-safe Auth schema migration path]`
-- `[MISSING: owner-approved deployment window for Auth API after implementation]`
+- `[MISSING: owner approval for live DB migration apply]`
+- `[MISSING: owner-approved Auth deploy after source validation and SQL apply]`
+- `[MISSING: approved schema-only DB verification command/session]`
 - `[MISSING: owner-approved synthetic account for live cross-repo smoke]`
 - `[MISSING: customer invoice profile/selection contract for company ID, tax ID, VAT ID, and invoice email fields]`
 - `[UNKNOWN: final consumer repo set beyond FlipFlop and Cliplot checkout surfaces]`

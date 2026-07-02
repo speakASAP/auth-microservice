@@ -99,15 +99,18 @@ Do not read, print, or record:
 Target task: owner-reported Catalog hosted Auth loop/blank-submit behavior on `https://auth.alfares.cz/login?return_url=https%3A%2F%2Fcatalog.alfares.cz%2Fauth%2Fcallback&client_id=catalog-microservice&state=...`.
 
 Evidence gathered:
+
 - Clean headless Chrome CDP run from `https://catalog.alfares.cz/login` successfully completed hosted register and hosted login to `https://catalog.alfares.cz/dashboard`; `auth_token` was present and `/api/auth/profile` returned HTTP 200.
 - Internal Catalog pod probe confirmed `/api/auth/register` returns `accessToken` and `/api/auth/profile` returns HTTP 200 with nested `user`.
 - A premature/native form-submit race reproduced a fail-open fallback: before hosted UI JS was ready, the browser performed a default GET form submit, dropped `return_url/state`, and returned to `/login` with `Redirect target: (required by application)`.
 
 Included source for this task:
+
 - `web/public/index.html`
 - `src/auth/hosted-auth-web.spec.ts`
 
 Excluded data:
+
 - No production user rows, decoded JWTs, refresh tokens, OAuth tokens, reset tokens, magic-link tokens, secrets, or passwords are recorded. Browser evidence records token presence only, never token values.
 
 Boundary: Auth hosted login/register UI remains Auth-owned. No Catalog, warehouse, orders, payment, leads, notifications, logging, gateway, database schema, JWT payload, RBAC, OAuth, magic-link, CORS, or internal-service ownership changes.
@@ -149,3 +152,48 @@ Boundary:
 - Payments owns provider/payment state.
 - Consumer storefronts own UX and guest checkout orchestration, not reusable profile truth.
 - Catalog, Warehouse, Leads, Marketing, Notifications, Logging, database infrastructure, and gateways remain out of Auth ownership.
+
+## Current Task Addendum - 2026-07-02 Auth Customer Data Wallet A1 Source Implementation
+
+Target task: implement the Auth-owned delivery address book, invoice profile
+storage model, authenticated CRUD/default-selection endpoints, and checkout
+aggregate read after resolving the production schema path as source-only
+idempotent SQL for `DB_SYNC=false`.
+
+Included source:
+
+- `scripts/create-customer-data-wallet-tables.sql`
+- `src/users/entities/user-delivery-address.entity.ts`
+- `src/users/entities/user-invoice-profile.entity.ts`
+- `src/auth/dto/delivery-address.dto.ts`
+- `src/auth/dto/invoice-profile.dto.ts`
+- `src/users/users.module.ts`
+- `src/users/users.service.ts`
+- `shared/database/database.module.ts`
+- `src/auth/auth.controller.ts`
+- `src/auth/auth.service.ts`
+- `src/auth/auth-contract.spec.ts`
+- `src/info/info.controller.ts`
+
+Included subagent evidence:
+
+- Auth schema/deploy-path explorer confirmed `DB_SYNC=false`, no formal
+  TypeORM migration runner, deploy script does not run migrations, and the
+  existing safe precedent is idempotent checked-in SQL.
+- Consumer readiness monitor confirmed FlipFlop is the first clean
+  dependency-gated consumer candidate; Orders is blocked by unrelated dirty
+  event/order changes; other consumer lanes remain dependency-gated.
+
+Excluded data:
+
+- No live SQL was applied.
+- No production user rows, customer addresses, invoices, decoded JWTs, secrets,
+  token values, passwords, or raw logs with customer data were read or recorded.
+
+Boundary:
+
+- Auth owns reusable registered-user profile, delivery address book, and invoice
+  profile data.
+- Orders and consumer services keep only order-specific snapshots and UX/guest
+  checkout orchestration.
+- Live DB migration apply and deployment require separate owner approval.

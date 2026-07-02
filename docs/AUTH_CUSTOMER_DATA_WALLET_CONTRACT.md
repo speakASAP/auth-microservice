@@ -1,6 +1,6 @@
 # Auth Customer Data Wallet Contract
 
-Status: planned
+Status: source-implemented; live SQL apply and deployment approval-gated
 Owner: auth-microservice
 Created: 2026-07-02
 
@@ -25,6 +25,13 @@ Implemented now:
   authenticated subject.
 - `PATCH /auth/profile` updates Auth-owned profile fields and one
   `canonicalProfile.address` document under `users.perApplicationPreferences`.
+- Source now defines Auth-owned `user_delivery_addresses` and
+  `user_invoice_profiles` tables through idempotent SQL for deployments where
+  `DB_SYNC=false`.
+- Source now exposes authenticated CRUD/default-selection endpoints for
+  delivery address books and invoice profiles under `/auth/profile/...`.
+- Source now exposes `GET /auth/profile/checkout-data` for checkout prefill and
+  selector hydration.
 - FlipFlop already reads and updates Auth profile data through its shared Auth
   client and mirrors one default address into its local `delivery_addresses`
   table as a compatibility snapshot.
@@ -33,12 +40,11 @@ Implemented now:
   history and legal/fulfillment evidence, but not as editable user profile
   truth.
 
-Not implemented yet:
+Not implemented or deployed yet:
 
-- Auth does not expose a first-class multi-address delivery address book.
-- Auth does not expose invoice/billing profile CRUD.
-- Auth does not expose default delivery and default invoice profile selection.
-- Auth does not expose stable address/profile IDs for checkout selectors.
+- The live Auth database has not yet had
+  `scripts/create-customer-data-wallet-tables.sql` applied.
+- The new source has not yet been deployed to production.
 - Consumer checkout forms still enter billing/delivery data inline, even when a
   user is authenticated.
 - Cross-repository checkout contracts do not yet require Auth address/profile
@@ -50,15 +56,15 @@ Not implemented yet:
 
 ## Data Ownership
 
-| Data | Owner | Notes |
-| --- | --- | --- |
-| Registered user identity | Auth | `email`, `firstName`, `lastName`, `phone`, contact info, verification state. |
-| Editable registered-user profile | Auth | `/auth/profile` and future profile UI/API. |
-| Delivery address book | Auth | Multiple named recipient/destination entries per user. |
-| Invoice/billing profile library | Auth | Multiple named personal or company billing entries per user. |
-| Order customer/address snapshot | Orders | Immutable snapshot for the specific order, copied from Auth or guest checkout payload. |
-| Guest checkout one-off data | Channel checkout/Orders | Guest data may create an order snapshot; it is not reusable Auth profile data unless the user authenticates and saves it. |
-| Products/prices/stock/payments | Catalog/Warehouse/Payments | Auth must not take over these domains. |
+| Data                             | Owner                      | Notes                                                                                                                     |
+| -------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Registered user identity         | Auth                       | `email`, `firstName`, `lastName`, `phone`, contact info, verification state.                                              |
+| Editable registered-user profile | Auth                       | `/auth/profile` and future profile UI/API.                                                                                |
+| Delivery address book            | Auth                       | Multiple named recipient/destination entries per user.                                                                    |
+| Invoice/billing profile library  | Auth                       | Multiple named personal or company billing entries per user.                                                              |
+| Order customer/address snapshot  | Orders                     | Immutable snapshot for the specific order, copied from Auth or guest checkout payload.                                    |
+| Guest checkout one-off data      | Channel checkout/Orders    | Guest data may create an order snapshot; it is not reusable Auth profile data unless the user authenticates and saves it. |
+| Products/prices/stock/payments   | Catalog/Warehouse/Payments | Auth must not take over these domains.                                                                                    |
 
 ## Target Auth API Shape
 
@@ -115,7 +121,10 @@ Minimum fields:
 
 Optional future fields:
 
-- `companyName`
+- `company`
+- `street2`
+- `region`
+- `email`
 - `deliveryInstructions`
 - `pickupPointId`
 - `sourceApplication`
@@ -147,6 +156,8 @@ Minimum fields:
 Optional future fields:
 
 - `electronicInvoiceEmail`
+- `street2`
+- `region`
 - `sourceApplication`
 - `lastUsedAt`
 
@@ -235,7 +246,9 @@ Consumer validation:
 
 ## Open Blockers
 
-- `[MISSING: Auth production-safe schema migration path for new profile tables]`
+- `[MISSING: owner approval for live DB migration apply]`
+- `[MISSING: owner-approved Auth deploy after source validation and SQL apply]`
+- `[MISSING: approved schema-only DB verification command/session]`
 - `[MISSING: approved list of first consumer repositories to mutate after Auth API deploy]`
 - `[MISSING: cross-service decision for exact billing fields Auth owns versus Orders, Payments, or accounting-owned invoice issuance]`
 - `[UNKNOWN: whether all marketplace/channel services have customer checkout surfaces or only operator publishing surfaces]`

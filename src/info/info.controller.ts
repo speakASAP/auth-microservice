@@ -29,6 +29,9 @@ export class InfoController {
         contactCodeRequest: 'POST /auth/contact-code/request',
         contactCodeVerify: 'POST /auth/contact-code/verify',
         profile: 'GET /auth/profile',
+        checkoutData: 'GET /auth/profile/checkout-data',
+        deliveryAddresses: 'GET/POST/PATCH/DELETE /auth/profile/delivery-addresses',
+        invoiceProfiles: 'GET/POST/PATCH/DELETE /auth/profile/invoice-profiles',
       },
       documentation: {
         healthCheck: 'GET /health - Check service health status',
@@ -44,6 +47,9 @@ export class InfoController {
         contactCodeRequest: 'POST /auth/contact-code/request - Request email/phone sign-in code',
         contactCodeVerify: 'POST /auth/contact-code/verify - Verify email/phone sign-in code',
         profile: 'GET /auth/profile - Get authenticated user profile',
+        checkoutData: 'GET /auth/profile/checkout-data - Get Auth-owned profile, delivery addresses, invoice profiles, and defaults for checkout forms',
+        deliveryAddresses: 'GET/POST/PATCH/DELETE /auth/profile/delivery-addresses - Manage Auth-owned delivery address book',
+        invoiceProfiles: 'GET/POST/PATCH/DELETE /auth/profile/invoice-profiles - Manage Auth-owned invoice and billing profiles',
       },
       timestamp: new Date().toISOString(),
     };
@@ -224,6 +230,33 @@ export class InfoController {
           },
         },
         {
+          method: 'GET',
+          path: '/auth/profile/checkout-data',
+          description: 'Get authenticated user profile plus Auth-owned delivery addresses, invoice profiles, and defaults',
+          authentication: 'JWT token required',
+          response: {
+            user: 'sanitized Auth user object',
+            deliveryAddresses: 'delivery address array',
+            invoiceProfiles: 'invoice profile array',
+            defaults: {
+              deliveryAddressId: 'default delivery address id or null',
+              invoiceProfileId: 'default invoice profile id or null',
+            },
+          },
+        },
+        {
+          method: 'GET|POST|PATCH|DELETE',
+          path: '/auth/profile/delivery-addresses',
+          description: 'Manage authenticated user delivery address book entries in Auth',
+          authentication: 'JWT token required',
+        },
+        {
+          method: 'GET|POST|PATCH|DELETE',
+          path: '/auth/profile/invoice-profiles',
+          description: 'Manage authenticated user invoice and billing profiles in Auth',
+          authentication: 'JWT token required',
+        },
+        {
           method: 'POST',
           path: '/auth/contact-code/verify',
           description: 'Verify a 6-digit email or phone code and return the standard JWT contract.',
@@ -257,4 +290,3 @@ export class InfoController {
     };
   }
 }
-

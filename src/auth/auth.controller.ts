@@ -2,19 +2,7 @@
  * Auth Controller
  */
 
-import {
-  Controller,
-  Post,
-  Get,
-  Patch,
-  Param,
-  Body,
-  UseGuards,
-  Request,
-  Query,
-  Res,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Controller, Delete, Post, Get, Patch, Param, Body, UseGuards, Request, Query, Res, UnauthorizedException } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -33,6 +21,8 @@ import { ContactCodeVerifyDto } from './dto/contact-code-verify.dto';
 import { InternalServiceGuard } from './guards/internal-service.guard';
 import { UpdateUserMarketingPreferencesDto } from './dto/update-user-marketing-preferences.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { CreateDeliveryAddressDto, UpdateDeliveryAddressDto } from './dto/delivery-address.dto';
+import { CreateInvoiceProfileDto, UpdateInvoiceProfileDto } from './dto/invoice-profile.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -108,6 +98,104 @@ export class AuthController {
     return { user: await this.authService.updateProfile(req.user.id, dto) };
   }
 
+  @Get('profile/checkout-data')
+  @UseGuards(JwtAuthGuard)
+  async getProfileCheckoutData(@Request() req) {
+    return await this.authService.getProfileCheckoutData(req.user.id);
+  }
+
+  @Get('profile/delivery-addresses')
+  @UseGuards(JwtAuthGuard)
+  async listDeliveryAddresses(@Request() req) {
+    return {
+      deliveryAddresses: await this.authService.listDeliveryAddresses(req.user.id),
+    };
+  }
+
+  @Post('profile/delivery-addresses')
+  @UseGuards(JwtAuthGuard)
+  async createDeliveryAddress(@Request() req, @Body() dto: CreateDeliveryAddressDto) {
+    return {
+      deliveryAddress: await this.authService.createDeliveryAddress(req.user.id, dto),
+    };
+  }
+
+  @Get('profile/delivery-addresses/:addressId')
+  @UseGuards(JwtAuthGuard)
+  async getDeliveryAddress(@Request() req, @Param('addressId') addressId: string) {
+    return {
+      deliveryAddress: await this.authService.getDeliveryAddress(req.user.id, addressId),
+    };
+  }
+
+  @Patch('profile/delivery-addresses/:addressId')
+  @UseGuards(JwtAuthGuard)
+  async updateDeliveryAddress(@Request() req, @Param('addressId') addressId: string, @Body() dto: UpdateDeliveryAddressDto) {
+    return {
+      deliveryAddress: await this.authService.updateDeliveryAddress(req.user.id, addressId, dto),
+    };
+  }
+
+  @Delete('profile/delivery-addresses/:addressId')
+  @UseGuards(JwtAuthGuard)
+  async deleteDeliveryAddress(@Request() req, @Param('addressId') addressId: string) {
+    return await this.authService.deleteDeliveryAddress(req.user.id, addressId);
+  }
+
+  @Post('profile/delivery-addresses/:addressId/default')
+  @UseGuards(JwtAuthGuard)
+  async setDefaultDeliveryAddress(@Request() req, @Param('addressId') addressId: string) {
+    return {
+      deliveryAddress: await this.authService.setDefaultDeliveryAddress(req.user.id, addressId),
+    };
+  }
+
+  @Get('profile/invoice-profiles')
+  @UseGuards(JwtAuthGuard)
+  async listInvoiceProfiles(@Request() req) {
+    return {
+      invoiceProfiles: await this.authService.listInvoiceProfiles(req.user.id),
+    };
+  }
+
+  @Post('profile/invoice-profiles')
+  @UseGuards(JwtAuthGuard)
+  async createInvoiceProfile(@Request() req, @Body() dto: CreateInvoiceProfileDto) {
+    return {
+      invoiceProfile: await this.authService.createInvoiceProfile(req.user.id, dto),
+    };
+  }
+
+  @Get('profile/invoice-profiles/:profileId')
+  @UseGuards(JwtAuthGuard)
+  async getInvoiceProfile(@Request() req, @Param('profileId') profileId: string) {
+    return {
+      invoiceProfile: await this.authService.getInvoiceProfile(req.user.id, profileId),
+    };
+  }
+
+  @Patch('profile/invoice-profiles/:profileId')
+  @UseGuards(JwtAuthGuard)
+  async updateInvoiceProfile(@Request() req, @Param('profileId') profileId: string, @Body() dto: UpdateInvoiceProfileDto) {
+    return {
+      invoiceProfile: await this.authService.updateInvoiceProfile(req.user.id, profileId, dto),
+    };
+  }
+
+  @Delete('profile/invoice-profiles/:profileId')
+  @UseGuards(JwtAuthGuard)
+  async deleteInvoiceProfile(@Request() req, @Param('profileId') profileId: string) {
+    return await this.authService.deleteInvoiceProfile(req.user.id, profileId);
+  }
+
+  @Post('profile/invoice-profiles/:profileId/default')
+  @UseGuards(JwtAuthGuard)
+  async setDefaultInvoiceProfile(@Request() req, @Param('profileId') profileId: string) {
+    return {
+      invoiceProfile: await this.authService.setDefaultInvoiceProfile(req.user.id, profileId),
+    };
+  }
+
   @Post('magic-link/request')
   async requestMagicLink(@Body() dto: MagicLinkRequestDto, @Request() req) {
     return this.authService.requestMagicLink(dto, req.ip);
@@ -129,19 +217,13 @@ export class AuthController {
   }
 
   @Get('oauth/:provider')
-  async oauthInit(
-    @Request() req,
-    @Res() res: Response,
-  ) {
+  async oauthInit(@Request() req, @Res() res: Response) {
     const url = await this.authService.oauthInit(req.params.provider, req.query, req.ip);
     res.redirect(url);
   }
 
   @Get('oauth/callback/:provider')
-  async oauthCallback(
-    @Request() req,
-    @Res() res: Response,
-  ) {
+  async oauthCallback(@Request() req, @Res() res: Response) {
     await this.authService.oauthCallback(req.params.provider, req.query, res);
   }
 
@@ -159,10 +241,7 @@ export class AuthController {
 
   @Patch('internal/users/:userId/preferences')
   @UseGuards(InternalServiceGuard)
-  async updateUserPreferences(
-    @Param('userId') userId: string,
-    @Body() dto: UpdateUserMarketingPreferencesDto,
-  ) {
+  async updateUserPreferences(@Param('userId') userId: string, @Body() dto: UpdateUserMarketingPreferencesDto) {
     return this.authService.updateUserMarketingPreferences(userId, dto);
   }
 
@@ -185,6 +264,4 @@ export class AuthController {
     const exists = await this.authService.checkEmailExists(email);
     return { exists };
   }
-
 }
-

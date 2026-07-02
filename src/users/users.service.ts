@@ -2,10 +2,12 @@
  * Users Service
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, In, Repository } from 'typeorm';
+import { Brackets, In, IsNull, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+import { UserDeliveryAddress } from './entities/user-delivery-address.entity';
+import { UserInvoiceProfile } from './entities/user-invoice-profile.entity';
 import { MagicLinkToken } from '../auth/entities/magic-link-token.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
@@ -19,10 +21,7 @@ export type AdminUserApplicationSummary = {
   roles: string[];
 };
 
-export type AdminUserListItem = Pick<
-  User,
-  'id' | 'email' | 'firstName' | 'lastName' | 'phone' | 'isActive' | 'isVerified' | 'userType' | 'createdAt' | 'updatedAt'
-> & {
+export type AdminUserListItem = Pick<User, 'id' | 'email' | 'firstName' | 'lastName' | 'phone' | 'isActive' | 'isVerified' | 'userType' | 'createdAt' | 'updatedAt'> & {
   applications?: AdminUserApplicationSummary[];
   adminApplications?: AdminUserApplicationSummary[];
 };
@@ -45,6 +44,10 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(UserDeliveryAddress)
+    private readonly deliveryAddressRepository: Repository<UserDeliveryAddress>,
+    @InjectRepository(UserInvoiceProfile)
+    private readonly invoiceProfileRepository: Repository<UserInvoiceProfile>,
   ) {}
 
   async findByEmail(email: string): Promise<User | null> {
@@ -53,10 +56,7 @@ export class UsersService {
       return null;
     }
 
-    return this.userRepository
-      .createQueryBuilder('user')
-      .where('LOWER(user.email) = :email', { email: normalizedEmail })
-      .getOne();
+    return this.userRepository.createQueryBuilder('user').where('LOWER(user.email) = :email', { email: normalizedEmail }).getOne();
   }
 
   async findByPhone(phone: string): Promise<User | null> {
@@ -128,38 +128,28 @@ export class UsersService {
     });
   }
 
-  async findAdminListPage(
-    limit: number,
-    offset: number,
-    filters: AdminUserListFilters = {},
-  ): Promise<[AdminUserListItem[], number]> {
-    const query = this.userRepository
-      .createQueryBuilder('user')
-      .select([
-        'user.id',
-        'user.email',
-        'user.firstName',
-        'user.lastName',
-        'user.phone',
-        'user.isActive',
-        'user.isVerified',
-        'user.userType',
-        'user.createdAt',
-        'user.updatedAt',
-      ])
-      .orderBy('user.createdAt', 'DESC')
-      .take(limit)
-      .skip(offset);
+  async findAdminListPage(limit: number, offset: number, filters: AdminUserListFilters = {}): Promise<[AdminUserListItem[], number]> {
+    const query = this.userRepository.createQueryBuilder('user').select(['user.id', 'user.email', 'user.firstName', 'user.lastName', 'user.phone', 'user.isActive', 'user.isVerified', 'user.userType', 'user.createdAt', 'user.updatedAt']).orderBy('user.createdAt', 'DESC').take(limit).skip(offset);
 
     const search = (filters.search || '').trim().toLowerCase();
     if (search) {
       query.andWhere(
         new Brackets((qb) => {
-          qb.where("LOWER(COALESCE(user.email, '')) LIKE :search", { search: `%${search}%` })
-            .orWhere("LOWER(COALESCE(user.firstName, '')) LIKE :search", { search: `%${search}%` })
-            .orWhere("LOWER(COALESCE(user.lastName, '')) LIKE :search", { search: `%${search}%` })
-            .orWhere("LOWER(COALESCE(user.phone, '')) LIKE :search", { search: `%${search}%` })
-            .orWhere("LOWER(COALESCE(user.userType, '')) LIKE :search", { search: `%${search}%` });
+          qb.where("LOWER(COALESCE(user.email, '')) LIKE :search", {
+            search: `%${search}%`,
+          })
+            .orWhere("LOWER(COALESCE(user.firstName, '')) LIKE :search", {
+              search: `%${search}%`,
+            })
+            .orWhere("LOWER(COALESCE(user.lastName, '')) LIKE :search", {
+              search: `%${search}%`,
+            })
+            .orWhere("LOWER(COALESCE(user.phone, '')) LIKE :search", {
+              search: `%${search}%`,
+            })
+            .orWhere("LOWER(COALESCE(user.userType, '')) LIKE :search", {
+              search: `%${search}%`,
+            });
         }),
       );
     }
@@ -228,15 +218,17 @@ export class UsersService {
     });
 
     const now = Date.now();
-    const adminsByApplication = new Map<string, Map<string, Pick<User, 'id' | 'email' | 'firstName' | 'lastName'> & { roles: string[] }>>();
+    const adminsByApplication = new Map<
+      string,
+      Map<
+        string,
+        Pick<User, 'id' | 'email' | 'firstName' | 'lastName'> & {
+          roles: string[];
+        }
+      >
+    >();
     userRoles.forEach((userRole) => {
-      if (
-        !userRole.applicationId ||
-        !userRole.user ||
-        !userRole.role ||
-        !this.isAdminRoleName(userRole.role.name) ||
-        (userRole.expiresAt && userRole.expiresAt.getTime() <= now)
-      ) {
+      if (!userRole.applicationId || !userRole.user || !userRole.role || !this.isAdminRoleName(userRole.role.name) || (userRole.expiresAt && userRole.expiresAt.getTime() <= now)) {
         return;
       }
 
@@ -264,9 +256,7 @@ export class UsersService {
 
     return applications.map((application) => ({
       application,
-      admins: Array.from(adminsByApplication.get(application.id)?.values() || []).sort((a, b) =>
-        (a.email || a.id).localeCompare(b.email || b.id),
-      ),
+      admins: Array.from(adminsByApplication.get(application.id)?.values() || []).sort((a, b) => (a.email || a.id).localeCompare(b.email || b.id)),
     }));
   }
 
@@ -311,10 +301,7 @@ export class UsersService {
     }));
   }
 
-  private addUserApplicationSummary(
-    target: Map<string, Map<string, AdminUserApplicationSummary>>,
-    userRole: UserRole,
-  ): void {
+  private addUserApplicationSummary(target: Map<string, Map<string, AdminUserApplicationSummary>>, userRole: UserRole): void {
     if (!target.has(userRole.userId)) {
       target.set(userRole.userId, new Map());
     }
@@ -337,9 +324,7 @@ export class UsersService {
     }
   }
 
-  private sortedApplicationSummaries(
-    apps?: Map<string, AdminUserApplicationSummary>,
-  ): AdminUserApplicationSummary[] {
+  private sortedApplicationSummaries(apps?: Map<string, AdminUserApplicationSummary>): AdminUserApplicationSummary[] {
     return Array.from(apps?.values() || []).sort((a, b) => a.name.localeCompare(b.name));
   }
 
@@ -353,6 +338,8 @@ export class UsersService {
       await tx.delete(MagicLinkToken, { userId: id });
       await tx.delete(PasswordResetToken, { userId: id });
       await tx.delete(UserRole, { userId: id });
+      await tx.delete(UserDeliveryAddress, { userId: id });
+      await tx.delete(UserInvoiceProfile, { userId: id });
       await tx.delete(User, id);
     });
   }
@@ -369,17 +356,7 @@ export class UsersService {
   async getMarketingPreferences(userId: string): Promise<Partial<User> | null> {
     return this.userRepository.findOne({
       where: { id: userId },
-      select: [
-        'id',
-        'preferredChannel',
-        'fallbackChannels',
-        'perApplicationPreferences',
-        'perBrandPreferences',
-        'marketingConsents',
-        'transactionalOnly',
-        'unsubscribedAt',
-        'updatedAt',
-      ],
+      select: ['id', 'preferredChannel', 'fallbackChannels', 'perApplicationPreferences', 'perBrandPreferences', 'marketingConsents', 'transactionalOnly', 'unsubscribedAt', 'updatedAt'],
     });
   }
 
@@ -408,6 +385,236 @@ export class UsersService {
     }
     await this.userRepository.update(userId, updatePayload);
     return this.findById(userId);
+  }
+
+  async listDeliveryAddresses(userId: string): Promise<UserDeliveryAddress[]> {
+    return this.deliveryAddressRepository.find({
+      where: { userId, deletedAt: IsNull() },
+      order: { isDefault: 'DESC', updatedAt: 'DESC' },
+    });
+  }
+
+  async getDeliveryAddress(userId: string, addressId: string): Promise<UserDeliveryAddress> {
+    return this.findDeliveryAddressForUser(userId, addressId);
+  }
+
+  async createDeliveryAddress(userId: string, input: Partial<UserDeliveryAddress>): Promise<UserDeliveryAddress> {
+    const existingCount = await this.deliveryAddressRepository.count({
+      where: { userId, deletedAt: IsNull() },
+    });
+    const patch = this.cleanDeliveryAddressInput(input);
+    const shouldDefault = input.isDefault === true || existingCount === 0;
+
+    if (shouldDefault) {
+      await this.clearDefaultDeliveryAddress(userId);
+    }
+
+    const address = this.deliveryAddressRepository.create({
+      ...patch,
+      userId,
+      isDefault: shouldDefault,
+    });
+
+    return this.deliveryAddressRepository.save(address);
+  }
+
+  async updateDeliveryAddress(userId: string, addressId: string, input: Partial<UserDeliveryAddress>): Promise<UserDeliveryAddress> {
+    const address = await this.findDeliveryAddressForUser(userId, addressId);
+    const patch = this.cleanDeliveryAddressInput(input);
+
+    if (input.isDefault === true) {
+      await this.clearDefaultDeliveryAddress(userId);
+      patch.isDefault = true;
+    } else if (input.isDefault === false) {
+      patch.isDefault = false;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return address;
+    }
+
+    await this.deliveryAddressRepository.update(address.id, patch);
+    return this.findDeliveryAddressForUser(userId, address.id);
+  }
+
+  async deleteDeliveryAddress(userId: string, addressId: string): Promise<void> {
+    const address = await this.findDeliveryAddressForUser(userId, addressId);
+    await this.deliveryAddressRepository.update(address.id, {
+      isDefault: false,
+      deletedAt: new Date(),
+    });
+  }
+
+  async setDefaultDeliveryAddress(userId: string, addressId: string): Promise<UserDeliveryAddress> {
+    const address = await this.findDeliveryAddressForUser(userId, addressId);
+    await this.clearDefaultDeliveryAddress(userId);
+    await this.deliveryAddressRepository.update(address.id, {
+      isDefault: true,
+    });
+    return this.findDeliveryAddressForUser(userId, address.id);
+  }
+
+  async listInvoiceProfiles(userId: string): Promise<UserInvoiceProfile[]> {
+    return this.invoiceProfileRepository.find({
+      where: { userId, deletedAt: IsNull() },
+      order: { isDefault: 'DESC', updatedAt: 'DESC' },
+    });
+  }
+
+  async getInvoiceProfile(userId: string, profileId: string): Promise<UserInvoiceProfile> {
+    return this.findInvoiceProfileForUser(userId, profileId);
+  }
+
+  async createInvoiceProfile(userId: string, input: Partial<UserInvoiceProfile>): Promise<UserInvoiceProfile> {
+    const existingCount = await this.invoiceProfileRepository.count({
+      where: { userId, deletedAt: IsNull() },
+    });
+    const patch = this.cleanInvoiceProfileInput(input);
+    const shouldDefault = input.isDefault === true || existingCount === 0;
+
+    if (shouldDefault) {
+      await this.clearDefaultInvoiceProfile(userId);
+    }
+
+    const profile = this.invoiceProfileRepository.create({
+      ...patch,
+      userId,
+      type: patch.type || 'person',
+      isDefault: shouldDefault,
+    });
+
+    return this.invoiceProfileRepository.save(profile);
+  }
+
+  async updateInvoiceProfile(userId: string, profileId: string, input: Partial<UserInvoiceProfile>): Promise<UserInvoiceProfile> {
+    const profile = await this.findInvoiceProfileForUser(userId, profileId);
+    const patch = this.cleanInvoiceProfileInput(input);
+
+    if (input.isDefault === true) {
+      await this.clearDefaultInvoiceProfile(userId);
+      patch.isDefault = true;
+    } else if (input.isDefault === false) {
+      patch.isDefault = false;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return profile;
+    }
+
+    await this.invoiceProfileRepository.update(profile.id, patch);
+    return this.findInvoiceProfileForUser(userId, profile.id);
+  }
+
+  async deleteInvoiceProfile(userId: string, profileId: string): Promise<void> {
+    const profile = await this.findInvoiceProfileForUser(userId, profileId);
+    await this.invoiceProfileRepository.update(profile.id, {
+      isDefault: false,
+      deletedAt: new Date(),
+    });
+  }
+
+  async setDefaultInvoiceProfile(userId: string, profileId: string): Promise<UserInvoiceProfile> {
+    const profile = await this.findInvoiceProfileForUser(userId, profileId);
+    await this.clearDefaultInvoiceProfile(userId);
+    await this.invoiceProfileRepository.update(profile.id, { isDefault: true });
+    return this.findInvoiceProfileForUser(userId, profile.id);
+  }
+
+  private async findDeliveryAddressForUser(userId: string, addressId: string): Promise<UserDeliveryAddress> {
+    const address = await this.deliveryAddressRepository.findOne({
+      where: { id: addressId, userId, deletedAt: IsNull() },
+    });
+
+    if (!address) {
+      throw new NotFoundException('Delivery address not found');
+    }
+
+    return address;
+  }
+
+  private async findInvoiceProfileForUser(userId: string, profileId: string): Promise<UserInvoiceProfile> {
+    const profile = await this.invoiceProfileRepository.findOne({
+      where: { id: profileId, userId, deletedAt: IsNull() },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Invoice profile not found');
+    }
+
+    return profile;
+  }
+
+  private async clearDefaultDeliveryAddress(userId: string): Promise<void> {
+    await this.deliveryAddressRepository.update({ userId, deletedAt: IsNull(), isDefault: true }, { isDefault: false });
+  }
+
+  private async clearDefaultInvoiceProfile(userId: string): Promise<void> {
+    await this.invoiceProfileRepository.update({ userId, deletedAt: IsNull(), isDefault: true }, { isDefault: false });
+  }
+
+  private cleanDeliveryAddressInput(input: Partial<UserDeliveryAddress>): Partial<UserDeliveryAddress> {
+    const patch: Partial<UserDeliveryAddress> = {};
+    this.assignCleanString(patch, 'label', input.label);
+    this.assignCleanString(patch, 'firstName', input.firstName);
+    this.assignCleanString(patch, 'lastName', input.lastName);
+    this.assignCleanString(patch, 'company', input.company);
+    this.assignCleanString(patch, 'street', input.street);
+    this.assignCleanString(patch, 'street2', input.street2);
+    this.assignCleanString(patch, 'city', input.city);
+    this.assignCleanString(patch, 'region', input.region);
+    this.assignCleanString(patch, 'postalCode', input.postalCode);
+    this.assignCleanString(patch, 'country', input.country);
+    this.assignCleanString(patch, 'phone', input.phone, true);
+    this.assignCleanString(patch, 'email', input.email, false, true);
+    this.assignCleanString(patch, 'deliveryInstructions', input.deliveryInstructions);
+    this.assignCleanString(patch, 'sourceApplication', input.sourceApplication);
+    return patch;
+  }
+
+  private cleanInvoiceProfileInput(input: Partial<UserInvoiceProfile>): Partial<UserInvoiceProfile> {
+    const patch: Partial<UserInvoiceProfile> = {};
+    this.assignCleanString(patch, 'label', input.label);
+    if (input.type === 'person' || input.type === 'company') {
+      patch.type = input.type;
+    }
+    this.assignCleanString(patch, 'firstName', input.firstName);
+    this.assignCleanString(patch, 'lastName', input.lastName);
+    this.assignCleanString(patch, 'companyName', input.companyName);
+    this.assignCleanString(patch, 'companyId', input.companyId);
+    this.assignCleanString(patch, 'taxId', input.taxId);
+    this.assignCleanString(patch, 'vatId', input.vatId);
+    this.assignCleanString(patch, 'street', input.street);
+    this.assignCleanString(patch, 'street2', input.street2);
+    this.assignCleanString(patch, 'city', input.city);
+    this.assignCleanString(patch, 'region', input.region);
+    this.assignCleanString(patch, 'postalCode', input.postalCode);
+    this.assignCleanString(patch, 'country', input.country);
+    this.assignCleanString(patch, 'phone', input.phone, true);
+    this.assignCleanString(patch, 'email', input.email, false, true);
+    this.assignCleanString(patch, 'sourceApplication', input.sourceApplication);
+    return patch;
+  }
+
+  private assignCleanString<T extends object>(patch: T, key: keyof T, value: unknown, normalizePhone = false, lowerCase = false): void {
+    const cleaned = this.cleanNullableString(value);
+    if (cleaned === undefined) {
+      return;
+    }
+
+    const nextValue = cleaned && normalizePhone ? this.normalizePhone(cleaned) || null : cleaned && lowerCase ? cleaned.toLowerCase() : cleaned;
+    patch[key] = nextValue as T[keyof T];
+  }
+
+  private cleanNullableString(value: unknown): string | null | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+    if (value === null) {
+      return null;
+    }
+
+    const cleaned = String(value).trim();
+    return cleaned.length ? cleaned : null;
   }
 
   private normalizeEmail(email: string): string {

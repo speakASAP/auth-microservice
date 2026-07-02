@@ -5,6 +5,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../../src/users/entities/user.entity';
+import { UserDeliveryAddress } from '../../src/users/entities/user-delivery-address.entity';
+import { UserInvoiceProfile } from '../../src/users/entities/user-invoice-profile.entity';
 import { PasswordResetToken } from '../../src/auth/entities/password-reset-token.entity';
 import { MagicLinkToken } from '../../src/auth/entities/magic-link-token.entity';
 import { Application } from '../../src/applications/entities/application.entity';
@@ -21,7 +23,7 @@ import { LegacyIdentityMapping } from '../../src/users/entities/legacy-identity-
       username: process.env.DB_USER || 'dbadmin',
       password: typeof process.env.DB_PASSWORD === 'string' ? process.env.DB_PASSWORD : '',
       database: process.env.DB_NAME || 'auth',
-      entities: [User, PasswordResetToken, MagicLinkToken, Application, Role, UserRole, LegacyIdentityMapping],
+      entities: [User, UserDeliveryAddress, UserInvoiceProfile, PasswordResetToken, MagicLinkToken, Application, Role, UserRole, LegacyIdentityMapping],
       synchronize: process.env.DB_SYNC === 'true',
       logging: process.env.NODE_ENV === 'development',
     }),
