@@ -26,6 +26,13 @@ after the owner approves schema-only DB preflight, SQL apply, and Auth deploy.
 - Auth `b6c1585` has not been deployed in this runbook.
 - FlipFlop and other consumer runtime work remains dependency-gated until Auth
   SQL and deploy are live.
+- Runtime gate blocker observed after pre-approval fixes: Auth backend was
+  `0/1` on old image `0d4282b-20260702102426`, public health returned HTTP
+  503, and an Auth-only pod recreation still left the backend pod stuck before
+  init containers due cluster-wide `FailedCreatePodSandBox` / stale sandbox
+  reservation failures. Treat this as an operational gate: do not run SQL or
+  deploy until Auth backend health is restored or an owner-approved node/runtime
+  recovery window is completed.
 
 ## Required Owner Approvals
 

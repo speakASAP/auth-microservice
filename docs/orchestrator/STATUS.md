@@ -1,3 +1,43 @@
+## 2026-07-02 - Goal 10 Auth Customer Data Wallet Runtime Gate Blocker
+
+Current focus:
+
+- Preserve the owner-approved live gate ordering: runtime health first, then
+  owner-approved schema-only DB preflight, live SQL apply, and Auth deploy.
+
+Runtime evidence:
+
+- `auth-microservice` remained `0/1` on old deployed image
+  `localhost:5000/auth-microservice:0d4282b-20260702102426`; Goal 10 code was
+  not deployed.
+- `auth-microservice-web` was `1/1 Running`, while public
+  `https://auth.alfares.cz/health` returned HTTP 503 because the backend pod was
+  unavailable.
+- A narrow Auth-only recovery deleted only the stuck backend pod
+  `auth-microservice-69cbc75f5b-xm9mb`; the Deployment created
+  `auth-microservice-69cbc75f5b-x9vwc`, which remained `Init:0/2` with no pod IP
+  after the polling window.
+- Kubernetes events showed repeated `FailedCreatePodSandBox` for Auth and many
+  unrelated services, including `DeadlineExceeded` and reserved sandbox-name
+  failures. Node `alfares` was `Ready` with no memory, disk, or PID pressure,
+  and `kube-system` pods were running.
+- Namespace status still showed broad container lifecycle backlog, including 24
+  pods in `ContainerCreating` plus additional init states, so the gate is a
+  cluster/container-runtime issue rather than a Goal 10 source regression.
+
+Boundary:
+
+- No live SQL apply, deployment, production DB row read, raw customer data read,
+  secret/token/password/JWT value inspection, DB mutation, source code change,
+  manifest change, or deployed image change was performed.
+
+Next unfinished chunk:
+
+- Restore or operator-confirm Auth backend runtime health. If the container
+  runtime continues to hold stale sandbox reservations, the next recovery step
+  needs owner-approved node/runtime action before the Auth Customer Data Wallet
+  SQL/deploy approval request can proceed.
+
 ## 2026-07-02 - Goal 10 Auth Customer Data Wallet A1 Source Implementation
 
 Current focus:
