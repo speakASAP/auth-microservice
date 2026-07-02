@@ -1,3 +1,56 @@
+## 2026-07-03 - Goal 10.29 Consumer Gate Narrowing
+
+Current focus:
+
+- Narrow remaining consumer gates with read-only evidence from Auth live
+  redirect/CORS config, Rent-a-box source, ChytraKoupe source, flipflop-service
+  adapter source, and Cliplot readiness source.
+
+Evidence:
+
+- Auth live ConfigMap evidence, without reading secrets, showed
+  `AUTH_ALLOWED_REDIRECT_ORIGINS=*.alfares.cz,https://strilkove.cz,https://www.strilkove.cz`
+  and `CORS_ORIGIN=*.alfares.cz`.
+- Safe `GET /auth/validate-return-url` returned HTTP 200 for
+  `https://rent-a-box.alfares.cz/auth/callback` and
+  `https://chytrakoupe.alfares.cz/auth/callback`.
+- Rent-a-box committed `9e6cf38 docs: narrow goal 12 auth callback gate`.
+  Remaining gates: source-backed hosted Auth callback route, concrete
+  `client_id`/`return_url`, admin role mapping, consent/profile migration
+  mapping, migration/backfill, and row-count complexity.
+- ChytraKoupe committed `002818f docs: narrow auth wallet checkout gates`.
+  Remaining gates: Auth client-id and authenticated Auth subject linkage if
+  central Orders must persist `customer.authSubject`.
+- Cliplot committed `8dbd1e2 docs: record auth wallet checkout source facts`.
+  Remaining gates: selector behavior, authenticated browser/session,
+  no-PII exposure, and response-contract approvals.
+
+Validation:
+
+- Rent-a-box: Goal 12 verifier returned `pass_dependency_gated`;
+  `./scripts/intent_preflight.sh`, `git diff --check`, targeted literal-secret
+  scan, and stale broad callback/allowlist blocker scan passed.
+- ChytraKoupe: `npm run verify:auth-wallet-checkout-selectors`, `node --check
+  scripts/verify-auth-wallet-checkout-selectors.mjs`, `git diff --check`,
+  targeted dangerous literal-secret scan, and stale allowlist/guest-adapter
+  blocker scan passed.
+- Cliplot: `npm run readiness:auth-wallet-checkout`, `node --check
+  scripts/auth-wallet-checkout-readiness.js`, `npm run check`, `git diff
+  --check`, and targeted literal-secret scan passed.
+
+Boundary:
+
+- No deploy, live DB query, secret/token/JWT inspection, live
+  checkout/order/payment mutation, Warehouse reservation, notification send,
+  Auth runtime change, or production customer-data inspection was performed.
+
+Next unfinished chunk:
+
+- Decide or implement Rent-a-box callback/client/admin/consent migration,
+  ChytraKoupe client-id/Auth-subject linkage, Cliplot selector/session/PII
+  response approvals, or owner-approved synthetic authenticated Auth/FlipFlop
+  smoke.
+
 ## 2026-07-02 - Goal 10.28 Consumer Contract Blocker Refinement
 
 Current focus:

@@ -279,8 +279,8 @@ Consumer validation:
 
 - `[MISSING: owner-approved synthetic account/token for authenticated Auth wallet CRUD/default/delete smoke]`
 - `[MISSING: owner-approved synthetic account/token for FlipFlop authenticated checkout/profile runtime smoke]`
-- `[MISSING: Rent-a-box callback URL and Auth redirect/CORS allowlist verification, admin role mapping, consent/profile migration mapping, and migration/backfill decisions before product-code migration]`
-- `[MISSING: ChytraKoupe Auth client-id, CORS/redirect allowlist, and /api/orders/guest wallet-snapshot mapping decisions before selector implementation]`
+- `[MISSING: source-backed Rent-a-box hosted Auth callback route, concrete client_id/return_url, admin role mapping, consent/profile migration mapping, and migration/backfill decisions before product-code migration]`
+- `[MISSING: ChytraKoupe Auth client-id decision and authenticated Auth subject linkage decision if central Orders must persist customer.authSubject before selector implementation]`
 - `[MISSING: Cliplot selector behavior, authenticated browser/session, no-PII exposure, and response-contract approvals before wallet selector integration]`
 - `[UNKNOWN: whether all marketplace/channel services have customer checkout surfaces or only operator publishing surfaces]`
 - `[UNKNOWN: whether live users already have legacy perApplicationPreferences.canonicalProfile.address data requiring migration or backfill]`
@@ -292,14 +292,20 @@ Resolved for current Goal 10 scope:
 - First consumer lanes are known: FlipFlop source-prepared, Orders immutable
   snapshot support source-prepared, and Rent-a-box/ChytraKoupe/Cliplot
   dependency-gated readiness lanes refreshed against Auth 401 evidence.
-- Rent-a-box commit `691a31d` records generic hosted Auth handoff,
-  `POST /auth/validate`, and Auth wallet API shape as resolved upstream
-  contracts while preserving the Rent-specific callback/allowlist, admin role,
-  consent/profile migration, and backfill gates.
-- ChytraKoupe commit `6f9610f` records Orders immutable snapshot handling,
-  Auth v1 invoice field names, and fragment-only Auth handoff direction as
-  source-resolved planning inputs while preserving client-id, redirect/CORS,
-  and `/api/orders/guest` wallet-snapshot mapping gates.
+- Rent-a-box commit `9e6cf38` records generic hosted Auth handoff,
+  `POST /auth/validate`, Auth wallet API shape, and Auth-side wildcard
+  redirect/CORS acceptance for `https://rent-a-box.alfares.cz/auth/callback`
+  as resolved upstream evidence while preserving source callback route,
+  `client_id`/`return_url`, admin role, consent/profile migration, and backfill
+  gates.
+- ChytraKoupe commit `002818f` records Orders immutable snapshot handling,
+  Auth v1 invoice field names, fragment-only Auth handoff direction, Auth-side
+  wildcard redirect/CORS evidence, and `flipflop-service` `/api/orders/guest`
+  snapshot mapping as source-resolved planning inputs while preserving
+  client-id and optional `customer.authSubject` linkage gates.
+- Cliplot commit `8dbd1e2` records source-known checkout facts while
+  preserving selector behavior, authenticated session, no-PII exposure, and
+  response-contract gates.
 - Auth invoice profile v1 field ownership is defined: Auth owns reusable
   `companyId`, `taxId`, `vatId`, and invoice-recipient `email`; Orders stores
   immutable snapshots only, and Payments/accounting issuance remains outside

@@ -72,6 +72,7 @@ Auth customer data wallet:
 - [x] 10.26 Post-live planning docs refreshed after completion audit.
 - [x] 10.27 Dependency-gated consumer readiness lanes refreshed against Auth wallet 401 evidence.
 - [x] 10.28 Consumer contract blockers refined after read-only subagent audits.
+- [x] 10.29 Consumer gates narrowed after live Auth allowlist and adapter audits.
 
 ## Acceptance Criteria
 
@@ -110,9 +111,9 @@ marketplace operations.
 | F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | Auth deployed; authenticated runtime smoke gated | 4           |
 | F2 FlipFlop checkout/profile UX    | source-prepared    | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deployed; synthetic checkout/profile smoke gated | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
-| R1 Rent-a-box Auth migration plan  | contract-blocker-refined | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | callback/allowlist verification, admin role mapping, consent/profile migration mapping, migration approval | 7 |
-| CK1 ChytraKoupe checkout selectors | contract-blocker-refined | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | client-id/allowlist and `/api/orders/guest` wallet-snapshot mapping | 8 |
-| C1 Cliplot plan                    | post-live-gate-refreshed | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js` | selector/session/PII/response-contract approvals | later |
+| R1 Rent-a-box Auth migration plan  | gate-narrowed | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | source callback route, client_id/return_url, admin role mapping, consent/profile migration mapping, migration approval | 7 |
+| CK1 ChytraKoupe checkout selectors | gate-narrowed | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | client-id and optional Auth subject linkage | 8 |
+| C1 Cliplot plan                    | source-facts-recorded | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js` | selector/session/PII/response-contract approvals | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
 ## Validation
@@ -147,8 +148,8 @@ that repo's status/validation report.
 - `[MISSING: owner-approved synthetic account for live cross-repo checkout smoke]`
 - `[MISSING: post-deploy consumer runtime smoke confirming Auth invoice profile selection reaches immutable order billing snapshots]`
 - `[MISSING: authenticated synthetic FlipFlop checkout/profile runtime smoke, including manual-edit-before-wallet-response, explicit selector override, explicit checkout wallet save-back, and profile invoice CRUD/default selection]`
-- `[MISSING: Rent-a-box callback/allowlist verification, admin role mapping, consent/profile migration mapping, and migration/backfill decision before code changes]`
-- `[MISSING: ChytraKoupe hosted Auth client_id, redirect/CORS allowlist, and /api/orders/guest wallet-snapshot mapping decision before selector implementation]`
+- `[MISSING: source-backed Rent-a-box hosted Auth callback route, concrete client_id/return_url, admin role mapping, consent/profile migration mapping, and migration/backfill decision before code changes]`
+- `[MISSING: ChytraKoupe hosted Auth client_id and authenticated Auth subject linkage decision before selector implementation]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
 
@@ -194,16 +195,16 @@ that repo's status/validation report.
   with consumer source.
 - Rent-a-box commit `691a31d docs: refine goal 12 auth wallet blockers`
   records generic hosted Auth handoff, default `POST /auth/validate`, and Auth
-  wallet read/write API shape as resolved upstream contracts. Remaining gates:
-  Rent-a-box callback URL and Auth redirect/CORS allowlist verification, admin
-  role mapping, consent/profile migration mapping for
+  wallet read/write API shape as resolved upstream contracts. Then-open gates:
+  Rent-a-box callback and allowlist verification, admin role mapping,
+  consent/profile migration mapping for
   `customer_profiles.gdpr_consent_at`, owner-approved migration/backfill, and
   production row-count complexity.
 - ChytraKoupe commit `6f9610f docs: refine auth wallet checkout blockers`
   records Orders immutable authenticated/guest snapshots, Auth v1 invoice field
   names, and fragment-only Auth handoff direction as source-resolved planning
-  inputs. Remaining gates: Auth client-id decision, redirect/CORS allowlist,
-  and ChytraKoupe `/api/orders/guest` wallet-snapshot mapping.
+  inputs. Then-open gates: Auth client-id decision, redirect/CORS allowlist,
+  and ChytraKoupe guest wallet-snapshot mapping.
 - Validation evidence: Rent-a-box `python3 -m py_compile
   scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py
   scripts/ips_pre_coding_gate.py`, `python3
@@ -218,6 +219,33 @@ that repo's status/validation report.
   inspection, live checkout/order/payment mutation, Warehouse reservation,
   notification send, Auth runtime change, or production customer-data
   inspection was performed.
+
+## 2026-07-03 Goal 10.29 Consumer Gate Narrowing
+
+- 2026-07-03: Read-only Auth/Rent-a-box/ChytraKoupe/Cliplot/FlipFlop audits
+  narrowed current consumer gates without product-code migration.
+- Rent-a-box commit `9e6cf38 docs: narrow goal 12 auth callback gate` records
+  Auth live redirect allowlist acceptance for
+  `https://rent-a-box.alfares.cz/auth/callback` and live CORS origin
+  `*.alfares.cz`. Remaining gates: source-backed Rent-a-box callback route,
+  concrete `client_id`/`return_url`, admin role mapping, consent/profile
+  migration mapping, migration/backfill, and row-count complexity.
+- ChytraKoupe commit `002818f docs: narrow auth wallet checkout gates` records
+  Auth-side wildcard redirect/CORS evidence and `flipflop-service`
+  `/api/orders/guest` snapshot mapping as source-resolved. Remaining gates:
+  Auth client-id and authenticated Auth subject linkage if central Orders must
+  persist `customer.authSubject`.
+- Cliplot commit `8dbd1e2 docs: record auth wallet checkout source facts`
+  records guest-first checkout, hosted Auth link-only surface, guarded checkout,
+  and no runtime wallet endpoint integration while keeping all four selector,
+  session, PII, and response-contract gates blocked.
+- Validation evidence: Rent-a-box `pass_dependency_gated` verifier and
+  `./scripts/intent_preflight.sh` passed; ChytraKoupe wallet selector verifier
+  passed; Cliplot readiness verifier and `npm run check` passed; targeted
+  diff/secret/stale scans passed in all three repos.
+- No deploy, live DB query, secret/token/JWT inspection, checkout/order/payment
+  mutation, Warehouse reservation, notification send, Auth runtime change, or
+  production customer-data inspection was performed.
 
 ## 2026-07-02 Goal 10.25 Auth Live SQL Deploy And 401 Smoke Result
 

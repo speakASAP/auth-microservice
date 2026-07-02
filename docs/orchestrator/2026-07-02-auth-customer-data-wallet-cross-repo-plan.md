@@ -131,16 +131,17 @@ Dirty or ahead; future workers must inspect before editing:
 - `bazos`: ahead and dirty.
 - `marketing-microservice`: dirty.
 - `warehouse-microservice`: dirty.
-- `rent-a-box`: clean and ahead at `691a31d`; repo-local Goal 12 plan now
+- `rent-a-box`: clean and ahead at `9e6cf38`; repo-local Goal 12 plan now
   consumes the Auth wallet 401 gate, generic hosted Auth handoff,
-  `POST /auth/validate`, and Auth wallet API shape while preserving
-  Rent-specific callback/allowlist, admin role, consent/profile migration, and
-  backfill blockers.
-- `chytrakoupe`: clean and ahead at `6f9610f`; repo-local Goal 06 plan now
-  consumes the Auth wallet 401 gate, Orders immutable snapshot shape, Auth v1
-  invoice fields, and fragment-only Auth handoff direction while preserving
-  client-id, redirect/CORS, and `/api/orders/guest` wallet-snapshot mapping
+  `POST /auth/validate`, Auth wallet API shape, and Auth-side wildcard
+  redirect/CORS evidence while preserving source callback route,
+  `client_id`/`return_url`, admin role, consent/profile migration, and backfill
   blockers.
+- `chytrakoupe`: clean and ahead at `002818f`; repo-local Goal 06 plan now
+  consumes the Auth wallet 401 gate, Orders immutable snapshot shape, Auth v1
+  invoice fields, fragment-only Auth handoff direction, Auth-side wildcard
+  redirect/CORS evidence, and `flipflop-service` `/api/orders/guest` snapshot
+  mapping while preserving client-id and optional Auth subject linkage blockers.
 - `heureka`: reported dirty by read-only explorer.
 - `shop-assistant`: reported dirty by read-only explorer; lower priority
   because no local login/register controller was found.
@@ -388,11 +389,11 @@ Reason:
 
 Plan:
 
-- Repo-local migration plan: `rent-a-box` commit `691a31d`, file `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`.
+- Repo-local migration plan: `rent-a-box` commit `9e6cf38`, file `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`.
 - Do not treat this as only an address selector upgrade.
-- First verify the Rent-a-box callback URL and Auth redirect/CORS allowlist,
-  then replace local credential/session ownership with hosted Auth and
-  `POST /auth/validate` behind a compatibility boundary.
+- First add a source-backed Rent-a-box hosted Auth callback route with concrete
+  `client_id` and `return_url`, then replace local credential/session ownership
+  with hosted Auth and `POST /auth/validate` behind a compatibility boundary.
 - Resolve admin role mapping and consent/profile migration mapping before
   product-code migration.
 - Preserve Rent-a-box domain ownership for boxes, reservations, rentals,
@@ -415,10 +416,13 @@ Reason:
 
 Plan:
 
-- Repo-local selector plan: `chytrakoupe` commit `6f9610f`, file `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
-- Verify the current Auth client id and redirect/CORS allowlist.
-- Confirm ChytraKoupe `/api/orders/guest` wallet-snapshot mapping before
-  expanding authenticated checkout behavior.
+- Repo-local selector plan: `chytrakoupe` commit `002818f`, file `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
+- Decide whether ChytraKoupe keeps `client_id=flipflop` or receives a new Auth
+  client id.
+- Decide whether central Orders must persist `customer.authSubject` for
+  signed-in ChytraKoupe orders. Snapshot mapping through `/api/orders/guest` is
+  source-resolved when Auth wallet data is resolved into manual
+  `billingAddress` and `deliveryAddress` snapshots.
 - Remove query-token callback fallback during implementation unless an owner
   approves a legacy compatibility exception.
 - Replace registered-user checkout entry with Auth checkout-data selectors.
@@ -502,9 +506,9 @@ Plan:
 | F1 FlipFlop shared Auth client and user-service bridge | dependency-gated | FlipFlop backend worker  | Auth client, `/users/*` bridge                             | A1 API              | FlipFlop integration owner | 4                            |
 | F2 FlipFlop checkout/profile UX                        | dependency-gated | FlipFlop frontend worker | Checkout selectors, profile addresses UI                   | F1                  | FlipFlop integration owner | 5                            |
 | O1 Orders contract note/additive metadata              | dependency-gated | Orders worker            | Create-order contract docs/DTO if needed                   | A1 + F1 payload     | Orders owner               | 6                            |
-| R1 Rent-a-box hosted Auth migration plan               | contract-blocker-refined | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Callback/allowlist verification, admin role mapping, consent/profile migration mapping, migration approval | Rent-a-box owner | 7 |
-| CK1 Chytrakoupe checkout selector integration          | contract-blocker-refined | Chytrakoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Client-id/allowlist and `/api/orders/guest` wallet-snapshot mapping | Chytrakoupe owner | 8 |
-| C1 Cliplot plan                                        | post-live-gate-refreshed | Cliplot coordinator | Docs/guarded plan only | Selector/session/PII/response-contract approvals | Cliplot owner | After live checkout approval |
+| R1 Rent-a-box hosted Auth migration plan               | gate-narrowed | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Source callback route, `client_id`/`return_url`, admin role mapping, consent/profile migration mapping, migration approval | Rent-a-box owner | 7 |
+| CK1 Chytrakoupe checkout selector integration          | gate-narrowed | Chytrakoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Client-id and optional Auth subject linkage | Chytrakoupe owner | 8 |
+| C1 Cliplot plan                                        | source-facts-recorded | Cliplot coordinator | Docs/guarded plan only | Selector/session/PII/response-contract approvals | Cliplot owner | After live checkout approval |
 | M1 Marketplace order-snapshot audit                    | ready read-only  | Explorer                 | Allegro/Aukro/Bazos/Heureka/Catalog surface classification | None                | Coordinator                | No code merge                |
 
 Shared contracts:
