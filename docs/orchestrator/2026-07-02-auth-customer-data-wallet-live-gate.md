@@ -7,15 +7,19 @@ Scope: `auth-microservice` Goal 10 A1 live SQL apply and deployment.
 ## Purpose
 
 Prepare the live database and runtime deployment gate for the current Auth
-customer data wallet deploy candidate:
+customer data wallet runtime source checkpoint:
 
 ```text
-9ff1099bbee18836c40d9276d3b96a15e5e522fb test: add auth wallet runtime gate
+1a60240de3affb739cfbe1cac49dd95e5025582a docs: revalidate auth wallet live approval gate
 ```
 
-This deploy candidate includes the wallet API source commit `b6c1585`, hosted
-profile wallet UI commit `4bdbd27`, and runtime 401 smoke verifier commit
-`9ff1099`.
+This runtime source checkpoint includes the wallet API source commit `b6c1585`,
+hosted profile wallet UI commit `4bdbd27`, runtime 401 smoke verifier commit
+`9ff1099`, and later source-only documentation/checkpoint commits through
+`1a60240`. Runtime source has not changed after the source-validated `9ff1099`
+verifier checkpoint. Source Preflight must capture the exact remote HEAD
+immediately before approved live execution because docs-only checkpoint commits
+may sit above this runtime source checkpoint.
 
 This runbook does not grant approval. It records the exact safe sequence to use
 after the owner approves schema-only DB preflight, SQL apply, and Auth deploy.
@@ -24,11 +28,12 @@ after the owner approves schema-only DB preflight, SQL apply, and Auth deploy.
 
 - Auth source for delivery addresses, invoice profiles, checkout aggregate,
   hosted profile wallet management, and runtime wallet route gate exists in the
-  current deploy candidate `9ff1099`.
+  current runtime source checkpoint `1a60240`.
 - `scripts/create-customer-data-wallet-tables.sql` is additive and idempotent.
 - Production uses `DB_SYNC=false`; do not set `DB_SYNC=true`.
 - Live SQL has not been applied.
-- Auth `9ff1099` has not been deployed in this runbook.
+- No Auth HEAD containing this runtime source checkpoint has been deployed in
+  this runbook.
 - FlipFlop and other consumer runtime work remains dependency-gated until Auth
   SQL and deploy are live.
 - Runtime gate blocker observed after pre-approval fixes: Auth backend was

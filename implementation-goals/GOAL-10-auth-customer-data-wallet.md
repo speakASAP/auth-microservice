@@ -66,6 +66,7 @@ Auth customer data wallet:
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
+- [x] 10.23 Auth live approval gate exact target refreshed after docs checkpoints.
 
 ## Acceptance Criteria
 
@@ -148,6 +149,25 @@ that repo's status/validation report.
 - `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-02 Goal 10.23 Auth Live Approval Gate Target Refresh Result
+
+- 2026-07-02: Active Auth approval gate updated so live execution captures the
+  exact remote HEAD by Source Preflight instead of hard-coding a stale deploy
+  target.
+- The runtime source checkpoint `1a60240de3affb739cfbe1cac49dd95e5025582a`
+  includes wallet API source commit `b6c1585`, hosted profile wallet UI commit
+  `4bdbd27`, and runtime gate verifier commit `9ff1099`. Runtime source has
+  not changed after the source-validated `9ff1099` verifier checkpoint; later
+  commits are source-only documentation/checkpoint updates.
+- Active validation/deployment and live-gate docs now request owner approval for
+  the exact preflight-captured remote HEAD, not stale `9ff1099`.
+- Current cross-repo source state recorded: FlipFlop target branch is at
+  `e499dd4`, ahead 3/behind 1 with unrelated unstaged
+  `shared/health/health.service.ts`; Orders `main` is clean at `2111389`.
+- No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT
+  value inspection, raw production customer data inspection, authenticated
+  smoke, or live checkout submit was performed.
 
 ## 2026-07-02 Goal 10.22 Auth Live Approval Gate Revalidation Result
 

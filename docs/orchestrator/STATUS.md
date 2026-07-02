@@ -1,3 +1,47 @@
+## 2026-07-02 - Goal 10.23 Auth Live Approval Gate Target Refresh
+
+Current focus:
+
+- Refresh active owner-approval docs so the live gate captures the exact Auth
+  remote HEAD by Source Preflight after source-only documentation checkpoints.
+
+Evidence:
+
+- Auth remote HEAD at audit time:
+  `1a60240de3affb739cfbe1cac49dd95e5025582a`.
+- Auth worktree was clean and `main` was ahead of `origin/main` by 4 at audit
+  time.
+- Runtime source has not changed after source-validated runtime gate verifier
+  commit `9ff1099`; later Auth commits are documentation/checkpoint updates.
+- FlipFlop current target branch is
+  `codex/orders-lifecycle-cabinet-flipflop-clean` at `e499dd4`, ahead 3/behind
+  1, with unrelated unstaged `shared/health/health.service.ts` changes outside
+  Goal 10.
+- Orders current `main` is clean at `2111389`.
+- The exact deploy HEAD must be captured again by Source Preflight immediately
+  before any owner-approved live execution.
+
+Validation:
+
+- Source-only repo status/HEAD audit completed for Auth, FlipFlop, and Orders.
+- Read-only subagent audit confirmed active gate docs still had stale
+  deploy-target references before this correction.
+- Remote docs validation passed: `git diff --check`; active-gate stale target
+  scan returned no stale exact `9ff1099` deploy target; diff-added dangerous
+  literal-secret scan returned no matches.
+
+Boundary:
+
+- Documentation/checkpoint only. No SQL, deploy, Kubernetes mutation, DB access,
+  secret/token/password/JWT value inspection, raw production customer data
+  inspection, authenticated smoke, or live checkout submit.
+
+Next unfinished chunk:
+
+- Owner approval for Auth schema-only live DB preflight, live SQL apply, Auth
+  deploy from the exact remote HEAD captured by Source Preflight, wallet
+  endpoint 401 smoke, and post-deploy FlipFlop checkout/profile runtime smoke.
+
 ## 2026-07-02 - Goal 10.22 Auth Live Approval Gate Revalidation
 
 Current focus:
