@@ -48,6 +48,13 @@ after the owner approves schema-only DB preflight, SQL apply, and Auth deploy.
   replica drift as a hard live gate: do not run SQL or deploy until the backend
   remains stable at `replicas=1` and public `/health` is healthy.
 
+- Runtime recovered follow-up: backend recovered on old image
+  `0d4282b-20260702102426` with backend and web both `1/1 Running`, and public
+  `/health` returned ok. Live wallet endpoint probes still returned HTTP 404,
+  confirming Goal 10 wallet code is not deployed. The live gate can proceed
+  only after owner approval for schema-only DB preflight, SQL apply, and Auth
+  deploy.
+
 ## Required Owner Approvals
 
 - Approval to run schema-only live DB preflight and verification.

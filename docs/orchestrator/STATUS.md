@@ -1,3 +1,36 @@
+## 2026-07-02 - Goal 10 Auth Runtime Recovered Before SQL/Deploy Gate
+
+Current focus:
+
+- Move from runtime-restoration blocker back to the owner-approved live SQL and
+  deploy gate.
+
+Runtime evidence:
+
+- `auth-microservice` recovered on old image
+  `localhost:5000/auth-microservice:0d4282b-20260702102426` with Deployment
+  `SPEC=1`, `READY=1`, `DESIRED=1`, `AVAILABLE=1`.
+- Backend pod `auth-microservice-69cbc75f5b-4bds2` was `1/1 Running` with pod IP
+  `10.42.0.60`; `auth-microservice-web` remained `1/1 Running`.
+- Public `https://auth.alfares.cz/health` returned
+  `{"success":true,"status":"ok","service":"auth-microservice"}`.
+- Unauthenticated live wallet endpoint probes returned HTTP 404 for
+  `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+  `/auth/profile/invoice-profiles`, confirming the Goal 10 wallet code is still
+  not deployed. The expected post-deploy unauthenticated result is HTTP 401.
+
+Boundary:
+
+- No SQL apply, source deploy, image update, manifest edit, production DB row
+  read, raw customer data read, secret/token/password/JWT value inspection, or
+  consumer runtime smoke was performed.
+
+Next unfinished chunk:
+
+- Request owner approval for schema-only DB preflight, live SQL apply, and Auth
+  deploy using the live-gate runbook. After deploy, verify health and that the
+  wallet endpoints return 401 unauthenticated instead of 404/500.
+
 ## 2026-07-02 - Goal 10.6 FlipFlop Auth Wallet Client Bridge Source Prep
 
 Current focus:
