@@ -93,3 +93,21 @@ Do not read, print, or record:
 - Production DB mutation, user merge, backfill, or raw user-data inspection.
 - Consumer service code changes in this Auth session.
 - Secrets, decoded tokens, JWT payload changes, refresh-token behavior changes, RBAC assignment changes, OAuth/magic-link behavior changes, or database schema changes.
+
+## Current Task Addendum - 2026-07-02 Hosted Auth Form Fail-Closed Hardening
+
+Target task: owner-reported Catalog hosted Auth loop/blank-submit behavior on `https://auth.alfares.cz/login?return_url=https%3A%2F%2Fcatalog.alfares.cz%2Fauth%2Fcallback&client_id=catalog-microservice&state=...`.
+
+Evidence gathered:
+- Clean headless Chrome CDP run from `https://catalog.alfares.cz/login` successfully completed hosted register and hosted login to `https://catalog.alfares.cz/dashboard`; `auth_token` was present and `/api/auth/profile` returned HTTP 200.
+- Internal Catalog pod probe confirmed `/api/auth/register` returns `accessToken` and `/api/auth/profile` returns HTTP 200 with nested `user`.
+- A premature/native form-submit race reproduced a fail-open fallback: before hosted UI JS was ready, the browser performed a default GET form submit, dropped `return_url/state`, and returned to `/login` with `Redirect target: (required by application)`.
+
+Included source for this task:
+- `web/public/index.html`
+- `src/auth/hosted-auth-web.spec.ts`
+
+Excluded data:
+- No production user rows, decoded JWTs, refresh tokens, OAuth tokens, reset tokens, magic-link tokens, secrets, or passwords are recorded. Browser evidence records token presence only, never token values.
+
+Boundary: Auth hosted login/register UI remains Auth-owned. No Catalog, warehouse, orders, payment, leads, notifications, logging, gateway, database schema, JWT payload, RBAC, OAuth, magic-link, CORS, or internal-service ownership changes.

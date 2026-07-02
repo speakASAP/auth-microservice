@@ -17,7 +17,7 @@
         <button id="tab-register" type="button" class="btn btn-secondary" style="flex: 1;">Register</button>
       </div>
 
-      <form id="auth-form">
+      <form id="auth-form" onsubmit="return false;">
         <div id="name-row" style="display: none; gap: 0.5rem;">
           <div class="form-group" style="flex: 1;">
             <label for="firstName">First name</label>
@@ -57,11 +57,11 @@
 
         <div id="submit-error" class="error" style="display: none;"></div>
         <div id="submit-success" class="success" style="display: none;"></div>
-        <button id="submit-btn" type="submit" class="btn">Continue</button>
+        <button id="submit-btn" type="submit" class="btn" disabled>Continue</button>
       </form>
 
       <div id="auth-links" style="margin-top: 1rem; color: var(--muted); font-size: 0.85rem;">
-        <button id="magic-link-btn" type="button" class="btn btn-secondary" style="margin-left: 0; width: 100%;">Send sign-in code</button>
+        <button id="magic-link-btn" type="button" class="btn btn-secondary" style="margin-left: 0; width: 100%;" disabled>Send sign-in code</button>
         <button id="reset-password-btn" type="button" class="btn btn-secondary" style="margin-left: 0; width: 100%;">Forgot password?</button>
       </div>
 
@@ -202,6 +202,8 @@
       passwordInput.autocomplete = isRegister || isReset ? 'new-password' : 'current-password';
       submitBtn.textContent = isReset ? 'Reset password' : (isRegister ? 'Register' : 'Login');
       submitBtn.style.display = 'block';
+      submitBtn.disabled = !isReset && !validatedReturnUrl;
+      magicLinkBtn.disabled = !validatedReturnUrl;
       authLinks.style.display = isRegister || isReset ? 'none' : 'block';
       resetLoginLink.style.display = isReset ? 'block' : 'none';
       const resetLoginAnchor = resetLoginLink.querySelector('a');
@@ -251,6 +253,8 @@
         const data = await response.json();
         validatedReturnUrl = data.return_url;
         returnUrlLabel.textContent = validatedReturnUrl;
+        submitBtn.disabled = false;
+        magicLinkBtn.disabled = false;
       } catch (error) {
         setError(error.message || 'Invalid return_url');
         submitBtn.disabled = true;

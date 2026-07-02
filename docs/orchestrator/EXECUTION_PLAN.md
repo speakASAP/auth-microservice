@@ -85,3 +85,31 @@ ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && ./scripts/deploy
 ```
 
 Post-deploy checks should include Auth `/health`, `/auth/profile` with an owner-provided test token or approved synthetic flow, and a Bazos `/ui/auth/me` profile read through the hosted Auth callback path.
+
+## Current Execution Addendum - 2026-07-02 Hosted Auth Form Fail-Closed Hardening
+
+Selected goal and chunk: owner-selected production hardening for hosted Auth login/register form fallback after Catalog loop report.
+
+Pre-coding gate decision: pass. The work is traceable to the owner report, preserves Auth ownership of hosted credential UI, and reduces secret-safety risk by preventing native GET submission of credential fields before `return_url` validation.
+
+Sensitive-data handling: synthetic browser accounts only; no token/password values in docs or reports.
+
+Contract impact: no API, JWT, RBAC, OAuth, magic-link, CORS, internal-service, database schema, or consumer-service contract change. Hosted UI behavior is hardened so the form is disabled/fail-closed until `return_url` validation succeeds and native submit cannot leak credential fields or lose `state`.
+
+Allowed files:
+- `web/public/index.html`
+- `src/auth/hosted-auth-web.spec.ts`
+- `docs/orchestrator/CONTEXT_PACKAGE.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/IMPLEMENTATION_STATE.md`
+
+Validation plan:
+- `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts`
+- `node --check web/server.js`
+- `node --check web/public/js/admin.js`
+- `git diff --check`
+- `npm run build`
+- `npm run lint`
+- deploy with `./scripts/deploy.sh` after source validation
+- post-deploy hosted register/login browser CDP flow and fail-closed race check

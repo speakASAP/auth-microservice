@@ -12,6 +12,16 @@ describe('hosted auth web contract', () => {
     expect(html).not.toContain('body: JSON.stringify({ email, password })');
   });
 
+  it('fails closed until return_url validation so native form submit cannot leak credentials', () => {
+    expect(html).toContain('<form id="auth-form" onsubmit="return false;">');
+    expect(html).toContain('id="submit-btn" type="submit" class="btn" disabled');
+    expect(html).toContain('id="magic-link-btn" type="button" class="btn btn-secondary" style="margin-left: 0; width: 100%;" disabled');
+    expect(html).toContain('submitBtn.disabled = !isReset && !validatedReturnUrl');
+    expect(html).toContain('magicLinkBtn.disabled = !validatedReturnUrl');
+    expect(html).toContain('submitBtn.disabled = false;');
+    expect(html).toContain('magicLinkBtn.disabled = false;');
+  });
+
   it('offers hosted recovery and contact-code actions', () => {
     expect(html).toContain('/auth/contact-code/request');
     expect(html).toContain('/auth/contact-code/verify');
