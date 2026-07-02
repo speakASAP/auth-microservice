@@ -1,3 +1,55 @@
+## 2026-07-02 - Goal 10.28 Consumer Contract Blocker Refinement
+
+Current focus:
+
+- Narrow dependency-gated consumer blockers after read-only subagent audits
+  compared current Auth/Orders contracts with Rent-a-box and ChytraKoupe source.
+
+Evidence:
+
+- Rent-a-box worker committed
+  `691a31db0f6b8b14c1d0d3df4ef42501e07b4250 docs: refine goal 12 auth wallet blockers`.
+- Rent-a-box now records generic hosted Auth handoff, default
+  `POST /auth/validate`, and Auth wallet API shape as resolved upstream
+  contracts. Remaining gates are callback URL and Auth redirect/CORS allowlist
+  verification, admin role mapping, consent/profile migration mapping,
+  owner-approved migration/backfill, and production row-count complexity.
+- ChytraKoupe worker committed
+  `6f9610fed0f4f3dd84e31e164a653d97a77b9ba9 docs: refine auth wallet checkout blockers`.
+- ChytraKoupe now records Orders immutable authenticated/guest snapshots, Auth
+  v1 invoice field names, and fragment-only Auth handoff direction as
+  source-resolved planning inputs. Remaining gates are Auth client-id,
+  redirect/CORS allowlist, and `/api/orders/guest` wallet-snapshot mapping.
+- Hosted Auth consumer registry now lists candidate Rent-a-box callback
+  `https://rent-a-box.alfares.cz/auth/callback` while preserving the missing
+  runtime redirect/CORS allowlist verification gate.
+
+Validation:
+
+- Rent-a-box: `python3 -m py_compile
+  scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py
+  scripts/ips_pre_coding_gate.py`; `python3
+  scripts/check_goal12_auth_wallet_readiness.py --root .`;
+  `./scripts/intent_preflight.sh`; `git diff --check`; targeted
+  literal-secret scan; stale resolved-blocker scan all passed.
+- ChytraKoupe: `npm run verify:auth-wallet-checkout-selectors`; `node --check
+  scripts/verify-auth-wallet-checkout-selectors.mjs`; `git diff --check`;
+  targeted dangerous literal-secret scan; docs-only stale blocker scan all
+  passed.
+
+Boundary:
+
+- No consumer product-code migration, deploy, live DB query, secret/token/JWT
+  inspection, live checkout/order/payment mutation, Warehouse reservation,
+  notification send, Auth runtime change, or production customer-data
+  inspection was performed.
+
+Next unfinished chunk:
+
+- Owner-approved synthetic authenticated Auth wallet and FlipFlop
+  checkout/profile smoke if required, or resolve remaining
+  Rent-a-box/ChytraKoupe/Cliplot product-code gates.
+
 ## 2026-07-02 - Goal 10.27 Consumer Readiness Refresh After Auth 401 Gate
 
 Current focus:

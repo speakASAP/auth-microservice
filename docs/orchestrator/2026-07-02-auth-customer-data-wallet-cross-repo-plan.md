@@ -117,7 +117,9 @@ DocsRAG:
 
 Clean and safe for planning docs:
 
-- `auth-microservice`: clean on `main` at `efe5887`.
+- `auth-microservice`: live wallet routes deployed from Source Preflight HEAD
+  `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`; coordinator docs are being
+  refreshed after consumer blocker refinement.
 
 Dirty or ahead; future workers must inspect before editing:
 
@@ -129,8 +131,16 @@ Dirty or ahead; future workers must inspect before editing:
 - `bazos`: ahead and dirty.
 - `marketing-microservice`: dirty.
 - `warehouse-microservice`: dirty.
-- `rent-a-box`: clean at read-only Goal 10.9 audit, HEAD `fa1fc85`; repo-local plan committed at `fcfeb48`, file `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`.
-- `chytrakoupe`: clean at read-only Goal 10.10 audit, HEAD `4817528`; repo-local plan committed at `a1dabca`, file `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
+- `rent-a-box`: clean and ahead at `691a31d`; repo-local Goal 12 plan now
+  consumes the Auth wallet 401 gate, generic hosted Auth handoff,
+  `POST /auth/validate`, and Auth wallet API shape while preserving
+  Rent-specific callback/allowlist, admin role, consent/profile migration, and
+  backfill blockers.
+- `chytrakoupe`: clean and ahead at `6f9610f`; repo-local Goal 06 plan now
+  consumes the Auth wallet 401 gate, Orders immutable snapshot shape, Auth v1
+  invoice fields, and fragment-only Auth handoff direction while preserving
+  client-id, redirect/CORS, and `/api/orders/guest` wallet-snapshot mapping
+  blockers.
 - `heureka`: reported dirty by read-only explorer.
 - `shop-assistant`: reported dirty by read-only explorer; lower priority
   because no local login/register controller was found.
@@ -378,10 +388,13 @@ Reason:
 
 Plan:
 
-- Repo-local migration plan: `rent-a-box` commit `fcfeb48`, file `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`.
+- Repo-local migration plan: `rent-a-box` commit `691a31d`, file `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`.
 - Do not treat this as only an address selector upgrade.
-- First replace local credential/session ownership with hosted Auth behind a
-  compatibility boundary.
+- First verify the Rent-a-box callback URL and Auth redirect/CORS allowlist,
+  then replace local credential/session ownership with hosted Auth and
+  `POST /auth/validate` behind a compatibility boundary.
+- Resolve admin role mapping and consent/profile migration mapping before
+  product-code migration.
 - Preserve Rent-a-box domain ownership for boxes, reservations, rentals,
   contracts, mock payments, PIN/access-code state, and immutable snapshots.
 - Do not drop or backfill local user/profile columns without owner-approved
@@ -402,10 +415,12 @@ Reason:
 
 Plan:
 
-- Repo-local selector plan: `chytrakoupe` commit `a1dabca`, file `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
-- Verify the current Auth client id and callback state contract.
-- Harden token query cleanup/state handling before expanding authenticated
-  checkout behavior.
+- Repo-local selector plan: `chytrakoupe` commit `6f9610f`, file `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`.
+- Verify the current Auth client id and redirect/CORS allowlist.
+- Confirm ChytraKoupe `/api/orders/guest` wallet-snapshot mapping before
+  expanding authenticated checkout behavior.
+- Remove query-token callback fallback during implementation unless an owner
+  approves a legacy compatibility exception.
 - Replace registered-user checkout entry with Auth checkout-data selectors.
 - Preserve guest checkout and one-off order snapshots.
 
@@ -487,8 +502,8 @@ Plan:
 | F1 FlipFlop shared Auth client and user-service bridge | dependency-gated | FlipFlop backend worker  | Auth client, `/users/*` bridge                             | A1 API              | FlipFlop integration owner | 4                            |
 | F2 FlipFlop checkout/profile UX                        | dependency-gated | FlipFlop frontend worker | Checkout selectors, profile addresses UI                   | F1                  | FlipFlop integration owner | 5                            |
 | O1 Orders contract note/additive metadata              | dependency-gated | Orders worker            | Create-order contract docs/DTO if needed                   | A1 + F1 payload     | Orders owner               | 6                            |
-| R1 Rent-a-box hosted Auth migration plan               | post-live-gate-refreshed | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Hosted Auth/session/admin mapping + migration approval | Rent-a-box owner | 7 |
-| CK1 Chytrakoupe checkout selector integration          | post-live-gate-refreshed | Chytrakoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Client-id/allowlist/snapshot decisions | Chytrakoupe owner | 8 |
+| R1 Rent-a-box hosted Auth migration plan               | contract-blocker-refined | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Callback/allowlist verification, admin role mapping, consent/profile migration mapping, migration approval | Rent-a-box owner | 7 |
+| CK1 Chytrakoupe checkout selector integration          | contract-blocker-refined | Chytrakoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Client-id/allowlist and `/api/orders/guest` wallet-snapshot mapping | Chytrakoupe owner | 8 |
 | C1 Cliplot plan                                        | post-live-gate-refreshed | Cliplot coordinator | Docs/guarded plan only | Selector/session/PII/response-contract approvals | Cliplot owner | After live checkout approval |
 | M1 Marketplace order-snapshot audit                    | ready read-only  | Explorer                 | Allegro/Aukro/Bazos/Heureka/Catalog surface classification | None                | Coordinator                | No code merge                |
 

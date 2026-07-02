@@ -71,6 +71,7 @@ Auth customer data wallet:
 - [x] 10.25 Auth live wallet SQL, deploy, and unauthenticated 401 gate completed.
 - [x] 10.26 Post-live planning docs refreshed after completion audit.
 - [x] 10.27 Dependency-gated consumer readiness lanes refreshed against Auth wallet 401 evidence.
+- [x] 10.28 Consumer contract blockers refined after read-only subagent audits.
 
 ## Acceptance Criteria
 
@@ -109,8 +110,8 @@ marketplace operations.
 | F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | Auth deployed; authenticated runtime smoke gated | 4           |
 | F2 FlipFlop checkout/profile UX    | source-prepared    | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deployed; synthetic checkout/profile smoke gated | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
-| R1 Rent-a-box Auth migration plan  | post-live-gate-refreshed | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | hosted Auth/session/admin mapping + migration approval | 7 |
-| CK1 ChytraKoupe checkout selectors | post-live-gate-refreshed | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | client-id/allowlist/snapshot decisions | 8 |
+| R1 Rent-a-box Auth migration plan  | contract-blocker-refined | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | callback/allowlist verification, admin role mapping, consent/profile migration mapping, migration approval | 7 |
+| CK1 ChytraKoupe checkout selectors | contract-blocker-refined | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | client-id/allowlist and `/api/orders/guest` wallet-snapshot mapping | 8 |
 | C1 Cliplot plan                    | post-live-gate-refreshed | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js` | selector/session/PII/response-contract approvals | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
@@ -146,8 +147,8 @@ that repo's status/validation report.
 - `[MISSING: owner-approved synthetic account for live cross-repo checkout smoke]`
 - `[MISSING: post-deploy consumer runtime smoke confirming Auth invoice profile selection reaches immutable order billing snapshots]`
 - `[MISSING: authenticated synthetic FlipFlop checkout/profile runtime smoke, including manual-edit-before-wallet-response, explicit selector override, explicit checkout wallet save-back, and profile invoice CRUD/default selection]`
-- `[MISSING: Rent-a-box hosted Auth token/session/admin-role migration decision before code changes]`
-- `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
+- `[MISSING: Rent-a-box callback/allowlist verification, admin role mapping, consent/profile migration mapping, and migration/backfill decision before code changes]`
+- `[MISSING: ChytraKoupe hosted Auth client_id, redirect/CORS allowlist, and /api/orders/guest wallet-snapshot mapping decision before selector implementation]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
 
@@ -185,6 +186,38 @@ that repo's status/validation report.
 - No consumer deploy, DB access, secret/token/password/JWT/cookie inspection,
   live checkout/order/payment mutation, Warehouse reservation, notification
   send, or Auth runtime change was performed.
+
+## 2026-07-02 Goal 10.28 Consumer Contract Blocker Refinement
+
+- 2026-07-02: Read-only subagent audits narrowed the remaining Rent-a-box and
+  ChytraKoupe blockers after current Auth and Orders contracts were compared
+  with consumer source.
+- Rent-a-box commit `691a31d docs: refine goal 12 auth wallet blockers`
+  records generic hosted Auth handoff, default `POST /auth/validate`, and Auth
+  wallet read/write API shape as resolved upstream contracts. Remaining gates:
+  Rent-a-box callback URL and Auth redirect/CORS allowlist verification, admin
+  role mapping, consent/profile migration mapping for
+  `customer_profiles.gdpr_consent_at`, owner-approved migration/backfill, and
+  production row-count complexity.
+- ChytraKoupe commit `6f9610f docs: refine auth wallet checkout blockers`
+  records Orders immutable authenticated/guest snapshots, Auth v1 invoice field
+  names, and fragment-only Auth handoff direction as source-resolved planning
+  inputs. Remaining gates: Auth client-id decision, redirect/CORS allowlist,
+  and ChytraKoupe `/api/orders/guest` wallet-snapshot mapping.
+- Validation evidence: Rent-a-box `python3 -m py_compile
+  scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py
+  scripts/ips_pre_coding_gate.py`, `python3
+  scripts/check_goal12_auth_wallet_readiness.py --root .`,
+  `./scripts/intent_preflight.sh`, `git diff --check`, targeted
+  literal-secret scan, and stale resolved-blocker scan passed. ChytraKoupe
+  `npm run verify:auth-wallet-checkout-selectors`, `node --check
+  scripts/verify-auth-wallet-checkout-selectors.mjs`, `git diff --check`,
+  targeted dangerous literal-secret scan, and docs-only stale blocker scan
+  passed.
+- No consumer product code migration, deploy, live DB query, secret/token/JWT
+  inspection, live checkout/order/payment mutation, Warehouse reservation,
+  notification send, Auth runtime change, or production customer-data
+  inspection was performed.
 
 ## 2026-07-02 Goal 10.25 Auth Live SQL Deploy And 401 Smoke Result
 

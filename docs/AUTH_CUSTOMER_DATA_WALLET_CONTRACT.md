@@ -1,6 +1,6 @@
 # Auth Customer Data Wallet Contract
 
-Status: Auth API, hosted profile UI, runtime gate, and FlipFlop source-prepared; live SQL apply, deployment, and runtime smoke approval-gated
+Status: Auth API, hosted profile UI, live wallet schema, deployment, and unauthenticated runtime 401 gate complete; authenticated synthetic smoke and consumer product-code migrations remain gated
 Owner: auth-microservice
 Created: 2026-07-02
 
@@ -42,29 +42,37 @@ Implemented now:
   creation snapshots. Orders is allowed to store these snapshots for order
   history and legal/fulfillment evidence, but not as editable user profile
   truth.
-- FlipFlop source now includes typed Auth wallet clients, defensive checkout/profile selectors,
-  and a checkout manual-edit guard that fall back to existing local/manual flows until
-  the Auth wallet endpoints are deployed.
+- FlipFlop source now includes typed Auth wallet clients, defensive
+  checkout/profile selectors, and a checkout manual-edit guard that fall back
+  to existing local/manual flows when wallet data is unavailable; authenticated
+  runtime proof remains gated on synthetic account/token approval.
 - Auth hosted `/profile` source now includes wallet management for canonical
   profile fields, delivery address book entries, and invoice profiles.
 - Auth source now includes `npm run check:customer-data-wallet-runtime` for the
   predeploy 404 and post-deploy 401 wallet route gate.
 
-Not implemented or deployed yet:
+Live rollout state:
 
-- The live Auth database has not yet had
-  `scripts/create-customer-data-wallet-tables.sql` applied.
-- The new source has not yet been deployed to production.
-- Live deployed consumer checkout forms still enter billing/delivery data inline
-  until Auth SQL/deploy and FlipFlop runtime deployment/smoke complete. FlipFlop
-  source now has defensive wallet selectors, a manual-edit guard, and fallbacks.
-- Cross-repository checkout runtime contracts do not yet require Auth
-  address/profile selectors before creating order snapshots. FlipFlop source prep
-  exists; runtime verification is still gated.
+- `scripts/create-customer-data-wallet-tables.sql` was applied in one approved
+  transaction after schema-only metadata preflight. Post-apply verification
+  found `user_delivery_addresses` and `user_invoice_profiles`, 45 wallet
+  columns, and 8 wallet indexes.
+- Auth was deployed from Source Preflight HEAD
+  `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d` with backend/web images tagged
+  `2871a6f-20260702210100`.
+- `npm run check:customer-data-wallet-runtime -- --expect=deployed` passed:
+  `/health` returned HTTP 200 and wallet endpoints returned HTTP 401
+  unauthenticated without sending auth headers, cookies, request bodies,
+  printing response bodies, or reading the database.
+- FlipFlop non-mutating post-deploy checks passed, but authenticated synthetic
+  checkout/profile smoke remains approval-gated.
+- Cross-repository runtime proof that Auth-selected delivery/invoice entries
+  reach immutable order snapshots is still gated on an owner-approved synthetic
+  account/token and non-production customer data.
 - Some repos still duplicate more than profile snapshots. `rent-a-box` was
   found with local email/password auth, local JWTs, local profile storage, and
-  billing address fields. This is a separate credential/profile migration risk,
-  not just an address selector upgrade.
+  billing address fields. This remains a separate hosted Auth/session/admin-role
+  migration risk, not just an address selector upgrade.
 
 ## Data Ownership
 
@@ -242,7 +250,8 @@ during migration as a projection of the default delivery address or legacy
 
 New endpoints are additive. Consumer rollouts should first read both the new
 address book and the legacy `profileAddress`, then stop writing legacy local
-address sources after Auth is deployed and validated.
+address sources after the consumer-specific session, selector, and fallback
+contracts are validated.
 
 ## Validation Requirements
 
@@ -268,11 +277,30 @@ Consumer validation:
 
 ## Open Blockers
 
-- `[MISSING: owner approval for live DB migration apply]`
-- `[MISSING: owner-approved Auth deploy after source validation and SQL apply]`
-- `[MISSING: approved schema-only DB verification command/session]`
-- `[MISSING: approved list of first consumer repositories to mutate after Auth API deploy]`
-- `[MISSING: cross-service decision for exact billing fields Auth owns versus Orders, Payments, or accounting-owned invoice issuance]`
+- `[MISSING: owner-approved synthetic account/token for authenticated Auth wallet CRUD/default/delete smoke]`
+- `[MISSING: owner-approved synthetic account/token for FlipFlop authenticated checkout/profile runtime smoke]`
+- `[MISSING: Rent-a-box callback URL and Auth redirect/CORS allowlist verification, admin role mapping, consent/profile migration mapping, and migration/backfill decisions before product-code migration]`
+- `[MISSING: ChytraKoupe Auth client-id, CORS/redirect allowlist, and /api/orders/guest wallet-snapshot mapping decisions before selector implementation]`
+- `[MISSING: Cliplot selector behavior, authenticated browser/session, no-PII exposure, and response-contract approvals before wallet selector integration]`
 - `[UNKNOWN: whether all marketplace/channel services have customer checkout surfaces or only operator publishing surfaces]`
 - `[UNKNOWN: whether live users already have legacy perApplicationPreferences.canonicalProfile.address data requiring migration or backfill]`
-- `[MISSING: owner-approved test account for live address/invoice checkout smoke]`
+
+Resolved for current Goal 10 scope:
+
+- Live DB migration apply, schema-only verification, Auth deploy, and
+  unauthenticated wallet endpoint 401 smoke are complete.
+- First consumer lanes are known: FlipFlop source-prepared, Orders immutable
+  snapshot support source-prepared, and Rent-a-box/ChytraKoupe/Cliplot
+  dependency-gated readiness lanes refreshed against Auth 401 evidence.
+- Rent-a-box commit `691a31d` records generic hosted Auth handoff,
+  `POST /auth/validate`, and Auth wallet API shape as resolved upstream
+  contracts while preserving the Rent-specific callback/allowlist, admin role,
+  consent/profile migration, and backfill gates.
+- ChytraKoupe commit `6f9610f` records Orders immutable snapshot handling,
+  Auth v1 invoice field names, and fragment-only Auth handoff direction as
+  source-resolved planning inputs while preserving client-id, redirect/CORS,
+  and `/api/orders/guest` wallet-snapshot mapping gates.
+- Auth invoice profile v1 field ownership is defined: Auth owns reusable
+  `companyId`, `taxId`, `vatId`, and invoice-recipient `email`; Orders stores
+  immutable snapshots only, and Payments/accounting issuance remains outside
+  Auth wallet ownership.

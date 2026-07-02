@@ -145,7 +145,7 @@ This registry is a planning artifact. Runtime allowlist truth still lives in Aut
 | `flipflop-service` | `[MISSING: production origin]/auth/callback` | commerce handoff | planned migration |
 | `prompts-microservice` | `[MISSING: production origin]/auth/callback` | platform/ops handoff | planned migration |
 | `suppliers-microservice` | `[MISSING: production origin]/auth/callback` | platform/ops handoff | planned migration |
-| `rent-a-box` | `[MISSING: production origin]/auth/callback` | product/education handoff | design-first migration |
+| `rent-a-box` | `https://rent-a-box.alfares.cz/auth/callback` | Rent-a-box Goal 12 source audit; runtime Auth redirect/CORS allowlist verification remains missing | design-first migration |
 | `crypto-ai-agent` | `[MISSING: production origin]/auth/callback` | product/education handoff | planned migration |
 
 ## Validation Checklist For Consumer Workers
