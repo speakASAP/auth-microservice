@@ -46,13 +46,22 @@ Decision: `hold` remains for live operations not covered by the completed gate:
 - consumer deploy/runtime checkout smoke beyond the completed non-mutating
   FlipFlop checks.
 
+2026-07-03 refresh: owner-approved Auth live refresh completed from Source
+Preflight-captured HEAD `ff974345c52a41ac8b920a3dba0f44795a23950d`. Schema
+preflight was metadata-only; approved SQL apply was idempotent because wallet
+tables/indexes already existed; Auth backend/web rolled out on image tag
+`ff97434-20260702223501`; unauthenticated wallet endpoints returned HTTP 401;
+and non-mutating FlipFlop runtime smoke passed. The deploy script timed out
+during the first backend rollout wait, so its final non-secret ConfigMap patch
+was applied manually and the backend restart completed successfully.
+
 ## Current Evidence
 
 Auth:
 
 - Repo: `alfares:/home/ssf/Documents/Github/auth-microservice`.
-- Source Preflight captured deploy HEAD
-  `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`.
+- Current Source Preflight captured deploy HEAD
+  `ff974345c52a41ac8b920a3dba0f44795a23950d`.
 - Wallet API source commit `b6c1585`, hosted profile wallet UI commit
   `4bdbd27`, and runtime gate verifier commit `9ff1099` are ancestors of the
   runtime source checkpoint. Runtime source has not changed after the
@@ -72,7 +81,7 @@ Auth:
 - Deploy script runs Auth contract tests/build/image rollout/health checks; it
   does not run SQL.
 - Live runtime: backend/web are `1/1` on image tags
-  `2871a6f-20260702210100`.
+  `ff97434-20260702223501`.
 - Live `/health` returned HTTP 200.
 - Live unauthenticated wallet probes returned HTTP 401 for
   `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
@@ -83,18 +92,18 @@ Consumers:
 
 - `flipflop`: the superseded
   `codex/orders-lifecycle-cabinet-flipflop-clean` lane is merged into `main`.
-  Current `main` is clean at `97b7e40`; the wallet lane was merged at
+  Current `main` is `7a092c2` with an existing generated validation report
+  modification not touched by Auth live refresh; the wallet lane was merged at
   `7e97e98` and includes wallet selector/save-back/profile commits through
   `e499dd4`. Source verifiers
   `npm run verify:auth-wallet-profile-ui` and
   `npm run verify:auth-wallet-checkout-selectors` passed on current `main`;
   `npm run verify:orders-hub-integration` also passed for order payload
   forwarding.
-  Non-mutating post-deploy runtime smoke also passed after the Auth wallet 401
-  gate: `npm run verify:auth-wallet-profile-ui`,
-  `npm run verify:auth-wallet-checkout-selectors`,
-  `npm run verify:orders-hub-integration`, and
-  `npm run verify:guest-checkout-ui`. Authenticated synthetic
+  Non-mutating post-deploy runtime smoke also passed after the Auth live
+  refresh: `/`, `/checkout`, `/profile/addresses`,
+  `/profile/invoice-profiles`, and `/api/products?limit=1` returned HTTP 200;
+  gateway-proxied Auth wallet endpoints returned HTTP 401. Authenticated synthetic
   checkout/profile smoke remains gated on synthetic account/token approval.
 - `orders-microservice`: current clean `main` at `2111389` includes immutable
   order snapshot support for optional Auth invoice fields through commit

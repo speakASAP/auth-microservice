@@ -1,3 +1,60 @@
+## 2026-07-03 - Goal 10.30 Auth Live Refresh From Captured HEAD
+
+Current focus:
+
+- Execute the owner-approved Auth schema-only live DB preflight, live SQL
+  apply, Auth deploy from Source Preflight-captured HEAD, wallet endpoint 401
+  smoke, and post-deploy FlipFlop runtime smoke.
+
+Evidence:
+
+- Source Preflight captured Auth HEAD
+  `ff974345c52a41ac8b920a3dba0f44795a23950d`, matching `origin/main` with a
+  clean worktree.
+- Source validation passed before live operations: focused Auth/User specs
+  2 suites/15 tests, `npm run test:auth-contract` 3 suites/27 tests,
+  `npm run build`, `npm run lint`,
+  `npm run check:customer-data-wallet-preflight`, and `git diff --check`.
+- Schema-only live DB preflight queried metadata only: `public.users`,
+  existing `user_delivery_addresses`, existing `user_invoice_profiles`, and
+  `gen_random_uuid` were present.
+- Approved SQL apply ran transactionally and was idempotent because wallet
+  tables/indexes already existed. Post-apply schema verification confirmed both
+  wallet tables, required columns, and required indexes.
+- Auth deploy built and pushed backend/web image tag
+  `ff97434-20260702223501`. The deploy script timed out during the first
+  backend rollout wait while the new pod was still initializing; Kubernetes
+  completed backend and web rollouts to `1/1` afterward.
+- The deploy script final non-secret ConfigMap patch was applied manually
+  because the script exited before that phase, and the backend restarted
+  successfully on the same image.
+- Auth wallet runtime smoke passed: `/health` HTTP 200 and
+  `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+  `/auth/profile/invoice-profiles` each returned HTTP 401 unauthenticated with
+  no Authorization header, cookies, request body, response body logging, or DB
+  read.
+- FlipFlop non-mutating post-deploy runtime smoke passed: `/`, `/checkout`,
+  `/profile/addresses`, `/profile/invoice-profiles`, and
+  `/api/products?limit=1` returned HTTP 200; gateway-proxied
+  `/api/auth/profile/checkout-data`, `/api/auth/profile/delivery-addresses`,
+  and `/api/auth/profile/invoice-profiles` returned HTTP 401.
+- FlipFlop source verifiers also passed:
+  `npm run verify:auth-wallet-checkout-selectors` and
+  `npm run verify:auth-wallet-profile-ui`.
+
+Boundary:
+
+- No secret/token/password/JWT/cookie value inspection, customer-row read, raw
+  production customer-data inspection, live checkout/order/payment mutation,
+  Warehouse reservation, notification send, rollback mutation, or synthetic
+  authenticated smoke was performed.
+
+Next unfinished chunk:
+
+- Owner-approved synthetic authenticated Auth wallet CRUD/default/delete and
+  FlipFlop checkout/profile smoke if required, or remaining Rent-a-box,
+  ChytraKoupe, and Cliplot product-code gates.
+
 ## 2026-07-03 - Goal 10.29 Consumer Gate Narrowing
 
 Current focus:

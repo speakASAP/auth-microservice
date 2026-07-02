@@ -247,6 +247,33 @@ that repo's status/validation report.
   mutation, Warehouse reservation, notification send, Auth runtime change, or
   production customer-data inspection was performed.
 
+## 2026-07-03 Goal 10.30 Auth Live Refresh From Captured HEAD
+
+- Owner-approved live sequence completed from Source Preflight-captured Auth
+  HEAD `ff974345c52a41ac8b920a3dba0f44795a23950d`.
+- Source gates passed before live operations: focused Auth/User specs
+  2 suites/15 tests, `npm run test:auth-contract` 3 suites/27 tests,
+  `npm run build`, `npm run lint`,
+  `npm run check:customer-data-wallet-preflight`, and `git diff --check`.
+- Schema-only live DB preflight queried metadata only and confirmed
+  `public.users`, existing wallet tables, and `gen_random_uuid`. Approved SQL
+  apply was transaction-wrapped and idempotent; post-apply verification
+  confirmed both wallet tables, required columns, and required indexes.
+- Auth deployed backend/web image tag `ff97434-20260702223501`. The deploy
+  script timed out during the first backend rollout wait, but Kubernetes later
+  completed backend and web rollouts to `1/1`; the script's final non-secret
+  ConfigMap patch was applied manually and the backend restart completed.
+- Auth unauthenticated wallet smoke passed: `/health` HTTP 200 and
+  `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+  `/auth/profile/invoice-profiles` HTTP 401 with no auth headers, cookies,
+  request bodies, response-body logging, or DB reads.
+- FlipFlop post-deploy smoke remained non-mutating: public pages/API returned
+  HTTP 200, gateway-proxied Auth wallet endpoints returned HTTP 401, and
+  wallet checkout/profile source verifiers passed.
+- Remaining gates: synthetic authenticated Auth wallet CRUD/default/delete and
+  FlipFlop checkout/profile runtime smoke, plus Rent-a-box, ChytraKoupe, and
+  Cliplot product-code decisions.
+
 ## 2026-07-02 Goal 10.25 Auth Live SQL Deploy And 401 Smoke Result
 
 - 2026-07-02: Owner approved Auth schema-only live DB preflight, live SQL apply,
