@@ -279,9 +279,9 @@ Consumer validation:
 
 - `[MISSING: owner-approved synthetic account/token for authenticated Auth wallet CRUD/default/delete smoke]`
 - `[MISSING: owner-approved synthetic account/token for FlipFlop authenticated checkout/profile runtime smoke]`
-- `[MISSING: source-backed Rent-a-box hosted Auth callback route, concrete client_id/return_url, admin role mapping, consent/profile migration mapping, and migration/backfill decisions before product-code migration]`
+- `[MISSING: Auth-backed Rent-a-box customer session adapter/local profile binding decision, admin role mapping, consent/profile migration mapping, and migration/backfill decisions before product-code migration]`
 - `[MISSING: ChytraKoupe final Auth client-id decision and authenticated Auth subject linkage decision if central Orders must persist customer.authSubject before production runtime claim]`
-- `[MISSING: Cliplot selector behavior, authenticated browser/session, no-PII exposure, and response-contract approvals before wallet selector integration]`
+- `[MISSING: Cliplot selector behavior, authenticated browser/session, no-PII exposure, and stable wallet response version identifier before wallet selector integration]`
 - `[UNKNOWN: whether all marketplace/channel services have customer checkout surfaces or only operator publishing surfaces]`
 - `[UNKNOWN: whether live users already have legacy perApplicationPreferences.canonicalProfile.address data requiring migration or backfill]`
 
@@ -292,19 +292,20 @@ Resolved for current Goal 10 scope:
 - First consumer lanes are known: FlipFlop source-prepared, Orders immutable
   snapshot support source-prepared, and Rent-a-box/ChytraKoupe/Cliplot
   dependency-gated readiness lanes refreshed against Auth 401 evidence.
-- Rent-a-box commit `9e6cf38` records generic hosted Auth handoff,
-  `POST /auth/validate`, Auth wallet API shape, and Auth-side wildcard
-  redirect/CORS acceptance for `https://rent-a-box.alfares.cz/auth/callback`
-  as resolved upstream evidence while preserving source callback route,
-  `client_id`/`return_url`, admin role, consent/profile migration, and backfill
-  gates.
+- Rent-a-box commit `6ecd76e` source-prepares hosted Auth `/auth/start` and
+  `/auth/callback` with `client_id=rent-a-box` and
+  `return_url=https://rent-a-box.alfares.cz/auth/callback` while preserving
+  local login/register, local JWT sessions, backend request auth, admin auth,
+  profile persistence, and domain flows until customer session adapter,
+  admin-role, consent/profile migration, and backfill gates are approved.
 - ChytraKoupe commit `b280f75` source-prepares Auth wallet checkout selectors
   and immutable snapshot payloads while preserving final client-id and optional
   `customer.authSubject` linkage gates before production runtime claim.
-- Cliplot current observed HEAD `0e6a233` has unrelated dirty
-  approval/config/integration work; wallet readiness still reports no runtime
-  wallet integration and preserves selector behavior, authenticated session,
-  no-PII exposure, and response-contract gates.
+- Cliplot current clean HEAD `ed6d248` still reports no runtime wallet
+  integration and preserves selector behavior, authenticated session, no-PII
+  exposure, and stable wallet response version gates. Auth wallet response
+  fields are source-backed; the stable wallet response version identifier is
+  still unknown.
 - Auth invoice profile v1 field ownership is defined: Auth owns reusable
   `companyId`, `taxId`, `vatId`, and invoice-recipient `email`; Orders stores
   immutable snapshots only, and Payments/accounting issuance remains outside

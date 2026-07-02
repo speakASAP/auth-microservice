@@ -1,3 +1,62 @@
+## 2026-07-03 - Goal 10.32 Rent-a-box Hosted Auth Callback Scaffold And Consumer Head Refresh
+
+Current focus:
+
+- Move the Rent-a-box consumer lane one source-safe step forward after Auth
+  wallet deploy while keeping backend auth migration, admin mapping,
+  consent/profile migration, live backfill, and mutating runtime gates closed.
+
+Evidence:
+
+- Rent-a-box committed `6ecd76e feat: scaffold hosted auth callback`.
+- The Rent-a-box source chunk adds `apps/web/src/lib/auth/hosted-auth.ts`,
+  `/auth/start`, `/auth/callback`, isolated hosted Auth handoff storage in
+  `apps/web/src/lib/customer-flow/session.ts`, and non-secret
+  `NEXT_PUBLIC_AUTH_*` config for `client_id=rent-a-box` and
+  `https://rent-a-box.alfares.cz/auth/callback`.
+- The callback parses fragment-only Auth handoff, validates stored `state`,
+  strips the fragment from browser history, and stores the handoff separately
+  from the existing local customer JWT session.
+- Existing Rent-a-box local login/register, local JWT session, backend request
+  auth, admin auth, customer profile persistence, and reservation/payment/domain
+  flows remain unchanged.
+- ChytraKoupe read-only subagent confirmed clean `main` at `b280f75`; the
+  repo-local wallet selector verifier still passes, and final `client_id`
+  plus optional `customer.authSubject` decisions remain open before production
+  runtime claim.
+- Cliplot read-only subagent confirmed clean `main` at `ed6d248`; readiness,
+  `node --check`, `npm run check`, and `git diff --check` passed. Runtime
+  wallet integration remains absent. Auth wallet response fields are known,
+  but a stable wallet response version identifier remains `[UNKNOWN]`.
+
+Validation:
+
+- Rent-a-box: `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py scripts/ips_pre_coding_gate.py` passed.
+- Rent-a-box: `python3 scripts/check_goal12_auth_wallet_readiness.py --root .`
+  passed with `pass_dependency_gated`.
+- Rent-a-box: `./scripts/intent_preflight.sh` passed.
+- Rent-a-box: `npm run lint --workspace @box/web` passed.
+- Rent-a-box: `npm run build --workspace @box/web` passed.
+- Rent-a-box: `PYTHON="env PYTHONPATH=/tmp/rab-goal12-pydeps:apps/api python3" npm run test --workspace @box/web` passed 4 Playwright tests after
+  temporary `/tmp` API deps and Playwright Chromium install.
+- Rent-a-box: `git diff --check`, stale callback-blocker scan, and targeted
+  dangerous literal-secret scan passed.
+
+Boundary:
+
+- No Auth runtime code, Auth deploy, live DB query, secret/token/password/JWT
+  value inspection, cookie inspection, customer/order data inspection, live
+  checkout submit, payment/Warehouse mutation, notification send, or production
+  data access was performed.
+
+Next unfinished chunk:
+
+- Auth-backed Rent-a-box customer session adapter/local profile binding
+  decision, Rent-a-box admin role mapping, consent/profile migration mapping,
+  owner-approved migration/backfill, ChytraKoupe runtime decisions, Cliplot
+  selector/session/PII approvals, or owner-approved synthetic authenticated
+  Auth/FlipFlop smoke.
+
 ## 2026-07-03 - Goal 10.31 ChytraKoupe Source-Prepared Selectors And Consumer Head Refresh
 
 Current focus:
