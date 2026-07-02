@@ -8,12 +8,15 @@ Current focus:
 Evidence:
 
 - Auth current HEAD at audit time: `f86621f docs: refresh auth wallet live
-  deploy target`; worktree clean and `main` ahead of `origin/main` by 5.
+  deploy target`; worktree clean and `main` aligned with `origin/main`.
 - FlipFlop current `main` is `7e97e98 merge: close superseded flipflop orders
   lifecycle branch`.
 - FlipFlop `git status --short --branch` is `main...origin/main` with one
   unrelated dirty file: `shared/health/health.service.ts`.
 - Orders current `main` is clean at `2111389`.
+- Rent-a-box current `main` is clean at `09dce2f`.
+- ChytraKoupe current `main` is clean at `2838ebf`.
+- Cliplot current `main` is clean at `d7144a6`.
 
 Validation:
 
@@ -21,6 +24,7 @@ Validation:
   `nonMutating: true`.
 - FlipFlop: `npm run verify:auth-wallet-checkout-selectors` passed and reported
   `nonMutating: true`.
+- FlipFlop: `npm run verify:orders-hub-integration` passed.
 - Orders: `npm run verify:create-order-contract` passed.
 - Orders: `npm run verify:invoices-read-boundary` passed.
 

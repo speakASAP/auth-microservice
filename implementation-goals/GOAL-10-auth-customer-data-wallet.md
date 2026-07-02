@@ -159,10 +159,13 @@ that repo's status/validation report.
   `shared/health/health.service.ts`.
 - FlipFlop source verifiers passed on current `main`:
   `npm run verify:auth-wallet-profile-ui` and
-  `npm run verify:auth-wallet-checkout-selectors`.
+  `npm run verify:auth-wallet-checkout-selectors`; `npm run
+  verify:orders-hub-integration` also passed.
 - Orders current `main` remains clean at `2111389`; `npm run
   verify:create-order-contract` and `npm run verify:invoices-read-boundary`
   passed.
+- Dependency-gated consumer heads were refreshed: Rent-a-box `09dce2f`,
+  ChytraKoupe `2838ebf`, and Cliplot `d7144a6`.
 - No SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT
   value inspection, raw production customer data inspection, authenticated
   smoke, or live checkout submit was performed.
