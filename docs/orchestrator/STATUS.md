@@ -68,8 +68,8 @@ Boundary:
 
 Next unfinished chunk:
 
-- Commit Auth A1 source. Live SQL apply and deployment remain
-  owner-approval-gated.
+- Auth A1 source was committed as `b6c1585`. Live SQL apply and deployment
+  remain owner-approval-gated.
 
 ## 2026-07-02 - Goal 10 Auth Customer Data Wallet Pre-Approval Fixes
 
@@ -95,6 +95,20 @@ Runtime evidence:
   was still running image `0d4282b-20260702102426`; `b6c1585` was not deployed.
   The outage appeared cluster-wide with many pods in image pull/container
   creation backlog, not a failure of the new Goal 10 source.
+- To restore scheduler capacity, stuck pods that already had deletion
+  timestamps were force-removed from the Kubernetes API. No database, source,
+  secret, or deployed image was changed. Auth web recovered to `1/1`; Auth
+  backend remained pending/init-blocked at the last check due cluster
+  scheduling/container startup backlog on the old image.
+
+Validation evidence:
+
+- `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts
+src/users/users.service.spec.ts` passed: 2 suites, 15 tests.
+- `npm run test:auth-contract` passed: 3 suites, 25 tests.
+- `npm run build` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
 
 Boundary:
 
@@ -105,9 +119,9 @@ Boundary:
 
 Next unfinished chunk:
 
-- Validate and commit the pre-approval fixes, then request owner approval for
-  schema-only DB preflight, live SQL apply, and Auth deploy only after current
-  Auth runtime health is safe.
+- Commit the pre-approval fixes, then restore or confirm current Auth runtime
+  health before requesting owner approval for schema-only DB preflight, live SQL
+  apply, and Auth deploy.
 
 ## 2026-07-02 - Goal 10 Auth Customer Data Wallet Cross-Repo Planning
 
