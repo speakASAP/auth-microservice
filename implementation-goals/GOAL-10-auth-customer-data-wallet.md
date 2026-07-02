@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI, FlipFlop selectors, and Orders/FlipFlop order snapshot support source-prepared; Rent-a-box/ChytraKoupe/Cliplot readiness lanes created; marketplace/channel audit complete; live SQL/deploy/runtime smoke approval-gated
+Status: active; Auth API + hosted profile UI, FlipFlop selectors/save-back, and Orders/FlipFlop order snapshot support source-prepared; Rent-a-box/ChytraKoupe/Cliplot readiness lanes created; marketplace/channel audit complete; live SQL/deploy/runtime smoke approval-gated
 
 ## Intent
 
@@ -62,6 +62,7 @@ Auth customer data wallet:
 - [x] 10.16 Auth release gate exact HEAD refreshed to current deploy candidate.
 - [x] 10.17 Auth invoice profile field semantics source-defined.
 - [x] 10.18 Orders and FlipFlop consumer order snapshot support for optional Auth invoice fields source-prepared.
+- [x] 10.19 FlipFlop checkout explicit Auth wallet save-back source-prepared.
 
 ## Acceptance Criteria
 
@@ -98,7 +99,7 @@ marketplace operations.
 | A1 Auth backend                    | source-implemented | Auth backend worker      | Auth source/docs/tests                   | SQL apply/deploy approval | 2           |
 | A2 Auth profile UI                 | source-prepared    | Auth frontend worker     | hosted Auth/profile UI                   | Auth deploy/runtime smoke | 3           |
 | F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | runtime smoke gated       | 4           |
-| F2 FlipFlop checkout UX            | source-prepared    | FlipFlop frontend worker | checkout/profile UI                      | Auth deploy/runtime smoke incl. manual-edit guard | 5           |
+| F2 FlipFlop checkout UX            | source-prepared    | FlipFlop frontend worker | checkout/profile UI and explicit save-back | Auth deploy/runtime smoke incl. manual-edit guard/save-back | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth runtime deploy/smoke | 6           |
 | R1 Rent-a-box Auth migration plan  | plan+verifier-created | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | Auth deploy + migration approval | 7 |
 | CK1 ChytraKoupe checkout selectors | plan+verifier-created | ChytraKoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx` | Auth deploy + client-id decision | 8 |
@@ -139,11 +140,21 @@ that repo's status/validation report.
 - `[MISSING: owner-approved synthetic account for live cross-repo checkout smoke]`
 - `[MISSING: post-deploy wallet endpoint 401 smoke]`
 - `[MISSING: post-deploy consumer runtime smoke confirming Auth invoice profile selection reaches immutable order billing snapshots]`
-- `[MISSING: post-deploy FlipFlop checkout/profile runtime smoke, including manual-edit-before-wallet-response and explicit selector override]`
+- `[MISSING: post-deploy FlipFlop checkout/profile runtime smoke, including manual-edit-before-wallet-response, explicit selector override, and explicit checkout wallet save-back]`
 - `[MISSING: Rent-a-box hosted Auth token/session/admin-role migration decision before code changes]`
 - `[MISSING: ChytraKoupe hosted Auth client_id decision before selector implementation]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-02 Goal 10.19 FlipFlop Checkout Wallet Save-Back Result
+
+- 2026-07-02: FlipFlop commit `0f04931` source-prepared explicit checkout save-back to Auth wallet.
+- Authenticated users can edit checkout billing/company/tax/VAT/invoice email fields and save them through `Uložit údaje`; FlipFlop updates the selected Auth invoice profile or creates a new one when no profile is selected.
+- When a separate delivery address is present, the same explicit save updates the selected Auth delivery address or creates a new one.
+- Checkout order submit remains snapshot-only and still does not silently create Auth wallet entries or send Auth wallet IDs to Orders before provenance approval.
+- Validation passed in FlipFlop: `git diff --check`, `npm run verify:auth-wallet-checkout-selectors`, `npm run verify:orders-hub-integration`, `services/frontend npm run build`, targeted dangerous literal-secret scan, and added-line `any` scan.
+- Runtime/live validation remains gated: guest checkout UI verifier currently depends on a live product API route returning HTTP 200, but it returned HTTP 500 during this source-only run.
+- No Auth runtime code, SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT value inspection, raw production customer data inspection, authenticated smoke, or live checkout submit was performed.
 
 ## 2026-07-02 Goal 10.18 Consumer Order Snapshot Support Result
 

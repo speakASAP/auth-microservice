@@ -1,3 +1,32 @@
+## 2026-07-02 - Goal 10.19 FlipFlop Checkout Wallet Save-Back
+
+Current focus:
+
+- Close the source-level FlipFlop checkout gap where Auth wallet entries could be selected but manual authenticated checkout edits were not saved back to Auth.
+
+Evidence:
+
+- FlipFlop commit: `0f04931 feat: save checkout wallet edits to auth`.
+- Checkout now exposes manual invoice/company fields for `companyName`, `companyId`, `taxId`, `vatId`, and invoice recipient email.
+- Explicit `Uložit údaje` now updates the canonical Auth profile and upserts the selected or new Auth invoice profile from billing fields.
+- The same explicit save action upserts the selected or new Auth delivery address when separate delivery data is present.
+- Order submit remains immutable-snapshot only: it still does not create wallet entries silently and does not send Auth wallet IDs to Orders before provenance approval.
+- Read-only sidecar audit confirmed ChytraKoupe, Rent-a-box, and Cliplot remain dependency-gated, and Orders snapshot support is current at `3c7d0c3`.
+
+Validation:
+
+- FlipFlop: `git diff --check`, `npm run verify:auth-wallet-checkout-selectors`, `npm run verify:orders-hub-integration`, `services/frontend npm run build`, targeted dangerous literal-secret scan, and added-line `any` scan passed.
+- `npm run verify:guest-checkout-ui` was attempted and failed because live `https://flipflop.alfares.cz/api/products?limit=1` returned HTTP 500; this is runtime/live dependency evidence, not a source compile failure.
+- Single-file eslint was attempted from `services/frontend` and interrupted after hanging without output; full frontend lint remains known baseline debt from earlier validation.
+
+Boundary:
+
+- Source/verifier work only. No Auth runtime code, SQL, deploy, Kubernetes mutation, DB access, secret/token/password/JWT value inspection, raw production customer data inspection, authenticated smoke, or live checkout submit.
+
+Next unfinished chunk:
+
+- Add profile invoice-profile management UI, or request owner approval for Auth schema-only live DB preflight, SQL apply, Auth deploy, wallet endpoint 401 smoke, and post-deploy FlipFlop checkout/profile runtime smoke including save-back.
+
 ## 2026-07-02 - Goal 10.18 Consumer Order Snapshot Support
 
 Current focus:
