@@ -301,7 +301,7 @@ that repo's status/validation report.
 - ChytraKoupe read-only subagent confirmed clean `main` at `b280f75`, verifier
   pass, and unchanged final `client_id` plus optional `customer.authSubject`
   gates.
-- Cliplot read-only subagent confirmed clean `main` at `ed6d248`; runtime
+- Cliplot read-only subagent confirmed clean `main` at `decfb63`; runtime
   wallet integration remains absent, response fields are known, and only the
   stable wallet response version identifier remains unknown inside the
   response-contract lane.
@@ -324,7 +324,7 @@ that repo's status/validation report.
   dangerous literal-secret scan.
 - Rent-a-box is superseded by Goal 10.32 source-backed callback scaffold
   evidence.
-- Cliplot is superseded by Goal 10.32 clean `ed6d248` readiness evidence.
+- Cliplot is superseded by Goal 10.32 clean `decfb63` readiness evidence.
 - No deploy, live checkout submit, DB access, secret/token/cookie inspection,
   customer/order data inspection, payment/Warehouse mutation, notification
   send, or Auth runtime change was performed.

@@ -123,7 +123,7 @@ Consumers:
   billing/delivery snapshots, and no Auth wallet IDs or `customer.authSubject`
   in order payloads. Runtime claim remains blocked until the final Auth
   client-id and authenticated Auth subject linkage decisions are approved.
-- `cliplot`: current `main` is clean at `ed6d248`; Auth wallet readiness still
+- `cliplot`: current `main` is clean at `decfb63`; Auth wallet readiness still
   reports no runtime wallet integration. Checkout mutation and wallet selector
   integration remain approval-gated on selector behavior, browser/session, PII
   exposure, and a stable wallet response version identifier. Auth wallet
@@ -142,7 +142,7 @@ Consumers:
 | `orders-microservice` | Orders contract owner | Clean `main` at `2111389`; Auth subject aliases and immutable snapshots supported, including optional Auth invoice fields from `3c7d0c3` | `npm run verify:create-order-contract` passed; `npm run verify:invoices-read-boundary` passed; earlier build/full-test evidence remains recorded in Goal 10.18 | optional validate-create payload smoke and event privacy check after Auth deploy approval | optional future wallet provenance field names/idempotency semantics not approved |
 | `rent-a-box` | Rent-a-box migration owner | Clean `main` ahead 1 at `6ecd76e`; source-backed hosted Auth `/auth/start` and `/auth/callback` scaffold with `client_id=rent-a-box` and production callback URL; local login/register/JWT/backend/admin/profile flows unchanged | `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py scripts/ips_pre_coding_gate.py` passed; `python3 scripts/check_goal12_auth_wallet_readiness.py --root .` passed with `pass_dependency_gated`; `./scripts/intent_preflight.sh` passed; web lint, web build, and web Playwright tests passed; `git diff --check`, targeted literal-secret scan, and stale callback-blocker scan passed | Auth-backed customer session adapter/local profile binding; admin adapter; consent/profile migration mapping; no backfill without approval | customer session adapter/local profile binding decision, admin role mapping, consent/profile migration mapping, DB migration/backfill, row counts unknown |
 | `chytrakoupe` | ChytraKoupe checkout owner | `main` ahead 1 at `b280f75`; Auth wallet checkout-data client and delivery/invoice selector source prepared; order submit remains immutable snapshot-only and does not send Auth wallet IDs or `customer.authSubject` | `npm run verify:auth-wallet-checkout-selectors` passed; `node --check scripts/verify-auth-wallet-checkout-selectors.mjs` passed; `npm run build` passed; `npm run lint` passed; `git diff --check` and targeted dangerous literal-secret scan passed | runtime selector smoke; final client-id decision; optional Auth subject linkage; no live checkout submit without approval | final Auth client-id decision; authenticated Auth subject linkage if central Orders must persist `customer.authSubject` |
-| `cliplot` | Cliplot coordinator | Clean `main` at `ed6d248`; Auth wallet readiness still reports no runtime wallet integration; response fields known, stable version identifier unknown | `npm run readiness:auth-wallet-checkout`, `node --check scripts/auth-wallet-checkout-readiness.js`, `npm run check`, and `git diff --check` passed read-only | no live order/payment/Warehouse/notification mutation without approval | selector behavior approval, authenticated browser/session contract, no-PII logging/frontend exposure review, stable wallet response version identifier |
+| `cliplot` | Cliplot coordinator | Clean `main` at `decfb63`; Auth wallet readiness still reports no runtime wallet integration; response fields known, stable version identifier unknown | `npm run readiness:auth-wallet-checkout`, `node --check scripts/auth-wallet-checkout-readiness.js`, `npm run check`, and `git diff --check` passed read-only | no live order/payment/Warehouse/notification mutation without approval | selector behavior approval, authenticated browser/session contract, no-PII logging/frontend exposure review, stable wallet response version identifier |
 | marketplace/channel repos | Auth coordinator | `catalog-microservice` `311030d`, `allegro` `6c64a30`, `aukro` `ba61422`, `bazos` `cdcd739`, `heureka` `976a1a8`, `shop-assistant` `4ed76b1` | read-only status/head and bounded source/doc audit completed | no wallet back-write; preserve channel evidence and Orders snapshots | possible later Allegro raw-payload retention review; Bazos/Aukro provider-specific unknowns |
 
 ## Merge And Deployment Order
@@ -150,7 +150,7 @@ Consumers:
 1. Current source states are frozen in this plan: Auth deployed Source
    Preflight HEAD `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`, FlipFlop
    `97b7e40`, Orders `2c35d2f`, Rent-a-box `6ecd76e`, ChytraKoupe `b280f75`,
-   and Cliplot `ed6d248`.
+   and Cliplot `decfb63`.
 2. Push or merge plan/source commits that are intentionally part of the release.
 3. Keep Orders unchanged for current snapshot support unless a separate
    wallet-provenance contract is approved.

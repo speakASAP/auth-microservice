@@ -24,7 +24,7 @@ Evidence:
   repo-local wallet selector verifier still passes, and final `client_id`
   plus optional `customer.authSubject` decisions remain open before production
   runtime claim.
-- Cliplot read-only subagent confirmed clean `main` at `ed6d248`; readiness,
+- Cliplot read-only subagent confirmed clean `main` at `decfb63`; readiness,
   `node --check`, `npm run check`, and `git diff --check` passed. Runtime
   wallet integration remains absent. Auth wallet response fields are known,
   but a stable wallet response version identifier remains `[UNKNOWN]`.

@@ -301,7 +301,7 @@ Resolved for current Goal 10 scope:
 - ChytraKoupe commit `b280f75` source-prepares Auth wallet checkout selectors
   and immutable snapshot payloads while preserving final client-id and optional
   `customer.authSubject` linkage gates before production runtime claim.
-- Cliplot current clean HEAD `ed6d248` still reports no runtime wallet
+- Cliplot current clean HEAD `decfb63` still reports no runtime wallet
   integration and preserves selector behavior, authenticated session, no-PII
   exposure, and stable wallet response version gates. Auth wallet response
   fields are source-backed; the stable wallet response version identifier is
