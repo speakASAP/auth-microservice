@@ -67,6 +67,11 @@ Current chunk:
 - 10.10 ChytraKoupe checkout selector integration plan is committed in `chytrakoupe` commit `a1dabca`.
 - 10.11 cross-repo validation and deployment plan is created in
   `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`.
+- Continuation update: Auth exact HEAD `39b59d7` source validation passed, and
+  active FlipFlop target branch
+  `codex/orders-lifecycle-cabinet-flipflop-clean` now contains wallet source
+  commits `a8425a9`, `15fb1ee`, `f4af318`, plus validation report commit
+  `223db57`.
 - Next live chunk: owner-approved Auth schema-only DB preflight, SQL apply,
   Auth deploy, and wallet endpoint 401 smoke.
 
@@ -82,8 +87,10 @@ Planning artifacts:
 Parallel execution summary:
 
 - Auth SQL apply/deploy remains owner-approval gated.
-- FlipFlop runtime smoke remains gated on Auth SQL/deploy.
-- Orders remains gated on final wallet provenance field decisions.
+- FlipFlop runtime smoke remains gated on Auth SQL/deploy, but its active
+  target branch is source-integrated and source-validated.
+- Orders remains source-unchanged and gated on final wallet provenance field
+  decisions.
 - Rent-a-box code migration is gated on hosted Auth/session/admin-role and live data migration decisions.
 - ChytraKoupe selector implementation is gated on Auth wallet deploy, Auth client-id decision, CORS/redirect allowlist, and order snapshot payload decisions.
 - Marketplace/channel services stay read-only/audit-only until a real customer checkout surface is confirmed.

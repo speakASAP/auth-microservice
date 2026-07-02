@@ -73,13 +73,16 @@ Auth:
 
 Consumers:
 
-- `flipflop`: local `main` contains source-prep commits `515f4b7`, `840eff6`,
-  and `4268a48`. Current checked-out branch observed by the reviewer was
-  `codex/orders-lifecycle-cabinet-flipflop` at `d5dc026`; final target branch
-  must be confirmed before deploy/runtime smoke.
-- `orders-microservice`: `main` at `c44a440`; reviewer observed an unrelated
-  dirty provenance lane adding `customer.authSubject/authUserId`. Goal 10 must
-  not depend on Orders changes until the provenance contract is approved.
+- `flipflop`: continuation review found active branch
+  `codex/orders-lifecycle-cabinet-flipflop-clean` initially missed the wallet
+  source series. The active target is now source-integrated with commits
+  `a8425a9`, `15fb1ee`, `f4af318`, and validation report commit `223db57`.
+  Deploy/runtime smoke remains gated until Auth wallet endpoints return 401
+  unauthenticated after Auth SQL/deploy.
+- `orders-microservice`: current clean `main` at `c5e6dd6` already accepts Auth
+  subject aliases and immutable shipping/billing snapshots; it does not accept
+  Auth wallet IDs. Goal 10 must not add Orders source changes until the
+  provenance contract is approved.
 - `rent-a-box`: plan commit `fcfeb48` created; code migration is blocked until
   hosted Auth/session/admin-role and data migration decisions are approved.
 - `chytrakoupe`: plan commit `a1dabca` created; selector implementation is
@@ -92,8 +95,8 @@ Consumers:
 | Repo | Owner role | Current state | Required pre-deploy checks | Post-deploy/runtime checks | Blockers |
 | --- | --- | --- | --- | --- | --- |
 | `auth-microservice` | Auth coordinator | Source ready at `54743ed`; live still old image with wallet 404 | `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts src/users/users.service.spec.ts`; `npm run test:auth-contract`; `npm run build`; `npm run lint`; `git diff --check`; schema-only DB preflight after approval | rollout backend/web; `/health` 200; wallet endpoints unauthenticated 401; optional synthetic CRUD/default/delete smoke | live DB preflight, SQL apply, deploy, synthetic account approvals |
-| `flipflop` | FlipFlop integration owner | Wallet bridge/selectors/manual-edit guard source-prepared on local `main` | confirm target branch/commit; pre-coding gate; strict doc audit; shared build; frontend `tsc --noEmit`; frontend build; `git diff --check` | guest checkout unchanged; authenticated checkout/profile selectors; wallet fallback on 404/failure; manual-edit-before-wallet-response guard; explicit selector override; profile address fallback; no wallet IDs in order payload unless approved | Auth wallet deploy; owner-approved synthetic account; target branch decision |
-| `orders-microservice` | Orders contract owner | No Goal 10 change required yet; dirty provenance lane observed separately | resolve/isolate dirty lane; if provenance fields are approved, run build, create-order contract verifier, event verifier, lifecycle/invoice verifiers, full tests, and secret scan | optional validate-create payload smoke and event privacy check after contract approval | wallet provenance field names/idempotency semantics not approved |
+| `flipflop` | FlipFlop integration owner | Active target `codex/orders-lifecycle-cabinet-flipflop-clean` source-integrated at `223db57` | pre-coding gate passed; strict doc audit passed 100/100; shared build passed; frontend `tsc --noEmit` passed; frontend build passed; `git diff --check` passed | guest checkout unchanged; authenticated checkout/profile selectors; wallet fallback on 404/failure; manual-edit-before-wallet-response guard; explicit selector override; profile address fallback; no wallet IDs in order payload unless approved | Auth wallet deploy; owner-approved synthetic account; runtime smoke |
+| `orders-microservice` | Orders contract owner | Clean `main` at `c5e6dd6`; Auth subject aliases and immutable snapshots already supported | if provenance fields are approved, run build, create-order contract verifier, event verifier, lifecycle/invoice verifiers, full tests, and secret scan | optional validate-create payload smoke and event privacy check after contract approval | wallet provenance field names/idempotency semantics not approved |
 | `rent-a-box` | Rent-a-box migration owner | Plan-only commit `fcfeb48` | intent preflight, lint, tests, focused API/web checks, diff-check when code lane starts | hosted Auth callback/token/session/admin mapping; wallet read/write adapter; no backfill without approval | hosted Auth token/session/admin-role decision; DB migration/backfill approval; row counts unknown |
 | `chytrakoupe` | ChytraKoupe checkout owner | Plan-only commit `a1dabca` | lint, build, diff-check, literal-secret scan when code lane starts | callback hardening; delivery/invoice selectors; guest fallback; order snapshot check; no live checkout submit without approval | Auth wallet deploy; client-id decision; CORS/redirect allowlist; Orders snapshot decisions |
 | `cliplot` | Cliplot coordinator | Readiness-only; checkout still guarded | build/check/readiness scripts only | no live order/payment/Warehouse/notification mutation without approval | checkout approval and Auth wallet consumer policy |
@@ -101,7 +104,8 @@ Consumers:
 ## Merge And Deployment Order
 
 1. Freeze current source states and decide target branches/SHAs for Auth,
-   FlipFlop, Rent-a-box, ChytraKoupe, Orders, and Cliplot.
+   Rent-a-box, ChytraKoupe, Orders, and Cliplot. FlipFlop active target is
+   currently `codex/orders-lifecycle-cabinet-flipflop-clean` at `223db57`.
 2. Push or merge plan/source commits that are intentionally part of the release.
 3. Resolve or isolate the dirty Orders provenance lane before any Orders
    deployment decision.

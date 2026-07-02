@@ -1,3 +1,57 @@
+## 2026-07-02 - Goal 10 Continuation Source Validation And Active FlipFlop Target Integration
+
+Current focus:
+
+- Advance safe non-live Goal 10 rollout work while Auth SQL/deploy remains
+  owner-approval gated.
+
+Evidence:
+
+- Auth runtime source commit `39b59d7` validation passed: focused Auth/User specs 2
+  suites/15 tests, `npm run test:auth-contract` 3 suites/25 tests,
+  `npm run build`, `npm run lint`, and `git diff --check`.
+- Auth worktree remained clean on `main`, ahead of `origin/main` by 6.
+- Live Auth read-only probes still show `/health` HTTP 200 and wallet endpoints
+  HTTP 404 unauthenticated for `/auth/profile/checkout-data`,
+  `/auth/profile/delivery-addresses`, and `/auth/profile/invoice-profiles`.
+  Goal 10 SQL/deploy is therefore still unapplied.
+- FlipFlop read-only subagent found active branch
+  `codex/orders-lifecycle-cabinet-flipflop-clean` at `216264b` did not contain
+  wallet commits `515f4b7`, `840eff6`, or `4268a48`; local `main` did contain
+  them.
+- Cherry-picked the wallet series onto the active FlipFlop target branch:
+  `a8425a9 feat: add Auth wallet client bridge`,
+  `15fb1ee feat: wire Auth wallet selectors in checkout`, and
+  `f4af318 fix: guard checkout wallet autofill after manual edits`.
+- FlipFlop pre-coding gate refreshed validation report in commit
+  `223db57 chore: refresh checkout pre-coding gate`; branch is clean and aligned
+  with `origin/codex/orders-lifecycle-cabinet-flipflop-clean`.
+- FlipFlop validation passed: `python3 scripts/pre_coding_gate.py --root .`,
+  `python3 scripts/strict_doc_audit.py --root . --format markdown
+  --fail-on-issues` with 100/100, `git diff --check`,
+  `npm --prefix shared run build`,
+  `npm --prefix services/frontend exec -- tsc --noEmit`, and
+  `npm --prefix services/frontend run build` with existing
+  `baseline-browser-mapping` and workspace-root warnings only.
+- Orders read-only subagent found current `orders-microservice` clean on `main`
+  at `c5e6dd6`; Orders already accepts Auth subject aliases, persists immutable
+  `customer`, `shippingAddress`, and `billingAddress` snapshots, and excludes
+  raw customer/address/billing data from events. No Orders source change is
+  needed before the final wallet provenance contract is approved.
+
+Boundary:
+
+- No live SQL, deploy, Kubernetes mutation, production DB access,
+  secret/token/password inspection, raw customer data inspection, Orders edit,
+  or live checkout submit was performed.
+
+Next unfinished chunk:
+
+- Owner approval for schema-only live DB preflight, DB env use without printing
+  values, live SQL apply, Auth deploy from the current approved Auth HEAD,
+  post-deploy wallet 401 smoke, and optional synthetic authenticated
+  Auth/FlipFlop smoke.
+
 ## 2026-07-02 - Goal 10.11 Cross-Repo Validation And Deployment Plan
 
 Current focus:

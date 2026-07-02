@@ -152,6 +152,27 @@ that repo's status/validation report.
   customer-data inspection, consumer code edit, or live checkout smoke was
   performed for this chunk.
 
+## 2026-07-02 Continuation Validation And Active FlipFlop Target Result
+
+- 2026-07-02: Auth runtime source commit `39b59d7` validation passed: focused
+  Auth/User specs 2 suites/15 tests, `npm run test:auth-contract` 3 suites/25
+  tests, `npm run build`, `npm run lint`, and `git diff --check`.
+- Live Auth still returns wallet endpoints as HTTP 404 unauthenticated, so SQL
+  apply and deploy remain pending.
+- Active FlipFlop target branch
+  `codex/orders-lifecycle-cabinet-flipflop-clean` now contains the Auth wallet
+  source series as `a8425a9`, `15fb1ee`, and `f4af318`, with validation report
+  commit `223db57`.
+- FlipFlop validation passed: pre-coding gate, strict doc audit 100/100,
+  `git diff --check`, shared build, frontend typecheck, and frontend build with
+  existing baseline/workspace warnings only.
+- Orders current clean `main` at `c5e6dd6` already supports Auth subject
+  aliases and immutable shipping/billing snapshots; Orders remains unchanged
+  until final wallet provenance semantics are approved.
+- No live SQL, deploy, production DB access, secret/token/password inspection,
+  raw customer-data inspection, Orders edit, or live checkout smoke was
+  performed.
+
 ## Coding Prompt
 
 Implement only the assigned chunk. Preserve Auth as the source of truth for
