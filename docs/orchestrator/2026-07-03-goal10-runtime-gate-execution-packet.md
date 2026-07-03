@@ -249,6 +249,41 @@ Remaining Rent-a-box follow-up gates:
 - Owner-approved live DB migration/backfill scope before any product-code
   migration, even though current aggregate local user/profile counts are zero.
 
+
+
+## Follow-up A - Cliplot Guarded Runtime Checkout Evidence
+
+Status: completed 2026-07-03 for no-live-call runtime evidence.
+
+Evidence:
+
+- Cliplot commits `48b9111` and `df4c5b4` recorded the runtime checkout evidence packet and sanitized guard fix.
+- Passed status: `auth_wallet_runtime_checkout_evidence_recorded_no_live_calls`.
+- Selector helpers, customer-safe labels, excluded wallet fields, no-PII evidence, and six guest fallback cases passed.
+- Confirmed `mutation=false`, `persistence=false`, `providerCall=false`, `authWalletFetch=false`, `authWalletMutation=false`, and `checkoutSubmit=false`.
+
+Remaining Cliplot follow-up gates:
+
+- Owner-approved live runtime wallet selector UI rollout.
+- Owner-approved authenticated browser-session integration in the Cliplot frontend.
+- Owner-approved live checkout submit using immutable Auth wallet snapshots.
+
+## Follow-up B - Rent-a-box Nullable Production Schema Apply
+
+Status: completed 2026-07-03 for nullable schema-only apply. Product-code migration remains blocked.
+
+Evidence:
+
+- Rent-a-box live schema apply verified `customer_profiles.auth_subject_id=true` and `ix_customer_profiles_auth_subject_id=true`.
+- Post-apply metadata preflight passed with empty blocker labels, aggregate-zero users/customer_profiles, `customer_profiles_auth_subject_non_null=0`, `duplicate_auth_subject_groups=0`, and `migrationComplexity=empty`.
+- Rent-a-box commits `34277a3` and `69c2f6c` record the evidence and validation report refresh.
+- Confirmed no backfill rows, unique constraint, product-code auth migration, raw row inspection, customer-data output, connection string output, deploy, or Auth source change.
+
+Remaining Rent-a-box follow-up gates:
+
+- Scoped runtime adapter/local profile binding.
+- Owner-approved backfill/product-code migration before replacing local auth.
+
 ## Shared Output Contract
 
 Allowed output across all gates:

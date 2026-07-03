@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; Gates 1-6 Auth, FlipFlop, ChytraKoupe, Cliplot wallet-read, and Rent-a-box metadata preflight evidence completed; follow-up consumer implementation/migration lanes remain approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; Gates 1-6 Auth, FlipFlop, ChytraKoupe, Cliplot wallet-read, and Rent-a-box metadata preflight evidence completed; Cliplot guarded runtime evidence and Rent-a-box nullable production schema apply completed; follow-up product/runtime integration lanes remain approval-gated
 
 ## Intent
 
@@ -99,6 +99,8 @@ Auth customer data wallet:
 - [x] 10.68 ChytraKoupe guarded selector smoke completed in commit `de9fd39` with sanitized checkout-data fixture, manual-edit guard, explicit selector evidence, no checkout submit, and no Auth wallet mutation.
 - [x] 10.69 Cliplot synthetic browser/session wallet-read evidence completed in commit `d08b4b0` with all three Auth wallet GET endpoints returning HTTP 200 and sanitized output.
 - [x] 10.70 Rent-a-box metadata-only production preflight completed in commit `80d9ef1` with aggregate-zero users/customer_profiles, `migrationComplexity=empty`, and blocker label `auth_subject_id_column_missing`.
+- [x] 10.71 Cliplot guarded runtime checkout evidence completed in commits `48b9111` and `df4c5b4` with selector/no-PII/mapping/guest-fallback evidence and no live Auth fetch or checkout submit.
+- [x] 10.72 Rent-a-box nullable production schema apply completed and documented in commits `34277a3` and `69c2f6c`; `customer_profiles.auth_subject_id` and `ix_customer_profiles_auth_subject_id` now exist with aggregate-zero rows and no backfill/product-code migration.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -151,9 +153,9 @@ marketplace operations.
 | F1 FlipFlop backend bridge         | gateway-and-browser-runtime-smoke-passed | FlipFlop backend worker  | shared Auth client, user-service         | Gates 2-3 complete | 4           |
 | F2 FlipFlop checkout/profile UX    | gateway-and-browser-runtime-smoke-passed | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Gates 2-3 complete | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
-| R1 Rent-a-box Auth migration plan  | current-live-evidence-refreshed; nullable-auth-subject-schema-prepared; live-db-preflight-gated | Rent-a-box coordinator | `rent-a-box/apps/api/app/models/domain.py`, `rent-a-box/apps/api/alembic/versions/20260703_0003_customer_profile_auth_subject_id.py`, `rent-a-box/apps/api/tests/test_database_model.py`, `rent-a-box/docs/goals/GOAL-12-auth-subject-binding-backfill-runbook.md`, `rent-a-box/docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | owner-approved live DB migration/backfill plan and production row-count complexity before product-code migration; remote Python deps missing for Alembic/Pytest runtime validation | 7 |
+| R1 Rent-a-box Auth migration plan  | nullable-production-schema-applied; runtime-adapter/backfill/product-code-migration-gated | Rent-a-box coordinator | `rent-a-box/apps/api/app/models/domain.py`, `rent-a-box/apps/api/alembic/versions/20260703_0003_customer_profile_auth_subject_id.py`, `rent-a-box/apps/api/tests/test_database_model.py`, `rent-a-box/docs/goals/GOAL-12-auth-subject-binding-backfill-runbook.md`, `rent-a-box/docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | scoped runtime adapter/local profile binding and owner-approved backfill/product-code migration before replacing local auth; production row-count complexity resolved as aggregate-zero | 7 |
 | CK1 ChytraKoupe checkout selectors | guarded-selector-smoke-passed | ChytraKoupe worker | `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/lib/auth/session.ts`, `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/scripts/smoke-auth-wallet-checkout-selectors.mjs`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/docs/goal-driven/auth-wallet-guarded-smoke-approval.md` | Gate 4 complete; future non-guest order subject provenance must derive only from validated Auth bearer `sub` | 8 |
-| C1 Cliplot plan                    | source-session-policy-prepared; synthetic-runtime-gated | Cliplot coordinator | `cliplot/docs/auth-wallet-checkout-contract.md`, `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | approved synthetic browser/session wallet-read evidence before runtime checkout files; runtime selector/no-PII evidence, runtime field mapping implementation, and runtime guest fallback synthetic evidence | later |
+| C1 Cliplot plan                    | guarded-runtime-evidence-recorded; live-selector-ui-gated | Cliplot coordinator | `cliplot/docs/auth-wallet-checkout-contract.md`, `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | live browser/session selector UI rollout and authenticated frontend integration approval before checkout UI changes | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
 ## Validation
@@ -187,10 +189,8 @@ that repo's status/validation report.
 
 - `[MISSING: owner-approved synthetic account for live cross-repo checkout smoke]`
 - `[MISSING: post-deploy consumer runtime smoke confirming Auth invoice profile selection reaches immutable order billing snapshots]`
-- `[MISSING: owner-approved Rent-a-box live DB migration/backfill plan for local users and customer_profiles before product-code migration]`
-- `[UNKNOWN: Rent-a-box production local users/customer_profiles row counts and migration complexity]`
-- `[MISSING: Cliplot runtime browser-session implementation, runtime selector behavior evidence, runtime no-PII exposure evidence, runtime field mapping implementation, and runtime guest fallback behavior before wallet selector code changes]`
-- `[MISSING: Cliplot approved synthetic runtime evidence for browser-session wallet reads, runtime selector behavior, runtime no-PII exposure, runtime field mapping, and runtime guest fallback]`
+- `[MISSING: owner-approved Rent-a-box runtime adapter/local profile binding and later backfill/product-code migration before replacing local auth]`
+- `[MISSING: Cliplot live browser selector UI rollout and authenticated frontend integration before checkout UI changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
 
 
@@ -1478,3 +1478,21 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
 - Orders compatibility audit found no immediate source change is required:
   Orders already stores separate immutable shipping/billing snapshots, and Auth
   wallet IDs should wait for an approved final provenance contract.
+
+
+## 2026-07-03 Goal 10.72 Rent-a-box Nullable Production Schema Apply
+
+- Rent-a-box commits `34277a3 docs: record auth subject schema apply` and `69c2f6c chore: refresh auth wallet validation reports` record the post-apply evidence.
+- Live schema now has `customer_profiles.auth_subject_id=true` and `ix_customer_profiles_auth_subject_id=true`.
+- Post-apply metadata preflight passed with empty blocker labels, aggregate-zero users/customer_profiles, `customer_profiles_auth_subject_non_null=0`, `duplicate_auth_subject_groups=0`, and `migrationComplexity=empty`.
+- No backfill rows, unique constraint, product-code migration, deploy, Auth source change, raw row inspection, customer data output, or connection string output occurred.
+- Remaining Rent-a-box follow-up is scoped runtime adapter/local profile binding, then later owner-approved backfill/product-code migration before replacing local auth.
+
+## 2026-07-03 Goal 10.71 Cliplot Guarded Runtime Checkout Evidence
+
+- Cliplot commit `48b9111 feat: add auth wallet runtime checkout evidence packet and update check script` added the guarded runtime evidence packet, endpoint, and package script.
+- Cliplot commit `df4c5b4 fix: sanitize auth wallet runtime evidence guard` fixed the no-PII guard to validate returned sanitized evidence rather than internal synthetic fixtures.
+- Passed status: `auth_wallet_runtime_checkout_evidence_recorded_no_live_calls`.
+- Evidence covered selector helpers, customer-safe labels, excluded wallet fields, no-PII evidence, and six guest fallback cases with `mutation=false`, `providerCall=false`, `authWalletFetch=false`, and `checkoutSubmit=false`.
+- No live Auth wallet fetch, checkout submit, Auth wallet mutation, payment, Warehouse, notification, database, Kubernetes/Vault mutation, deploy, token output, or customer-data output occurred.
+- Remaining Cliplot follow-up is owner-approved live selector UI rollout and authenticated frontend integration.

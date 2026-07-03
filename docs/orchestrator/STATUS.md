@@ -1,3 +1,32 @@
+## 2026-07-03 - Goal 10.71/10.72 Cliplot Runtime Evidence And Rent Schema Apply Follow-up
+
+Current focus:
+
+- Integrate the two approved parallel follow-up lanes after Gate 5/6: Cliplot runtime checkout evidence guard and Rent-a-box nullable production schema apply verification.
+
+Evidence:
+
+- Cliplot worker commit `48b9111` added the guarded runtime checkout evidence packet/endpoint/script, and coordinator fix commit `df4c5b4` sanitized the no-PII guard so returned evidence is validated instead of internal synthetic fixtures.
+- Cliplot passed status `auth_wallet_runtime_checkout_evidence_recorded_no_live_calls`; selector helpers, customer-safe labels, excluded wallet fields, no-PII evidence, and six guest fallback cases passed with `mutation=false`, `providerCall=false`, `authWalletFetch=false`, and `checkoutSubmit=false`.
+- Rent-a-box live schema-only apply completed: `customer_profiles.auth_subject_id=true`, `ix_customer_profiles_auth_subject_id=true`, `customer_profiles_total=0`, `customer_profiles_auth_subject_non_null=0`, backfill written false, unique constraint false, and product-code migration false.
+- Rent-a-box post-apply metadata preflight passed with status `pass_goal12_rent_auth_metadata_preflight`, empty blocker labels, aggregate-zero users/customer_profiles, duplicate Auth subject groups zero, and `migrationComplexity=empty`.
+- Rent-a-box commits `34277a3` and `69c2f6c` recorded schema-apply evidence and refreshed validation reports.
+
+Validation:
+
+- Cliplot passed: `npm run readiness:auth-wallet-runtime-checkout-evidence`, `npm run readiness:auth-wallet-checkout`, `npm run check`, `git diff --check`, and scoped sensitive literal scan.
+- Rent-a-box passed: live schema apply helper in the API pod, live post-apply `scripts/goal12_auth_metadata_preflight.py`, `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py scripts/ips_pre_coding_gate.py scripts/goal12_auth_metadata_preflight.py`, `python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .`, `./scripts/intent_preflight.sh`, `git diff --check`, and scoped sensitive literal scan.
+- Auth coordinator validation passed before this docs update: `npm run check:customer-data-wallet-runtime-gate-packet`.
+
+Boundary:
+
+- Cliplot did not perform live Auth wallet fetch, checkout submit, Auth wallet mutation, order/payment/Warehouse mutation, notification send, DB write, Kubernetes/Vault mutation, deploy, or customer-data output.
+- Rent-a-box performed only idempotent nullable schema DDL and index verification; no backfill, unique constraint, product-code auth migration, raw row inspection, customer data output, connection string output, deploy, or Auth source change was performed.
+
+Next unfinished chunk:
+
+- Remaining work is product/runtime integration: Cliplot live browser selector UI rollout and Rent-a-box scoped runtime adapter/local profile binding plus later approved backfill/product-code migration.
+
 ## 2026-07-03 - Goal 10.69/10.70 Gate 5 Cliplot And Gate 6 Rent-a-box Parallel Evidence
 
 Current focus:
