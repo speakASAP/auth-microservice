@@ -1,3 +1,59 @@
+## 2026-07-03 - Goal 10.46 ChytraKoupe Guarded Wallet Smoke Approval Packet
+
+Current focus:
+
+- Source-prepare the non-secret approval packet for a future ChytraKoupe Auth
+  wallet checkout selector smoke while keeping runtime execution blocked.
+
+Evidence:
+
+- ChytraKoupe commit `70ce4c5 docs: add auth wallet smoke approval packet`
+  adds `docs/goal-driven/auth-wallet-guarded-smoke-approval.md`.
+- The same commit updates
+  `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`,
+  `docs/goal-driven/STATUS.md`,
+  `reports/validation/auth-wallet-checkout-selectors-plan.md`, and
+  `scripts/verify-auth-wallet-checkout-selectors.mjs`.
+- The packet explicitly does not approve execution by itself.
+- Future runtime smoke remains blocked on:
+  `[MISSING: final decision whether ChytraKoupe keeps client_id=flipflop or receives a new Auth client_id before production runtime claim]`,
+  `[MISSING: authenticated Auth subject linkage decision for ChytraKoupe orders if central Orders must persist customer.authSubject]`,
+  `[MISSING: owner-approved synthetic Auth account/token for ChytraKoupe wallet selector smoke]`,
+  `[MISSING: owner-approved synthetic checkout test data for ChytraKoupe wallet selector smoke]`,
+  and `[MISSING: non-secret owner approval id for ChytraKoupe wallet selector smoke]`.
+- Allowed future evidence is limited to public page checks, synthetic
+  authenticated wallet selector read/prefill/manual-override booleans, sanitized
+  schema version/status metadata, and no-mutation confirmations.
+- Forbidden operations include live checkout submit, Auth wallet create/update/
+  delete, payment, Warehouse, notification, DB, Kubernetes, deploy, Auth source
+  mutation, response-body logging, raw customer-data logging, and secret/token/
+  cookie/password printing.
+
+Validation:
+
+- ChytraKoupe `npm run verify:auth-wallet-checkout-selectors` passed and now
+  verifies the guarded smoke approval packet exists and keeps runtime blocked.
+- ChytraKoupe `node --check scripts/verify-auth-wallet-checkout-selectors.mjs`
+  passed.
+- ChytraKoupe `git diff --check` passed.
+- ChytraKoupe `npm run lint` passed.
+- ChytraKoupe staged `git diff --cached --check` passed.
+- ChytraKoupe added-line dangerous literal-secret scan returned no matches.
+
+Boundary:
+
+- No Auth code, deploy, live Auth fetch, authenticated endpoint call, checkout
+  submit, DB query/write, Kubernetes mutation, secret/token/password/JWT/cookie
+  inspection, response-body logging, production customer/order data read,
+  payment/Warehouse mutation, notification send, or runtime consumer wallet
+  integration was performed.
+
+Next unfinished chunk:
+
+- Continue Rent-a-box adapter/mapping contract source prep, or run approved
+  synthetic Auth/FlipFlop/ChytraKoupe smokes only after the required synthetic
+  account/token/test-data and non-secret approval ids are supplied.
+
 ## 2026-07-03 - Goal 10.45 Cliplot Current Auth Live Evidence Refresh And Consumer Audits
 
 Current focus:
