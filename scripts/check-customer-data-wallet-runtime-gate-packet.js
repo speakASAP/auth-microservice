@@ -13,6 +13,7 @@ const postFlipFlopAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal
 const ownerDecisionPacketPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md');
 const completionGapAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-completion-gap-audit.md');
 const approvedLaneEvidencePath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-approved-lane-execution-evidence.md');
+const finalCompletionAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-final-completion-audit.md');
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -40,6 +41,7 @@ function main() {
   const ownerDecisionPacket = readText(ownerDecisionPacketPath);
   const completionGapAudit = readText(completionGapAuditPath);
   const approvedLaneEvidence = readText(approvedLaneEvidencePath);
+  const finalCompletionAudit = readText(finalCompletionAuditPath);
 
   const gateMarkers = [
     '## Gate 1 - Auth Authenticated Wallet Smoke',
@@ -168,9 +170,17 @@ function main() {
       '4ff0b5c feat: migrate rent auth routes to hosted auth',
       '6191ba3 chore: enable rent hosted auth rollout flags',
       'b3a607c fix: align rent database url deployment secret',
-      'Goal 10 is still not complete because Rent-a-box runtime activation must be rerun',
+      '1b3e832 fix: align rent migrate database url manifest',
+      'c20fb96 test: harden rent hosted auth runtime smoke',
+      'pass_goal12_runtime_rollout_smoke',
       'c11cb1d test: add rent hosted auth runtime rollout smoke',
       'npm run check:goal12-runtime-rollout-smoke',
+    ]),
+    finalCompletionAuditMarkers: includesAll(finalCompletionAudit, [
+      'Status: complete with current evidence',
+      'Rent-a-box source/config/runtime migration is complete',
+      'pass_goal12_runtime_rollout_smoke',
+      'Goal 10 is complete for the currently known Auth customer data wallet rollout scope.',
     ]),
     completionGapAuditMarkers: includesAll(completionGapAudit, [
       'Goal 10 Completion Gap Audit',
@@ -201,6 +211,7 @@ function main() {
     ...missing(checks.postFlipFlopAuditMarkers),
     ...missing(checks.ownerDecisionPacketMarkers),
     ...missing(checks.approvedLaneEvidenceMarkers),
+    ...missing(checks.finalCompletionAuditMarkers),
     ...missing(checks.completionGapAuditMarkers),
     ...(packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js'
       ? []
@@ -234,12 +245,13 @@ function main() {
       postFlipFlopOwnerGatedAudit: missing(checks.postFlipFlopAuditMarkers).length === 0,
       ownerDecisionPacket: missing(checks.ownerDecisionPacketMarkers).length === 0,
       approvedLaneEvidence: missing(checks.approvedLaneEvidenceMarkers).length === 0,
+      finalCompletionAudit: missing(checks.finalCompletionAuditMarkers).length === 0,
       completionGapAudit: missing(checks.completionGapAuditMarkers).length === 0,
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
       completionGapScript: completionGapScript === 'node scripts/check-customer-data-wallet-completion-gap.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'Goal 10 remains active; repair Alfares Kubernetes node/runtime, then rerun Rent-a-box deploy and post-deploy smoke for the Auth-migrated pods',
+    allowedNextAction: 'Goal 10 complete for current known rollout scope; open a new goal for any future consumer discovered outside this scope',
   };
 
   console.log(JSON.stringify(result, null, 2));

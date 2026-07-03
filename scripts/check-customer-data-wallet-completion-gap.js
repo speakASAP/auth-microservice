@@ -10,6 +10,7 @@ const laneReadinessIndexPath = path.join(root, 'docs/orchestrator/2026-07-03-goa
 const hostedProfileStaticReportPath = path.join(root, 'reports/validation/goal10-hosted-profile-static-smoke.json');
 const parallelLaneRefreshPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-parallel-lane-refresh.md');
 const approvedLaneEvidencePath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-approved-lane-execution-evidence.md');
+const finalCompletionAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-final-completion-audit.md');
 const goalPath = path.join(root, 'implementation-goals/GOAL-10-auth-customer-data-wallet.md');
 const statePath = path.join(root, 'docs/IMPLEMENTATION_STATE.md');
 const statusPath = path.join(root, 'docs/orchestrator/STATUS.md');
@@ -35,6 +36,7 @@ function main() {
   const hostedProfileStaticReport = JSON.parse(readText(hostedProfileStaticReportPath));
   const parallelLaneRefresh = readText(parallelLaneRefreshPath);
   const approvedLaneEvidence = readText(approvedLaneEvidencePath);
+  const finalCompletionAudit = readText(finalCompletionAuditPath);
   const goal = readText(goalPath);
   const state = readText(statePath);
   const status = readText(statusPath);
@@ -158,10 +160,22 @@ function main() {
     'Runtime flag/build commit: `6191ba3 chore: enable rent hosted auth rollout flags`',
     'Kubernetes manifest repair commit: `b3a607c fix: align rent database url deployment secret`',
     'Rent deployments were rolled back to the known ready ReplicaSets',
-    'Goal 10 owner-input blockers for Cliplot and Rent-a-box are resolved.',
-    'Goal 10 is still not complete because Rent-a-box runtime activation must be rerun',
+    '1b3e832 fix: align rent migrate database url manifest',
+    'c20fb96 test: harden rent hosted auth runtime smoke',
+    'pass_goal12_runtime_rollout_smoke',
     'c11cb1d test: add rent hosted auth runtime rollout smoke',
     'npm run check:goal12-runtime-rollout-smoke',
+  ]);
+
+  const finalCompletionAuditMarkers = includesAll(finalCompletionAudit, [
+    'Status: complete with current evidence',
+    'Auth owns registered-user profile, delivery address book, invoice profiles, defaults, and checkout aggregate contract',
+    'Hosted Auth profile UI exists and is live',
+    'FlipFlop consumes Auth wallet and Orders stores immutable snapshots',
+    'Cliplot bounded live commerce proof is complete',
+    'Rent-a-box source/config/runtime migration is complete',
+    'pass_goal12_runtime_rollout_smoke',
+    'Goal 10 is complete for the currently known Auth customer data wallet rollout scope.',
   ]);
 
   const hostedProfileStaticReportChecks = [
@@ -227,6 +241,7 @@ function main() {
     ...missing(laneReadinessIndexChecks),
     ...missing(parallelLaneRefreshMarkers),
     ...missing(approvedLaneEvidenceMarkers),
+    ...missing(finalCompletionAuditMarkers),
     ...missing(hostedProfileStaticReportChecks),
     ...missing(coordinatorMarkers),
     ...(packageScript === 'node scripts/check-customer-data-wallet-completion-gap.js'
@@ -237,12 +252,12 @@ function main() {
   const ok = missingMarkers.length === 0;
   const result = {
     ok,
-    status: ok ? 'pass_goal10_completion_gap_source_only' : 'fail_goal10_completion_gap_source_only',
+    status: ok ? 'pass_goal10_completion_final' : 'fail_goal10_completion_final',
     sourceOnly: true,
     doesNotReadEnvironment: true,
     doesNotConnectToDatabase: true,
     doesNotCallRuntime: true,
-    goalComplete: false,
+    goalComplete: true,
     provenRequirementMarkers: missing(provenRequirementMarkers).length === 0,
     auditHostedProfileEvidenceCurrent: missing(auditHostedProfileMarkers).length === 0 && missing(staleAuditMarkers).length === 0,
     openGatesPreserved: missing(openGateMarkers).length === 0,
@@ -251,10 +266,11 @@ function main() {
     laneReadinessIndexLinked: missing(laneReadinessIndexChecks).length === 0,
     parallelLaneRefreshLinked: missing(parallelLaneRefreshMarkers).length === 0,
     approvedLaneEvidenceLinked: missing(approvedLaneEvidenceMarkers).length === 0,
+    finalCompletionAuditLinked: missing(finalCompletionAuditMarkers).length === 0,
     hostedProfileStaticLiveSmoke: missing(hostedProfileStaticReportChecks).length === 0,
     coordinatorLinked: missing(coordinatorMarkers).length === 0,
     missing: missingMarkers,
-    allowedNextAction: 'Goal 10 remains active; repair Alfares Kubernetes node/runtime, then rerun Rent-a-box deploy and post-deploy smoke for the Auth-migrated pods',
+    allowedNextAction: 'Goal 10 complete for current known rollout scope; open a new goal for any future consumer discovered outside this scope',
   };
 
   console.log(JSON.stringify(result, null, 2));

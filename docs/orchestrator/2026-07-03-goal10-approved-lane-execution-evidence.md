@@ -50,9 +50,17 @@ Created: 2026-07-03
 - Current expected status before node/runtime repair: `fail_goal12_runtime_rollout_smoke` because old rollback pods are serving without `RENT_AUTH_ADAPTER_ENABLED`, `RENT_AUTH_TRANSITIONAL_ONBOARDING_ENABLED`, and `NEXT_PUBLIC_RENT_AUTH_ADAPTER_ENABLED` in their running environments, and `/login` does not expose the hosted Auth marker.
 - The smoke is non-mutating and records only sanitized Kubernetes rollout state, non-secret feature flags, and HTTP status/marker booleans.
 
+## Rent-a-box Final Runtime Pass
+
+- Rent-a-box manifest alignment commit: `1b3e832 fix: align rent migrate database url manifest`.
+- Rent-a-box runtime smoke hardening/report commit: `c20fb96 test: harden rent hosted auth runtime smoke`.
+- Runtime smoke command: `npm run check:goal12-runtime-rollout-smoke`.
+- Runtime smoke status: `pass_goal12_runtime_rollout_smoke`.
+- Evidence proved running API/Web pods have the required Auth runtime env flags, external `/api/auth/me` returns HTTP `401` without a bearer token, external home returns HTTP `200`, and deployed `/login` JavaScript exposes the hosted Auth marker.
+
 ## Current Gate
 
-Goal 10 owner-input blockers for Cliplot and Rent-a-box are resolved. Goal 10 is still not complete because Rent-a-box runtime activation must be rerun after the Kubernetes node/container runtime is healthy and `npm run check:goal12-runtime-rollout-smoke` must pass on the Auth-migrated pods.
+Goal 10 owner-input blockers for Cliplot and Rent-a-box are resolved, and Rent-a-box runtime activation is now proven by `npm run check:goal12-runtime-rollout-smoke`.
 
 ## Forbidden Output Boundary
 
