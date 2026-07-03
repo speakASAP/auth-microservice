@@ -100,6 +100,7 @@ function main() {
   ];
 
   const packageScript = packageJson.scripts?.['check:customer-data-wallet-runtime-gate-packet'] || null;
+  const completionGapScript = packageJson.scripts?.['check:customer-data-wallet-completion-gap'] || null;
   const checks = {
     packetFilePresent: fs.existsSync(packetPath),
     gateMarkers: includesAll(packet, gateMarkers),
@@ -170,6 +171,7 @@ function main() {
       'Do not mark Goal 10 complete.',
     ]),
     packageScript,
+    completionGapScript,
   };
 
   const missingMarkers = [
@@ -188,6 +190,9 @@ function main() {
     ...(packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js'
       ? []
       : ['package script check:customer-data-wallet-runtime-gate-packet']),
+    ...(completionGapScript === 'node scripts/check-customer-data-wallet-completion-gap.js'
+      ? []
+      : ['package script check:customer-data-wallet-completion-gap']),
   ];
 
   const ok = checks.packetFilePresent && missingMarkers.length === 0;
@@ -215,6 +220,7 @@ function main() {
       ownerDecisionPacket: missing(checks.ownerDecisionPacketMarkers).length === 0,
       completionGapAudit: missing(checks.completionGapAuditMarkers).length === 0,
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
+      completionGapScript: completionGapScript === 'node scripts/check-customer-data-wallet-completion-gap.js',
     },
     missing: missingMarkers,
     allowedNextAction: 'Goal 10 remains active; await owner answer to the Cliplot live commerce packet or Rent-a-box route/onboarding packet before opening the next gated lane',
