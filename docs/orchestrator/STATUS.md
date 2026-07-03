@@ -1,3 +1,53 @@
+## 2026-07-03 - Goal 10.40 Rent-a-box Live-Evidence Refresh
+
+Current focus:
+
+- Refresh Rent-a-box Goal 12 source-only evidence after the latest Auth live
+  refresh, and preserve Cliplot dirty-worktree boundary.
+
+Evidence:
+
+- Rent-a-box commit `7673f5a docs: refresh auth wallet live evidence` updates
+  `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`,
+  `scripts/check_goal12_auth_wallet_readiness.py`,
+  `docs/goals/ORCHESTRATION_STATE.md`, and validation reports.
+- Rent-a-box now records Auth live refresh commit
+  `c2deeae docs: record auth wallet live refresh`, Source Preflight HEAD
+  `350700b0ad3482cf375ada8f9088392778ae8b05`, and deployed image tag
+  `350700b-20260703044437`.
+- Rent-a-box verifier still reports `pass_dependency_gated` and keeps the real
+  migration blockers open.
+- Cliplot source-only refresh was blocked before edits because its worktree is
+  dirty at HEAD `a49ef00` with modified `docs/IMPLEMENTATION_STATE.md`,
+  `docs/OPERATIONAL_RUNBOOK.md`, `package.json`,
+  `scripts/readiness_bundle.sh`, `src/integrations.js`, `src/server.js`, and
+  untracked `scripts/live-checkout-execution-window.js`.
+
+Validation:
+
+- Rent-a-box `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py scripts/ips_pre_coding_gate.py` passed.
+- Rent-a-box `python3 scripts/check_goal12_auth_wallet_readiness.py --root .`
+  passed with `pass_dependency_gated`.
+- Rent-a-box `./scripts/intent_preflight.sh` passed.
+- Rent-a-box `git diff --check` passed.
+- Rent-a-box targeted dangerous literal-secret scan returned no matches.
+- Cliplot validation was not run by this lane because no Cliplot edits were
+  made due to the dirty worktree.
+
+Boundary:
+
+- No Auth code, live SQL, deploy, Kubernetes mutation, DB query,
+  secret/token/password/JWT/cookie inspection, response-body logging,
+  production customer/order data inspection, live checkout submit,
+  payment/Warehouse mutation, notification send, or runtime consumer
+  integration was performed.
+
+Next unfinished chunk:
+
+- Wait for Cliplot dirty work to be committed/stashed before refreshing stale
+  Auth live evidence there, or resolve remaining ChytraKoupe/Rent-a-box
+  owner/runtime gates.
+
 ## 2026-07-03 - Goal 10.39 ChytraKoupe Response-Shape Verifier Narrowing
 
 Current focus:

@@ -68,6 +68,7 @@ Auth customer data wallet:
 - [x] 10.37 Rent-a-box Auth wallet schema/response-shape evidence refresh source-prepared in commit `eb2eb02`.
 - [x] 10.38 Auth current-head live refresh completed from Source Preflight-captured HEAD `350700b0ad3482cf375ada8f9088392778ae8b05`.
 - [x] 10.39 ChytraKoupe Auth wallet response-shape verifier narrowing source-prepared in commit `6d7c47b`.
+- [x] 10.40 Rent-a-box Auth wallet live-evidence refresh source-prepared in commit `7673f5a`; Cliplot refresh blocked by dirty worktree.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -120,9 +121,9 @@ marketplace operations.
 | F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | Auth deployed; authenticated runtime smoke gated | 4           |
 | F2 FlipFlop checkout/profile UX    | non-mutating-runtime-smoke-passed; authenticated smoke gated | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deployed; synthetic checkout/profile smoke gated | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
-| R1 Rent-a-box Auth migration plan  | wallet-shape-evidence-refreshed; session/admin/migration-gated | Rent-a-box coordinator | `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | customer session adapter/local profile binding, admin role mapping, consent/profile migration mapping, migration approval | 7 |
+| R1 Rent-a-box Auth migration plan  | live-evidence-refreshed; session/admin/migration-gated | Rent-a-box coordinator | `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | customer session adapter/local profile binding, admin role mapping, consent/profile migration mapping, migration approval | 7 |
 | CK1 ChytraKoupe checkout selectors | response-shape-verifier-narrowed; runtime-gated | ChytraKoupe worker | `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | final client-id decision and optional Auth subject linkage before runtime claim | 8 |
-| C1 Cliplot plan                    | response-shape-refreshed; runtime-gated | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | selector/session/PII approvals, approved field mapping, and guest fallback decisions | later |
+| C1 Cliplot plan                    | dirty-worktree-blocked; runtime-gated | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | clean worktree, selector/session/PII approvals, approved field mapping, and guest fallback decisions | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
 ## Validation
@@ -237,6 +238,32 @@ that repo's status/validation report.
 - Remaining ChytraKoupe gates are unchanged: final hosted Auth `client_id`
   decision and authenticated Auth subject linkage decision if central Orders
   must persist `customer.authSubject`.
+- No Auth code, live SQL, deploy, Kubernetes mutation, DB query,
+  secret/token/password/JWT/cookie inspection, response-body logging,
+  production customer/order data inspection, live checkout submit,
+  payment/Warehouse mutation, notification send, or runtime consumer
+  integration was performed.
+
+## 2026-07-03 Goal 10.40 Rent-a-box Live-Evidence Refresh
+
+- 2026-07-03: Rent-a-box commit `7673f5a docs: refresh auth wallet live
+  evidence` replaces stale Auth live evidence with Auth live refresh commit
+  `c2deeae docs: record auth wallet live refresh`, Source Preflight HEAD
+  `350700b0ad3482cf375ada8f9088392778ae8b05`, and deployed image tag
+  `350700b-20260703044437`.
+- Validation passed: `python3 -m py_compile
+  scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py
+  scripts/ips_pre_coding_gate.py`,
+  `python3 scripts/check_goal12_auth_wallet_readiness.py --root .`
+  (`pass_dependency_gated`), `./scripts/intent_preflight.sh`,
+  `git diff --check`, and targeted dangerous literal-secret scan.
+- Remaining Rent-a-box gates are unchanged: customer session adapter/local
+  profile binding, Auth-to-Rent admin role mapping, consent/profile migration
+  mapping, owner-approved live migration/backfill, and production row-count
+  complexity.
+- Cliplot live-evidence refresh is blocked by a dirty worktree at `a49ef00`
+  with modified implementation/runbook/package/runtime files plus untracked
+  `scripts/live-checkout-execution-window.js`; no Cliplot edits were made.
 - No Auth code, live SQL, deploy, Kubernetes mutation, DB query,
   secret/token/password/JWT/cookie inspection, response-body logging,
   production customer/order data inspection, live checkout submit,
