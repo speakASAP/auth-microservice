@@ -1,3 +1,42 @@
+## 2026-07-03 - Goal 10.63 Runtime Gate Execution Packet
+
+Current focus:
+
+- Convert the repeated consumer runtime gates into one Auth-owned execution
+  packet with ordered gates, exact known command shapes, and explicit missing
+  owner inputs.
+
+Evidence:
+
+- Added
+  `docs/orchestrator/2026-07-03-goal10-runtime-gate-execution-packet.md`.
+- The packet orders the next gates as Auth authenticated wallet smoke,
+  FlipFlop guarded gateway wallet smoke, FlipFlop browser/session selector
+  smoke, ChytraKoupe guarded selector smoke harness/run, Cliplot synthetic
+  browser/session wallet-read evidence, and Rent-a-box metadata-only production
+  row-count/migration-complexity preflight.
+- Auth and FlipFlop have executable command shapes after synthetic token and
+  non-secret approval-id inputs.
+- ChytraKoupe, Cliplot, and Rent-a-box remain gated before harness/runtime or
+  live-preflight implementation because their required inputs/scope are still
+  missing.
+
+Validation:
+
+- Packet validation is pending final remote `git diff --check`, added-line
+  sensitive literal scan, and Auth deployed wallet smoke in this session.
+
+Boundary:
+
+- No runtime smoke, live DB query, source-code integration, deploy, checkout
+  submit, payment/Warehouse mutation, notification send, Kubernetes/Vault
+  mutation, token/cookie/secret inspection, or production customer data read
+  was performed.
+
+Next unfinished chunk:
+
+- Execute one named gate only after its exact owner inputs exist.
+
 ## 2026-07-03 - Goal 10.62 Cliplot Runtime-Gate Audit
 
 Current focus:

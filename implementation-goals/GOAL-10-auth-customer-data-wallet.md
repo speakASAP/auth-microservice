@@ -91,6 +91,7 @@ Auth customer data wallet:
 - [x] 10.60 Rent-a-box current Auth wallet live evidence refreshed in commit `d237949`.
 - [x] 10.61 Consumer runtime-gate audit confirmed no remaining material source-only lanes before approved synthetic/runtime inputs.
 - [x] 10.62 Cliplot runtime-gate audit confirmed all known consumer lanes are now synthetic/runtime or live-DB-preflight gated.
+- [x] 10.63 Consolidated runtime gate execution packet prepared at `docs/orchestrator/2026-07-03-goal10-runtime-gate-execution-packet.md`.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -259,6 +260,35 @@ Remaining Cliplot gates:
 - Runtime Auth wallet row to checkout/order snapshot field-mapping
   implementation evidence.
 - Runtime guest fallback implementation evidence for unavailable wallet reads.
+
+## 2026-07-03 Goal 10.63 Runtime Gate Execution Packet
+
+- 2026-07-03: Auth coordinator packet
+  `docs/orchestrator/2026-07-03-goal10-runtime-gate-execution-packet.md`
+  consolidates the next executable runtime gates and required owner inputs.
+- The packet orders the remaining gates as Auth authenticated wallet smoke,
+  FlipFlop guarded gateway smoke, FlipFlop browser/session selector smoke,
+  ChytraKoupe guarded selector smoke harness/run, Cliplot synthetic
+  browser/session wallet-read evidence, and Rent-a-box metadata-only production
+  row-count/migration-complexity preflight.
+- It distinguishes ready harnesses from lanes that still need approved inputs
+  before harness or preflight implementation: Auth and FlipFlop have command
+  shapes; ChytraKoupe needs synthetic inputs before adding a smoke harness;
+  Cliplot needs synthetic browser/session evidence before runtime checkout
+  edits; Rent-a-box needs approved metadata-only live preflight scope.
+- The shared output contract permits only repo status, command shape,
+  non-secret approval id, HTTP method/path/status metadata, schema version,
+  booleans, short non-reversible ids/hashes, and approved aggregate metadata
+  counts.
+- The packet forbids printing or persisting Authorization headers, bearer
+  tokens, JWTs, refresh tokens, cookies, passwords, OAuth tokens, magic-link
+  tokens, reset tokens, raw request/response bodies, decoded claims, DB row
+  data, production customer data, payment provider credentials, service
+  credentials, or secrets.
+- No runtime smoke, live DB query, source-code integration, deploy, checkout
+  submit, payment/Warehouse mutation, notification send, Kubernetes/Vault
+  mutation, token/cookie/secret inspection, or production customer data read was
+  performed.
 
 ## 2026-07-03 Goal 10.56 Cliplot Source-Only Selector Behavior Verifier
 
