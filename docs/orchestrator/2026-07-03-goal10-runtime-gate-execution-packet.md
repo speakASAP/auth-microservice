@@ -2,7 +2,7 @@
 
 Date: 2026-07-03
 Coordinator: Auth Goal 10 orchestrator
-Status: Gates 1-2 completed; Gates 3-6 remain blocked until their named owner inputs exist
+Status: Gates 1-3 completed; Gates 4-6 remain blocked until their named owner inputs exist
 
 ## Intent Preservation Chain
 
@@ -25,6 +25,7 @@ runtime evidence without re-opening source-only discovery.
   cookies, request body, response body printing, or database reads.
 - Gate 1 Auth authenticated wallet smoke passed with Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token, redacted output, synthetic rows only, and cleanup verification.
 - Gate 2 FlipFlop guarded gateway wallet smoke passed with the same Vault-backed synthetic login path, redacted output, synthetic rows only, source assertions, and cleanup verification.
+- Gate 3 FlipFlop browser/session selector smoke passed with delayed checkout-data, manual-edit guard evidence, explicit selector evidence, no checkout submit, redacted output, and cleanup verification.
 - FlipFlop, ChytraKoupe, Cliplot, and Rent-a-box source-only readiness lanes
   have been audited. No material source-only consumer lane remains before the
   runtime inputs below.
@@ -33,7 +34,7 @@ runtime evidence without re-opening source-only discovery.
 
 1. Auth authenticated wallet CRUD/default/delete smoke - completed 2026-07-03.
 2. FlipFlop guarded gateway wallet smoke - completed 2026-07-03.
-3. FlipFlop authenticated browser/session selector smoke.
+3. FlipFlop authenticated browser/session selector smoke - completed 2026-07-03.
 4. ChytraKoupe guarded selector smoke harness and run.
 5. Cliplot synthetic browser/session wallet-read evidence, then runtime
    implementation planning.
@@ -105,21 +106,23 @@ Forbidden in this gate:
 
 ## Gate 3 - FlipFlop Authenticated Browser/Session Selector Smoke
 
-Source status: source verifiers cover manual-edit guard and explicit selector
-override, but authenticated browser/session smoke is still gated.
+Status: completed 2026-07-03.
 
-Required owner inputs:
+Resolved owner inputs:
 
-- `[MISSING: owner-approved authenticated browser/session smoke for delayed wallet response and selector interaction]`
-- Synthetic Auth account/session for browser use.
-- Non-secret approval id.
+- Owner approved continuation using the Vault-backed synthetic Auth account/token path.
+- Non-secret approval id: `gate3-flipflop-auth-wallet-browser-smoke-20260703-vault-test-login`.
+- FlipFlop source commit: `75f03eb test: add auth wallet browser session smoke`.
+
+Evidence:
+
+- Passed status: `pass_flipflop_auth_wallet_browser_session_smoke`.
+- Covered headless browser `/checkout?step=details`, delayed `/api/auth/profile/checkout-data`, manual edit before wallet response, explicit invoice selector, explicit delivery selector, checkout submit not clicked, and cleanup verification.
+- Output remained redacted and printed no bearer, password, JWT, cookie, raw request body, raw response body, decoded claim, DB row, checkout order, payment data, or raw production customer data.
 
 Required future evidence:
 
-- Delayed wallet response does not overwrite manually edited fields.
-- Explicit selector choice can prefill delivery and invoice profile fields.
-- Guest checkout still works.
-- No checkout submit or order/payment/Warehouse mutation occurs.
+- Complete for FlipFlop browser/session selector behavior.
 
 ## Gate 4 - ChytraKoupe Guarded Selector Smoke
 
@@ -235,7 +238,7 @@ Stop immediately and do not retry automatically if:
 
 This packet is valid when:
 
-- Gate 1 and Gate 2 completion evidence remains redacted and Gates 3-6 still show missing owner inputs.
+- Gate 1, Gate 2, and Gate 3 completion evidence remains redacted and Gates 4-6 still show missing owner inputs.
 - Auth coordinator docs link to it.
 - `npm run check:customer-data-wallet-runtime-gate-packet` passes.
 - `git diff --check` passes.

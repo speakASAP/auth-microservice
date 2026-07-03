@@ -41,7 +41,6 @@ function main() {
   ];
 
   const requiredInputMarkers = [
-    '[MISSING: owner-approved authenticated browser/session smoke for delayed wallet response and selector interaction]',
     '[MISSING: owner-approved synthetic Auth account/token for ChytraKoupe wallet selector smoke]',
     '[MISSING: owner-approved synthetic checkout test data for ChytraKoupe wallet selector smoke]',
     '[MISSING: non-secret owner approval id for ChytraKoupe wallet selector smoke]',
@@ -55,6 +54,8 @@ function main() {
     'pass_authenticated_wallet_crud_default_delete_smoke',
     'gate2-flipflop-auth-wallet-smoke-20260703-vault-test-login',
     'pass_flipflop_auth_wallet_gateway_smoke',
+    'gate3-flipflop-auth-wallet-browser-smoke-20260703-vault-test-login',
+    'pass_flipflop_auth_wallet_browser_session_smoke',
   ];
 
   const commandMarkers = [
@@ -134,7 +135,7 @@ function main() {
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'execute Gate 3 or another remaining named gate only after its missing owner inputs exist',
+    allowedNextAction: 'execute Gate 4 or another remaining named gate only after its missing owner inputs exist',
   };
 
   console.log(JSON.stringify(result, null, 2));

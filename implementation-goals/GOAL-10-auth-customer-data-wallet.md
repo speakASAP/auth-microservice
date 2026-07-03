@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; Gates 1-2 Auth and FlipFlop gateway smokes completed; browser/session and remaining consumer runtime lanes remain approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; Gates 1-3 Auth and FlipFlop gateway/browser smokes completed; remaining consumer runtime lanes remain approval-gated
 
 ## Intent
 
@@ -95,6 +95,7 @@ Auth customer data wallet:
 - [x] 10.64 Source-only runtime gate packet verifier prepared as `npm run check:customer-data-wallet-runtime-gate-packet`.
 - [x] 10.65 Auth authenticated wallet CRUD/default/delete smoke completed using Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token with redacted output and cleanup verification.
 - [x] 10.66 FlipFlop guarded gateway wallet smoke completed using Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token with redacted output and cleanup verification.
+- [x] 10.67 FlipFlop authenticated browser/session selector smoke completed in commit `75f03eb` with delayed checkout-data, manual-edit guard, explicit selector, no checkout submit, and cleanup verification.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -144,8 +145,8 @@ marketplace operations.
 | A0 Planning                        | complete           | Auth coordinator         | Auth docs only                           | None                      | 1           |
 | A1 Auth backend                    | live-deployed; authenticated synthetic smoke passed | Auth backend worker      | Auth source/docs/tests                   | Gate 1 complete; consumer synthetic runtime gates remain | 2           |
 | A2 Auth profile UI                 | live-deployed      | Auth frontend worker     | hosted Auth/profile UI                   | authenticated profile smoke gated | 3           |
-| F1 FlipFlop backend bridge         | gateway-runtime-smoke-passed; browser-session-gated | FlipFlop backend worker  | shared Auth client, user-service         | Gate 2 complete; browser/session selector evidence remains | 4           |
-| F2 FlipFlop checkout/profile UX    | gateway-runtime-smoke-passed; browser-session-gated | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Gate 2 complete; owner-approved browser/session smoke remains | 5           |
+| F1 FlipFlop backend bridge         | gateway-and-browser-runtime-smoke-passed | FlipFlop backend worker  | shared Auth client, user-service         | Gates 2-3 complete | 4           |
+| F2 FlipFlop checkout/profile UX    | gateway-and-browser-runtime-smoke-passed | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Gates 2-3 complete | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
 | R1 Rent-a-box Auth migration plan  | current-live-evidence-refreshed; nullable-auth-subject-schema-prepared; live-db-preflight-gated | Rent-a-box coordinator | `rent-a-box/apps/api/app/models/domain.py`, `rent-a-box/apps/api/alembic/versions/20260703_0003_customer_profile_auth_subject_id.py`, `rent-a-box/apps/api/tests/test_database_model.py`, `rent-a-box/docs/goals/GOAL-12-auth-subject-binding-backfill-runbook.md`, `rent-a-box/docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | owner-approved live DB migration/backfill plan and production row-count complexity before product-code migration; remote Python deps missing for Alembic/Pytest runtime validation | 7 |
 | CK1 ChytraKoupe checkout selectors | callback-hardened; synthetic-runtime-gated | ChytraKoupe worker | `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx`, `chytrakoupe/app/auth/safe-next.ts`, `chytrakoupe/lib/auth/session.ts`, `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/lib/config/env.ts`, `chytrakoupe/k8s/configmap.yaml`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/docs/goal-driven/auth-wallet-guarded-smoke-approval.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | synthetic account/token/test data and non-secret approval id before runtime claim; future non-guest order subject provenance must derive only from validated Auth bearer `sub` | 8 |
@@ -183,7 +184,6 @@ that repo's status/validation report.
 
 - `[MISSING: owner-approved synthetic account for live cross-repo checkout smoke]`
 - `[MISSING: post-deploy consumer runtime smoke confirming Auth invoice profile selection reaches immutable order billing snapshots]`
-- `[MISSING: owner-approved authenticated browser/session smoke for delayed wallet response and selector interaction]`
 - `[MISSING: owner-approved Rent-a-box live DB migration/backfill plan for local users and customer_profiles before product-code migration]`
 - `[UNKNOWN: Rent-a-box production local users/customer_profiles row counts and migration complexity]`
 - `[MISSING: owner-approved synthetic Auth account/token, synthetic checkout test data, and non-secret approval id for ChytraKoupe guarded wallet selector smoke]`
@@ -192,6 +192,14 @@ that repo's status/validation report.
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
 
 
+
+## 2026-07-03 Goal 10.67 Gate 3 FlipFlop Browser Session Selector Smoke
+
+- Gate 3 passed with approval id `gate3-flipflop-auth-wallet-browser-smoke-20260703-vault-test-login`.
+- FlipFlop commit `75f03eb test: add auth wallet browser session smoke` adds a guarded CDP/headless Chrome harness and package script `smoke:auth-wallet-browser-session`.
+- Live evidence status was `pass_flipflop_auth_wallet_browser_session_smoke`: delayed checkout-data, profile/cart browser fixtures, manual edit preserved, defaults not auto-selected after manual edit, explicit invoice selector applied, explicit delivery selector applied, checkout submit button present but not clicked, and cleanup ok.
+- Sensitive-data boundary held: no bearer, password, JWT, cookie, raw request body, raw response body, decoded claim, DB row, checkout submit, order/payment/Warehouse mutation, secret value, or raw production customer data was printed or recorded.
+- Remaining runtime gates are ChytraKoupe guarded selector smoke, Cliplot synthetic browser/session wallet-read evidence, and Rent-a-box metadata-only production preflight.
 
 ## 2026-07-03 Goal 10.66 Gate 2 FlipFlop Guarded Gateway Wallet Smoke
 

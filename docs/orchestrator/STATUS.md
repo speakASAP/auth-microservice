@@ -1,3 +1,31 @@
+## 2026-07-03 - Goal 10.67 Gate 3 FlipFlop Browser Session Selector Smoke
+
+Current focus:
+
+- Execute the owner-approved FlipFlop authenticated browser/session selector smoke for delayed wallet response and explicit selector interaction.
+
+Evidence:
+
+- FlipFlop commit `75f03eb test: add auth wallet browser session smoke` added `npm run smoke:auth-wallet-browser-session`.
+- Vault `TEST_EMAIL`/`TEST_PASSWORD` were used only to materialize a fresh Auth bearer into a temporary file; login returned HTTP 201 and the bearer was not printed.
+- Live status was `pass_flipflop_auth_wallet_browser_session_smoke` against `https://flipflop.alfares.cz` with approval id `gate3-flipflop-auth-wallet-browser-smoke-20260703-vault-test-login`.
+- The browser harness created/defaulted/deleted one synthetic delivery row and one synthetic invoice row through FlipFlop gateway, opened `/checkout?step=details` in headless Chrome, delayed `/api/auth/profile/checkout-data`, and verified manual-edit and explicit-selector behavior.
+- Assertions passed: checkout-data delayed, profile and cart browser fixtures fulfilled, no order submit attempted, manual company edit preserved after delayed wallet response, wallet defaults not auto-selected after manual edit, explicit invoice selector applied, explicit delivery selector applied, checkout submit button present but not clicked, cleanup ok, synthetic rows only.
+
+Validation:
+
+- Passed in FlipFlop: `node --check scripts/smoke-auth-wallet-browser-session.js`, default `npm run smoke:auth-wallet-browser-session`, live `npm run smoke:auth-wallet-browser-session -- --execute`, `git diff --check`, and changed-file sensitive literal scan.
+- Passed after Auth documentation update: node --check scripts/check-customer-data-wallet-runtime-gate-packet.js, npm run check:customer-data-wallet-runtime-gate-packet, npm run check:customer-data-wallet-runtime -- --expect=deployed, git diff --check, and changed-file sensitive literal scan.
+
+Boundary:
+
+- No bearer, password, JWT, cookie, raw request body, raw response body, decoded claim, DB row, or secret value was printed or recorded.
+- No checkout submit, order/payment/Warehouse mutation, notification send, deploy, Kubernetes/Vault mutation, DB read/write, or raw production customer-data inspection was performed.
+
+Next unfinished chunk:
+
+- Gate 4 ChytraKoupe guarded selector smoke remains next if owner wants to continue the runtime gate order.
+
 ## 2026-07-03 - Goal 10.66 Gate 2 FlipFlop Guarded Gateway Wallet Smoke
 
 Current focus:
