@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; Gates 1-6 Auth, FlipFlop, ChytraKoupe, Cliplot wallet-read, and Rent-a-box metadata preflight evidence completed; Cliplot guarded runtime evidence, selector UI source integration, approval-gated browser-session fetch path, Rent-a-box nullable production schema apply, feature-gated runtime adapter, and opt-in dependency helpers completed; focused Rent validation and Cliplot live wallet fetch evidence completed; FlipFlop no-mutation order snapshot gate packet completed; Rent-a-box route/onboarding source-only gate completed; follow-up route/onboarding runtime migration, checkout submit, live order snapshot runtime, backfill, and product replacement lanes remain approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; Gates 1-6 Auth, FlipFlop, ChytraKoupe, Cliplot wallet-read, and Rent-a-box metadata preflight evidence completed; Cliplot guarded runtime evidence, selector UI source integration, approval-gated browser-session fetch path, Rent-a-box nullable production schema apply, feature-gated runtime adapter, and opt-in dependency helpers completed; focused Rent validation and Cliplot live wallet fetch evidence completed; FlipFlop no-mutation order snapshot gate packet completed; Rent-a-box route/onboarding source-only gate completed; extended surface audit found no new immediate wallet lane; follow-up route/onboarding runtime migration, checkout submit, live order snapshot runtime, backfill, product replacement, shop-assistant billing-field clarification, and invoices Auth-subject access clarification remain gated
 
 ## Intent
 
@@ -65,6 +65,7 @@ Auth customer data wallet:
 - [x] 10.19 FlipFlop checkout explicit Auth wallet save-back source-prepared.
 - [x] 10.80 Rent-a-box route/onboarding source-only gate completed in commit `e518725`.
 - [x] 10.81 Continuation gate audit revalidated current source-only and approval-gated states.
+- [x] 10.82 Extended registered-user surface audit completed; no new immediate wallet lane found.
 - [x] 10.35 Cliplot Auth wallet schema-version readiness refresh source-prepared in commit `fc7502d`.
 - [x] 10.36 Cliplot Auth wallet response-shape readiness refresh source-prepared in commit `c8e99ac`.
 - [x] 10.37 Rent-a-box Auth wallet schema/response-shape evidence refresh source-prepared in commit `eb2eb02`.
@@ -1560,6 +1561,16 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
 - Remaining Rent-a-box follow-up: owner-approved route/onboarding migration before replacing local auth, and later owner-approved backfill/product-code migration.
 
 
+
+
+## 2026-07-03 Goal 10.82 Extended Registered-User Surface Audit
+
+- Added `docs/orchestrator/2026-07-03-goal10-extended-surface-audit.md`.
+- StateX/RunLayer subagent audit found hosted Auth and profile/contact/project surfaces, but no checkout/address/invoice wallet editor requiring a new Goal 10 implementation lane.
+- Marketplace/channel/dashboard subagent audit found no clear new registered-user checkout/profile/address/invoice editor outside known consumers.
+- Negative boundary remains: marketplace buyer/order data, leads, marketing signals/consent, payment-provider details, catalog/product settings, suppliers, and legacy app-local domains must not be back-written into Auth wallet.
+- Remaining source-only clarifications are `shop-assistant` billing checkout field ownership and `invoices-microservice` account invoice access against Auth subject; these are not immediate wallet implementation lanes from current evidence.
+- No consumer repo edits, runtime calls, live checkout/order mutation, DB read/write, env dump, secret read, token inspection, deploy, or customer-data output occurred.
 
 ## 2026-07-03 Goal 10.81 Continuation Gate Audit
 

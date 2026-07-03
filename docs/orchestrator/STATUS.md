@@ -1,3 +1,26 @@
+## 2026-07-03 - Goal 10.82 Extended Registered-User Surface Audit
+
+Current focus:
+
+- Reduce the remaining `[UNKNOWN: future non-marketplace registered-user checkout surfaces ...]` blocker with a read-only ecosystem scan.
+
+Evidence:
+
+- Added `docs/orchestrator/2026-07-03-goal10-extended-surface-audit.md`.
+- StateX and RunLayer were independently audited by subagent: hosted Auth surfaces exist, but no checkout/address/invoice wallet editor was found.
+- Marketplace/channel/dashboard repos were independently audited by subagent: no new immediate wallet implementation lane was found outside known Goal 10 consumers.
+- Negative boundaries were reaffirmed for marketplace buyer/order evidence, leads, marketing, payments, catalog, suppliers, and legacy app-local domains.
+- Remaining source-only clarifications: `shop-assistant` billing checkout field ownership and `invoices-microservice` account invoice access against Auth subject.
+
+Boundary:
+
+- No consumer repo edits, runtime calls, live checkout/order mutation, DB read/write, env dump, secret read, token inspection, deploy, or customer-data output occurred.
+
+Next unfinished chunks:
+
+- Approval-gated lanes remain unchanged: FlipFlop/Orders persisted snapshot smoke, Cliplot checkout submit/live commerce, Rent-a-box route/onboarding and later backfill/product-code migration.
+- Source-only optional clarifications: `shop-assistant` billing checkout field audit and `invoices-microservice` Auth-subject invoice access audit.
+
 ## 2026-07-03 - Goal 10.81 Continuation Gate Audit
 
 Current focus:
