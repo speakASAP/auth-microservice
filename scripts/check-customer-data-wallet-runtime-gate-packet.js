@@ -43,8 +43,6 @@ function main() {
   ];
 
   const requiredInputMarkers = [
-    '[MISSING: cleanup-capable ORDERS_STATUS_SERVICE_TOKEN projection before create/read/cancel smoke]',
-    '[MISSING: AUTH_SUBJECT_SMOKE_CLEANUP_CONFIRM=ORDERS_ADMIN_STATUS_CANCEL]',
     '[MISSING: owner-approved bounded live checkout submit/live commerce window]',
     '[MISSING: owner-approved RENT_AUTH_ADAPTER_ENABLED route migration window]',
   ];
@@ -68,6 +66,9 @@ function main() {
     'route migration remains inactive',
     'Goal 10.84 remaining gates readiness audit completed',
     'docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md',
+    'GOAL10-AUTH-SUBJECT-CREATE-READ-CANCEL-20260703',
+    'pass_auth_wallet_order_snapshot_create_read_cancel_smoke',
+    '7f0ef44',
   ];
 
   const commandMarkers = [
@@ -112,12 +113,11 @@ function main() {
       'docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md',
     ]),
     remainingAuditMarkers: includesAll(remainingAudit, [
-      'FlipFlop cleanup source guard is merged to `origin/main` at `6fe9e07`',
-      'cleanup-capable ORDERS_STATUS_SERVICE_TOKEN projection before create/read/cancel smoke',
-      'AUTH_SUBJECT_SMOKE_CLEANUP_CONFIRM=ORDERS_ADMIN_STATUS_CANCEL',
+      'FlipFlop order snapshot create/read/cancel smoke passed at `origin/main` `7f0ef44`',
+      'GOAL10-AUTH-SUBJECT-CREATE-READ-CANCEL-20260703',
       'owner-approved bounded live checkout submit/live commerce window',
       'owner-approved RENT_AUTH_ADAPTER_ENABLED route migration window',
-      'No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and cleanup/window decisions.',
+      'No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and Cliplot/Rent window decisions.',
     ]),
     packageScript,
   };
@@ -161,7 +161,7 @@ function main() {
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'all named runtime evidence gates and source-only Rent route/onboarding gate are complete; proceed only after separately approved FlipFlop order snapshot smoke with cleanup token/authority, Cliplot bounded live checkout submit/live commerce window, or Rent-a-box route/backfill migration gates',
+    allowedNextAction: 'FlipFlop order snapshot smoke is complete; proceed only after separately approved Cliplot bounded live checkout submit/live commerce window or Rent-a-box route/backfill migration gates',
   };
 
   console.log(JSON.stringify(result, null, 2));

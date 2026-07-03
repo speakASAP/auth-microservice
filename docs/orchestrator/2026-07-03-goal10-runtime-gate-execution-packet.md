@@ -331,46 +331,37 @@ This packet is valid when:
 
 ## Follow-up Gate - FlipFlop Order Snapshot Runtime Evidence
 
-Status: source/preflight packet complete in FlipFlop commit `37d695d`; live
-create/read proof still owner-gated.
+Status: completed 2026-07-03.
 
-The no-mutation packet proves source forwarding of UUID-shaped
-`customer.authSubject`, separate bounded shipping/billing snapshots, and Auth
-invoice fields `companyName`, `companyId`, `taxId`, `vatId`, and `email` into
-the central Orders payload builder. It also runs the deployed fail-closed
-`smoke-orders-auth-subject.js` preflight with `mutation=false`,
-`providerCall=false`, deployment `1/1`, and service URL/token presence booleans
-only.
+Evidence:
 
-Remaining owner inputs for persisted runtime proof:
+- Auth internal token helper apply created/normalized the `orders-status-cleanup` service principal with `internal:orders-microservice:admin`; the JWT was emitted only to a 0600 temp file and validated by Auth with `hasOrdersAdmin=true`.
+- Vault and ExternalSecret projection completed without printing token values; `flipflop-order-service` reported `ORDERS_STATUS_SERVICE_TOKEN=present`.
+- FlipFlop guarded smoke approval id `GOAL10-AUTH-SUBJECT-CREATE-READ-CANCEL-20260703` passed with create HTTP 201, read HTTP 200, `authSubjectPersisted=true`, cleanup attempted, and cleanup HTTP 200.
+- FlipFlop `origin/main` commit `7f0ef44` records the sanitized runtime artifact and verifier status `pass_auth_wallet_order_snapshot_create_read_cancel_smoke`.
 
-- `[MISSING: approved RUN_LIVE_AUTH_SUBJECT_ORDERS_SMOKE=1 runtime execution]`
-- `[MISSING: non-secret AUTH_SUBJECT_SMOKE_APPROVAL_ID]`
-- `[MISSING: AUTH_SUBJECT_SMOKE_CONFIRM=CREATE_READ_OPTIONAL_CANCEL]`
-- `[MISSING: approved AUTH_SUBJECT_SMOKE_CATALOG_PRODUCT_ID fixture]`
-- `[MISSING: approved AUTH_SUBJECT_SMOKE_WAREHOUSE_ID fixture]`
-
-Forbidden output remains unchanged: no token values, request/response bodies,
+Forbidden output remained preserved: no token values, request/response bodies,
 customer/order rows, DB row data, customer PII, payment/provider credentials,
-Warehouse response bodies, or secrets.
+Warehouse response bodies, or secrets were printed or committed.
 
 ## Follow-up D - Remaining Runtime/Migration Gates Readiness
 
-Status: source/readiness audit complete; runtime and migration gates remain owner-input gated.
+Status: source/readiness audit refreshed; Cliplot runtime and Rent migration gates remain owner-input gated.
 
 Evidence:
 
 - Goal 10.84 remaining gates readiness audit completed in `docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md`.
-- FlipFlop cleanup source guard is merged to `origin/main` at `6fe9e07`.
-- FlipFlop safe validation passes, but live create/read/cancel is not executable until `[MISSING: cleanup-capable ORDERS_STATUS_SERVICE_TOKEN projection before create/read/cancel smoke]` and `[MISSING: AUTH_SUBJECT_SMOKE_CLEANUP_CONFIRM=ORDERS_ADMIN_STATUS_CANCEL]` are resolved.
+- FlipFlop order snapshot create/read/cancel smoke is complete at `origin/main` `7f0ef44`.
 - Cliplot safe readiness passes, but live checkout remains gated by `[MISSING: owner-approved bounded live checkout submit/live commerce window]`.
 - Rent-a-box safe readiness passes, but route migration remains gated by `[MISSING: owner-approved RENT_AUTH_ADAPTER_ENABLED route migration window]` and related onboarding/backfill decisions.
 
 Safety decision:
 
-- No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and cleanup/window decisions.
+- No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and Cliplot/Rent window decisions.
 
 ## Follow-up E - Orders Cleanup Token Provisioning
 
-- Runtime projection/proof of an Auth-valid cleanup bearer with `internal:orders-microservice:admin` or `global:superadmin` remains required before running FlipFlop create/read/cancel smoke.
-- Helper preflight is source/pod-dry-run ready: `scripts/provision-internal-service-token.ts` proved `internal:orders-microservice:admin` metadata exists and the `orders-status-cleanup` principal would be created/assigned only in explicit apply mode.
+Status: completed for Goal 10 FlipFlop order snapshot smoke.
+
+- Auth helper preflight and apply completed for `orders-status-cleanup` with `internal:orders-microservice:admin`.
+- Vault projection and FlipFlop runtime env presence were verified without printing token values.

@@ -4865,3 +4865,34 @@ Next unfinished chunks:
 - Apply the helper in a bounded approved run to create/normalize the `orders-status-cleanup` service principal, assign `internal:orders-microservice:admin`, and write the JWT only to a 0600 temp file.
 - Store the JWT in Vault and map it into FlipFlop as `ORDERS_STATUS_SERVICE_TOKEN`.
 - Reconcile/restart only `flipflop-order-service`, then run the approved create/read/cancel smoke.
+
+## 2026-07-03 - Goal 10.90 FlipFlop Order Snapshot Runtime Gate
+
+Current focus:
+
+- Completed the remaining FlipFlop/Orders Auth wallet order snapshot runtime evidence gate.
+
+Implementation/runtime evidence:
+
+- Auth helper apply created/normalized service principal `orders-status-cleanup` and assigned `internal:orders-microservice:admin`.
+- Auth token validation returned `valid=true`, `hasOrdersAdmin=true`, `hasSuperadmin=false`, and `tokenPrinted=false`.
+- Vault path `secret/prod/flipflop-service#ORDERS_STATUS_SERVICE_TOKEN` was patched from a temp file payload; temp token files were shredded/removed.
+- FlipFlop `origin/main` commit `794ae88` maps `ORDERS_STATUS_SERVICE_TOKEN` through `k8s/external-secret.yaml`.
+- ExternalSecret `flipflop-service-secret` reported ready; only `flipflop-order-service` was restarted.
+- Running `flipflop-order-service` reported `ORDERS_SERVICE_URL=present`, `ORDERS_SERVICE_TOKEN=present`, and `ORDERS_STATUS_SERVICE_TOKEN=present`.
+- Guarded smoke approval id `GOAL10-AUTH-SUBJECT-CREATE-READ-CANCEL-20260703` passed with create HTTP 201, read HTTP 200, `authSubjectPersisted=true`, cleanup attempted, and cleanup HTTP 200.
+- FlipFlop `origin/main` commit `7f0ef44` records sanitized evidence and verifier status `pass_auth_wallet_order_snapshot_create_read_cancel_smoke`.
+
+Validation evidence:
+
+- FlipFlop `npm run verify:auth-wallet-order-snapshot-gate` passed.
+- Auth `npm run check:customer-data-wallet-runtime-gate-packet` must pass after this coordinator refresh.
+
+Boundary:
+
+- No token value, raw order id, raw customer data, request/response body, DB row dump, payment provider data, Warehouse response body, notification payload, or secret value was printed or committed.
+
+Next unfinished chunks:
+
+- Cliplot bounded live checkout submit/live commerce window remains owner-gated.
+- Rent-a-box route/onboarding migration and later backfill/product-code migration remain owner-gated.

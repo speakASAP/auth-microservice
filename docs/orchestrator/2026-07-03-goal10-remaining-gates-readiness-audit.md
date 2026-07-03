@@ -1,6 +1,6 @@
 # Goal 10 Remaining Gates Readiness Audit
 
-Status: source/readiness audit complete; runtime gates remain approval-gated
+Status: refreshed after FlipFlop order snapshot smoke; Cliplot/Rent gates remain approval-gated
 Created: 2026-07-03
 Owner: Auth Goal 10 coordinator
 
@@ -20,34 +20,31 @@ Owner: Auth Goal 10 coordinator
 
 | Repo | State | Head | Dirty state |
 | --- | --- | --- | --- |
-| `auth-microservice` | `main...origin/main` | `cdc43a7 docs: record flipflop cleanup gate hardening` | clean before this doc update |
-| `flipflop` | `origin/main` | `6fe9e07 test: harden auth subject smoke cleanup gate` | cleanup guard merged; active worktree is separate Goal 24 branch |
+| `auth-microservice` | `main...origin/main` | `cb2f819 fix: make internal token helper pod-runnable` | clean before this doc update |
+| `flipflop` | `origin/main` | `7f0ef44 test: record auth wallet order snapshot smoke` | order snapshot smoke evidence recorded; active worktree is separate Goal 24 branch |
 | `cliplot` | `main...origin/main` | `ddceee8 docs: record auth wallet live fetch evidence` | clean |
 | `rent-a-box` | `main...origin/main` | `e518725 test: add goal 12 route onboarding gate` | clean after timestamp-only generated reports were restored |
 
 ## FlipFlop Gate
 
-Verdict: approval-gated; do not run live create/read/cancel yet.
+Verdict: completed for Goal 10 order snapshot runtime evidence.
 
-Safe evidence:
+Runtime evidence:
 
-- `npm run verify:auth-wallet-order-snapshot-gate` passed with `status=approval_required_auth_wallet_order_snapshot_runtime_gate`.
-- Default smoke evidence stayed non-mutating: `liveOrderSubmit=false`, `orderCreated=false`, `warehouseMutation=false`, `paymentCreation=false`, `notificationSend=false`, `databaseRead=false`, `tokenPrinted=false`, `customerDataPrinted=false`.
-- Runtime preflight inside the verifier found `deploymentReady=1/1`, `ORDERS_SERVICE_URL=true`, and `ORDERS_SERVICE_TOKEN=true`.
-- Parallel audit also ran syntax checks, `git diff --check`, `npm run verify:orders-hub-integration`, `npm run smoke:auth-wallet-checkout-profile -- --skip-source-verifiers`, and `WRITE_AUTH_SUBJECT_SMOKE_REPORT=0 node scripts/smoke-orders-auth-subject.js`; default smoke exited fail-closed with `mutation=false` and `providerCall=false`.
+- Auth helper apply created/normalized the `orders-status-cleanup` service principal, assigned `internal:orders-microservice:admin`, emitted a JWT only to a 0600 temp file, and printed no token value.
+- Vault path `secret/prod/flipflop-service#ORDERS_STATUS_SERVICE_TOKEN` was patched from a file payload, and temp token files were shredded/removed.
+- FlipFlop `origin/main` commit `794ae88` mapped `ORDERS_STATUS_SERVICE_TOKEN` into `flipflop-service-secret`; only `flipflop-order-service` was restarted after ExternalSecret sync.
+- Running `flipflop-order-service` reported `ORDERS_SERVICE_URL=present`, `ORDERS_SERVICE_TOKEN=present`, and `ORDERS_STATUS_SERVICE_TOKEN=present`.
+- Guarded smoke `GOAL10-AUTH-SUBJECT-CREATE-READ-CANCEL-20260703` passed: create HTTP 201, read HTTP 200, `authSubjectPersisted=true`, cleanup attempted, cleanup HTTP 200.
+- FlipFlop `origin/main` commit `7f0ef44` records sanitized evidence in `reports/validation/orders-auth-subject-smoke/report-goal10-create-read-cancel-20260703.json`; `npm run verify:auth-wallet-order-snapshot-gate` now reports `pass_auth_wallet_order_snapshot_create_read_cancel_smoke`.
 
-Remaining blockers:
+Boundary:
 
-- `[MISSING: approved RUN_LIVE_AUTH_SUBJECT_ORDERS_SMOKE=1 runtime execution with non-secret AUTH_SUBJECT_SMOKE_APPROVAL_ID]`
-- `[MISSING: owner-approved fixture AUTH_SUBJECT_SMOKE_CATALOG_PRODUCT_ID and AUTH_SUBJECT_SMOKE_WAREHOUSE_ID]`
-- `[MISSING: persisted central Orders customer.authSubject/billingAddress runtime read evidence]`
-- `[MISSING: cleanup-capable ORDERS_STATUS_SERVICE_TOKEN projection before create/read/cancel smoke]`
-- `[MISSING: AUTH_SUBJECT_SMOKE_CLEANUP_CONFIRM=ORDERS_ADMIN_STATUS_CANCEL]`
+- No token value, raw order id, raw customer data, request/response body, DB row dump, payment provider data, or notification payload was printed or committed.
 
 Safety decision:
 
-- FlipFlop cleanup source guard is merged to `origin/main` at `6fe9e07`, so the source branch decision is resolved.
-- The smoke is still not executable as a safe create/read/cancel gate until cleanup-capable `ORDERS_STATUS_SERVICE_TOKEN` is projected and cleanup authority is confirmed.
+- FlipFlop order snapshot create/read/cancel smoke passed at `origin/main` `7f0ef44`; this gate no longer blocks Goal 10.
 
 ## Cliplot Gate
 
@@ -94,12 +91,11 @@ Safety decision:
 
 ## Coordinator Result
 
-No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and cleanup/window decisions.
+No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and Cliplot/Rent window decisions.
 
 Safe next actions are limited to:
 
-1. obtain FlipFlop cleanup-capable `ORDERS_STATUS_SERVICE_TOKEN`, cleanup authority confirmation, fixture ids, and approval for synthetic order smoke;
-2. obtain a Cliplot bounded live checkout window with required live flags/session inputs;
-3. obtain a Rent-a-box route/onboarding migration window, route ownership list, onboarding decision, and backfill scope.
+1. obtain a Cliplot bounded live checkout window with required live flags/session inputs;
+2. obtain a Rent-a-box route/onboarding migration window, route ownership list, onboarding decision, and backfill scope.
 
 Until one of those inputs is supplied, continue with read-only readiness audits or source-only guard hardening only.
