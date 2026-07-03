@@ -29,6 +29,7 @@ runtime evidence without re-opening source-only discovery.
 - Gate 4 ChytraKoupe guarded selector smoke passed with Vault-backed synthetic login, sanitized local checkout-data fixture, selector/manual-edit evidence, no checkout submit, no Auth wallet mutation, and redacted output.
 - Gate 5 Cliplot synthetic browser/session wallet-read evidence passed with Vault-backed synthetic login, three Auth wallet GET endpoints returning HTTP 200, no checkout submit, no mutation, and redacted output.
 - Gate 6 Rent-a-box metadata-only production preflight passed with aggregate-zero local users/customer_profiles, `migrationComplexity=empty`, and blocker label `auth_subject_id_column_missing`.
+- Rent-a-box route/onboarding source-only gate passed in commit `e518725` with status `approval_required_goal12_route_onboarding_migration_gate`; route migration remains inactive.
 - FlipFlop, ChytraKoupe, Cliplot, and Rent-a-box source-only readiness lanes
   have been audited. No material source-only consumer lane remains before the
   runtime inputs below.
@@ -214,7 +215,7 @@ Remaining Cliplot follow-up gates:
 ## Gate 6 - Rent-a-box Metadata-Only Production Preflight
 
 Status: completed 2026-07-03 for metadata-only row-count/migration-complexity
-preflight. Product-code migration remains blocked.
+preflight and source-only route/onboarding gate. Product-code migration remains blocked.
 
 Resolved owner inputs:
 
@@ -228,6 +229,7 @@ Resolved owner inputs:
 Evidence:
 
 - Passed status: `pass_goal12_rent_auth_metadata_preflight`.
+- Route/onboarding gate status: `approval_required_goal12_route_onboarding_migration_gate` from Rent-a-box commit `e518725`.
 - Tables exist: `users=true`, `customer_profiles=true`, `alembic_version=true`.
 - Live schema metadata: `customer_profiles.auth_subject_id=false` and
   `ix_customer_profiles_auth_subject_id=false`.
@@ -320,7 +322,7 @@ Stop immediately and do not retry automatically if:
 
 This packet is valid when:
 
-- Gate 1 through Gate 6 approved evidence remains redacted and follow-up implementation/migration gates are explicitly blocked.
+- Gate 1 through Gate 6 approved evidence plus Rent-a-box route/onboarding source-only gate evidence remains redacted and follow-up implementation/migration gates are explicitly blocked.
 - Auth coordinator docs link to it.
 - `npm run check:customer-data-wallet-runtime-gate-packet` passes.
 - `git diff --check` passes.

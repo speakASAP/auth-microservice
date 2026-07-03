@@ -57,6 +57,9 @@ function main() {
     'gate6-rent-a-box-auth-wallet-metadata-preflight-20260703',
     'pass_goal12_rent_auth_metadata_preflight',
     'auth_subject_id_column_missing',
+    'e518725',
+    'approval_required_goal12_route_onboarding_migration_gate',
+    'route migration remains inactive',
   ];
 
   const commandMarkers = [
@@ -138,7 +141,7 @@ function main() {
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'all named runtime evidence gates are complete; proceed only with separately approved FlipFlop order snapshot smoke, Cliplot checkout submit/live commerce, or Rent-a-box route/backfill migration gates',
+    allowedNextAction: 'all named runtime evidence gates and source-only Rent route/onboarding gate are complete; proceed only with separately approved FlipFlop order snapshot smoke, Cliplot checkout submit/live commerce, or Rent-a-box route/backfill migration gates',
   };
 
   console.log(JSON.stringify(result, null, 2));

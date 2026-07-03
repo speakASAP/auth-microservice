@@ -1,3 +1,28 @@
+## 2026-07-03 - Goal 10.80 Rent-a-box Route/Onboarding Gate
+
+Current focus:
+
+- Make the next Rent-a-box route/onboarding migration checkpoint machine-checkable without enabling Auth route dependencies or replacing local auth.
+
+Evidence:
+
+- Rent-a-box commit `e518725` added `scripts/check_goal12_route_onboarding_gate.py` and sanitized report `reports/validation/goal12-route-onboarding-gate.json`.
+- The report status is `approval_required_goal12_route_onboarding_migration_gate`.
+- It proves Auth route helpers remain behind `RENT_AUTH_ADAPTER_ENABLED`, transitional onboarding remains behind `RENT_AUTH_TRANSITIONAL_ONBOARDING_ENABLED`, product route migration is inactive, and hosted Auth handoff is not consumed by the local form.
+- Lifecycle and post-rental customer routes still depend on local `get_current_user`; local login/register and local JWT request auth remain authoritative.
+
+Validation:
+
+- Rent-a-box passed: `python3 -B scripts/check_goal12_route_onboarding_gate.py --root .`, `python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .`, `python3 -m py_compile scripts/check_goal12_route_onboarding_gate.py scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py scripts/ips_pre_coding_gate.py`, `./scripts/intent_preflight.sh`, `git diff --check`, scoped changed-file secret scan, and throwaway Docker focused pytest `14 passed` for `apps/api/tests/test_auth_adapter.py`.
+
+Boundary:
+
+- No route migration, product-code auth replacement, live DB read/write, backfill, unique constraint, raw customer-data output, token/secret inspection, deploy, Kubernetes/Vault mutation, checkout/order/payment mutation, or Auth source change occurred.
+
+Next unfinished chunk:
+
+- Rent-a-box remains owner-gated for route/onboarding migration before any product-code route migration or auth replacement, and later owner-approved backfill/product-code migration.
+
 ## 2026-07-03 - Goal 10.79 FlipFlop Auth Wallet Order Snapshot Gate Packet
 
 Current focus:

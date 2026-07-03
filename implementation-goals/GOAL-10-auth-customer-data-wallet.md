@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; Gates 1-6 Auth, FlipFlop, ChytraKoupe, Cliplot wallet-read, and Rent-a-box metadata preflight evidence completed; Cliplot guarded runtime evidence, selector UI source integration, approval-gated browser-session fetch path, Rent-a-box nullable production schema apply, feature-gated runtime adapter, and opt-in dependency helpers completed; focused Rent validation and Cliplot live wallet fetch evidence completed; FlipFlop no-mutation order snapshot gate packet completed; follow-up route/onboarding, checkout submit, live order snapshot runtime, backfill, and product replacement lanes remain approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; Gates 1-6 Auth, FlipFlop, ChytraKoupe, Cliplot wallet-read, and Rent-a-box metadata preflight evidence completed; Cliplot guarded runtime evidence, selector UI source integration, approval-gated browser-session fetch path, Rent-a-box nullable production schema apply, feature-gated runtime adapter, and opt-in dependency helpers completed; focused Rent validation and Cliplot live wallet fetch evidence completed; FlipFlop no-mutation order snapshot gate packet completed; Rent-a-box route/onboarding source-only gate completed; follow-up route/onboarding runtime migration, checkout submit, live order snapshot runtime, backfill, and product replacement lanes remain approval-gated
 
 ## Intent
 
@@ -63,6 +63,7 @@ Auth customer data wallet:
 - [x] 10.17 Auth invoice profile field semantics source-defined.
 - [x] 10.18 Orders and FlipFlop consumer order snapshot support for optional Auth invoice fields source-prepared.
 - [x] 10.19 FlipFlop checkout explicit Auth wallet save-back source-prepared.
+- [x] 10.80 Rent-a-box route/onboarding source-only gate completed in commit `e518725`.
 - [x] 10.35 Cliplot Auth wallet schema-version readiness refresh source-prepared in commit `fc7502d`.
 - [x] 10.36 Cliplot Auth wallet response-shape readiness refresh source-prepared in commit `c8e99ac`.
 - [x] 10.37 Rent-a-box Auth wallet schema/response-shape evidence refresh source-prepared in commit `eb2eb02`.
@@ -1556,6 +1557,15 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
 - Throwaway Docker validation passed: `tests/test_auth_adapter.py` returned `14 passed in 0.17s`; ruff returned `All checks passed!` for `app/auth/adapter.py`, `app/auth/dependencies.py`, and `tests/test_auth_adapter.py`.
 - The prior focused pytest/ruff runner blocker is resolved for this lane without installing dependencies on the remote host or changing production runtime state.
 - Remaining Rent-a-box follow-up: owner-approved route/onboarding migration before replacing local auth, and later owner-approved backfill/product-code migration.
+
+
+## 2026-07-03 Goal 10.80 Rent-a-box Route/Onboarding Source-Only Gate
+
+- Rent-a-box commit `e518725 test: add goal 12 route onboarding gate` adds `scripts/check_goal12_route_onboarding_gate.py` and `reports/validation/goal12-route-onboarding-gate.json`.
+- Report status is `approval_required_goal12_route_onboarding_migration_gate` with `sourceOnly=true`, `routeMigrationActive=false`, `localAuthStillAuthoritative=true`, `databaseRead=false`, `databaseWrite=false`, `productionBackfill=false`, `deploy=false`, and `authSourceChange=false`.
+- Evidence confirms lifecycle/post-rental customer routes still use local `get_current_user`; Auth route helpers remain feature-gated; transitional onboarding remains separately gated; hosted Auth handoff is stored but not consumed by local AuthForm.
+- Validation passed in Rent-a-box: route gate, Goal 12 readiness, py_compile, intent preflight, git diff check, scoped secret scan, and throwaway Docker focused pytest `14 passed`.
+- Remaining Rent-a-box follow-up: owner-approved route/onboarding migration before product-code route migration or auth replacement, then later owner-approved backfill/product-code migration.
 
 ## 2026-07-03 Goal 10.79 FlipFlop No-Mutation Order Snapshot Gate Packet
 
