@@ -28,26 +28,25 @@ smoke, and non-mutating FlipFlop post-deploy runtime smoke.
 ## Current Gate State
 
 - Latest approved refresh completed from Source Preflight-captured HEAD
-  `712c0bc1558d429c812b55cce8118b1bf515eecf`.
-- Latest deployed Auth image tag is `712c0bc-20260702234019` for backend and
+  `350700b0ad3482cf375ada8f9088392778ae8b05`.
+- Latest deployed Auth image tag is `350700b-20260703044437` for backend and
   web.
 - Latest refresh confirmed schema metadata in the `auth` database, idempotent
   SQL apply, Auth wallet 401 smoke, and non-mutating FlipFlop runtime smoke.
-- During the latest refresh a cluster-wide sandbox/node reset and bulk
-  namespace scale-down interrupted the deploy script. Recovery restored only
-  the minimum required runtime set to replicas 1, applied the deploy script's
-  non-secret Auth ConfigMap patch, and completed Auth/FlipFlop smoke without
-  reading secrets or customer rows.
+- During the latest refresh, Source Preflight was clean on `main`, ahead of
+  `origin/main` by 1 coordinator docs commit. The predeploy runtime check
+  intentionally failed because wallet routes are already live and returned
+  deployed `401`, not predeploy `404`; deployed-mode validation passed.
 - Auth source for delivery addresses, invoice profiles, checkout aggregate,
   hosted profile wallet management, and runtime wallet route gate exists in the
   deployed Source Preflight HEAD
-  `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`.
+  `350700b0ad3482cf375ada8f9088392778ae8b05`.
 - `scripts/create-customer-data-wallet-tables.sql` is additive and idempotent.
 - Production uses `DB_SYNC=false`; do not set `DB_SYNC=true`.
 - Live SQL has been applied for `scripts/create-customer-data-wallet-tables.sql`.
 - Auth deploy completed with backend image
-  `localhost:5000/auth-microservice:2871a6f-20260702210100` and web image
-  `localhost:5000/auth-microservice-web:2871a6f-20260702210100`; both
+  `localhost:5000/auth-microservice:350700b-20260703044437` and web image
+  `localhost:5000/auth-microservice-web:350700b-20260703044437`; both
   deployments are `1/1`.
 - Post-deploy runtime smoke passed: `/health` returned HTTP 200 and wallet
   endpoints returned HTTP 401 unauthenticated.

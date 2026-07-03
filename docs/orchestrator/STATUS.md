@@ -1,3 +1,76 @@
+## 2026-07-03 - Goal 10.38 Auth Current-Head Live Refresh
+
+Current focus:
+
+- Execute the owner-approved Auth schema-only DB preflight, idempotent SQL
+  apply, Auth deploy from Source Preflight-captured HEAD, wallet endpoint 401
+  smoke, and non-mutating FlipFlop post-deploy runtime smoke.
+
+Evidence:
+
+- Source Preflight captured Auth HEAD
+  `350700b0ad3482cf375ada8f9088392778ae8b05` on `main`, ahead of
+  `origin/main` by 1 coordinator docs commit, with no dirty tracked files.
+- Checksums: wallet SQL
+  `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`,
+  runtime verifier
+  `3786afab774e58dd9800272507ca919b7cfdf8d80a16fb4f09ef1541e482ec26`,
+  deploy script
+  `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
+- Source validation passed with deployed-mode wallet runtime expectation. The
+  predeploy-mode check intentionally failed because wallet routes are already
+  live and returned deployed `401`, not predeploy `404`.
+- Schema-only DB metadata preflight found `public.users`,
+  `user_delivery_addresses`, `user_invoice_profiles`, `gen_random_uuid`, 21
+  delivery-address columns, 24 invoice-profile columns, and 4 indexes per
+  wallet table.
+- Approved SQL apply was idempotent and transaction-wrapped; only expected
+  existing-object notices were emitted.
+- Post-apply metadata verification found both wallet tables, required core
+  columns, and all 8 wallet indexes.
+- Auth deploy completed successfully in 198.33s with image tag
+  `350700b-20260703044437` for backend and web.
+- Independent rollout verification showed Auth backend and web `1/1` on
+  `localhost:5000/auth-microservice:350700b-20260703044437` and
+  `localhost:5000/auth-microservice-web:350700b-20260703044437`.
+- Auth wallet runtime smoke passed: `/health` HTTP 200 and
+  `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`,
+  `/auth/profile/invoice-profiles` HTTP 401 unauthenticated.
+- FlipFlop post-deploy runtime smoke stayed non-mutating: public `/`,
+  `/checkout`, `/profile/addresses`, `/profile/invoice-profiles`, and
+  `/api/products?limit=1` returned HTTP 200; gateway-proxied wallet endpoints
+  returned HTTP 401; `npm run verify:auth-wallet-checkout-selectors` and
+  `npm run verify:auth-wallet-profile-ui` passed.
+
+Validation:
+
+- Auth `npm run check:customer-data-wallet-preflight` passed.
+- Auth `npm run check:customer-data-wallet-runtime -- --expect=deployed`
+  passed.
+- Auth focused `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts
+  src/users/users.service.spec.ts` passed 2 suites / 15 tests.
+- Auth `npm run test:auth-contract` passed 3 suites / 27 tests.
+- Auth `npm run build` passed.
+- Auth `npm run lint` passed.
+- Auth `git diff --check` passed.
+- Kubernetes rollout status passed for `deploy/auth-microservice` and
+  `deploy/auth-microservice-web`.
+- FlipFlop route probes and wallet UI verifiers passed as listed above.
+
+Boundary:
+
+- No secret/token/password/JWT/cookie value inspection, customer-row read, raw
+  production customer-data inspection, authenticated synthetic smoke, live
+  checkout/order/payment mutation, Warehouse reservation, notification send,
+  destructive DB rollback/drop, or full cluster scale-up was performed.
+
+Next unfinished chunk:
+
+- Continue with owner-approved synthetic authenticated Auth wallet
+  CRUD/default/delete plus FlipFlop checkout/profile smoke if required, or
+  continue ChytraKoupe response-shape/verifier narrowing and remaining
+  Rent-a-box/Cliplot product-code gates.
+
 ## 2026-07-03 - Goal 10.37 Rent-a-box Schema/Response-Shape Evidence Refresh
 
 Current focus:
