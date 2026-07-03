@@ -240,6 +240,7 @@ Stop immediately and do not retry automatically if:
 This packet is valid when:
 
 - Auth coordinator docs link to it.
+- `npm run check:customer-data-wallet-runtime-gate-packet` passes.
 - `git diff --check` passes.
 - Added-line sensitive literal scan returns no matches.
 - Auth deployed wallet smoke still passes with unauthenticated 401 responses.

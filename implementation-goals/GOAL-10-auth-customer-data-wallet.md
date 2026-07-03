@@ -92,6 +92,7 @@ Auth customer data wallet:
 - [x] 10.61 Consumer runtime-gate audit confirmed no remaining material source-only lanes before approved synthetic/runtime inputs.
 - [x] 10.62 Cliplot runtime-gate audit confirmed all known consumer lanes are now synthetic/runtime or live-DB-preflight gated.
 - [x] 10.63 Consolidated runtime gate execution packet prepared at `docs/orchestrator/2026-07-03-goal10-runtime-gate-execution-packet.md`.
+- [x] 10.64 Source-only runtime gate packet verifier prepared as `npm run check:customer-data-wallet-runtime-gate-packet`.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -289,6 +290,22 @@ Remaining Cliplot gates:
   submit, payment/Warehouse mutation, notification send, Kubernetes/Vault
   mutation, token/cookie/secret inspection, or production customer data read was
   performed.
+
+## 2026-07-03 Goal 10.64 Runtime Gate Packet Source Verifier
+
+- 2026-07-03: Added source-only verifier
+  `scripts/check-customer-data-wallet-runtime-gate-packet.js` and package
+  script `check:customer-data-wallet-runtime-gate-packet`.
+- The verifier reads the runtime gate packet, Goal 10 plan, orchestrator
+  status, implementation state, and `package.json`.
+- It fails if the packet stops covering all six named gates, required
+  `[MISSING: ...]` owner-input markers, ready command shapes, shared output
+  contract, stop conditions, or coordinator links.
+- Default mode is source-only and reports `source_only_no_live_calls`; it does
+  not send live requests, read token contents, read cookies, read databases,
+  mutate wallet rows, submit checkout, or deploy.
+- This keeps the next executable step machine-checkable while preserving the
+  current runtime gates.
 
 ## 2026-07-03 Goal 10.56 Cliplot Source-Only Selector Behavior Verifier
 

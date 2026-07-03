@@ -1,3 +1,36 @@
+## 2026-07-03 - Goal 10.64 Runtime Gate Packet Source Verifier
+
+Current focus:
+
+- Make the consolidated Goal 10 runtime gate execution packet machine-checkable
+  without opening any runtime gate.
+
+Evidence:
+
+- Added `scripts/check-customer-data-wallet-runtime-gate-packet.js`.
+- Added package script `check:customer-data-wallet-runtime-gate-packet`.
+- The verifier reads the runtime gate packet, Goal 10 plan, orchestrator
+  status, implementation state, and `package.json`.
+- It checks all six named gates, required `[MISSING: ...]` owner-input markers,
+  ready command shapes, shared output contract, forbidden output contract, stop
+  conditions, validation section, coordinator links, and package script wiring.
+
+Validation:
+
+- Pending final remote `node --check`, package script execution, default Auth
+  authenticated smoke source-only check, deployed wallet 401 smoke, diff check,
+  and sensitive literal scan in this session.
+
+Boundary:
+
+- The verifier is source-only. It does not read environment values, connect to
+  a database, call runtime services, read token contents, read cookies, mutate
+  wallet rows, submit checkout, or deploy.
+
+Next unfinished chunk:
+
+- Execute one named runtime gate only after its missing owner inputs exist.
+
 ## 2026-07-03 - Goal 10.63 Runtime Gate Execution Packet
 
 Current focus:
