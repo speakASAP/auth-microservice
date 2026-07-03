@@ -4691,3 +4691,34 @@ Next unfinished chunks:
 - FlipFlop authenticated central Orders create/read/cancel smoke remains owner-approved runtime work.
 - Cliplot checkout submit/live commerce and hosted Auth callback/session contract remain separately gated.
 - Rent-a-box route/onboarding migration, backfill, and product-code migration remain owner-approved gates.
+
+## 2026-07-03 - Goal 10.84 Remaining Gates Readiness Audit
+
+Current focus:
+
+- Refreshed current-state readiness for the remaining FlipFlop, Cliplot, and Rent-a-box Goal 10 gates.
+
+Source evidence:
+
+- `flipflop` is clean on `goal24-paid-provider-bundle-checkout-gate...origin/goal24-paid-provider-bundle-checkout-gate` at `c876848`.
+- `cliplot` is clean on `main...origin/main` at `ddceee8`.
+- `rent-a-box` is clean on `main...origin/main` at `e518725` after timestamp-only generated validation reports were restored.
+- Parallel read-only subagents independently audited each remaining lane.
+
+Validation evidence:
+
+- FlipFlop `npm run verify:auth-wallet-order-snapshot-gate` passed with `approval_required_auth_wallet_order_snapshot_runtime_gate` and no mutation.
+- Cliplot `npm run readiness:auth-wallet-checkout` and `npm run readiness:auth-wallet-runtime-checkout-evidence` passed with no live Auth fetch or checkout submit.
+- Rent-a-box route/onboarding and auth-wallet readiness checks passed non-mutating; `./scripts/intent_preflight.sh` and `git diff --check` passed.
+
+Boundary:
+
+- No consumer repo source edits, deploys, live checkout/order mutation, DB reads/writes, env dumps, secret/token inspection, live flag opening, payment/Warehouse/notification mutation, or customer-data output occurred.
+- FlipFlop live create/read/cancel smoke is not safe to run until an approved cleanup path exists; current preflight reports `ORDERS_STATUS_SERVICE_TOKEN=false`.
+- FlipFlop source branch must be decided before using the current `goal24-paid-provider-bundle-checkout-gate` checkout as Goal 10 runtime evidence.
+
+Next unfinished chunks:
+
+- FlipFlop: owner-approved synthetic order smoke still needs non-secret approval id, fixture catalog product id, warehouse id, source branch decision, and cleanup path or residual policy.
+- Cliplot: owner-approved bounded live checkout submit/live commerce window and required live flags/session inputs.
+- Rent-a-box: owner-approved route/onboarding migration window, route ownership list, onboarding decision, and backfill scope before product-code auth replacement.
