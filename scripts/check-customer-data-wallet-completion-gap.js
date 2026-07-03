@@ -5,6 +5,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const auditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-completion-gap-audit.md');
 const ownerPacketPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md');
+const handoffPacketPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md');
 const goalPath = path.join(root, 'implementation-goals/GOAL-10-auth-customer-data-wallet.md');
 const statePath = path.join(root, 'docs/IMPLEMENTATION_STATE.md');
 const statusPath = path.join(root, 'docs/orchestrator/STATUS.md');
@@ -25,6 +26,7 @@ function missing(results) {
 function main() {
   const audit = readText(auditPath);
   const ownerPacket = readText(ownerPacketPath);
+  const handoffPacket = readText(handoffPacketPath);
   const goal = readText(goalPath);
   const state = readText(statePath);
   const status = readText(statusPath);
@@ -61,20 +63,37 @@ function main() {
     '[MISSING: owner-approved route ownership list before replacing local auth dependencies]',
   ]);
 
+  const handoffPacketMarkers = includesAll(handoffPacket, [
+    'Goal 10 Approved Lane Handoff Packet',
+    'Status: inactive source-only handoff; owner approval required before use',
+    'Lane A - Cliplot Bounded Live Commerce Worker Prompt',
+    'Lane B - Rent-a-box Route/Onboarding Migration Worker Prompt',
+    'This packet is not approval.',
+    'Do not start either lane from this packet alone.',
+    '`ENABLE_LIVE_ORDER_SUBMIT=false`',
+    'RENT_AUTH_ADAPTER_ENABLED',
+    'apps/api/app/api/lifecycle.py',
+    'npm run check:customer-data-wallet-completion-gap',
+  ]);
+
   const coordinatorMarkers = [
     ...includesAll(goal, [
       '10.93 Completion gap audit recorded',
-      'completion gap audit and verifier keep Goal 10 active until Cliplot and Rent-a-box owner-gated lanes close',
+      '10.95 Approved-lane handoff packet prepared',
+      'approved-lane handoff packet is ready but inactive',
       '[MISSING: owner answer to Cliplot bounded live commerce approval packet',
       '[MISSING: owner answer to Rent-a-box route/onboarding approval packet',
     ]),
     ...includesAll(state, [
       'Goal 10.93 completion gap audit recorded',
       'docs/orchestrator/2026-07-03-goal10-completion-gap-audit.md',
+      'Goal 10.95 approved-lane handoff packet prepared',
+      'docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md',
     ]),
     ...includesAll(status, [
       'Goal 10.93 Completion Gap Audit',
       'Cliplot live commerce and Rent-a-box route/onboarding remain incomplete owner-gated lanes',
+      'Goal 10.95 Approved Lane Handoff Packet',
     ]),
   ];
 
@@ -83,6 +102,7 @@ function main() {
     ...missing(provenRequirementMarkers),
     ...missing(openGateMarkers),
     ...missing(ownerPacketMarkers),
+    ...missing(handoffPacketMarkers),
     ...missing(coordinatorMarkers),
     ...(packageScript === 'node scripts/check-customer-data-wallet-completion-gap.js'
       ? []
@@ -101,9 +121,10 @@ function main() {
     provenRequirementMarkers: missing(provenRequirementMarkers).length === 0,
     openGatesPreserved: missing(openGateMarkers).length === 0,
     ownerPacketLinked: missing(ownerPacketMarkers).length === 0,
+    handoffPacketLinked: missing(handoffPacketMarkers).length === 0,
     coordinatorLinked: missing(coordinatorMarkers).length === 0,
     missing: missingMarkers,
-    allowedNextAction: 'Goal 10 remains active; answer the Cliplot or Rent-a-box owner packet before opening the next implementation/runtime lane',
+    allowedNextAction: 'Goal 10 remains active; after owner approval use docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md to start the bounded lane',
   };
 
   console.log(JSON.stringify(result, null, 2));
