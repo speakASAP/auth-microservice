@@ -1,3 +1,49 @@
+## 2026-07-03 - Goal 10.37 Rent-a-box Schema/Response-Shape Evidence Refresh
+
+Current focus:
+
+- Refresh Rent-a-box Goal 12 source-only migration readiness after Auth
+  checkout-data schema/version and response-shape evidence, while preserving
+  Rent-specific migration blockers.
+
+Evidence:
+
+- Rent-a-box commit `eb2eb02 docs: record auth wallet response shape evidence`
+  updates `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`,
+  `scripts/check_goal12_auth_wallet_readiness.py`, and validation reports.
+- The Rent-a-box verifier now treats Auth checkout-data schema version
+  `auth.customer-data-wallet.checkout-data.v1`, source-defined response shape,
+  and sanitized wallet row omissions (`user`, `userId`, `deletedAt`) as
+  resolved upstream evidence.
+- Remaining Rent-a-box blockers are unchanged: customer session adapter/local
+  profile binding, Auth-to-Rent admin role mapping, consent/profile migration
+  mapping, owner-approved live migration/backfill, and production row-count
+  complexity.
+
+Validation:
+
+- Rent-a-box `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py scripts/ips_pre_coding_gate.py` passed.
+- Rent-a-box `python3 scripts/check_goal12_auth_wallet_readiness.py --root .`
+  passed with `pass_dependency_gated`.
+- Rent-a-box `./scripts/intent_preflight.sh` passed.
+- Rent-a-box `git diff --check` passed.
+- Rent-a-box targeted dangerous literal-secret scan on changed files returned
+  no matches.
+
+Boundary:
+
+- No product-code migration, Auth code, live SQL, deploy, Kubernetes mutation,
+  DB query, secret/token/password/JWT/cookie inspection, response-body logging,
+  production customer/order data inspection, live checkout submit,
+  payment/Warehouse mutation, notification send, or runtime consumer
+  integration was performed.
+
+Next unfinished chunk:
+
+- Continue ChytraKoupe response-shape/verifier narrowing or resolve remaining
+  Rent-a-box customer session/admin/consent/backfill gates with owner-provided
+  decisions.
+
 ## 2026-07-03 - Goal 10.36 Cliplot Response-Shape Readiness Refresh
 
 Current focus:

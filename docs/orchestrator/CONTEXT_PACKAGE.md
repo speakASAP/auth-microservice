@@ -476,6 +476,43 @@ Excluded data:
   checkout submit, payment/Warehouse mutation, notification send, or runtime
   consumer integration.
 
+## Current Task Addendum - 2026-07-03 Rent-a-box Schema/Response-Shape Evidence
+
+Target task: refresh Rent-a-box Goal 12 source-only readiness artifacts after
+Auth checkout-data schema and response-shape evidence, without starting
+product-code migration.
+
+Included source and documents:
+
+- `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`
+- `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py`
+- `rent-a-box/reports/validation/goal-12-auth-customer-data-wallet-migration-plan.md`
+- `docs/IMPLEMENTATION_STATE.md`
+- `docs/orchestrator/STATUS.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+
+Included evidence:
+
+- Rent-a-box commit `eb2eb02` records Auth checkout-data schema version
+  `auth.customer-data-wallet.checkout-data.v1`, source-defined response shape,
+  and sanitized wallet row omissions as resolved upstream evidence.
+- Rent-a-box verifier still reports `pass_dependency_gated`.
+- Remaining Rent-a-box gates are customer session adapter/local profile
+  binding, Auth-to-Rent admin role mapping, consent/profile migration mapping,
+  owner-approved live migration/backfill, and production row-count complexity.
+
+Excluded data:
+
+- No product-code migration, Auth code, live SQL, deploy, Kubernetes mutation,
+  DB query, secret/token/password/JWT value inspection, cookie inspection,
+  response-body logging, production customer/order data inspection, live
+  checkout submit, payment/Warehouse mutation, notification send, or runtime
+  consumer integration.
+
 ## Current Task Addendum - 2026-07-03 Cliplot Response-Shape Readiness
 
 Target task: refresh Cliplot-owned source-only readiness artifacts after Auth

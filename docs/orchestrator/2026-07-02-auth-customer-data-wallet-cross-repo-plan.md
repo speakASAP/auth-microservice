@@ -131,12 +131,13 @@ Dirty or ahead; future workers must inspect before editing:
 - `bazos`: ahead and dirty.
 - `marketing-microservice`: dirty.
 - `warehouse-microservice`: dirty.
-- `rent-a-box`: clean and ahead at `6ecd76e`; repo-local Goal 12 now includes
+- `rent-a-box`: ahead at `eb2eb02`; repo-local Goal 12 now includes
   source-backed hosted Auth `/auth/start` and `/auth/callback` scaffolding with
-  `client_id=rent-a-box` and
-  `return_url=https://rent-a-box.alfares.cz/auth/callback` while preserving
-  customer session adapter/local profile binding, admin role, consent/profile
-  migration, and backfill blockers.
+  `client_id=rent-a-box`,
+  `return_url=https://rent-a-box.alfares.cz/auth/callback`, and Auth wallet
+  schema/response-shape evidence while preserving customer session
+  adapter/local profile binding, admin role, consent/profile migration, and
+  backfill blockers.
 - `chytrakoupe`: clean and ahead at `b280f75`; repo-local Goal 06 source
   prepares Auth wallet checkout-data reading, delivery/invoice selectors, and
   immutable billing/delivery snapshots, while retaining final client-id and
@@ -517,7 +518,7 @@ Plan:
 | F1 FlipFlop shared Auth client and user-service bridge | dependency-gated | FlipFlop backend worker  | Auth client, `/users/*` bridge                             | A1 API              | FlipFlop integration owner | 4                            |
 | F2 FlipFlop checkout/profile UX                        | dependency-gated | FlipFlop frontend worker | Checkout selectors, profile addresses UI                   | F1                  | FlipFlop integration owner | 5                            |
 | O1 Orders contract note/additive metadata              | dependency-gated | Orders worker            | Create-order contract docs/DTO if needed                   | A1 + F1 payload     | Orders owner               | 6                            |
-| R1 Rent-a-box hosted Auth migration plan               | callback source-prepared; session/admin/migration-gated | Rent-a-box coordinator | `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Customer session adapter/local profile binding, admin role mapping, consent/profile migration mapping, migration approval | Rent-a-box owner | 7 |
+| R1 Rent-a-box hosted Auth migration plan               | wallet-shape-evidence-refreshed; session/admin/migration-gated | Rent-a-box coordinator | `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Customer session adapter/local profile binding, admin role mapping, consent/profile migration mapping, migration approval | Rent-a-box owner | 7 |
 | CK1 Chytrakoupe checkout selector integration          | gate-narrowed | Chytrakoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Client-id and optional Auth subject linkage | Chytrakoupe owner | 8 |
 | C1 Cliplot plan                                        | response-shape-refreshed; runtime-gated | Cliplot coordinator | Docs/guarded plan only | Selector/session/PII approvals, approved field mapping, and guest fallback decisions | Cliplot owner | After live checkout approval |
 | M1 Marketplace order-snapshot audit                    | ready read-only  | Explorer                 | Allegro/Aukro/Bazos/Heureka/Catalog surface classification | None                | Coordinator                | No code merge                |

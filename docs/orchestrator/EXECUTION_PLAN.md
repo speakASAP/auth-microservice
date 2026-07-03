@@ -284,6 +284,40 @@ Validation plan:
 - Cliplot stale response-shape blocker scan
 - Cliplot targeted dangerous literal-secret scan on changed files
 
+## Current Execution Addendum - 2026-07-03 Rent-a-box Schema/Response-Shape Evidence Refresh
+
+Selected goal and chunk: Goal 10.37 - update Rent-a-box Goal 12 source-only
+readiness docs/verifier to record Auth checkout-data schema and response-shape
+evidence.
+
+Pre-coding gate decision: pass. The work is documentation/verifier-only in the
+consumer lane, preserves Auth as the wallet source of truth, and keeps
+Rent-a-box product-code migration blocked until customer session, admin role,
+consent/profile migration, and live backfill decisions are approved.
+
+Intent chain:
+
+- Vision: Auth is the single editable source of truth for registered-user
+  profile, delivery address book, and invoice profile data.
+- Goal impact: Rent-a-box no longer treats Auth schema/response-shape evidence
+  as implicit; future migration work can focus on Rent-specific gates.
+- System: Auth wallet source contract, Rent-a-box Goal 12 source-only verifier,
+  and Auth Goal 10 coordinator plans.
+- Feature: dependency-gated Rent-a-box Auth wallet migration readiness.
+- Task: record Auth schema/response-shape evidence and preserve session/admin/
+  consent/backfill blockers.
+- Coding prompt: source-only verifier/docs; no product-code migration, live
+  calls, checkout mutation, DB, deploy, secrets, tokens, cookies, or production
+  customer/order data.
+
+Validation plan:
+
+- Rent-a-box `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py scripts/ips_pre_coding_gate.py`
+- Rent-a-box `python3 scripts/check_goal12_auth_wallet_readiness.py --root .`
+- Rent-a-box `./scripts/intent_preflight.sh`
+- Rent-a-box `git diff --check`
+- Rent-a-box targeted dangerous literal-secret scan on changed files
+
 ## Current Execution Addendum - 2026-07-02 Auth Customer Data Wallet A1 Source Implementation
 
 Selected goal and chunk: Goal 10.1-10.5 - implement Auth storage model,

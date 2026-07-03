@@ -298,12 +298,14 @@ Resolved for current Goal 10 scope:
 - First consumer lanes are known: FlipFlop source-prepared, Orders immutable
   snapshot support source-prepared, and Rent-a-box/ChytraKoupe/Cliplot
   dependency-gated readiness lanes refreshed against Auth 401 evidence.
-- Rent-a-box commit `6ecd76e` source-prepares hosted Auth `/auth/start` and
+- Rent-a-box commit `eb2eb02` records Auth checkout-data schema/response-shape
+  evidence after commit `6ecd76e` source-prepared hosted Auth `/auth/start` and
   `/auth/callback` with `client_id=rent-a-box` and
-  `return_url=https://rent-a-box.alfares.cz/auth/callback` while preserving
-  local login/register, local JWT sessions, backend request auth, admin auth,
-  profile persistence, and domain flows until customer session adapter,
-  admin-role, consent/profile migration, and backfill gates are approved.
+  `return_url=https://rent-a-box.alfares.cz/auth/callback`. Local
+  login/register, local JWT sessions, backend request auth, admin auth, profile
+  persistence, and domain flows remain unchanged until customer session
+  adapter, admin-role, consent/profile migration, and backfill gates are
+  approved.
 - ChytraKoupe commit `b280f75` source-prepares Auth wallet checkout selectors
   and immutable snapshot payloads while preserving final client-id and optional
   `customer.authSubject` linkage gates before production runtime claim.
