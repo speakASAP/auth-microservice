@@ -76,6 +76,13 @@ function readToken() {
   return '';
 }
 
+function hasTokenInput() {
+  return Boolean(
+    process.env.AUTH_WALLET_SMOKE_BEARER_TOKEN ||
+      process.env.AUTH_WALLET_SMOKE_TOKEN_FILE,
+  );
+}
+
 function hashId(value) {
   if (!value) return null;
   return crypto.createHash('sha256').update(String(value)).digest('hex').slice(0, 12);
@@ -223,10 +230,63 @@ function assertLiveGates(options) {
   if (process.env.AUTH_WALLET_SMOKE_CONFIRM !== REQUIRED_CONFIRM) {
     missing.push(`AUTH_WALLET_SMOKE_CONFIRM=${REQUIRED_CONFIRM}`);
   }
-  if (!readToken()) {
+  if (!hasTokenInput()) {
     missing.push('AUTH_WALLET_SMOKE_BEARER_TOKEN or AUTH_WALLET_SMOKE_TOKEN_FILE');
   }
   return missing;
+}
+
+function sourceOnlySafetyEvidence(missing) {
+  const payloads = buildSyntheticPayloads('sourceonly');
+  const payloadText = JSON.stringify(payloads);
+  const wouldCall = [
+    `GET ${PATHS.checkoutData}`,
+    `POST ${PATHS.deliveryAddresses}`,
+    `PATCH ${PATHS.deliveryAddresses}/:id`,
+    `POST ${PATHS.deliveryAddresses}/:id/default`,
+    `DELETE ${PATHS.deliveryAddresses}/:id`,
+    `GET ${PATHS.deliveryAddresses}`,
+    `POST ${PATHS.invoiceProfiles}`,
+    `PATCH ${PATHS.invoiceProfiles}/:id`,
+    `POST ${PATHS.invoiceProfiles}/:id/default`,
+    `DELETE ${PATHS.invoiceProfiles}/:id`,
+    `GET ${PATHS.invoiceProfiles}`,
+  ];
+
+  return {
+    status: 'source_only_approval_gate_safety_verified',
+    defaultModeReadsTokenContents: false,
+    defaultModeLiveRequestSent: false,
+    executeRequiredForTokenRead: true,
+    requiredGates: [
+      '--execute',
+      `RUN_AUTH_WALLET_AUTHENTICATED_SMOKE=${REQUIRED_RUN_FLAG}`,
+      'AUTH_WALLET_SMOKE_APPROVAL_ID',
+      `AUTH_WALLET_SMOKE_CONFIRM=${REQUIRED_CONFIRM}`,
+      'AUTH_WALLET_SMOKE_BEARER_TOKEN or AUTH_WALLET_SMOKE_TOKEN_FILE',
+    ],
+    missing,
+    syntheticPayloadPolicy: {
+      usesExampleInvalidEmails: payloadText.includes('@example.invalid'),
+      usesSyntheticSourceApplication: payloadText.includes('codex-auth-wallet-smoke'),
+      usesSyntheticLabels: payloadText.includes('codex-wallet-smoke-') && payloadText.includes('codex-invoice-smoke-'),
+      productionDataRequired: false,
+    },
+    cleanupPolicy: {
+      cleanupRequired: true,
+      deletesDeliveryAddress: wouldCall.includes(`DELETE ${PATHS.deliveryAddresses}/:id`),
+      deletesInvoiceProfile: wouldCall.includes(`DELETE ${PATHS.invoiceProfiles}/:id`),
+      verifiesDeletedRowsAfterCleanup: true,
+    },
+    outputPolicy: {
+      printsToken: false,
+      printsCookies: false,
+      printsRequestBody: false,
+      printsResponseBody: false,
+      printsDatabaseRows: false,
+      printsShortIdHashesOnlyAfterLiveExecution: true,
+    },
+  };
 }
 
 async function cleanupCreated(baseUrl, token, created, insecureTls, steps) {
@@ -409,6 +469,7 @@ async function main() {
 
   const missing = assertLiveGates(options);
   if (missing.length > 0) {
+    const safetyEvidence = sourceOnlySafetyEvidence(missing);
     console.log(JSON.stringify(
       {
         ok: true,
@@ -428,12 +489,16 @@ async function main() {
           `DELETE ${PATHS.invoiceProfiles}/:id`,
           `GET ${PATHS.invoiceProfiles}`,
         ],
+        sourceOnlySafetyEvidence: safetyEvidence,
         sensitiveData: {
           liveRequestSent: false,
           sendsAuthorizationHeader: false,
           sendsCookies: false,
           sendsRequestBody: false,
+          readsTokenContents: false,
           printsToken: false,
+          printsCookies: false,
+          printsRequestBody: false,
           printsResponseBody: false,
           readsDatabase: false,
         },

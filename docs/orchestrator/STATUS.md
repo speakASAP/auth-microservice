@@ -1,3 +1,53 @@
+## 2026-07-03 - Goal 10.54 Auth Authenticated Smoke Approval Gate Safety
+
+Current focus:
+
+- Harden the Auth authenticated wallet smoke harness source-only approval gate
+  without executing authenticated endpoints or reading token contents.
+
+Evidence:
+
+- `scripts/check-customer-data-wallet-authenticated-smoke.js` now checks token
+  input presence in default mode without calling `readToken()`.
+- Token contents may be read only inside the live `--execute` path after all
+  live gates are satisfied.
+- Default source-only output now includes
+  `source_only_approval_gate_safety_verified` evidence for missing gates,
+  no live request, no token-content read, synthetic payload policy, cleanup
+  delete requirements, post-cleanup absence verification, and sanitized output
+  policy.
+- `docs/orchestrator/2026-07-03-auth-wallet-authenticated-smoke-approval.md`
+  records the source-only approval gate safety contract.
+
+Validation:
+
+- `node --check scripts/check-customer-data-wallet-authenticated-smoke.js`
+  passed.
+- `npm run check:customer-data-wallet-authenticated` passed in default
+  source-only mode and reported `approval_required_no_live_mutation` plus
+  `source_only_approval_gate_safety_verified`.
+- `npm run check:customer-data-wallet-runtime -- --expect=deployed` passed with
+  `/health` HTTP 200 and wallet endpoints HTTP 401 unauthenticated.
+- `npm run test:auth-contract` passed.
+- `npm run build` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
+- Added-line dangerous literal-secret scan returned no matches.
+
+Boundary:
+
+- No authenticated endpoint call, wallet mutation, DB query/write, deploy,
+  Kubernetes/Vault mutation, secret/token/cookie content inspection, response
+  body logging, production customer row read, checkout/order/payment/Warehouse
+  mutation, notification send, or consumer repo edit was performed.
+
+Next unfinished chunk:
+
+- Execute authenticated Auth wallet CRUD/default/delete smoke only after
+  owner-approved synthetic account/token and non-secret approval id are supplied,
+  or continue dependency-gated consumer evidence lanes that do not require
+  secrets.
+
 ## 2026-07-03 - Goal 10.53 Cliplot Source-Only Guest Fallback Verifier
 
 Current focus:

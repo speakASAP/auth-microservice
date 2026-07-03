@@ -82,6 +82,7 @@ Auth customer data wallet:
 - [x] 10.51 Cliplot source-only Auth wallet mapping/no-PII verifier prepared in commit `057035b`.
 - [x] 10.52 Rent-a-box Auth subject binding/backfill runbook source-prepared in commit `0e1f754`.
 - [x] 10.53 Cliplot source-only Auth wallet guest fallback verifier prepared in commit `fa90652`.
+- [x] 10.54 Auth authenticated wallet smoke source-only approval gate safety hardened.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -179,6 +180,29 @@ that repo's status/validation report.
 - `[MISSING: Cliplot checkout wallet selector behavior approval, authenticated browser/session contract, runtime no-PII exposure evidence, runtime field mapping implementation, and runtime guest fallback behavior before wallet selector code changes]`
 - `[MISSING: Cliplot implementation and approved synthetic evidence for selector behavior, browser-session wallet reads, runtime no-PII exposure, runtime field mapping, and runtime guest fallback]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-03 Goal 10.54 Auth Authenticated Smoke Approval Gate Safety
+
+- 2026-07-03: Auth authenticated wallet smoke harness hardened so default
+  source-only mode checks token input presence without reading token contents.
+- `AUTH_WALLET_SMOKE_BEARER_TOKEN` or `AUTH_WALLET_SMOKE_TOKEN_FILE` contents
+  are read only after live execution gates are satisfied, including
+  `--execute`, `RUN_AUTH_WALLET_AUTHENTICATED_SMOKE=1`,
+  `AUTH_WALLET_SMOKE_CONFIRM=CREATE_UPDATE_DEFAULT_DELETE`, non-secret approval
+  id, and token input.
+- Default output now includes `source_only_approval_gate_safety_verified`
+  evidence for no live request, no token-content read, synthetic payload policy,
+  cleanup/delete requirements, post-cleanup absence verification, and sanitized
+  output policy.
+- Validation passed: `node --check
+  scripts/check-customer-data-wallet-authenticated-smoke.js`, default `npm run
+  check:customer-data-wallet-authenticated`, deployed wallet 401 smoke, `npm
+  run test:auth-contract`, `npm run build`, `npm run lint`, `git diff --check`,
+  and added-line dangerous literal-secret scan.
+- No authenticated endpoint call, wallet mutation, DB query/write, deploy,
+  Kubernetes/Vault mutation, secret/token/cookie content inspection, response
+  body logging, production customer row read, checkout/order/payment/Warehouse
+  mutation, notification send, or consumer repo edit was performed.
 
 ## 2026-07-03 Goal 10.53 Cliplot Source-Only Guest Fallback Verifier
 

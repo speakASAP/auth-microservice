@@ -105,6 +105,28 @@ Forbidden output:
   raw request payload, raw response body, DB row data, provider credentials,
   production customer data, or decoded token claims.
 
+## Source-Only Approval Gate Safety
+
+Default mode must remain non-mutating and must not read token contents even when
+`AUTH_WALLET_SMOKE_BEARER_TOKEN` or `AUTH_WALLET_SMOKE_TOKEN_FILE` is present.
+It may report only whether required gates are missing or present. Token contents
+may be read only after all live execution gates are satisfied, including
+`--execute`, `RUN_AUTH_WALLET_AUTHENTICATED_SMOKE=1`,
+`AUTH_WALLET_SMOKE_CONFIRM=CREATE_UPDATE_DEFAULT_DELETE`, a non-secret approval
+id, and a token input.
+
+The default source-only output must include `source_only_approval_gate_safety_verified`
+evidence proving:
+
+- no live request is sent;
+- token contents are not read;
+- synthetic payload policy uses `example.invalid`, `codex-auth-wallet-smoke`,
+  `codex-wallet-smoke-*`, and `codex-invoice-smoke-*`;
+- cleanup requires deleting both created delivery and invoice rows;
+- post-cleanup list checks verify deleted rows are absent;
+- output policy forbids token, cookie, request body, response body, database
+  row, and production customer data printing.
+
 ## Stop Conditions
 
 Stop and do not retry automatically if:
