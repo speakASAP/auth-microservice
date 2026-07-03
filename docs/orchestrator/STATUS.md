@@ -1,3 +1,53 @@
+## 2026-07-03 - Goal 10.44 FlipFlop Guarded Wallet Smoke Harness Source Prep
+
+Current focus:
+
+- Record FlipFlop source-prepared guarded Auth wallet checkout/profile smoke
+  harness after Auth wallet 401 deployment.
+
+Evidence:
+
+- FlipFlop commit `2893573 feat: add guarded auth wallet checkout smoke`
+  adds `scripts/smoke-auth-wallet-checkout-profile.js`, package script
+  `smoke:auth-wallet-checkout-profile`, and approval packet
+  `docs/orchestrator/2026-07-03-flipflop-auth-wallet-smoke-approval.md`.
+- Default mode is source-only and runs `verify:auth-wallet-profile-ui`,
+  `verify:auth-wallet-checkout-selectors`, and
+  `verify:orders-hub-integration`, then reports
+  `approval_required_no_live_mutation`.
+- Approved live mode is constrained to public route checks and FlipFlop
+  gateway-proxied Auth wallet endpoints under `/api/auth/profile/*`; it does
+  not submit checkout orders.
+- Because FlipFlop has no first-class Playwright dependency, the harness keeps
+  browser-session proof for delayed wallet response timing and selector
+  interaction as a separate `[MISSING]` approval gate.
+
+Validation:
+
+- FlipFlop `node --check scripts/smoke-auth-wallet-checkout-profile.js`
+  passed.
+- FlipFlop `npm run smoke:auth-wallet-checkout-profile` passed in default
+  no-live mode.
+- FlipFlop `npm run verify:auth-wallet-profile-ui` passed.
+- FlipFlop `npm run verify:auth-wallet-checkout-selectors` passed.
+- FlipFlop `npm run verify:orders-hub-integration` passed.
+- FlipFlop `git diff --check` passed.
+- FlipFlop added-line dangerous literal-secret scan returned no matches.
+
+Boundary:
+
+- No Auth code, live Auth/FlipFlop authenticated endpoint call, wallet
+  mutation, checkout submit, order/payment/Warehouse mutation, DB query/write,
+  deploy, Kubernetes mutation, secret/token/password/JWT/cookie inspection,
+  response-body logging, production customer/order row read, or notification
+  send was performed.
+
+Next unfinished chunk:
+
+- Run Auth and FlipFlop guarded smokes only after owner approval supplies a
+  synthetic Auth token/account and non-secret approval ids, or continue
+  ChytraKoupe, Rent-a-box, and Cliplot dependency-gated decisions.
+
 ## 2026-07-03 - Goal 10.43 Auth Authenticated Wallet Smoke Harness Source Prep
 
 Current focus:

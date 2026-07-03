@@ -284,7 +284,8 @@ Consumer validation:
 ## Open Blockers
 
 - `[MISSING: owner-approved synthetic account/token and non-secret approval id to execute docs/orchestrator/2026-07-03-auth-wallet-authenticated-smoke-approval.md with npm run check:customer-data-wallet-authenticated -- --execute]`
-- `[MISSING: owner-approved synthetic account/token for FlipFlop authenticated checkout/profile runtime smoke]`
+- `[MISSING: owner-approved synthetic Auth token/non-secret approval id for FlipFlop smoke:auth-wallet-checkout-profile -- --execute]`
+- `[MISSING: owner-approved authenticated browser/session smoke for delayed wallet response and selector interaction]`
 - `[MISSING: Auth-backed Rent-a-box customer session adapter/local profile binding decision, admin role mapping, consent/profile migration mapping, and migration/backfill decisions before product-code migration]`
 - `[MISSING: ChytraKoupe final Auth client-id decision and authenticated Auth subject linkage decision if central Orders must persist customer.authSubject before production runtime claim]`
 - `[MISSING: Cliplot selector behavior, authenticated browser/session, and no-PII exposure review before wallet selector integration]`
