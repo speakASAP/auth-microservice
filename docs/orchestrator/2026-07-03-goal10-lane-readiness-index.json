@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "auth.customer-data-wallet.goal10.lane-readiness-index.v1",
+  "createdAt": "2026-07-03",
+  "sourceOnly": true,
+  "goalComplete": false,
+  "coordinatorRepo": "auth-microservice",
+  "evidenceSources": [
+    "docs/orchestrator/2026-07-03-goal10-completion-gap-audit.md",
+    "docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md",
+    "docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md"
+  ],
+  "lanes": [
+    {
+      "id": "cliplot-bounded-live-commerce",
+      "consumerRepo": "cliplot",
+      "status": "blocked_on_owner_approval",
+      "canStartNow": false,
+      "safeParallel": true,
+      "ownerRole": "Cliplot runtime validation worker",
+      "approvalPacket": "docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md#cliplot-bounded-live-commerce-approval-packet",
+      "handoffPacket": "docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md#lane-a---cliplot-bounded-live-commerce-worker-prompt",
+      "requiredOwnerInputs": [
+        "CLIPLOT_LIVE_ORDER_APPROVAL_ID",
+        "CLIPLOT_LIVE_PAYMENT_APPROVAL_ID",
+        "CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID",
+        "CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID",
+        "CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW",
+        "CLIPLOT_PAYMENT_CREATE_EXECUTION_WINDOW",
+        "CLIPLOT_NOTIFICATION_SEND_EXECUTION_WINDOW",
+        "approved operator id",
+        "one unused orderIdempotencyKey",
+        "one unused paymentIdempotencyKey",
+        "one unused notificationIdempotencyKey",
+        "IDEMPOTENCY_KEYS_NOT_USED",
+        "rollback owners assigned"
+      ],
+      "forbiddenUntilApproval": [
+        "open ENABLE_LIVE_* flags",
+        "POST /api/checkout/live-bounded-executor",
+        "POST /api/checkout/live-order-warehouse-smoke-executor",
+        "POST /api/checkout/submit",
+        "orders/payments/warehouse/notifications mutation",
+        "secret/token/customer/provider payload output"
+      ],
+      "requiredValidation": [
+        "npm run readiness:owner-bounded-window-handoff -- https://cliplot.alfares.cz",
+        "npm run readiness:live-checkout-execution-window -- https://cliplot.alfares.cz"
+      ],
+      "completionEvidenceRequired": [
+        "exactly one order/payment/notification result per idempotency key",
+        "Orders/Warehouse create/replay/cancel smoke result",
+        "ENABLE_LIVE_ORDER_SUBMIT=false after cleanup",
+        "no secret/customer/provider payload output"
+      ]
+    },
+    {
+      "id": "rent-a-box-route-onboarding-migration",
+      "consumerRepo": "rent-a-box",
+      "status": "blocked_on_owner_approval",
+      "canStartNow": false,
+      "safeParallel": true,
+      "ownerRole": "Rent-a-box migration worker",
+      "approvalPacket": "docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md#rent-a-box-routeonboarding-approval-packet",
+      "handoffPacket": "docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md#lane-b---rent-a-box-routeonboarding-migration-worker-prompt",
+      "requiredOwnerInputs": [
+        "owner-approved RENT_AUTH_ADAPTER_ENABLED route migration window",
+        "owner decision for RENT_AUTH_TRANSITIONAL_ONBOARDING_ENABLED",
+        "owner-approved route ownership list before replacing local auth dependencies",
+        "owner-approved live DB migration/backfill plan or explicit waiver for this window",
+        "owner-approved admin RBAC mapping policy for rent-a-box:admin",
+        "owner decision for local login/register retirement versus compatibility period"
+      ],
+      "allowedFilesAfterApproval": [
+        "apps/api/app/auth/adapter.py",
+        "apps/api/app/auth/dependencies.py",
+        "apps/api/app/api/auth.py",
+        "apps/api/app/api/lifecycle.py",
+        "apps/api/app/api/post_rental.py",
+        "apps/api/app/api/admin/admin.py",
+        "apps/web/src/app/auth/**",
+        "apps/web/src/lib/auth/hosted-auth.ts",
+        "apps/web/src/lib/customer-flow/session.ts",
+        "apps/web/src/components/customer/AuthForm.tsx",
+        "Goal 12 docs, validation reports, and verifier scripts"
+      ],
+      "forbiddenUntilApproval": [
+        "product-code route migration",
+        "production deploy",
+        "live DB migration/backfill",
+        "unique or non-null enforcement",
+        "secret/token/customer/contract storage inspection",
+        "dropping local credential/profile columns",
+        "rewriting customer_profiles.id references"
+      ],
+      "requiredValidation": [
+        "python3 -B scripts/check_goal12_route_onboarding_gate.py --root .",
+        "python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .",
+        "./scripts/intent_preflight.sh",
+        "git diff --check"
+      ],
+      "completionEvidenceRequired": [
+        "product route migration remains feature-gated",
+        "transitional onboarding state matches owner decision",
+        "admin RBAC maps only approved Auth roles",
+        "no production backfill or unique enforcement unless separately approved",
+        "local compatibility/retirement policy is documented and tested",
+        "no secret/customer-data output"
+      ]
+    }
+  ],
+  "coordinatorNextAction": "Keep Goal 10 active until the owner supplies the missing Cliplot or Rent-a-box approval packet inputs, then dispatch the matching worker from the handoff packet."
+}
