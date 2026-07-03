@@ -5141,3 +5141,24 @@ Boundary:
 Next unfinished chunk:
 
 - Repair or wait for Alfares Kubernetes node/container runtime, then rerun Rent deploy and post-deploy smoke to prove the Auth-migrated pods are actually serving.
+
+## 2026-07-03 - Goal 10.102 Rent-a-box Runtime Smoke Gate
+
+Current focus:
+
+- Added an explicit Rent-a-box post-deploy runtime smoke gate so future continuation does not trust the deploy script success banner when health checks fail.
+
+Execution evidence:
+
+- Rent-a-box commit `c11cb1d test: add rent hosted auth runtime rollout smoke` adds `scripts/check_goal12_runtime_rollout_smoke.py`, package script `check:goal12-runtime-rollout-smoke`, documentation, and current sanitized report `reports/validation/goal12-runtime-rollout-smoke.json`.
+- The smoke is non-mutating: it does not read secrets, bearer tokens, cookies, database rows, customer data, request bodies, or response bodies.
+- Current smoke status is expected fail: live ConfigMap has the Auth flags, but rollback pods do not expose the Auth runtime env flags and `/login` does not expose the hosted Auth marker.
+- `/api/auth/me` unauthenticated returns HTTP `401`, confirming the external API path used by the smoke is correct.
+
+Boundary:
+
+- No redeploy, DB write/backfill, secret/token output, customer-data output, or pod creation was performed for this gate.
+
+Next unfinished chunk:
+
+- Repair Alfares Kubernetes node/container runtime, rerun Rent-a-box deploy, then require `npm run check:goal12-runtime-rollout-smoke` to pass before marking Goal 10 complete.

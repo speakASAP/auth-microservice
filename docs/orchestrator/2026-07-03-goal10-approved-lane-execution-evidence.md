@@ -43,9 +43,16 @@ Created: 2026-07-03
 - Remediation attempted: stuck rollout pods were deleted, but replacement pods hit the same node-level runtime symptom. Passwordless sudo is not available, so the coordinator could not restart `k3s`/`containerd`.
 - Safety action: Rent deployments were rolled back to the known ready ReplicaSets (`rent-a-box-api` revision 6 and `rent-a-box-web` revision 3). Rollback status succeeded and the old ready pods remained available. External `https://rent-a-box.alfares.cz/` returned HTTP `200`, but this is old-pod availability, not proof of Auth-migrated runtime activation.
 
+## Runtime Smoke Gate Added
+
+- Rent-a-box commit: `c11cb1d test: add rent hosted auth runtime rollout smoke`.
+- Runtime smoke command: `npm run check:goal12-runtime-rollout-smoke`.
+- Current expected status before node/runtime repair: `fail_goal12_runtime_rollout_smoke` because old rollback pods are serving without `RENT_AUTH_ADAPTER_ENABLED`, `RENT_AUTH_TRANSITIONAL_ONBOARDING_ENABLED`, and `NEXT_PUBLIC_RENT_AUTH_ADAPTER_ENABLED` in their running environments, and `/login` does not expose the hosted Auth marker.
+- The smoke is non-mutating and records only sanitized Kubernetes rollout state, non-secret feature flags, and HTTP status/marker booleans.
+
 ## Current Gate
 
-Goal 10 owner-input blockers for Cliplot and Rent-a-box are resolved. Goal 10 is still not complete because Rent-a-box runtime activation must be rerun after the Kubernetes node/container runtime is healthy and must pass post-deploy smoke on the Auth-migrated pods.
+Goal 10 owner-input blockers for Cliplot and Rent-a-box are resolved. Goal 10 is still not complete because Rent-a-box runtime activation must be rerun after the Kubernetes node/container runtime is healthy and `npm run check:goal12-runtime-rollout-smoke` must pass on the Auth-migrated pods.
 
 ## Forbidden Output Boundary
 

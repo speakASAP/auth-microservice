@@ -160,6 +160,8 @@ function main() {
     'Rent deployments were rolled back to the known ready ReplicaSets',
     'Goal 10 owner-input blockers for Cliplot and Rent-a-box are resolved.',
     'Goal 10 is still not complete because Rent-a-box runtime activation must be rerun',
+    'c11cb1d test: add rent hosted auth runtime rollout smoke',
+    'npm run check:goal12-runtime-rollout-smoke',
   ]);
 
   const hostedProfileStaticReportChecks = [

@@ -1617,3 +1617,9 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
 - Rent-a-box route/onboarding source/config lane is partially complete. Commits `4ff0b5c`, `6191ba3`, and `b3a607c` migrate approved routes to hosted Auth dependencies, enable the required Auth flags in source/config, and align the Kubernetes `DATABASE_URL` manifest with the existing live secretKeyRef.
 - Rent-a-box runtime activation remains blocked by Alfares Kubernetes node/container runtime sandbox failures. The deploy built/pushed images and applied ConfigMap, but new pods did not become ready; rollback to known ready ReplicaSets succeeded.
 - Goal 10 is not complete until Rent-a-box Auth-migrated runtime deployment and post-deploy smoke pass after node runtime repair.
+
+## 2026-07-03 Goal 10.102 Rent-a-box Runtime Smoke Gate
+
+- Rent-a-box commit `c11cb1d` adds `npm run check:goal12-runtime-rollout-smoke`.
+- The smoke must pass after Kubernetes node/runtime repair and Rent redeploy.
+- Current expected fail proves rollback pods are serving without the Auth runtime env flags and without the hosted Auth login marker.

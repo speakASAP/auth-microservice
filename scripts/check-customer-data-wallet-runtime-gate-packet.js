@@ -169,6 +169,8 @@ function main() {
       '6191ba3 chore: enable rent hosted auth rollout flags',
       'b3a607c fix: align rent database url deployment secret',
       'Goal 10 is still not complete because Rent-a-box runtime activation must be rerun',
+      'c11cb1d test: add rent hosted auth runtime rollout smoke',
+      'npm run check:goal12-runtime-rollout-smoke',
     ]),
     completionGapAuditMarkers: includesAll(completionGapAudit, [
       'Goal 10 Completion Gap Audit',
