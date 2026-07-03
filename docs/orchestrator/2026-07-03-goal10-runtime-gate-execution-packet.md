@@ -361,11 +361,11 @@ Status: source/readiness audit complete; runtime and migration gates remain owne
 Evidence:
 
 - Goal 10.84 remaining gates readiness audit completed in `docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md`.
-- FlipFlop safe validation passes, but live create/read/cancel is not executable until `[MISSING: cleanup path for synthetic central Orders order; current FlipFlop preflight reports ORDERS_STATUS_SERVICE_TOKEN=false]` is resolved.
-- FlipFlop source must be decided before runtime evidence: `[MISSING: coordinator decision whether Goal 10 order snapshot smoke should run from FlipFlop main or current goal24 branch]`.
+- FlipFlop cleanup source guard is merged to `origin/main` at `6fe9e07`.
+- FlipFlop safe validation passes, but live create/read/cancel is not executable until `[MISSING: cleanup-capable ORDERS_STATUS_SERVICE_TOKEN projection before create/read/cancel smoke]` and `[MISSING: AUTH_SUBJECT_SMOKE_CLEANUP_CONFIRM=ORDERS_ADMIN_STATUS_CANCEL]` are resolved.
 - Cliplot safe readiness passes, but live checkout remains gated by `[MISSING: owner-approved bounded live checkout submit/live commerce window]`.
 - Rent-a-box safe readiness passes, but route migration remains gated by `[MISSING: owner-approved RENT_AUTH_ADAPTER_ENABLED route migration window]` and related onboarding/backfill decisions.
 
 Safety decision:
 
-- No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and cleanup/source decisions.
+- No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and cleanup/window decisions.

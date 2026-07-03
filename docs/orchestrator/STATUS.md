@@ -4772,3 +4772,29 @@ Next unfinished chunks:
 - Merge/source decision for `codex/goal10-auth-subject-smoke-cleanup`.
 - Runtime projection of cleanup-capable `ORDERS_STATUS_SERVICE_TOKEN` into `flipflop-order-service`.
 - Owner-approved fixture ids and non-secret approval id for the actual create/read/cancel smoke.
+
+## 2026-07-03 - Goal 10.87 FlipFlop Cleanup Guard Main Integration
+
+Current focus:
+
+- Integrated the FlipFlop auth-subject cleanup source guard into `origin/main` and refreshed Auth coordinator blockers.
+
+Implementation evidence:
+
+- FlipFlop `origin/main` fast-forwarded from `68bc15b` to `6fe9e07`.
+- Temporary branch `codex/goal10-auth-subject-smoke-cleanup` and worktree `/home/ssf/Documents/Github/flipflop-goal10-auth-subject-smoke-cleanup` were removed after merge.
+- Auth runtime gate packet and checker now treat the source-branch decision as resolved.
+
+Validation evidence:
+
+- FlipFlop branch validation before merge: `node --check scripts/smoke-orders-auth-subject.js`, `node --check scripts/verify-auth-wallet-order-snapshot-gate.js`, `npm run verify:auth-wallet-order-snapshot-gate`, approved-looking no-cleanup-token probe, and `git diff --check` passed.
+- Auth packet validation after coordinator refresh: `npm run check:customer-data-wallet-runtime-gate-packet` passed.
+
+Boundary:
+
+- No deploy, live checkout/order mutation, DB read/write, token/secret inspection, payment/Warehouse/notification mutation, or customer-data output occurred.
+
+Next unfinished chunks:
+
+- Project cleanup-capable `ORDERS_STATUS_SERVICE_TOKEN` into `flipflop-order-service`.
+- Provide `AUTH_SUBJECT_SMOKE_CLEANUP_CONFIRM=ORDERS_ADMIN_STATUS_CANCEL`, fixture ids, non-secret approval id, and owner approval before running the create/read/cancel smoke.

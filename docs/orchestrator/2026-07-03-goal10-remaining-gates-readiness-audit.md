@@ -20,8 +20,8 @@ Owner: Auth Goal 10 coordinator
 
 | Repo | State | Head | Dirty state |
 | --- | --- | --- | --- |
-| `auth-microservice` | `main...origin/main` | `0045cd0 docs: record goal 10 clarification audit` | clean before this doc update |
-| `flipflop` | `goal24-paid-provider-bundle-checkout-gate...origin/goal24-paid-provider-bundle-checkout-gate` | `c876848 docs: gate goal24 paid provider bundle smoke` | clean |
+| `auth-microservice` | `main...origin/main` | `cdc43a7 docs: record flipflop cleanup gate hardening` | clean before this doc update |
+| `flipflop` | `origin/main` | `6fe9e07 test: harden auth subject smoke cleanup gate` | cleanup guard merged; active worktree is separate Goal 24 branch |
 | `cliplot` | `main...origin/main` | `ddceee8 docs: record auth wallet live fetch evidence` | clean |
 | `rent-a-box` | `main...origin/main` | `e518725 test: add goal 12 route onboarding gate` | clean after timestamp-only generated reports were restored |
 
@@ -41,13 +41,13 @@ Remaining blockers:
 - `[MISSING: approved RUN_LIVE_AUTH_SUBJECT_ORDERS_SMOKE=1 runtime execution with non-secret AUTH_SUBJECT_SMOKE_APPROVAL_ID]`
 - `[MISSING: owner-approved fixture AUTH_SUBJECT_SMOKE_CATALOG_PRODUCT_ID and AUTH_SUBJECT_SMOKE_WAREHOUSE_ID]`
 - `[MISSING: persisted central Orders customer.authSubject/billingAddress runtime read evidence]`
-- `[MISSING: cleanup path for synthetic central Orders order; current FlipFlop preflight reports ORDERS_STATUS_SERVICE_TOKEN=false]`
-- `[MISSING: coordinator decision whether Goal 10 order snapshot smoke should run from FlipFlop main or current goal24 branch]`
+- `[MISSING: cleanup-capable ORDERS_STATUS_SERVICE_TOKEN projection before create/read/cancel smoke]`
+- `[MISSING: AUTH_SUBJECT_SMOKE_CLEANUP_CONFIRM=ORDERS_ADMIN_STATUS_CANCEL]`
 
 Safety decision:
 
-- The smoke is not executable as a safe create/read/cancel gate until cleanup is guaranteed or an approved no-cleanup residual policy exists.
-- Because the checked-out FlipFlop worktree is currently on `goal24-paid-provider-bundle-checkout-gate`, the coordinator must not treat a mutating smoke from this checkout as canonical `main` evidence without an explicit branch/source decision.
+- FlipFlop cleanup source guard is merged to `origin/main` at `6fe9e07`, so the source branch decision is resolved.
+- The smoke is still not executable as a safe create/read/cancel gate until cleanup-capable `ORDERS_STATUS_SERVICE_TOKEN` is projected and cleanup authority is confirmed.
 
 ## Cliplot Gate
 
@@ -94,11 +94,11 @@ Safety decision:
 
 ## Coordinator Result
 
-No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and cleanup/source decisions.
+No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and cleanup/window decisions.
 
 Safe next actions are limited to:
 
-1. obtain a FlipFlop source branch decision plus cleanup path for synthetic order smoke;
+1. obtain FlipFlop cleanup-capable `ORDERS_STATUS_SERVICE_TOKEN`, cleanup authority confirmation, fixture ids, and approval for synthetic order smoke;
 2. obtain a Cliplot bounded live checkout window with required live flags/session inputs;
 3. obtain a Rent-a-box route/onboarding migration window, route ownership list, onboarding decision, and backfill scope.
 
