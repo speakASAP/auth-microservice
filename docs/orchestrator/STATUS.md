@@ -1,3 +1,57 @@
+## 2026-07-03 - Goal 10.48 Cliplot Auth Wallet Checkout Contract
+
+Current focus:
+
+- Source-prepare the Cliplot-specific Auth wallet checkout contract and verifier
+  enforcement for selector behavior, session handoff, no-PII exposure, field
+  mapping, and guest fallback while keeping runtime integration blocked.
+
+Evidence:
+
+- Cliplot commit `dbdc1b4 docs: record auth wallet checkout contract` adds
+  `docs/auth-wallet-checkout-contract.md`.
+- The same commit updates
+  `implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`,
+  `reports/validation/GOAL-10-auth-wallet-checkout-readiness.md`, and
+  `scripts/auth-wallet-checkout-readiness.js`.
+- The contract defines:
+  - selector behavior for default prefill, manual override, and customer-safe
+    labels;
+  - hosted Auth/browser-session handoff constraints before wallet reads;
+  - no-PII logging and frontend exposure rules;
+  - delivery/invoice wallet row mapping into immutable checkout/order snapshots;
+  - guest fallback behavior for missing/expired/rejected Auth sessions,
+    timeouts, malformed responses, and empty wallet rows.
+- The verifier now checks the contract markers and still fails on premature
+  runtime references to `/auth/profile/checkout-data`,
+  `/auth/profile/delivery-addresses`, or `/auth/profile/invoice-profiles`.
+
+Validation:
+
+- Cliplot `npm run readiness:auth-wallet-checkout` passed and reported
+  `surfaces.walletContract=true`, `runtimeWalletIntegrationPresent=false`,
+  `source_only_no_live_calls`, `mutation=false`, `persistence=false`, and
+  `providerCall=false`.
+- Cliplot `node --check scripts/auth-wallet-checkout-readiness.js` passed.
+- Cliplot `npm run check` passed.
+- Cliplot `git diff --check` passed.
+- Runtime endpoint search returned no public/src/k8s/package runtime matches.
+- Targeted dangerous literal-secret scan on changed files returned no matches.
+
+Boundary:
+
+- No deploy, live Auth wallet endpoint call, Auth/Orders/Payments/Warehouse/
+  Notifications/Catalog call, DB query/write, Kubernetes/Vault mutation,
+  secret/token/cookie inspection, checkout submit, order/payment/Warehouse/
+  notification mutation, raw customer data logging, or runtime consumer wallet
+  integration was performed.
+
+Next unfinished chunk:
+
+- Cliplot remains gated on implementation and approved synthetic evidence for
+  selector behavior, browser-session wallet reads, no-PII exposure, field
+  mapping, and guest fallback.
+
 ## 2026-07-03 - Goal 10.47 Rent-a-box Auth Adapter Mapping Contract
 
 Current focus:
