@@ -4742,3 +4742,33 @@ Boundary:
 Next unfinished chunks:
 
 - Same as Goal 10.84: choose and approve one bounded remaining lane with all required cleanup/source/window inputs before live execution.
+
+## 2026-07-03 - Goal 10.86 FlipFlop Auth-Subject Smoke Cleanup Guard
+
+Current focus:
+
+- Hardened the FlipFlop Goal 10 auth-subject order snapshot smoke so it cannot create a synthetic central Orders order unless cleanup is available and aligned with Orders cancellation policy.
+
+Implementation evidence:
+
+- FlipFlop branch `codex/goal10-auth-subject-smoke-cleanup` pushed at `6fe9e07`.
+- `scripts/smoke-orders-auth-subject.js` now validates normal UUIDs correctly, requires `AUTH_SUBJECT_SMOKE_CLEANUP_CONFIRM=ORDERS_ADMIN_STATUS_CANCEL`, blocks approved execution when `ORDERS_STATUS_SERVICE_TOKEN` is absent, sends Orders cancellation fields `approved=true`, `approvalType=human`, `reasonCode=synthetic_auth_subject_smoke_cleanup`, and side-effect acknowledgements for payment, warehouse, notification, crm, and channel, and requires cleanup HTTP 2xx for pass.
+- `scripts/verify-auth-wallet-order-snapshot-gate.js` records `ordersStatusServiceTokenPresent=false`, `cleanupRequiredForPass=true`, and the new cleanup blockers.
+
+Validation evidence:
+
+- `node --check scripts/smoke-orders-auth-subject.js` passed.
+- `node --check scripts/verify-auth-wallet-order-snapshot-gate.js` passed.
+- `npm run verify:auth-wallet-order-snapshot-gate` passed with `approval_required_auth_wallet_order_snapshot_runtime_gate`, `mutation=false`, and `cleanupRequiredForPass=true`.
+- Approved-looking source-only probe with valid UUID fixture ids and cleanup confirmation stopped before mutation with only `[MISSING: ORDERS_STATUS_SERVICE_TOKEN projected into flipflop-order-service for cleanup]`.
+- `git diff --check` and changed-line sensitive scan passed before commit.
+
+Boundary:
+
+- No live checkout/order mutation, deploy, DB read/write, token/secret inspection, payment/Warehouse/notification mutation, or customer-data output occurred.
+
+Next unfinished chunks:
+
+- Merge/source decision for `codex/goal10-auth-subject-smoke-cleanup`.
+- Runtime projection of cleanup-capable `ORDERS_STATUS_SERVICE_TOKEN` into `flipflop-order-service`.
+- Owner-approved fixture ids and non-secret approval id for the actual create/read/cancel smoke.
