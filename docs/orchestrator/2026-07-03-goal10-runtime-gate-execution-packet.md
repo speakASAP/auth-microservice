@@ -369,3 +369,7 @@ Evidence:
 Safety decision:
 
 - No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and cleanup/window decisions.
+
+## Follow-up E - Orders Cleanup Token Provisioning
+
+- Runtime projection/proof of an Auth-valid cleanup bearer with `internal:orders-microservice:admin` or `global:superadmin` remains required before running FlipFlop create/read/cancel smoke.

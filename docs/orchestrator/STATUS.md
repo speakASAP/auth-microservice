@@ -4798,3 +4798,40 @@ Next unfinished chunks:
 
 - Project cleanup-capable `ORDERS_STATUS_SERVICE_TOKEN` into `flipflop-order-service`.
 - Provide `AUTH_SUBJECT_SMOKE_CLEANUP_CONFIRM=ORDERS_ADMIN_STATUS_CANCEL`, fixture ids, non-secret approval id, and owner approval before running the create/read/cancel smoke.
+
+## 2026-07-03 - Goal 10.88 Orders Cleanup Auth-Token Helper Source Prep
+
+Current focus:
+
+- Prepared a generic Auth-owned internal service JWT helper for the remaining FlipFlop order cleanup gate.
+
+Implementation evidence:
+
+- Added `scripts/provision-internal-service-token.ts`.
+- The helper is generic for `internal:<service>:<role>` service principals and requires exactly one of `--dry-run` or `--apply`.
+- Apply mode requires `--confirm-db-mutation=INTERNAL_SERVICE_PRINCIPAL`, `--confirm-token-issuance=INTERNAL_SERVICE_JWT`, and `--token-output=<path>`.
+- The token value is written only to the requested output file with mode `0600`; helper output reports `tokenPrinted=false`.
+- Existing non-generic `scripts/provision-catalog-warehouse-service-token.ts` was not reused for Orders cleanup because its confirmation labels and contract are Catalog/Warehouse-specific.
+
+Read-only runtime/config evidence:
+
+- Orders `PUT /api/orders/:id/status` has no route-specific `@Roles`, so the global guard falls back to `global:superadmin` or `internal:orders-microservice:admin`.
+- FlipFlop channel service token maps to `internal:flipflop-service:service` and is not sufficient for raw status cleanup.
+- Live `flipflop-order-service` reports `ORDERS_SERVICE_URL=present`, `ORDERS_SERVICE_TOKEN=present`, and `ORDERS_STATUS_SERVICE_TOKEN=missing`.
+- Live `flipflop-service-secret` does not contain `ORDERS_STATUS_SERVICE_TOKEN`.
+
+Validation evidence:
+
+- `npx tsc --noEmit --skipLibCheck --experimentalDecorators --emitDecoratorMetadata --module commonjs --target es2020 --moduleResolution node --esModuleInterop scripts/provision-internal-service-token.ts` passed.
+- `git diff --check` passed after adding the helper.
+- Runtime dry-run through the current remote `npx ts-node`/Nest bootstrap path exited without diagnostic output; the same behavior was observed for the older catalog/warehouse provisioning helper, so no runtime provisioning evidence is claimed.
+
+Boundary:
+
+- No Auth DB mutation, service-principal creation, role assignment, token issuance, token value output, Vault/Kubernetes mutation, ExternalSecret change, deploy, live order smoke, checkout/order/payment/Warehouse mutation, DB row dump, or raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Run or repair a bounded provisioning path for an Auth-valid cleanup bearer with `internal:orders-microservice:admin` or `global:superadmin`.
+- Store that bearer in Vault and project it into `flipflop-order-service` as `ORDERS_STATUS_SERVICE_TOKEN` without printing the value.
+- Run the owner-approved FlipFlop create/read/cancel smoke only after fixture ids, approval id, cleanup confirm, and token projection are all present.
