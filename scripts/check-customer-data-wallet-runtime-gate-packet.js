@@ -9,6 +9,7 @@ const statusPath = path.join(root, 'docs/orchestrator/STATUS.md');
 const statePath = path.join(root, 'docs/IMPLEMENTATION_STATE.md');
 const packagePath = path.join(root, 'package.json');
 const remainingAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md');
+const postFlipFlopAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-post-flipflop-owner-gated-audit.md');
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -32,6 +33,7 @@ function main() {
   const state = readText(statePath);
   const packageJson = JSON.parse(readText(packagePath));
   const remainingAudit = readText(remainingAuditPath);
+  const postFlipFlopAudit = readText(postFlipFlopAuditPath);
 
   const gateMarkers = [
     '## Gate 1 - Auth Authenticated Wallet Smoke',
@@ -111,6 +113,8 @@ function main() {
       'docs/orchestrator/2026-07-03-goal10-runtime-gate-execution-packet.md',
       'Goal 10.84 remaining gates readiness audit completed',
       'docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md',
+      'Goal 10.91 post-FlipFlop owner-gated audit completed',
+      'docs/orchestrator/2026-07-03-goal10-post-flipflop-owner-gated-audit.md',
     ]),
     remainingAuditMarkers: includesAll(remainingAudit, [
       'FlipFlop order snapshot create/read/cancel smoke passed at `origin/main` `7f0ef44`',
@@ -118,6 +122,14 @@ function main() {
       'owner-approved bounded live checkout submit/live commerce window',
       'owner-approved RENT_AUTH_ADAPTER_ENABLED route migration window',
       'No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and Cliplot/Rent window decisions.',
+    ]),
+    postFlipFlopAuditMarkers: includesAll(postFlipFlopAudit, [
+      'Goal 10 Post-FlipFlop Owner-Gated Audit',
+      'no remaining safe source-only lane before Cliplot or Rent owner inputs',
+      'owner approval for a bounded live checkout submit/live commerce window',
+      'owner-approved RENT_AUTH_ADAPTER_ENABLED route migration window',
+      'No additional source-only Cliplot hardening/verifier lane was found before that approval gate.',
+      'No additional source-only Rent-a-box hardening/verifier lane was found before that approval gate.',
     ]),
     packageScript,
   };
@@ -132,6 +144,7 @@ function main() {
     ...missing(checks.statusLinks),
     ...missing(checks.stateLinks),
     ...missing(checks.remainingAuditMarkers),
+    ...missing(checks.postFlipFlopAuditMarkers),
     ...(packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js'
       ? []
       : ['package script check:customer-data-wallet-runtime-gate-packet']),
@@ -158,10 +171,11 @@ function main() {
       validationSection: packet.includes('## Validation For This Packet'),
       coordinatorLinks: missing(checks.goalLinks).length === 0 && missing(checks.statusLinks).length === 0 && missing(checks.stateLinks).length === 0,
       remainingGateReadinessAudit: missing(checks.remainingAuditMarkers).length === 0,
+      postFlipFlopOwnerGatedAudit: missing(checks.postFlipFlopAuditMarkers).length === 0,
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'FlipFlop order snapshot smoke is complete; proceed only after separately approved Cliplot bounded live checkout submit/live commerce window or Rent-a-box route/backfill migration gates',
+    allowedNextAction: 'No remaining source-only Goal 10 consumer lane is open; proceed only after separately approved Cliplot bounded live checkout submit/live commerce window or Rent-a-box route/onboarding and backfill migration gates',
   };
 
   console.log(JSON.stringify(result, null, 2));

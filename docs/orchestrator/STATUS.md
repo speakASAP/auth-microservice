@@ -1,3 +1,25 @@
+## 2026-07-03 - Goal 10.91 Post-FlipFlop Owner-Gated Audit
+
+Current focus:
+
+- Reconcile the remaining known Goal 10 gates after FlipFlop create/read/cancel order snapshot smoke completed.
+
+Evidence:
+
+- Added `docs/orchestrator/2026-07-03-goal10-post-flipflop-owner-gated-audit.md`.
+- Cliplot is clean at `ddceee8`; readiness/default browser-session and live handoff checks pass with execution disabled, and no remaining source-only lane was found before live checkout submit/live commerce approval.
+- Rent-a-box is clean at `e518725`; route/onboarding gate, Auth wallet readiness, intent preflight, and `git diff --check` pass, and no remaining source-only lane was found before route/onboarding approval.
+- Parallel subagents independently confirmed both repos are owner-gated rather than source-blocked.
+
+Boundary:
+
+- No consumer repo edit, deploy, runtime config mutation, live checkout/order mutation, DB read/write, secret/token inspection, or customer-data output occurred.
+
+Next unfinished chunks:
+
+- Cliplot: owner-approved bounded live checkout submit/live commerce window with live flags, one-time executor inputs, duplicate-check rules, side-effect permission, and wallet-fetch freshness decision.
+- Rent-a-box: owner-approved route/onboarding migration window, route ownership list, `RENT_AUTH_ADAPTER_ENABLED` policy, `RENT_AUTH_TRANSITIONAL_ONBOARDING_ENABLED` decision, and separate live DB backfill plan/waiver.
+
 ## 2026-07-03 - Goal 10.82 Extended Registered-User Surface Audit
 
 Current focus:
