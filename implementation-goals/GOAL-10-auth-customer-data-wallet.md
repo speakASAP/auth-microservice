@@ -90,6 +90,7 @@ Auth customer data wallet:
 - [x] 10.59 Rent-a-box nullable Auth subject binding schema prep source-prepared in commit `204568c`.
 - [x] 10.60 Rent-a-box current Auth wallet live evidence refreshed in commit `d237949`.
 - [x] 10.61 Consumer runtime-gate audit confirmed no remaining material source-only lanes before approved synthetic/runtime inputs.
+- [x] 10.62 Cliplot runtime-gate audit confirmed all known consumer lanes are now synthetic/runtime or live-DB-preflight gated.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -144,7 +145,7 @@ marketplace operations.
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
 | R1 Rent-a-box Auth migration plan  | current-live-evidence-refreshed; nullable-auth-subject-schema-prepared; live-db-preflight-gated | Rent-a-box coordinator | `rent-a-box/apps/api/app/models/domain.py`, `rent-a-box/apps/api/alembic/versions/20260703_0003_customer_profile_auth_subject_id.py`, `rent-a-box/apps/api/tests/test_database_model.py`, `rent-a-box/docs/goals/GOAL-12-auth-subject-binding-backfill-runbook.md`, `rent-a-box/docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | owner-approved live DB migration/backfill plan and production row-count complexity before product-code migration; remote Python deps missing for Alembic/Pytest runtime validation | 7 |
 | CK1 ChytraKoupe checkout selectors | callback-hardened; synthetic-runtime-gated | ChytraKoupe worker | `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx`, `chytrakoupe/app/auth/safe-next.ts`, `chytrakoupe/lib/auth/session.ts`, `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/lib/config/env.ts`, `chytrakoupe/k8s/configmap.yaml`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/docs/goal-driven/auth-wallet-guarded-smoke-approval.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | synthetic account/token/test data and non-secret approval id before runtime claim; future non-guest order subject provenance must derive only from validated Auth bearer `sub` | 8 |
-| C1 Cliplot plan                    | source-session-policy-prepared; runtime-gated | Cliplot coordinator | `cliplot/docs/auth-wallet-checkout-contract.md`, `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | runtime browser-session implementation, approved synthetic wallet-read evidence, runtime selector/no-PII evidence, runtime field mapping implementation, and runtime guest fallback synthetic evidence | later |
+| C1 Cliplot plan                    | source-session-policy-prepared; synthetic-runtime-gated | Cliplot coordinator | `cliplot/docs/auth-wallet-checkout-contract.md`, `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | approved synthetic browser/session wallet-read evidence before runtime checkout files; runtime selector/no-PII evidence, runtime field mapping implementation, and runtime guest fallback synthetic evidence | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
 ## Validation
@@ -220,6 +221,44 @@ Next required inputs:
   test data, and non-secret approval id.
 - Rent-a-box: owner-approved metadata-only production row-count/migration
   complexity preflight and live DB migration/backfill scope.
+
+## 2026-07-03 Goal 10.62 Cliplot Runtime-Gate Audit
+
+- 2026-07-03: Read-only Cliplot audit confirmed no material source-code
+  implementation lane remains after commit
+  `94f97d7 docs: verify auth wallet session handoff policy` without
+  owner-approved synthetic runtime evidence.
+- Cliplot `main` is clean and ahead of `origin/main` by one commit at
+  `94f97d7`. The audit inspected `docs/auth-wallet-checkout-contract.md`,
+  `implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`,
+  `scripts/auth-wallet-checkout-readiness.js`, `package.json`,
+  `public/index.html`, `public/app.js`, `src/server.js`, and
+  `src/integrations.js`.
+- Runtime checkout remains guest-first: `public/index.html` contains manual
+  name/email/phone/address fields, and `public/app.js` submits to
+  `/api/checkout/submit`.
+- Auth is still a hosted-link surface only in runtime code:
+  `src/server.js` exposes `/api/auth/links`, and `src/integrations.js` builds
+  hosted `/login` and `/register` URLs.
+- Auth wallet endpoint literals are present only in docs, the Goal 10 execution
+  plan, and `scripts/auth-wallet-checkout-readiness.js`, not runtime
+  `public` or `src` files.
+- Validation passed in Cliplot: `npm run readiness:auth-wallet-checkout`,
+  `node --check scripts/auth-wallet-checkout-readiness.js`, `git diff --check`,
+  and the wallet-endpoint runtime search described above.
+- No source edits, deploys, live calls, authenticated endpoint calls,
+  checkout submits, DB reads/writes, Kubernetes/Vault mutations,
+  secret/token/cookie inspection, production customer/order reads,
+  payment/Warehouse mutations, or notification sends were performed.
+
+Remaining Cliplot gates:
+
+- Approved synthetic Auth browser/session wallet-read evidence.
+- Runtime selector behavior implementation evidence.
+- Runtime no-PII logging/frontend exposure evidence.
+- Runtime Auth wallet row to checkout/order snapshot field-mapping
+  implementation evidence.
+- Runtime guest fallback implementation evidence for unavailable wallet reads.
 
 ## 2026-07-03 Goal 10.56 Cliplot Source-Only Selector Behavior Verifier
 
