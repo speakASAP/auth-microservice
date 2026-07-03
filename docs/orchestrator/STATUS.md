@@ -1,3 +1,60 @@
+## 2026-07-03 - Goal 10.49 ChytraKoupe Hosted Auth Client ID Default
+
+Current focus:
+
+- Resolve the source-level ChytraKoupe hosted Auth `client_id` blocker by
+  defaulting ChytraKoupe to its own logical caller id while keeping runtime
+  smoke and `customer.authSubject` decisions gated.
+
+Evidence:
+
+- ChytraKoupe commit `65b37aa fix: default auth client id to chytrakoupe`
+  changes hosted Auth defaults from `flipflop` to `chytrakoupe` in
+  `lib/config/env.ts`, `scripts/deploy.sh`, `k8s/configmap.yaml`, and
+  `.env.example`.
+- The same commit updates `docs/INTEGRATION_CONTRACT.md`,
+  `docs/goal-driven/STATUS.md`,
+  `docs/goal-driven/auth-wallet-guarded-smoke-approval.md`,
+  `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`,
+  `reports/validation/auth-wallet-checkout-selectors-plan.md`, and
+  `scripts/verify-auth-wallet-checkout-selectors.mjs`.
+- Auth `docs/HOSTED_AUTH_CONSUMER_STANDARD.md` now records `chytrakoupe` in
+  the client registry planning artifact with callback
+  `https://chytrakoupe.alfares.cz/auth/callback`.
+- Read-only Auth audit confirmed hosted Auth treats `client_id` as an optional
+  logical caller id and validates redirect safety by HTTPS `return_url` origin,
+  not a source client-id allowlist. Existing coordinator evidence already
+  records ChytraKoupe callback acceptance and `*.alfares.cz` CORS coverage.
+
+Validation:
+
+- ChytraKoupe `npm run verify:auth-wallet-checkout-selectors` passed and now
+  fails if the hosted Auth default falls back to FlipFlop.
+- ChytraKoupe `node --check scripts/verify-auth-wallet-checkout-selectors.mjs`
+  passed.
+- ChytraKoupe `git diff --check` passed.
+- ChytraKoupe `npm run lint` passed.
+- ChytraKoupe `npm run build` passed.
+- ChytraKoupe focused stale client-id blocker/default scan returned no active
+  default/blocker matches in Goal 06, status, guarded packet, runtime config,
+  deploy script, k8s config, or `.env.example`.
+- ChytraKoupe staged `git diff --cached --check` passed and staged added-line
+  dangerous literal-secret scan returned no matches.
+- Auth `git diff --check -- docs/HOSTED_AUTH_CONSUMER_STANDARD.md` passed.
+
+Boundary:
+
+- No live Auth call, deploy, synthetic smoke, checkout submit, DB query/write,
+  token/secret/cookie inspection, production customer/order data read,
+  payment/Warehouse mutation, notification send, or runtime wallet mutation was
+  performed.
+
+Next unfinished chunk:
+
+- ChytraKoupe remains gated on authenticated `customer.authSubject` linkage if
+  central Orders must persist it, owner-approved synthetic Auth account/token,
+  synthetic checkout test data, and non-secret smoke approval id.
+
 ## 2026-07-03 - Goal 10.48 Cliplot Auth Wallet Checkout Contract
 
 Current focus:

@@ -143,6 +143,7 @@ This registry is a planning artifact. Runtime allowlist truth still lives in Aut
 | `allegro-service` | `[MISSING: production origin]/auth/callback` | commerce handoff | planned migration |
 | `bazos-service` | `[MISSING: production origin]/auth/callback` | commerce handoff | planned migration |
 | `flipflop-service` | `[MISSING: production origin]/auth/callback` | commerce handoff | planned migration |
+| `chytrakoupe` | `https://chytrakoupe.alfares.cz/auth/callback` | ChytraKoupe Goal 06 source audit; Auth live validate-return-url accepts callback and CORS includes `*.alfares.cz`; source defaults now use `client_id=chytrakoupe` | dependency-gated checkout consumer |
 | `prompts-microservice` | `[MISSING: production origin]/auth/callback` | platform/ops handoff | planned migration |
 | `suppliers-microservice` | `[MISSING: production origin]/auth/callback` | platform/ops handoff | planned migration |
 | `rent-a-box` | `https://rent-a-box.alfares.cz/auth/callback` | Rent-a-box Goal 12 source audit; Auth live validate-return-url accepts callback and CORS includes `*.alfares.cz`; source-backed callback route/client_id still missing in Rent-a-box | design-first migration |
