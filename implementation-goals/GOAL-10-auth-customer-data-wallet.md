@@ -85,6 +85,7 @@ Auth customer data wallet:
 - [x] 10.54 Auth authenticated wallet smoke source-only approval gate safety hardened.
 - [x] 10.55 ChytraKoupe hosted Auth callback source-hardened in commit `812c405`.
 - [x] 10.56 Cliplot source-only Auth wallet selector behavior verifier prepared in commit `a7656f5`.
+- [x] 10.57 Auth live refresh from Source Preflight-captured HEAD `e484688fae0cc6fcdff593e11265fd49bcab6dbd` completed with wallet 401 and FlipFlop non-mutating runtime smoke.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -184,6 +185,51 @@ that repo's status/validation report.
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
 
 ## 2026-07-03 Goal 10.56 Cliplot Source-Only Selector Behavior Verifier
+
+## 2026-07-03 Goal 10.57 Auth Live Refresh From Source Preflight HEAD
+
+- 2026-07-03: owner-approved Auth schema-only live DB preflight, live SQL
+  apply, Auth deploy, wallet endpoint 401 smoke, and post-deploy FlipFlop
+  runtime smoke completed from Source Preflight-captured HEAD
+  `e484688fae0cc6fcdff593e11265fd49bcab6dbd`.
+- Source Preflight was clean on `main`, ahead of `origin/main` by one
+  coordinator docs commit. Checksums remained unchanged for wallet SQL
+  `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`,
+  runtime 401 smoke verifier
+  `3786afab774e58dd9800272507ca919b7cfdf8d80a16fb4f09ef1541e482ec26`,
+  and deploy script
+  `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
+- Source validation passed: `npm run check:customer-data-wallet-preflight`,
+  `npm run check:customer-data-wallet-runtime -- --expect=deployed`, focused
+  Auth/User specs, `npm run test:auth-contract`, `npm run build`, `npm run
+  lint`, and `git diff --check`.
+- Schema-only DB preflight and post-apply verification used metadata only:
+  `public.users`, `user_delivery_addresses`, `user_invoice_profiles`, and
+  `gen_random_uuid` were present; the wallet tables had 21 and 24 columns and
+  four indexes each. SQL apply was idempotent and transaction-wrapped.
+- Auth deployed backend/web image tag `e484688-20260703071733`; both
+  deployments rolled out to `1/1`.
+- Post-deploy Auth runtime smoke passed with `/health` HTTP 200 and
+  `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+  `/auth/profile/invoice-profiles` HTTP 401 unauthenticated.
+- FlipFlop non-mutating runtime smoke passed: `/`, `/checkout`,
+  `/profile/addresses`, `/profile/invoice-profiles`, and
+  `/api/products?limit=1` returned HTTP 200; gateway-proxied
+  `/api/auth/profile/checkout-data`, `/api/auth/profile/delivery-addresses`,
+  and `/api/auth/profile/invoice-profiles` returned HTTP 401. FlipFlop source
+  smoke reported `approval_required_no_live_mutation` with source assertions
+  passing, and `npm run verify:guest-checkout-ui` passed.
+- No secret/token/password/JWT/cookie value inspection, customer-row read, raw
+  production customer-data inspection, authenticated synthetic smoke, live
+  checkout/order/payment mutation, Warehouse reservation, notification send,
+  destructive DB rollback/drop, or consumer source edit was performed.
+
+Remaining gates:
+
+- Owner-approved synthetic account/token and non-secret approval id for
+  authenticated Auth wallet CRUD/default/delete smoke.
+- Owner-approved synthetic token/non-secret approval id and browser-session
+  evidence for FlipFlop authenticated wallet selector timing and gateway smoke.
 
 - 2026-07-03: Cliplot commit `a7656f5 docs: verify auth wallet selector
   behavior` extends the source-only Auth wallet checkout contract and readiness

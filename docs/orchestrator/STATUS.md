@@ -1,3 +1,70 @@
+## 2026-07-03 - Goal 10.57 Auth Live Refresh From Source Preflight HEAD
+
+Current focus:
+
+- Execute the owner-approved Auth schema-only live DB preflight, idempotent SQL
+  apply, Auth deploy from Source Preflight-captured HEAD, unauthenticated
+  wallet 401 smoke, and non-mutating FlipFlop post-deploy runtime smoke.
+
+Evidence:
+
+- Source Preflight captured Auth HEAD
+  `e484688fae0cc6fcdff593e11265fd49bcab6dbd` clean on `main`, ahead of
+  `origin/main` by one coordinator docs commit.
+- Checksums remained unchanged for wallet SQL
+  `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`,
+  runtime verifier
+  `3786afab774e58dd9800272507ca919b7cfdf8d80a16fb4f09ef1541e482ec26`,
+  and deploy script
+  `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
+- Source validation passed: `npm run check:customer-data-wallet-preflight`,
+  `npm run check:customer-data-wallet-runtime -- --expect=deployed`, focused
+  Auth/User specs 2 suites/15 tests, `npm run test:auth-contract` 3 suites/27
+  tests, `npm run build`, `npm run lint`, and `git diff --check`.
+- Direct remote-shell `psql` could not resolve internal DB hostname
+  `db-server-postgres`, so the approved fallback used `kubectl exec` into the
+  healthy Postgres pod with repo DB env values passed without printing them.
+- Schema-only preflight selected metadata only and found `public.users`,
+  `user_delivery_addresses`, `user_invoice_profiles`, and `gen_random_uuid`.
+- Approved SQL apply was idempotent and transaction-wrapped with expected
+  existing-object notices. Post-apply metadata verification found both wallet
+  tables, 21 delivery-address columns, 24 invoice-profile columns, and four
+  indexes per wallet table.
+- Auth deploy completed successfully with backend and web image tag
+  `e484688-20260703071733`; `auth-microservice` and `auth-microservice-web`
+  rolled out to `1/1`.
+- Post-deploy Auth runtime smoke passed: `/health` HTTP 200 and
+  `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+  `/auth/profile/invoice-profiles` HTTP 401 unauthenticated, with no
+  Authorization header, cookies, request body, response body logging, or DB
+  read.
+- FlipFlop non-mutating runtime smoke passed: `/`, `/checkout`,
+  `/profile/addresses`, `/profile/invoice-profiles`, and
+  `/api/products?limit=1` returned HTTP 200; gateway-proxied
+  `/api/auth/profile/checkout-data`, `/api/auth/profile/delivery-addresses`,
+  and `/api/auth/profile/invoice-profiles` returned HTTP 401.
+- FlipFlop `npm run smoke:auth-wallet-checkout-profile` passed in default
+  source/no-live mode and reported `approval_required_no_live_mutation` with
+  profile UI, checkout selectors, manual-edit guard, explicit selector
+  override, save-back, invoice CRUD/default UI, and order snapshot boundary
+  assertions passing.
+- FlipFlop `npm run verify:guest-checkout-ui` passed.
+
+Boundary:
+
+- No secret/token/password/JWT/cookie value inspection, customer-row read, raw
+  production customer-data inspection, authenticated synthetic smoke, live
+  checkout/order/payment mutation, Warehouse reservation, notification send,
+  destructive DB rollback/drop, consumer source edit, or full cluster scale-up
+  was performed.
+
+Next unfinished chunk:
+
+- Run authenticated Auth wallet CRUD/default/delete and FlipFlop gateway/browser
+  selector smokes only after owner-approved synthetic token/account inputs and
+  non-secret approval ids are supplied, or continue dependency-gated
+  Rent-a-box, ChytraKoupe, and Cliplot source/runtime gates.
+
 ## 2026-07-03 - Goal 10.56 Cliplot Source-Only Selector Behavior Verifier
 
 Current focus:
