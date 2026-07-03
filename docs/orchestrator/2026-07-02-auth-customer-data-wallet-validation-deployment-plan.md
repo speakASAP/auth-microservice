@@ -55,13 +55,21 @@ and non-mutating FlipFlop runtime smoke passed. The deploy script timed out
 during the first backend rollout wait, so its final non-secret ConfigMap patch
 was applied manually and the backend restart completed successfully.
 
+2026-07-03 current-head refresh: owner-approved Auth live refresh completed
+from Source Preflight-captured HEAD
+`548df583bff50057c79c4c6705e6a379f4d1b63b`. Schema preflight used metadata
+only and no customer rows; approved SQL apply committed idempotently; Auth
+backend/web rolled out successfully on image tag `548df58-20260703051411`;
+unauthenticated wallet endpoints returned HTTP 401; and non-mutating FlipFlop
+runtime/source smoke passed.
+
 ## Current Evidence
 
 Auth:
 
 - Repo: `alfares:/home/ssf/Documents/Github/auth-microservice`.
 - Current Source Preflight captured deploy HEAD
-  `ff974345c52a41ac8b920a3dba0f44795a23950d`.
+  `548df583bff50057c79c4c6705e6a379f4d1b63b`.
 - Wallet API source commit `b6c1585`, hosted profile wallet UI commit
   `4bdbd27`, and runtime gate verifier commit `9ff1099` are ancestors of the
   runtime source checkpoint. Runtime source has not changed after the
@@ -81,7 +89,7 @@ Auth:
 - Deploy script runs Auth contract tests/build/image rollout/health checks; it
   does not run SQL.
 - Live runtime: backend/web are `1/1` on image tags
-  `ff97434-20260702223501`.
+  `548df58-20260703051411`.
 - Live `/health` returned HTTP 200.
 - Live unauthenticated wallet probes returned HTTP 401 for
   `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and

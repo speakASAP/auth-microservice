@@ -1,3 +1,69 @@
+## 2026-07-03 - Goal 10.42 Auth Live Refresh From Current Source Preflight
+
+Current focus:
+
+- Execute the owner-approved Auth schema-only DB preflight, idempotent SQL
+  apply, Auth deploy, wallet 401 smoke, and non-mutating FlipFlop post-deploy
+  runtime smoke from the current Source Preflight-captured Auth HEAD.
+
+Evidence:
+
+- Source Preflight captured Auth HEAD
+  `548df583bff50057c79c4c6705e6a379f4d1b63b` on `main`, ahead of
+  `origin/main` by 3 coordinator docs commits, with no dirty tracked files.
+- Source checksums remained stable: wallet SQL
+  `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`,
+  runtime verifier
+  `3786afab774e58dd9800272507ca919b7cfdf8d80a16fb4f09ef1541e482ec26`,
+  and deploy script
+  `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
+- Source validation passed: `npm run check:customer-data-wallet-preflight`,
+  `npm run check:customer-data-wallet-runtime -- --expect=deployed`, focused
+  Auth/User specs 2 suites/15 tests, `npm run test:auth-contract` 3 suites/27
+  tests, `npm run build`, `npm run lint`, and `git diff --check`.
+- Schema-only DB preflight used live metadata only and no customer rows:
+  `users=users`, `delivery=user_delivery_addresses`,
+  `invoice=user_invoice_profiles`, and `gen_random_uuid=gen_random_uuid`.
+- Approved SQL apply of `scripts/create-customer-data-wallet-tables.sql` was
+  transaction-wrapped and committed idempotently.
+- Post-apply metadata verification found both wallet tables, 21 delivery
+  address columns, 24 invoice profile columns, and 4 indexes per wallet table.
+- Auth deploy completed successfully in 194.82s. Backend image:
+  `localhost:5000/auth-microservice:548df58-20260703051411`; web image:
+  `localhost:5000/auth-microservice-web:548df58-20260703051411`.
+- Independent rollout verification showed Auth backend and web `1/1` on those
+  image tags.
+- Auth wallet runtime smoke passed: `/health` HTTP 200 and
+  `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+  `/auth/profile/invoice-profiles` each returned HTTP 401 unauthenticated, with
+  no Authorization header, cookies, request body, response-body logging, or DB
+  read.
+- FlipFlop non-mutating post-deploy runtime/source smoke passed on clean
+  `main` at `9b9d4de1e133559c875c7a53897ce1f4664c58c0`:
+  `npm run verify:auth-wallet-profile-ui`,
+  `npm run verify:auth-wallet-checkout-selectors`, and
+  `npm run verify:orders-hub-integration` passed; public `/`, `/checkout`,
+  `/profile/addresses`, `/profile/invoice-profiles`, and
+  `/api/products?limit=1` returned HTTP 200; gateway-proxied
+  `/api/auth/profile/checkout-data`, `/api/auth/profile/delivery-addresses`,
+  and `/api/auth/profile/invoice-profiles` returned HTTP 401.
+
+Boundary:
+
+- No secret/token/password/JWT/cookie value was printed, no production customer
+  row or raw customer data was selected, no authenticated synthetic smoke was
+  run, and no live checkout/order/payment/Warehouse/notification mutation was
+  performed.
+- Temporary operator helper `/tmp/auth-wallet-db-helper.js` was used only to
+  run metadata SQL and idempotent apply through the existing Auth pod DB driver.
+
+Next unfinished chunk:
+
+- Add and approve a dedicated authenticated synthetic Auth wallet
+  CRUD/default/delete smoke harness and run it only with an owner-approved
+  synthetic account/token, or continue the remaining ChytraKoupe,
+  Rent-a-box, and Cliplot dependency-gated consumer decisions.
+
 ## 2026-07-03 - Goal 10.41 Cliplot Live-Evidence Refresh
 
 Current focus:

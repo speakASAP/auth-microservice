@@ -28,25 +28,24 @@ smoke, and non-mutating FlipFlop post-deploy runtime smoke.
 ## Current Gate State
 
 - Latest approved refresh completed from Source Preflight-captured HEAD
-  `350700b0ad3482cf375ada8f9088392778ae8b05`.
-- Latest deployed Auth image tag is `350700b-20260703044437` for backend and
+  `548df583bff50057c79c4c6705e6a379f4d1b63b`.
+- Latest deployed Auth image tag is `548df58-20260703051411` for backend and
   web.
 - Latest refresh confirmed schema metadata in the `auth` database, idempotent
   SQL apply, Auth wallet 401 smoke, and non-mutating FlipFlop runtime smoke.
 - During the latest refresh, Source Preflight was clean on `main`, ahead of
-  `origin/main` by 1 coordinator docs commit. The predeploy runtime check
-  intentionally failed because wallet routes are already live and returned
-  deployed `401`, not predeploy `404`; deployed-mode validation passed.
+  `origin/main` by 3 coordinator docs commits. The deployed-mode validation
+  passed because wallet routes are already live and return protected `401`.
 - Auth source for delivery addresses, invoice profiles, checkout aggregate,
   hosted profile wallet management, and runtime wallet route gate exists in the
   deployed Source Preflight HEAD
-  `350700b0ad3482cf375ada8f9088392778ae8b05`.
+  `548df583bff50057c79c4c6705e6a379f4d1b63b`.
 - `scripts/create-customer-data-wallet-tables.sql` is additive and idempotent.
 - Production uses `DB_SYNC=false`; do not set `DB_SYNC=true`.
 - Live SQL has been applied for `scripts/create-customer-data-wallet-tables.sql`.
 - Auth deploy completed with backend image
-  `localhost:5000/auth-microservice:350700b-20260703044437` and web image
-  `localhost:5000/auth-microservice-web:350700b-20260703044437`; both
+  `localhost:5000/auth-microservice:548df58-20260703051411` and web image
+  `localhost:5000/auth-microservice-web:548df58-20260703051411`; both
   deployments are `1/1`.
 - Post-deploy runtime smoke passed: `/health` returned HTTP 200 and wallet
   endpoints returned HTTP 401 unauthenticated.
