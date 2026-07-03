@@ -138,7 +138,7 @@ function main() {
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'all named runtime evidence gates are complete; proceed only with separately approved Cliplot runtime implementation or Rent-a-box schema/backfill migration gates',
+    allowedNextAction: 'all named runtime evidence gates are complete; proceed only with separately approved FlipFlop order snapshot smoke, Cliplot checkout submit/live commerce, or Rent-a-box route/backfill migration gates',
   };
 
   console.log(JSON.stringify(result, null, 2));

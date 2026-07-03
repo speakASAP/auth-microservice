@@ -326,3 +326,28 @@ This packet is valid when:
 - `git diff --check` passes.
 - Added-line sensitive literal scan returns no matches.
 - Auth deployed wallet smoke still passes with unauthenticated 401 responses.
+
+## Follow-up Gate - FlipFlop Order Snapshot Runtime Evidence
+
+Status: source/preflight packet complete in FlipFlop commit `37d695d`; live
+create/read proof still owner-gated.
+
+The no-mutation packet proves source forwarding of UUID-shaped
+`customer.authSubject`, separate bounded shipping/billing snapshots, and Auth
+invoice fields `companyName`, `companyId`, `taxId`, `vatId`, and `email` into
+the central Orders payload builder. It also runs the deployed fail-closed
+`smoke-orders-auth-subject.js` preflight with `mutation=false`,
+`providerCall=false`, deployment `1/1`, and service URL/token presence booleans
+only.
+
+Remaining owner inputs for persisted runtime proof:
+
+- `[MISSING: approved RUN_LIVE_AUTH_SUBJECT_ORDERS_SMOKE=1 runtime execution]`
+- `[MISSING: non-secret AUTH_SUBJECT_SMOKE_APPROVAL_ID]`
+- `[MISSING: AUTH_SUBJECT_SMOKE_CONFIRM=CREATE_READ_OPTIONAL_CANCEL]`
+- `[MISSING: approved AUTH_SUBJECT_SMOKE_CATALOG_PRODUCT_ID fixture]`
+- `[MISSING: approved AUTH_SUBJECT_SMOKE_WAREHOUSE_ID fixture]`
+
+Forbidden output remains unchanged: no token values, request/response bodies,
+customer/order rows, DB row data, customer PII, payment/provider credentials,
+Warehouse response bodies, or secrets.

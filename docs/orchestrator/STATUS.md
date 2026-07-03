@@ -1,3 +1,29 @@
+## 2026-07-03 - Goal 10.79 FlipFlop Auth Wallet Order Snapshot Gate Packet
+
+Current focus:
+
+- Make the remaining post-deploy consumer order-snapshot runtime blocker machine-checkable without opening live checkout/order mutation.
+
+Evidence:
+
+- FlipFlop commit `37d695d` added `scripts/verify-auth-wallet-order-snapshot-gate.js`, package script `verify:auth-wallet-order-snapshot-gate`, and sanitized report `reports/validation/auth-wallet-order-snapshot-gate.json`.
+- The verifier confirms authenticated FlipFlop checkout source forwards only a UUID-shaped user id as `customer.authSubject`.
+- It confirms central Orders payload source forwards separate bounded `shippingAddress` and `billingAddress` snapshots with Auth invoice fields `companyName`, `companyId`, `taxId`, `vatId`, and `email`.
+- The default deployed `smoke-orders-auth-subject.js` preflight remains fail-closed with `mutation=false`, `providerCall=false`, deployment `1/1`, `ORDERS_SERVICE_URL=true`, and `ORDERS_SERVICE_TOKEN=true`.
+
+Validation:
+
+- FlipFlop passed: `npm run verify:auth-wallet-order-snapshot-gate`, `npm run verify:orders-hub-integration`, `npm run verify:auth-wallet-checkout-selectors`, `WRITE_AUTH_SUBJECT_SMOKE_REPORT=0 node scripts/smoke-orders-auth-subject.js` with expected exit `3`, `python3 scripts/pre_coding_gate.py --root .`, strict doc audit 100/100, `node --check scripts/verify-auth-wallet-order-snapshot-gate.js`, `git diff --check`, and targeted sensitive literal scan.
+- Orders read-only validation passed: `npm run verify:create-order-contract` and `npm run verify:invoices-read-boundary`; Orders worktree had unrelated dirty files and was not changed.
+
+Boundary:
+
+- No checkout submit, order creation, Warehouse/payment/notification mutation, DB/customer row read, token output, raw customer data output, deploy, Kubernetes mutation, or secret mutation occurred.
+
+Next unfinished chunk:
+
+- Owner-approved synthetic central Orders create/read/cancel smoke remains required to prove persisted runtime `customer.authSubject` and billing snapshot evidence. It needs a non-secret `AUTH_SUBJECT_SMOKE_APPROVAL_ID`, `RUN_LIVE_AUTH_SUBJECT_ORDERS_SMOKE=1`, confirmation `CREATE_READ_OPTIONAL_CANCEL`, and approved fixture Catalog product/Warehouse ids.
+
 ## 2026-07-03 - Goal 10.77/10.78 Focused Runtime Evidence Follow-up
 
 Current focus:
