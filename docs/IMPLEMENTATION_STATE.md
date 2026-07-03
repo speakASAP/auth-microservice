@@ -132,7 +132,7 @@
 
 # Auth Implementation State
 
-Last updated: 2026-07-02.
+Last updated: 2026-07-03.
 
 ## Orchestrator Command
 
@@ -160,8 +160,8 @@ AUTH ORCHESTRATOR: implement goal number 6
 - Active goal: Goal 10 - Auth Customer Data Wallet.
 - Current wave: Wave 2 - Operational backlog
 - Completed goals: 01 Admin Token Copy UX And Safety, 02 Auth Intent Preservation Pack, 03 Unified Auth Contract Recovery, 04 Auth Observability And Safety Checks, 05 Goalkeeper-Style Orchestrator Workflow, IPS Documentation Compliance Update, 06 RBAC Consuming Services Audit, RBAC-REM-01 Secret-Source Alignment Review, RBAC-REM-02 Consumer JWT Validation Standardization, RBAC-REM-03 Catalog Frontend Role-Aware Admin Guard, RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review, RBAC-REM-05 School Committee Local-Role Contract Note, RBAC-REM-06 Internal Service-Token/API-Key Boundary Review, RBAC-REM-07 Logging Admin Role-Enforcement Verification, AUTH-ALPHA-01 Hosted Token Handoff URL Normalization, 09 Auth Contract Production Smoke Verification
-- Running goals: Goal 10 live rollout gate; Auth API, hosted profile UI, runtime smoke verifier, current release gate target, and active FlipFlop target branch are source-validated, live SQL/deploy/smoke remain approval-gated.
-- Blocked goals: consumer runtime deploy/smoke is dependency-gated on owner-approved Auth schema preflight, SQL apply, Auth deploy, wallet endpoint 401 smoke, synthetic account approval, and repo-local decisions.
+- Running goals: Goal 10 live rollout gate; Auth API, hosted profile UI, runtime smoke verifier, current release gate target, FlipFlop runtime smoke, ChytraKoupe/Rent-a-box/Cliplot source readiness lanes, and Cliplot source-only guest fallback policy are prepared; authenticated synthetic smokes and dependent runtime lanes remain approval-gated.
+- Blocked goals: consumer runtime deploy/smoke is dependency-gated on synthetic account approval, browser-session contracts, runtime no-PII/field-mapping/fallback evidence, and repo-local decisions.
 - Worker threads: Goal 10.15 runtime-gate explorer, Goal 10.14 hosted UI explorer/reviewer, Goal 10.11 Auth live-gate, FlipFlop active-target readiness, and Orders provenance read-only subagents completed; previous schema/deploy-path and consumer readiness explorers completed.
 - Production status: `STATE.json` reports production health `ok`; `/reset-password` route fix deployed on 2026-06-26
 - Source of truth: `alfares:/home/ssf/Documents/Github/auth-microservice`
@@ -176,6 +176,23 @@ AUTH ORCHESTRATOR: implement goal number 6
 - Goal 10 validation/deployment plan: `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
 - DocsRAG mode: mandatory before broad ecosystem architecture or contract decisions when a service JWT is available.
 - IPS gate mode: mandatory before coding through `docs/orchestrator/PROJECT_INVARIANTS.md`, `PRE_CODING_GATE.md`, `CONTEXT_PACKAGE.md`, `EXECUTION_PLAN.md`, and `READINESS_GATES.md`.
+
+## Latest Goal 10 Checkpoint
+
+2026-07-03: Goal 10.53 Cliplot source-only Auth wallet guest fallback verifier
+prepared. Cliplot commit `fa90652 docs: verify auth wallet guest fallback
+policy` extends the source-only contract, execution plan, validation report, and
+readiness verifier. The verifier covers missing Auth session, wallet 401, wallet
+403, timeout, malformed response, and empty wallet rows while preserving manual
+checkout/cart and forbidding wallet mutation or checkout submit. Validation
+passed: `npm run readiness:auth-wallet-checkout`, `node --check
+scripts/auth-wallet-checkout-readiness.js`, `git diff --check`, and `npm run
+check`. No deploy, live call, checkout submit, DB/Kubernetes/Vault mutation,
+secret/token/cookie inspection, production customer/order data read, or runtime
+wallet integration was performed. Remaining Cliplot gates: selector behavior
+approval, authenticated browser-session implementation, runtime no-PII evidence,
+runtime field mapping implementation, and runtime guest fallback synthetic
+evidence.
 
 ## Goal Roadmap
 
