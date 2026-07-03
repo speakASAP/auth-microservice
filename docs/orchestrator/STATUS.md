@@ -1,3 +1,32 @@
+## 2026-07-03 - Goal 10.73/10.74 Cliplot Selector UI And Rent Runtime Adapter Source Prep
+
+Current focus:
+
+- Integrate the next two parallel product/runtime source-prep lanes after Cliplot guarded runtime evidence and Rent nullable schema apply.
+
+Evidence:
+
+- Cliplot commit `301ec6b` added guarded checkout delivery/invoice selector UI using only in-memory `CLIPLOT_AUTH_WALLET_CHECKOUT_DATA`.
+- Cliplot readiness now reports `ready_for_auth_wallet_checkout_runtime_rollout_review_execution_disabled`; selector UI is integrated, defaults can prefill before manual edits, manual entry still wins, manual checkout remains available, selector controls have no form `name`, and wallet ids/Auth ownership fields are not submitted.
+- Rent-a-box commit `570aefe` added the feature-gated runtime Auth adapter/local binding source prep in `apps/api/app/auth/adapter.py` plus focused tests and verifier/docs updates.
+- Rent verifier now reports `auth_runtime_adapter.status=source_prepared_feature_gated_runtime_adapter`, with `global_local_auth_replacement=false`, `production_backfill=false`, and `uniqueness_enforcement=false`.
+
+Validation:
+
+- Cliplot passed: `npm run readiness:auth-wallet-checkout`, `npm run readiness:auth-wallet-runtime-checkout-evidence`, `npm run check`, `git diff --check`, and added-line sensitive literal scan.
+- Rent-a-box passed: `python3 -m py_compile` for requested scripts plus new adapter/test files, `python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .`, `./scripts/intent_preflight.sh`, `git diff --check`, and changed-file secret scan.
+- Rent focused API tests were not run because `pytest` is missing on the remote host (`missing_pytest_runner`).
+
+Boundary:
+
+- Cliplot did not perform live Auth browser-session wallet fetch, checkout submit, Auth wallet mutation, order/payment/Warehouse/notification mutation, DB write, Kubernetes/Vault mutation, deploy, or customer-data output.
+- Rent-a-box did not perform production backfill, uniqueness enforcement, global local-auth replacement, deploy, Kubernetes/Vault mutation, Auth source change, raw production row output, token/cookie/secret output, or connection string output.
+
+Next unfinished chunk:
+
+- Cliplot: authenticated browser-session wallet fetch evidence and live rollout approval remain gated before production selector fetch/submit behavior.
+- Rent-a-box: restore/install a focused API test runner or run tests in an environment with `pytest`, then approve explicit adapter wiring/onboarding before replacing local auth.
+
 ## 2026-07-03 - Goal 10.71/10.72 Cliplot Runtime Evidence And Rent Schema Apply Follow-up
 
 Current focus:
