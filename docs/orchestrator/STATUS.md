@@ -1,3 +1,58 @@
+## 2026-07-03 - Goal 10.36 Cliplot Response-Shape Readiness Refresh
+
+Current focus:
+
+- Refresh Cliplot-owned source-only readiness artifacts to record the
+  Auth-defined checkout-data v1 response shape without enabling runtime wallet
+  mapping.
+
+Evidence:
+
+- Cliplot commit `c8e99ac docs: record auth wallet response shape` updates
+  `scripts/auth-wallet-checkout-readiness.js`,
+  `implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`,
+  and `reports/validation/GOAL-10-auth-wallet-checkout-readiness.md`.
+- Auth read-only audit confirmed clean `main` at
+  `c7dabab8021085d90d89a16679e5cf81af227283` and source-defined shape in
+  Auth service, entities, DTOs, tests, and docs.
+- Cliplot verifier now records top-level `checkoutDataFields`, `defaultsFields`,
+  `sanitizedDeliveryAddressFields`, `sanitizedInvoiceProfileFields`,
+  `excludedWalletRowFields`, and caveats.
+- Current Auth v1 caveats recorded in Cliplot: wallet fields may be nullable,
+  timestamp JSON serialization is not narrowed here, `pickupPointId` is not a
+  current response field, and invoice recipient email is `email`, not
+  `invoiceEmail` or `electronicInvoiceEmail`.
+- Cliplot still reports `runtimeWalletIntegrationPresent=false` and remains
+  guest-checkout first with Auth only as a hosted login/register link surface.
+
+Validation:
+
+- Cliplot `npm run readiness:auth-wallet-checkout` passed and reported
+  source-defined field lists, `source_only_no_live_calls`, `mutation=false`,
+  `persistence=false`, `providerCall=false`, and
+  `runtimeWalletIntegrationPresent=false`.
+- Cliplot `node --check scripts/auth-wallet-checkout-readiness.js` passed.
+- Cliplot `npm run check` passed.
+- Cliplot `git diff --check` passed.
+- Cliplot stale response-shape blocker scan returned no stale blocker.
+- Cliplot targeted dangerous literal-secret scan on the three changed files
+  returned no matches.
+
+Boundary:
+
+- No Auth code, live SQL, deploy, Kubernetes mutation, DB query,
+  secret/token/password/JWT/cookie inspection, response-body logging,
+  production customer/order data inspection, live checkout submit,
+  payment/Warehouse mutation, notification send, or runtime consumer
+  integration was performed.
+
+Next unfinished chunk:
+
+- Resolve Cliplot selector behavior, authenticated browser/session, no-PII
+  frontend/logging review, approved field mapping, and guest fallback gates, or
+  continue Rent-a-box, ChytraKoupe, and authenticated synthetic Auth/FlipFlop
+  smoke gates.
+
 ## 2026-07-03 - Goal 10.35 Cliplot Schema-Version Readiness Refresh
 
 Current focus:

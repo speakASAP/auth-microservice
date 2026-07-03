@@ -232,6 +232,58 @@ Validation plan:
 - Cliplot stale stable-version blocker scan
 - Cliplot targeted dangerous literal-secret scan on changed files
 
+## Current Execution Addendum - 2026-07-03 Cliplot Response-Shape Readiness Refresh
+
+Selected goal and chunk: Goal 10.36 - update Cliplot-owned source-only
+readiness docs/verifier to record Auth-defined checkout-data v1 response shape.
+
+Pre-coding gate decision: pass. The work is documentation/verifier-only in the
+consumer lane, preserves Auth as the wallet source of truth, and keeps Cliplot
+runtime wallet integration blocked until selector/session/PII, approved field
+mapping, and guest fallback decisions are approved.
+
+Intent chain:
+
+- Vision: Auth is the single editable source of truth for registered-user
+  profile, delivery address book, and invoice profile data.
+- Goal impact: Cliplot can verify Auth response shape before selector work
+  without starting unsafe runtime wallet calls.
+- System: Auth wallet source contract, Cliplot source-only readiness verifier,
+  and Auth Goal 10 coordinator plans.
+- Feature: dependency-gated Cliplot checkout wallet readiness.
+- Task: replace the response-shape unknown with source-defined field lists and
+  caveats; preserve mapping/fallback/runtime blockers.
+- Coding prompt: source-only verifier/docs; no live calls, runtime wallet
+  fetches, checkout mutation, DB, deploy, secrets, tokens, cookies, or
+  production customer/order data.
+
+Sensitive-data handling: source files and validation metadata only. No secrets,
+token values, decoded JWTs, cookies, raw production user rows, addresses,
+invoices, orders, response bodies, DB values, or live checkout data are read or
+recorded.
+
+Contract impact: Cliplot verifier now records Auth-defined checkout-data
+top-level fields, defaults fields, sanitized delivery address fields,
+sanitized invoice profile fields, omitted wallet row fields, and caveats. It
+does not enable runtime wallet calls, approve selector behavior, or approve
+order snapshot mapping.
+
+Parallel execution:
+
+- Auth read-only audit subagent: complete; confirmed current Auth source/docs
+  define enough response-shape evidence for Cliplot readiness.
+- Auth coordinator: integrated the three-file Cliplot source-only patch,
+  validated, committed Cliplot, and refreshed Auth coordinator docs.
+
+Validation plan:
+
+- Cliplot `npm run readiness:auth-wallet-checkout`
+- Cliplot `node --check scripts/auth-wallet-checkout-readiness.js`
+- Cliplot `npm run check`
+- Cliplot `git diff --check`
+- Cliplot stale response-shape blocker scan
+- Cliplot targeted dangerous literal-secret scan on changed files
+
 ## Current Execution Addendum - 2026-07-02 Auth Customer Data Wallet A1 Source Implementation
 
 Selected goal and chunk: Goal 10.1-10.5 - implement Auth storage model,

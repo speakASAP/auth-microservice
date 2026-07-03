@@ -464,9 +464,49 @@ Included evidence:
   `authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`.
 - Cliplot verifier still reports `runtimeWalletIntegrationPresent=false`,
   `mutation=false`, `persistence=false`, and `providerCall=false`.
+- Remaining Cliplot gates after the later Goal 10.36 response-shape refresh are
+  selector behavior, authenticated browser/session, no-PII frontend/logging
+  review, approved field mapping, and guest fallback decisions.
+
+Excluded data:
+
+- No Auth code, live SQL, deploy, Kubernetes mutation, DB query,
+  secret/token/password/JWT value inspection, cookie inspection,
+  response-body logging, production customer/order data inspection, live
+  checkout submit, payment/Warehouse mutation, notification send, or runtime
+  consumer integration.
+
+## Current Task Addendum - 2026-07-03 Cliplot Response-Shape Readiness
+
+Target task: refresh Cliplot-owned source-only readiness artifacts after Auth
+response-shape audit so Cliplot records Auth-defined checkout-data v1 fields
+without enabling runtime wallet mapping.
+
+Included source and documents:
+
+- `cliplot/scripts/auth-wallet-checkout-readiness.js`
+- `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`
+- `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md`
+- `docs/IMPLEMENTATION_STATE.md`
+- `docs/orchestrator/STATUS.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+
+Included evidence:
+
+- Auth read-only audit confirmed checkout-data shape is source-defined in Auth
+  service code, wallet entities, DTOs, tests, and docs.
+- Cliplot commit `c8e99ac` records source-defined checkout-data top-level
+  fields, defaults fields, sanitized delivery address fields, sanitized invoice
+  profile fields, omitted wallet row fields, and caveats.
+- Cliplot verifier still reports `runtimeWalletIntegrationPresent=false`,
+  `mutation=false`, `persistence=false`, and `providerCall=false`.
 - Remaining Cliplot gates are selector behavior, authenticated browser/session,
-  no-PII frontend/logging review, exact response-shape/mapping, and guest
-  fallback decisions.
+  no-PII frontend/logging review, approved field mapping, and guest fallback
+  decisions.
 
 Excluded data:
 

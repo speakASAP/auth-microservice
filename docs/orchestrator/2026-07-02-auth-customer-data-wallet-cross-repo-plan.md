@@ -147,11 +147,12 @@ Dirty or ahead; future workers must inspect before editing:
 
 Clean but gated by its own checkout approvals:
 
-- `cliplot`: ahead 1 at `fc7502d`, but checkout mutation remains guarded and
+- `cliplot`: ahead 3 at `c8e99ac`, but checkout mutation remains guarded and
   approval-gated; runtime wallet integration is absent. Stable checkout-data
-  version `auth.customer-data-wallet.checkout-data.v1` is now consumed by
-  Cliplot-owned readiness docs/verifier; selector/session/PII,
-  response-shape/mapping, and guest fallback gates remain open.
+  version `auth.customer-data-wallet.checkout-data.v1` and response field
+  shapes are now consumed by Cliplot-owned readiness docs/verifier;
+  selector/session/PII, approved field mapping, and guest fallback gates remain
+  open.
 
 ## Target Architecture
 
@@ -518,7 +519,7 @@ Plan:
 | O1 Orders contract note/additive metadata              | dependency-gated | Orders worker            | Create-order contract docs/DTO if needed                   | A1 + F1 payload     | Orders owner               | 6                            |
 | R1 Rent-a-box hosted Auth migration plan               | callback source-prepared; session/admin/migration-gated | Rent-a-box coordinator | `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md` | Customer session adapter/local profile binding, admin role mapping, consent/profile migration mapping, migration approval | Rent-a-box owner | 7 |
 | CK1 Chytrakoupe checkout selector integration          | gate-narrowed | Chytrakoupe worker | `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md` | Client-id and optional Auth subject linkage | Chytrakoupe owner | 8 |
-| C1 Cliplot plan                                        | schema-version-refreshed; runtime-gated | Cliplot coordinator | Docs/guarded plan only | Selector/session/PII approvals, exact response-shape/mapping, and guest fallback decisions | Cliplot owner | After live checkout approval |
+| C1 Cliplot plan                                        | response-shape-refreshed; runtime-gated | Cliplot coordinator | Docs/guarded plan only | Selector/session/PII approvals, approved field mapping, and guest fallback decisions | Cliplot owner | After live checkout approval |
 | M1 Marketplace order-snapshot audit                    | ready read-only  | Explorer                 | Allegro/Aukro/Bazos/Heureka/Catalog surface classification | None                | Coordinator                | No code merge                |
 
 Shared contracts:

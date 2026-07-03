@@ -307,11 +307,12 @@ Resolved for current Goal 10 scope:
 - ChytraKoupe commit `b280f75` source-prepares Auth wallet checkout selectors
   and immutable snapshot payloads while preserving final client-id and optional
   `customer.authSubject` linkage gates before production runtime claim.
-- Cliplot commit `fc7502d` refreshes source-only wallet readiness to consume
+- Cliplot commit `c8e99ac` refreshes source-only wallet readiness to consume
   Auth checkout-data response version
-  `auth.customer-data-wallet.checkout-data.v1` while still reporting no
-  runtime wallet integration. Selector behavior, authenticated session,
-  no-PII exposure, exact response-shape/mapping, and guest fallback gates
+  `auth.customer-data-wallet.checkout-data.v1` plus source-defined
+  checkout/defaults/delivery/invoice response fields and caveats while still
+  reporting no runtime wallet integration. Selector behavior, authenticated
+  session, no-PII exposure, approved field mapping, and guest fallback gates
   remain open before Cliplot wallet selector code changes.
 - Auth invoice profile v1 field ownership is defined: Auth owns reusable
   `companyId`, `taxId`, `vatId`, and invoice-recipient `email`; Orders stores
