@@ -2,7 +2,7 @@
 
 Date: 2026-07-03
 Coordinator: Auth Goal 10 orchestrator
-Status: Gates 1-4 completed; Gates 5-6 remain blocked until their named owner inputs exist
+Status: Gates 1-6 completed for approved wallet-read and metadata-preflight scope; follow-up implementation/migration gates remain blocked
 
 ## Intent Preservation Chain
 
@@ -27,6 +27,8 @@ runtime evidence without re-opening source-only discovery.
 - Gate 2 FlipFlop guarded gateway wallet smoke passed with the same Vault-backed synthetic login path, redacted output, synthetic rows only, source assertions, and cleanup verification.
 - Gate 3 FlipFlop browser/session selector smoke passed with delayed checkout-data, manual-edit guard evidence, explicit selector evidence, no checkout submit, redacted output, and cleanup verification.
 - Gate 4 ChytraKoupe guarded selector smoke passed with Vault-backed synthetic login, sanitized local checkout-data fixture, selector/manual-edit evidence, no checkout submit, no Auth wallet mutation, and redacted output.
+- Gate 5 Cliplot synthetic browser/session wallet-read evidence passed with Vault-backed synthetic login, three Auth wallet GET endpoints returning HTTP 200, no checkout submit, no mutation, and redacted output.
+- Gate 6 Rent-a-box metadata-only production preflight passed with aggregate-zero local users/customer_profiles, `migrationComplexity=empty`, and blocker label `auth_subject_id_column_missing`.
 - FlipFlop, ChytraKoupe, Cliplot, and Rent-a-box source-only readiness lanes
   have been audited. No material source-only consumer lane remains before the
   runtime inputs below.
@@ -37,9 +39,8 @@ runtime evidence without re-opening source-only discovery.
 2. FlipFlop guarded gateway wallet smoke - completed 2026-07-03.
 3. FlipFlop authenticated browser/session selector smoke - completed 2026-07-03.
 4. ChytraKoupe guarded selector smoke harness and run - completed 2026-07-03.
-5. Cliplot synthetic browser/session wallet-read evidence, then runtime
-   implementation planning.
-6. Rent-a-box metadata-only production row-count/migration-complexity preflight.
+5. Cliplot synthetic browser/session wallet-read evidence - completed 2026-07-03.
+6. Rent-a-box metadata-only production row-count/migration-complexity preflight - completed 2026-07-03.
 
 This order keeps Auth wallet persistence evidence ahead of consumer gateway or
 browser-session evidence, and keeps Rent-a-box product-code migration blocked
@@ -173,55 +174,80 @@ Forbidden in this gate:
 
 ## Gate 5 - Cliplot Browser/Session Wallet-Read Evidence
 
-Source status: contract, plan, package script, report, and verifier are ready;
-runtime checkout files must stay untouched until approved synthetic evidence
-exists.
+Status: completed 2026-07-03 for synthetic wallet-read evidence.
 
-Required owner inputs:
+Resolved owner inputs:
 
-- `[MISSING: approved synthetic Auth browser/session wallet-read evidence]`
-- Non-secret Cliplot approval id.
+- Owner approved running Gate 5 with the Vault-backed synthetic Auth test
+  account/token path.
+- Non-secret approval id: `CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE5`.
+- Cliplot source commits: `a9a38a9 feat: add auth wallet browser session smoke harness`
+  and `d08b4b0 docs: record auth wallet browser session smoke`.
 
-Baseline validation:
+Evidence:
 
-```bash
-npm run readiness:auth-wallet-checkout
-node --check scripts/auth-wallet-checkout-readiness.js
-git diff --check
-```
+- Passed status: `sanitized_auth_wallet_browser_session_smoke_recorded`.
+- Auth base URL: `https://auth.alfares.cz`.
+- Endpoint count: 3.
+- `/auth/profile/checkout-data` returned HTTP 200 and schema version
+  `auth.customer-data-wallet.checkout-data.v1`.
+- `/auth/profile/delivery-addresses` returned HTTP 200.
+- `/auth/profile/invoice-profiles` returned HTTP 200.
+- Confirmed `checkoutSubmit=false`, `authWalletMutation=false`,
+  `paymentCreation=false`, `warehouseReservation=false`,
+  `notificationSend=false`, `databaseMutation=false`,
+  `kubernetesMutation=false`, `bodyPrinted=false`, `tokenPrinted=false`, and
+  `customerDataPrinted=false`.
+- Validation passed with `npm run readiness:auth-wallet-checkout`,
+  default `npm run readiness:auth-wallet-browser-session-smoke`, live
+  `npm run smoke:auth-wallet-browser-session -- https://auth.alfares.cz`,
+  `npm run check`, and `git diff --check`.
 
-Required future evidence:
+Remaining Cliplot follow-up gates:
 
 - Runtime selector behavior implementation evidence.
-- Runtime no-PII logging/frontend exposure evidence.
-- Runtime Auth wallet row to checkout/order snapshot field mapping evidence.
-- Runtime guest fallback implementation evidence when wallet reads are
+- Runtime no-PII logging/frontend exposure implementation evidence.
+- Runtime Auth wallet row to checkout/order snapshot field mapping implementation evidence.
+- Runtime guest fallback implementation evidence when Auth wallet reads are
   unavailable.
 
 ## Gate 6 - Rent-a-box Metadata-Only Production Preflight
 
-Source status: hosted Auth scaffold, adapter mapping, nullable
-`customer_profiles.auth_subject_id` schema prep, and current Auth live evidence
-are source-prepared. Product-code migration is blocked.
+Status: completed 2026-07-03 for metadata-only row-count/migration-complexity
+preflight. Product-code migration remains blocked.
 
-Required owner inputs:
+Resolved owner inputs:
 
-- `[MISSING: owner-approved metadata-only production row-count/migration-complexity preflight]`
-- `[MISSING: owner-approved live DB migration/backfill scope for local users and customer_profiles]`
+- Owner approved the metadata-only production row-count/migration-complexity
+  preflight.
+- Non-secret approval id:
+  `gate6-rent-a-box-auth-wallet-metadata-preflight-20260703`.
+- Rent-a-box source commit:
+  `80d9ef1 docs: record auth wallet metadata preflight`.
 
-Allowed future preflight shape:
+Evidence:
 
-- Count local users and customer profiles.
-- Count nullable/non-null `customer_profiles.auth_subject_id` after approved
-  schema state.
-- Count candidate duplicates/conflicts only as aggregate numbers.
-- Report only metadata counts and blocker labels.
+- Passed status: `pass_goal12_rent_auth_metadata_preflight`.
+- Tables exist: `users=true`, `customer_profiles=true`, `alembic_version=true`.
+- Live schema metadata: `customer_profiles.auth_subject_id=false` and
+  `ix_customer_profiles_auth_subject_id=false`.
+- Aggregate counts: `users_total=0`, `users_active=0`,
+  `users_admin_role=0`, `users_customer_role=0`,
+  `customer_profiles_total=0`, `customer_profiles_deleted=0`,
+  `duplicate_user_email_groups=0`, `customer_profiles_without_user=0`, and
+  `users_without_customer_profile=0`.
+- Blocker label: `auth_subject_id_column_missing`.
+- Migration complexity: `empty`.
+- Output was aggregate metadata only; no raw rows, customer data, password
+  hashes, tokens, cookies, contract contents, connection strings, or DB writes
+  were printed or performed.
 
-Forbidden in this gate:
+Remaining Rent-a-box follow-up gates:
 
-- Raw customer rows, emails, phones, addresses, password hashes, tokens,
-  cookies, contract storage, production data dumps, product-code auth switch,
-  uniqueness enforcement, backfill writes, deploys, or Auth source changes.
+- Owner-approved nullable production schema apply or verification for
+  `customer_profiles.auth_subject_id`.
+- Owner-approved live DB migration/backfill scope before any product-code
+  migration, even though current aggregate local user/profile counts are zero.
 
 ## Shared Output Contract
 
@@ -259,7 +285,7 @@ Stop immediately and do not retry automatically if:
 
 This packet is valid when:
 
-- Gate 1, Gate 2, Gate 3, and Gate 4 completion evidence remains redacted and Gates 5-6 still show missing owner inputs.
+- Gate 1 through Gate 6 approved evidence remains redacted and follow-up implementation/migration gates are explicitly blocked.
 - Auth coordinator docs link to it.
 - `npm run check:customer-data-wallet-runtime-gate-packet` passes.
 - `git diff --check` passes.

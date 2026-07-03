@@ -1,3 +1,30 @@
+## 2026-07-03 - Goal 10.69/10.70 Gate 5 Cliplot And Gate 6 Rent-a-box Parallel Evidence
+
+Current focus:
+
+- Execute the owner-approved Gate 5 Cliplot synthetic browser/session wallet-read evidence and Gate 6 Rent-a-box metadata-only production preflight in parallel workstreams.
+
+Evidence:
+
+- Cliplot commit `a9a38a9` added the guarded wallet-read harness; Cliplot commit `d08b4b0` recorded live evidence.
+- Cliplot live status was `sanitized_auth_wallet_browser_session_smoke_recorded` with approval id `CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE5`; the three Auth wallet GET endpoints returned HTTP 200, checkout-data schema version was `auth.customer-data-wallet.checkout-data.v1`, and no body/token/customer-data output was printed.
+- Rent-a-box commit `80d9ef1` recorded metadata-only preflight evidence.
+- Rent-a-box live status was `pass_goal12_rent_auth_metadata_preflight` with approval id `gate6-rent-a-box-auth-wallet-metadata-preflight-20260703`; aggregate counts were zero for local users and customer_profiles, duplicate/conflict counts were zero, `migrationComplexity=empty`, and blocker label was `auth_subject_id_column_missing`.
+
+Validation:
+
+- Cliplot passed: `node --check scripts/auth-wallet-checkout-readiness.js`, `npm run readiness:auth-wallet-checkout`, default `npm run readiness:auth-wallet-browser-session-smoke`, live `npm run smoke:auth-wallet-browser-session -- https://auth.alfares.cz`, `npm run check`, `git diff --check`, and scoped sensitive literal scan.
+- Rent-a-box passed: `python3 -m py_compile scripts/goal12_auth_metadata_preflight.py scripts/check_goal12_auth_wallet_readiness.py`, default `python3 -B scripts/goal12_auth_metadata_preflight.py`, live metadata preflight in the API pod, `python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .`, `./scripts/intent_preflight.sh`, `git diff --check`, and scoped sensitive literal scan.
+
+Boundary:
+
+- No bearer, password, JWT, cookie, raw request body, raw response body, decoded claim, DB row, secret value, customer data, checkout order, payment data, or contract content was printed or recorded.
+- No checkout submit, order/payment/Warehouse mutation, notification send, deploy, Kubernetes/Vault mutation, DB write, Auth wallet mutation, Auth source change, or product-code migration was performed.
+
+Next unfinished chunk:
+
+- All named runtime evidence gates in the current packet are complete. Remaining work requires separately approved Cliplot runtime checkout implementation and/or Rent-a-box nullable production schema/backfill migration gates.
+
 ## 2026-07-03 - Goal 10.68 Gate 4 ChytraKoupe Guarded Selector Smoke
 
 Current focus:

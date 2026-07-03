@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; Gates 1-4 Auth, FlipFlop gateway/browser, and ChytraKoupe selector smokes completed; remaining Cliplot and Rent-a-box runtime lanes remain approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; Gates 1-6 Auth, FlipFlop, ChytraKoupe, Cliplot wallet-read, and Rent-a-box metadata preflight evidence completed; follow-up consumer implementation/migration lanes remain approval-gated
 
 ## Intent
 
@@ -97,6 +97,8 @@ Auth customer data wallet:
 - [x] 10.66 FlipFlop guarded gateway wallet smoke completed using Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token with redacted output and cleanup verification.
 - [x] 10.67 FlipFlop authenticated browser/session selector smoke completed in commit `75f03eb` with delayed checkout-data, manual-edit guard, explicit selector, no checkout submit, and cleanup verification.
 - [x] 10.68 ChytraKoupe guarded selector smoke completed in commit `de9fd39` with sanitized checkout-data fixture, manual-edit guard, explicit selector evidence, no checkout submit, and no Auth wallet mutation.
+- [x] 10.69 Cliplot synthetic browser/session wallet-read evidence completed in commit `d08b4b0` with all three Auth wallet GET endpoints returning HTTP 200 and sanitized output.
+- [x] 10.70 Rent-a-box metadata-only production preflight completed in commit `80d9ef1` with aggregate-zero users/customer_profiles, `migrationComplexity=empty`, and blocker label `auth_subject_id_column_missing`.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -193,6 +195,23 @@ that repo's status/validation report.
 
 
 
+
+
+## 2026-07-03 Goal 10.70 Gate 6 Rent-a-box Metadata-Only Production Preflight
+
+- Rent-a-box commit `80d9ef1 docs: record auth wallet metadata preflight` adds/records the guarded metadata-only preflight evidence.
+- Passed status: `pass_goal12_rent_auth_metadata_preflight` with approval id `gate6-rent-a-box-auth-wallet-metadata-preflight-20260703`.
+- Aggregate evidence: `users_total=0`, `customer_profiles_total=0`, duplicate/conflict counts zero, `migrationComplexity=empty`.
+- Live schema blocker: `customer_profiles.auth_subject_id=false`, `ix_customer_profiles_auth_subject_id=false`, blocker label `auth_subject_id_column_missing`.
+- Remaining Rent-a-box follow-up gate is owner-approved nullable production schema apply/verification and migration/backfill scope before product-code migration.
+
+## 2026-07-03 Goal 10.69 Gate 5 Cliplot Browser Session Wallet-Read Evidence
+
+- Cliplot commits `a9a38a9 feat: add auth wallet browser session smoke harness` and `d08b4b0 docs: record auth wallet browser session smoke` add and record the guarded wallet-read evidence.
+- Passed status: `sanitized_auth_wallet_browser_session_smoke_recorded` with approval id `CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE5`.
+- Auth wallet reads against `https://auth.alfares.cz` returned HTTP 200 for checkout-data, delivery-addresses, and invoice-profiles; checkout-data schema version was `auth.customer-data-wallet.checkout-data.v1`.
+- No checkout submit, Auth wallet mutation, payment, Warehouse, notification, database, Kubernetes mutation, response body printing, token printing, or customer-data printing occurred.
+- Remaining Cliplot follow-up gates are runtime checkout selector/no-PII/mapping/guest-fallback implementation evidence.
 
 ## 2026-07-03 Goal 10.68 Gate 4 ChytraKoupe Guarded Selector Smoke
 

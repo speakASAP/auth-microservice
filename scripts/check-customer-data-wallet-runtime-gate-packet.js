@@ -41,9 +41,6 @@ function main() {
   ];
 
   const requiredInputMarkers = [
-    '[MISSING: approved synthetic Auth browser/session wallet-read evidence]',
-    '[MISSING: owner-approved metadata-only production row-count/migration-complexity preflight]',
-    '[MISSING: owner-approved live DB migration/backfill scope for local users and customer_profiles]',
   ];
 
   const resolvedGateMarkers = [
@@ -55,6 +52,11 @@ function main() {
     'pass_flipflop_auth_wallet_browser_session_smoke',
     'gate4-chytrakoupe-auth-wallet-selector-smoke-20260703-vault-test-login',
     'pass_chytrakoupe_auth_wallet_selector_smoke',
+    'CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE5',
+    'sanitized_auth_wallet_browser_session_smoke_recorded',
+    'gate6-rent-a-box-auth-wallet-metadata-preflight-20260703',
+    'pass_goal12_rent_auth_metadata_preflight',
+    'auth_subject_id_column_missing',
   ];
 
   const commandMarkers = [
@@ -63,6 +65,7 @@ function main() {
     'npm run verify:auth-wallet-checkout-selectors',
     'npm run smoke:auth-wallet-checkout-selectors',
     'npm run readiness:auth-wallet-checkout',
+    'npm run smoke:auth-wallet-browser-session',
   ];
 
   const safetyMarkers = [
@@ -135,7 +138,7 @@ function main() {
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'execute Gate 5 or Gate 6 only after its missing owner inputs exist',
+    allowedNextAction: 'all named runtime evidence gates are complete; proceed only with separately approved Cliplot runtime implementation or Rent-a-box schema/backfill migration gates',
   };
 
   console.log(JSON.stringify(result, null, 2));
