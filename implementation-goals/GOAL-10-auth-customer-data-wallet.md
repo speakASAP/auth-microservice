@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, and Auth subject order snapshot contract source-prepared; Rent-a-box hosted Auth callback scaffold source-prepared; Cliplot readiness lane remains gated; marketplace/channel audit complete; synthetic authenticated smoke and dependent runtime lanes remain approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, and Auth subject order snapshot contract source-prepared; Rent-a-box hosted Auth callback scaffold source-prepared; Cliplot checkout contract plus source-only no-PII/mapping verifier prepared; marketplace/channel audit complete; synthetic authenticated smoke and dependent runtime lanes remain approval-gated
 
 ## Intent
 
@@ -79,6 +79,7 @@ Auth customer data wallet:
 - [x] 10.48 Cliplot Auth wallet checkout contract source-prepared in commit `dbdc1b4`.
 - [x] 10.49 ChytraKoupe hosted Auth client-id default resolved in commit `65b37aa`.
 - [x] 10.50 ChytraKoupe Auth subject order snapshot contract source-prepared in commit `e3fa5e5`.
+- [x] 10.51 Cliplot source-only Auth wallet mapping/no-PII verifier prepared in commit `057035b`.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -133,7 +134,7 @@ marketplace operations.
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
 | R1 Rent-a-box Auth migration plan  | adapter-contract-prepared; migration/backfill-gated | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | owner-approved live DB migration/backfill plan and production row-count complexity before product-code migration | 7 |
 | CK1 ChytraKoupe checkout selectors | subject-linkage-contract-prepared; runtime-smoke-gated | ChytraKoupe worker | `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/lib/config/env.ts`, `chytrakoupe/k8s/configmap.yaml`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/docs/goal-driven/auth-wallet-guarded-smoke-approval.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | synthetic account/token/test data and non-secret approval id before runtime claim; future non-guest order subject provenance must derive only from validated Auth bearer `sub` | 8 |
-| C1 Cliplot plan                    | checkout-contract-prepared; runtime-gated | Cliplot coordinator | `cliplot/docs/auth-wallet-checkout-contract.md`, `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | selector/session/PII implementation evidence, approved field mapping implementation, and guest fallback synthetic evidence | later |
+| C1 Cliplot plan                    | source-mapping-policy-prepared; runtime-gated | Cliplot coordinator | `cliplot/docs/auth-wallet-checkout-contract.md`, `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | selector behavior approval, authenticated browser/session implementation, runtime no-PII evidence, runtime field mapping implementation, and guest fallback synthetic evidence | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
 ## Validation
@@ -173,9 +174,33 @@ that repo's status/validation report.
 - `[MISSING: owner-approved Rent-a-box live DB migration/backfill plan for local users and customer_profiles before product-code migration]`
 - `[UNKNOWN: Rent-a-box production local users/customer_profiles row counts and migration complexity]`
 - `[MISSING: owner-approved synthetic Auth account/token, synthetic checkout test data, and non-secret approval id for ChytraKoupe guarded wallet selector smoke]`
-- `[MISSING: Cliplot checkout wallet selector behavior approval, authenticated browser/session contract, no-PII exposure review, approved field mapping, and guest fallback behavior before wallet selector code changes]`
-- `[MISSING: Cliplot implementation and approved synthetic evidence for selector behavior, browser-session wallet reads, no-PII exposure, field mapping, and guest fallback]`
+- `[MISSING: Cliplot checkout wallet selector behavior approval, authenticated browser/session contract, runtime no-PII exposure evidence, runtime field mapping implementation, and guest fallback behavior before wallet selector code changes]`
+- `[MISSING: Cliplot implementation and approved synthetic evidence for selector behavior, browser-session wallet reads, runtime no-PII exposure, runtime field mapping, and guest fallback]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-03 Goal 10.51 Cliplot Source-Only Mapping And No-PII Verifier
+
+- 2026-07-03: Cliplot commit `057035b docs: verify auth wallet mapping
+  policy` extends the source-only Auth wallet checkout contract and verifier.
+- The verifier now proves pure synthetic Auth wallet row mapping into immutable
+  checkout snapshot field sets without printing fixture email, phone, street,
+  company/tax/VAT values, wallet ids, Auth ownership fields, tokens, cookies,
+  or raw wallet response bodies.
+- The Cliplot contract now records a source-only no-PII evidence policy:
+  allowed evidence is limited to status codes, booleans, `schemaVersion`,
+  blocker labels, and short non-reversible ids; forbidden evidence includes raw
+  wallet response bodies and customer PII.
+- Runtime wallet fetches, browser-session handling, selector UI, checkout
+  submit changes, live smokes, runtime no-PII evidence, runtime field mapping,
+  and guest fallback evidence remain gated.
+- Validation passed in Cliplot: `npm run readiness:auth-wallet-checkout`,
+  `node --check scripts/auth-wallet-checkout-readiness.js`, `git diff
+  --check`, `npm run check`, and targeted dangerous literal-secret/fixture
+  leak scan on changed files.
+- No deploy, live Auth/Orders/Payments/Warehouse/Notifications/Catalog call,
+  checkout submit, DB query/write, Kubernetes/Vault mutation, secret/token/
+  cookie inspection, production customer/order data read, payment/Warehouse
+  mutation, notification send, or runtime wallet integration was performed.
 
 ## 2026-07-03 Goal 10.50 ChytraKoupe Auth Subject Order Snapshot Contract
 
