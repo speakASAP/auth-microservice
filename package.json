@@ -17,6 +17,7 @@
     "test:auth-contract": "jest --runInBand --runTestsByPath src/auth/auth-contract.spec.ts src/auth/auth-contact-code.spec.ts src/auth/hosted-auth-web.spec.ts",
     "check:customer-data-wallet-preflight": "node scripts/check-customer-data-wallet-preflight.js",
     "check:customer-data-wallet-runtime": "node scripts/check-customer-data-wallet-runtime-smoke.js",
+    "check:customer-data-wallet-authenticated": "node scripts/check-customer-data-wallet-authenticated-smoke.js",
     "check:ecosystem-auth-rollout-docs": "bash scripts/check-ecosystem-hosted-auth-rollout-docs.sh",
     "check:aos-auth-readiness": "bash scripts/check-aos-auth-modernization-readiness.sh"
   },

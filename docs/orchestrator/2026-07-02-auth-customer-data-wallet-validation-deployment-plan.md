@@ -167,8 +167,10 @@ Consumers:
 4. Auth source validation, schema-only DB preflight, live SQL apply, deploy, and
    unauthenticated wallet 401 smoke are complete from Source Preflight HEAD
    `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`.
-5. If owner approves a synthetic account/token, run authenticated Auth wallet
-   CRUD/default/delete smoke with synthetic data only and cleanup where agreed.
+5. If owner approves a synthetic account/token and non-secret approval id, run
+   authenticated Auth wallet CRUD/default/delete smoke with synthetic data only
+   and cleanup through
+   `npm run check:customer-data-wallet-authenticated -- --execute`.
 6. Deploy/runtime-smoke FlipFlop from the approved target branch only after
     Auth wallet 401 smoke passes.
 7. Keep Orders unchanged unless the wallet provenance contract is approved.
@@ -268,7 +270,8 @@ Run only after Auth wallet endpoint 401 smoke passes.
   tokens, magic-link tokens, reset tokens, private keys, or Vault values.
 - Do not read or dump customer rows, password hashes, or raw production address
   and invoice payloads.
-- Synthetic smoke may use only owner-approved synthetic account data.
+- Synthetic smoke may use only owner-approved synthetic account data and the
+  guarded Auth wallet harness.
 - Runtime logs and reports must summarize HTTP status, endpoint shape, and
   schema metadata only.
 
@@ -276,7 +279,8 @@ Run only after Auth wallet endpoint 401 smoke passes.
 
 - `[MISSING: owner approval for Kubernetes rollback mutation if rollback is needed]`
 - `[MISSING: destructive DB rollback/drop approval; do not drop wallet tables by default]`
-- `[MISSING: owner-approved synthetic account/token for authenticated Auth wallet and cross-repo checkout smoke]`
+- `[MISSING: owner-approved synthetic account/token and non-secret approval id for authenticated Auth wallet smoke execution]`
+- `[MISSING: owner-approved synthetic account/token for cross-repo checkout smoke]`
 - `[MISSING: authenticated synthetic FlipFlop runtime smoke after Auth wallet 401 gate]`
 - `[MISSING: optional future wallet provenance contract for Orders field names and idempotency semantics]`
 - Auth invoice profile v1 field semantics are source-defined:

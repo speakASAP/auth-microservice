@@ -1,3 +1,57 @@
+## 2026-07-03 - Goal 10.43 Auth Authenticated Wallet Smoke Harness Source Prep
+
+Current focus:
+
+- Source-prepare the approval-gated authenticated Auth wallet
+  CRUD/default/delete smoke harness without running authenticated endpoints.
+
+Evidence:
+
+- Added `scripts/check-customer-data-wallet-authenticated-smoke.js`.
+- Added package script `check:customer-data-wallet-authenticated`.
+- Added approval packet
+  `docs/orchestrator/2026-07-03-auth-wallet-authenticated-smoke-approval.md`.
+- The harness defaults to `approval_required_no_live_mutation` and sends no
+  request unless all gates are present: `--execute`,
+  `RUN_AUTH_WALLET_AUTHENTICATED_SMOKE=1`,
+  `AUTH_WALLET_SMOKE_APPROVAL_ID`,
+  `AUTH_WALLET_SMOKE_CONFIRM=CREATE_UPDATE_DEFAULT_DELETE`, and a token via
+  `AUTH_WALLET_SMOKE_BEARER_TOKEN` or `AUTH_WALLET_SMOKE_TOKEN_FILE`.
+- The live path is limited to one synthetic authenticated subject and calls only
+  Auth wallet endpoints for checkout aggregate read, delivery address
+  create/update/default/delete, invoice profile create/update/default/delete,
+  and post-delete list visibility checks.
+- Sanitized output includes status metadata, schema version, booleans, cleanup
+  status, and short ID hashes only.
+
+Validation:
+
+- `node --check scripts/check-customer-data-wallet-authenticated-smoke.js`
+  passed.
+- `npm run check:customer-data-wallet-authenticated` passed in default
+  source-only mode and reported `approval_required_no_live_mutation`.
+- `npm run check:customer-data-wallet-runtime -- --expect=deployed` passed.
+- `npm run check:customer-data-wallet-preflight` passed.
+- `npm run test:auth-contract` passed.
+- `npm run build` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
+- Added-line dangerous literal-secret scan returned no matches.
+
+Boundary:
+
+- No authenticated endpoint call, live wallet mutation, DB query, DB write,
+  deploy, Kubernetes mutation, secret/token/password/JWT/cookie inspection,
+  response-body logging, production customer row read, raw customer-data access,
+  checkout/order/payment/Warehouse mutation, or notification send was performed.
+
+Next unfinished chunk:
+
+- Run the harness only after owner approval supplies a synthetic Auth
+  account/token and non-secret approval id; then continue FlipFlop
+  authenticated checkout/profile smoke or remaining ChytraKoupe, Rent-a-box,
+  and Cliplot gates.
+
 ## 2026-07-03 - Goal 10.42 Auth Live Refresh From Current Source Preflight
 
 Current focus:

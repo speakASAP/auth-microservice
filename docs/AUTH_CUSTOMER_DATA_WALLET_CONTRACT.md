@@ -1,6 +1,6 @@
 # Auth Customer Data Wallet Contract
 
-Status: Auth API, hosted profile UI, live wallet schema, deployment, and unauthenticated runtime 401 gate complete; authenticated synthetic smoke and consumer product-code migrations remain gated
+Status: Auth API, hosted profile UI, live wallet schema, deployment, unauthenticated runtime 401 gate, and source-prepared authenticated smoke harness complete; authenticated synthetic smoke execution and consumer product-code migrations remain gated
 Owner: auth-microservice
 Created: 2026-07-02
 
@@ -283,7 +283,7 @@ Consumer validation:
 
 ## Open Blockers
 
-- `[MISSING: owner-approved synthetic account/token for authenticated Auth wallet CRUD/default/delete smoke]`
+- `[MISSING: owner-approved synthetic account/token and non-secret approval id to execute docs/orchestrator/2026-07-03-auth-wallet-authenticated-smoke-approval.md with npm run check:customer-data-wallet-authenticated -- --execute]`
 - `[MISSING: owner-approved synthetic account/token for FlipFlop authenticated checkout/profile runtime smoke]`
 - `[MISSING: Auth-backed Rent-a-box customer session adapter/local profile binding decision, admin role mapping, consent/profile migration mapping, and migration/backfill decisions before product-code migration]`
 - `[MISSING: ChytraKoupe final Auth client-id decision and authenticated Auth subject linkage decision if central Orders must persist customer.authSubject before production runtime claim]`

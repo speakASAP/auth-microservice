@@ -67,8 +67,11 @@ Completed approvals:
 
 Still required:
 
-- Approval for any authenticated synthetic smoke that creates, updates,
-  defaults, or deletes wallet rows.
+- Approval for authenticated synthetic smoke that creates, updates, defaults,
+  and deletes wallet rows through
+  `docs/orchestrator/2026-07-03-auth-wallet-authenticated-smoke-approval.md`.
+- Owner-approved synthetic Auth account/token and non-secret approval id for
+  `npm run check:customer-data-wallet-authenticated -- --execute`.
 
 ## Source Preflight
 

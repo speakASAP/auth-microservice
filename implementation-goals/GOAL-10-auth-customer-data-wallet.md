@@ -71,6 +71,7 @@ Auth customer data wallet:
 - [x] 10.40 Rent-a-box Auth wallet live-evidence refresh source-prepared in commit `7673f5a`; Cliplot refresh blocked by dirty worktree.
 - [x] 10.41 Cliplot Auth wallet live-evidence refresh source-prepared in commit `ec1f77b`.
 - [x] 10.42 Auth current Source Preflight live refresh completed from HEAD `548df583bff50057c79c4c6705e6a379f4d1b63b`.
+- [x] 10.43 Auth authenticated wallet CRUD/default/delete smoke harness and approval packet source-prepared.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -157,6 +158,7 @@ that repo's status/validation report.
 
 ## Blockers
 
+- `[MISSING: owner-approved synthetic account/token and non-secret approval id for live Auth wallet authenticated CRUD/default/delete smoke execution]`
 - `[MISSING: owner-approved synthetic account for live cross-repo checkout smoke]`
 - `[MISSING: post-deploy consumer runtime smoke confirming Auth invoice profile selection reaches immutable order billing snapshots]`
 - `[MISSING: authenticated synthetic FlipFlop checkout/profile runtime smoke, including manual-edit-before-wallet-response, explicit selector override, explicit checkout wallet save-back, and profile invoice CRUD/default selection]`

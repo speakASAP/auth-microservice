@@ -1,5 +1,52 @@
 # Auth Execution Plan
 
+## Goal 10.43 Auth Authenticated Wallet Smoke Harness Source Prep
+
+Selected goal and chunk: Goal 10.43 - source-prepare approval-gated
+authenticated Auth wallet CRUD/default/delete smoke harness.
+
+Pre-coding gate decision: pass for source-only harness and documentation. The
+owner has not supplied a synthetic account/token, so live authenticated smoke
+execution remains blocked.
+
+Intent chain:
+
+- Vision: Auth is the Statex ecosystem source of truth for reusable registered
+  customer profile, delivery address, and invoice profile data.
+- Goal Impact: the rollout gains a repeatable proof path for authenticated
+  wallet persistence before dependent checkout smokes rely on it.
+- System: Auth wallet API, guarded smoke runner, approval packet, and Goal 10
+  orchestration evidence.
+- Feature: synthetic authenticated delivery/invoice wallet CRUD/default/delete
+  smoke with cleanup and redacted output.
+- Task: add source-only harness and approval packet; do not run authenticated
+  endpoints.
+- Execution Plan: inspect controller/DTO contract, add default-safe harness,
+  document exact approval phrase and command shape, validate source-only mode.
+- Coding Prompt: keep output sanitized, require explicit env gates, use only
+  synthetic payloads, and do not inspect DB rows/secrets/tokens.
+- Code: `scripts/check-customer-data-wallet-authenticated-smoke.js`, package
+  script, and Goal 10 docs.
+- Validation: syntax check, default no-live run, existing wallet/runtime
+  checks, auth contract tests, build, lint, diff-check, and added-line secret
+  scan.
+
+Allowed files:
+
+- `package.json`
+- `scripts/check-customer-data-wallet-authenticated-smoke.js`
+- `docs/orchestrator/2026-07-03-auth-wallet-authenticated-smoke-approval.md`
+- Goal 10 status/contract/runbook docs
+
+Forbidden work:
+
+- No authenticated endpoint call.
+- No live wallet mutation.
+- No DB query/write.
+- No deploy or Kubernetes mutation.
+- No secret/token/password/JWT/cookie inspection or output.
+- No consumer repo source change in this chunk.
+
 YAML metadata:
 
 - id: AUTH-EXECUTION-PLAN
