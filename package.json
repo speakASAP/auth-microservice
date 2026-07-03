@@ -21,7 +21,8 @@
     "check:customer-data-wallet-runtime-gate-packet": "node scripts/check-customer-data-wallet-runtime-gate-packet.js",
     "check:ecosystem-auth-rollout-docs": "bash scripts/check-ecosystem-hosted-auth-rollout-docs.sh",
     "check:aos-auth-readiness": "bash scripts/check-aos-auth-modernization-readiness.sh",
-    "check:customer-data-wallet-completion-gap": "node scripts/check-customer-data-wallet-completion-gap.js"
+    "check:customer-data-wallet-completion-gap": "node scripts/check-customer-data-wallet-completion-gap.js",
+    "check:customer-data-wallet-hosted-profile-static": "node scripts/check-customer-data-wallet-hosted-profile-static.js"
   },
   "jest": {
     "moduleFileExtensions": ["js", "json", "ts"],

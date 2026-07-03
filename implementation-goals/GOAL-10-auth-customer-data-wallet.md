@@ -109,6 +109,7 @@ Auth customer data wallet:
 - [x] 10.93 Completion gap audit recorded; Auth source/test evidence is proven, while Cliplot live commerce and Rent-a-box route/onboarding remain owner-gated before full completion.
 - [x] 10.95 Approved-lane handoff packet prepared; inactive worker prompts for Cliplot live commerce and Rent-a-box route/onboarding are ready for future owner-approved execution.
 - [x] 10.96 Lane readiness index prepared; machine-readable blocked-lane state preserves required owner inputs, forbidden actions, validation commands, and completion evidence for Cliplot and Rent-a-box.
+- [x] 10.97 Hosted profile static live smoke prepared and run; GET-only live evidence verifies deployed `/profile` and `/js/profile.js` wallet-management wiring without credentials, mutations, response-body logging, DB reads, or customer-data output.
 - [x] 10.65 Auth authenticated wallet CRUD/default/delete smoke completed using Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token with redacted output and cleanup verification.
 - [x] 10.66 FlipFlop guarded gateway wallet smoke completed using Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token with redacted output and cleanup verification.
 - [x] 10.67 FlipFlop authenticated browser/session selector smoke completed in commit `75f03eb` with delayed checkout-data, manual-edit guard, explicit selector, no checkout submit, and cleanup verification.

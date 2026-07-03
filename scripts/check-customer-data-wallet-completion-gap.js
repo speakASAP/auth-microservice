@@ -7,6 +7,7 @@ const auditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-completio
 const ownerPacketPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md');
 const handoffPacketPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md');
 const laneReadinessIndexPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-lane-readiness-index.json');
+const hostedProfileStaticReportPath = path.join(root, 'reports/validation/goal10-hosted-profile-static-smoke.json');
 const goalPath = path.join(root, 'implementation-goals/GOAL-10-auth-customer-data-wallet.md');
 const statePath = path.join(root, 'docs/IMPLEMENTATION_STATE.md');
 const statusPath = path.join(root, 'docs/orchestrator/STATUS.md');
@@ -29,6 +30,7 @@ function main() {
   const ownerPacket = readText(ownerPacketPath);
   const handoffPacket = readText(handoffPacketPath);
   const laneReadinessIndex = JSON.parse(readText(laneReadinessIndexPath));
+  const hostedProfileStaticReport = JSON.parse(readText(hostedProfileStaticReportPath));
   const goal = readText(goalPath);
   const state = readText(statePath);
   const status = readText(statusPath);
@@ -114,6 +116,29 @@ function main() {
     },
   ];
 
+  const hostedProfileStaticReportChecks = [
+    {
+      marker: 'hosted profile static report passed',
+      present: hostedProfileStaticReport.ok === true
+        && hostedProfileStaticReport.status === 'pass_goal10_hosted_profile_static_live_smoke',
+    },
+    {
+      marker: 'hosted profile static report is GET-only and non-mutating',
+      present: hostedProfileStaticReport.liveStaticGetOnly === true
+        && hostedProfileStaticReport.mutatesAuthWallet === false
+        && hostedProfileStaticReport.sendsAuthorizationHeader === false
+        && hostedProfileStaticReport.sendsCookies === false
+        && hostedProfileStaticReport.sendsRequestBody === false
+        && hostedProfileStaticReport.printsResponseBody === false
+        && hostedProfileStaticReport.readsDatabase === false,
+    },
+    {
+      marker: 'hosted profile static report saw live profile assets',
+      present: hostedProfileStaticReport.probes?.profile?.statusCode === 200
+        && hostedProfileStaticReport.probes?.profileJs?.statusCode === 200,
+    },
+  ];
+
   const coordinatorMarkers = [
     ...includesAll(goal, [
       '10.93 Completion gap audit recorded',
@@ -129,12 +154,15 @@ function main() {
       'docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md',
       'Goal 10.96 lane readiness index prepared',
       'docs/orchestrator/2026-07-03-goal10-lane-readiness-index.json',
+      'Goal 10.97 hosted profile static live smoke prepared',
+      'reports/validation/goal10-hosted-profile-static-smoke.json',
     ]),
     ...includesAll(status, [
       'Goal 10.93 Completion Gap Audit',
       'Cliplot live commerce and Rent-a-box route/onboarding remain incomplete owner-gated lanes',
       'Goal 10.95 Approved Lane Handoff Packet',
       'Goal 10.96 Lane Readiness Index',
+      'Goal 10.97 Hosted Profile Static Live Smoke',
     ]),
   ];
 
@@ -145,6 +173,7 @@ function main() {
     ...missing(ownerPacketMarkers),
     ...missing(handoffPacketMarkers),
     ...missing(laneReadinessIndexChecks),
+    ...missing(hostedProfileStaticReportChecks),
     ...missing(coordinatorMarkers),
     ...(packageScript === 'node scripts/check-customer-data-wallet-completion-gap.js'
       ? []
@@ -165,6 +194,7 @@ function main() {
     ownerPacketLinked: missing(ownerPacketMarkers).length === 0,
     handoffPacketLinked: missing(handoffPacketMarkers).length === 0,
     laneReadinessIndexLinked: missing(laneReadinessIndexChecks).length === 0,
+    hostedProfileStaticLiveSmoke: missing(hostedProfileStaticReportChecks).length === 0,
     coordinatorLinked: missing(coordinatorMarkers).length === 0,
     missing: missingMarkers,
     allowedNextAction: 'Goal 10 remains active; after owner approval use docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md to start the bounded lane',

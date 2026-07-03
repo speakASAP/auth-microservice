@@ -1,3 +1,26 @@
+## 2026-07-03 - Goal 10.97 Hosted Profile Static Live Smoke
+
+Current focus:
+
+- Strengthen the weak live hosted-profile evidence from the completion audit without authenticating, mutating wallet data, or opening consumer gates.
+
+Evidence:
+
+- Added `scripts/check-customer-data-wallet-hosted-profile-static.js`.
+- Added package script `check:customer-data-wallet-hosted-profile-static`.
+- Added sanitized report path `reports/validation/goal10-hosted-profile-static-smoke.json`.
+- The smoke verifies deployed `/profile` and `/js/profile.js` expose Auth-owned canonical profile, delivery address, invoice profile, bearer API wiring, token-fragment cleanup, and no `console.log`/`localStorage`/email-only login fallback.
+
+Boundary:
+
+- GET-only public static asset check.
+- No Authorization header, cookies, request body, response-body logging, DB read/write, Auth wallet mutation, consumer repo edit, deploy, live checkout/order/payment/Warehouse/notification mutation, route migration, secret/token inspection, or customer-data output.
+
+Next unfinished chunks:
+
+- Owner answer to Cliplot bounded live commerce approval packet.
+- Owner answer to Rent-a-box route/onboarding approval packet.
+
 ## 2026-07-03 - Goal 10.96 Lane Readiness Index
 
 Current focus:

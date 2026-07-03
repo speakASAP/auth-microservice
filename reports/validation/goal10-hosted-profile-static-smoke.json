@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "status": "pass_goal10_hosted_profile_static_live_smoke",
+  "baseUrl": "https://auth.alfares.cz",
+  "sourceOnly": false,
+  "liveStaticGetOnly": true,
+  "mutatesAuthWallet": false,
+  "sendsAuthorizationHeader": false,
+  "sendsCookies": false,
+  "sendsRequestBody": false,
+  "printsResponseBody": false,
+  "readsDatabase": false,
+  "probes": {
+    "profile": {
+      "path": "/profile",
+      "statusCode": 200
+    },
+    "profileJs": {
+      "path": "/js/profile.js",
+      "statusCode": 200
+    }
+  },
+  "checks": {
+    "profileMarkers": {
+      "id=\"canonical-profile-form\"": true,
+      "id=\"delivery-addresses-section\"": true,
+      "id=\"delivery-address-form\"": true,
+      "id=\"invoice-profiles-section\"": true,
+      "id=\"invoice-profile-form\"": true,
+      "name=\"companyId\"": true,
+      "name=\"taxId\"": true,
+      "name=\"vatId\"": true,
+      "<script src=\"/js/profile.js\"></script>": true
+    },
+    "scriptMarkers": {
+      "fetchJson('/auth/profile')": true,
+      "fetchJson('/auth/profile/checkout-data')": true,
+      "'/auth/profile/delivery-addresses'": true,
+      "'/auth/profile/invoice-profiles'": true,
+      "Authorization: 'Bearer ' + getToken()": true,
+      "method: 'PATCH'": true,
+      "method: 'POST'": true,
+      "method: 'DELETE'": true,
+      "history.replaceState(null, '', window.location.pathname + window.location.search)": true,
+      "params.get('access_token') || params.get('accessToken')": true,
+      "params.get('refresh_token') || params.get('refreshToken')": true,
+      "body: JSON.stringify({ identifier, password })": true
+    },
+    "negativeMarkers": {
+      "profile js does not use email-only login body": true,
+      "profile js does not call console.log": true,
+      "profile js does not use localStorage": true
+    }
+  },
+  "missing": []
+}
