@@ -1,3 +1,54 @@
+## 2026-07-03 - Goal 10.61 Consumer Runtime-Gate Audit
+
+Current focus:
+
+- Confirm whether any FlipFlop, ChytraKoupe, or Rent-a-box source-only work
+  remains before approved synthetic/runtime or live DB preflight inputs.
+
+Evidence:
+
+- Read-only subagent audit found FlipFlop clean at
+  `2893573 feat: add guarded auth wallet checkout smoke`. Profile UI verifier,
+  checkout selector verifier, and guarded default smoke already pass; the
+  default smoke still returns `approval_required_no_live_mutation`.
+- Read-only subagent audit found ChytraKoupe clean at
+  `812c405 fix: harden auth callback handoff`. Selector verifier and script
+  syntax pass; selector source, response-shape narrowing, client id, order
+  snapshot boundary, and fragment-only callback hardening are prepared.
+- Read-only subagent audit found Rent-a-box clean at
+  `d237949 docs: refresh auth wallet live evidence`. Hosted Auth scaffold,
+  Auth validate contract, adapter mapping, nullable Auth subject schema prep,
+  and current Auth live evidence are already recorded.
+
+Validation:
+
+- ChytraKoupe: `node scripts/verify-auth-wallet-checkout-selectors.mjs` passed.
+- ChytraKoupe: `node --check scripts/verify-auth-wallet-checkout-selectors.mjs`
+  passed.
+- FlipFlop: profile UI verifier passed.
+- FlipFlop: checkout selector verifier passed.
+- FlipFlop: default guarded smoke returned `approval_required_no_live_mutation`
+  without live request, auth header, cookies, request body, response body
+  printing, DB read, or checkout submit.
+- Rent-a-box: source verifier evidence remains `pass_dependency_gated` from
+  commit `d237949`.
+
+Boundary:
+
+- No code edits, deploys, live Auth calls, authenticated endpoint calls, DB
+  reads/writes, Kubernetes/Vault mutations, secret/token/cookie inspection,
+  production customer/order reads, checkout/order/payment/Warehouse mutations,
+  or notification sends were performed during the audits.
+
+Next unfinished chunk:
+
+- FlipFlop requires owner-approved synthetic Auth token, non-secret approval
+  id, and authenticated browser/session smoke approval.
+- ChytraKoupe requires owner-approved synthetic Auth account/token, synthetic
+  checkout test data, and non-secret approval id.
+- Rent-a-box requires owner-approved metadata-only production row-count and
+  migration-complexity preflight plus live DB migration/backfill scope.
+
 ## 2026-07-03 - Goal 10.60 Rent-a-box Current Auth Wallet Live Evidence Refresh
 
 Current focus:

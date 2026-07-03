@@ -89,6 +89,7 @@ Auth customer data wallet:
 - [x] 10.58 Cliplot source-only Auth wallet browser-session handoff verifier prepared in commit `94f97d7`.
 - [x] 10.59 Rent-a-box nullable Auth subject binding schema prep source-prepared in commit `204568c`.
 - [x] 10.60 Rent-a-box current Auth wallet live evidence refreshed in commit `d237949`.
+- [x] 10.61 Consumer runtime-gate audit confirmed no remaining material source-only lanes before approved synthetic/runtime inputs.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -138,11 +139,11 @@ marketplace operations.
 | A0 Planning                        | complete           | Auth coordinator         | Auth docs only                           | None                      | 1           |
 | A1 Auth backend                    | live-deployed      | Auth backend worker      | Auth source/docs/tests                   | synthetic CRUD smoke optional-gated | 2           |
 | A2 Auth profile UI                 | live-deployed      | Auth frontend worker     | hosted Auth/profile UI                   | authenticated profile smoke gated | 3           |
-| F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | Auth deployed; authenticated runtime smoke gated | 4           |
-| F2 FlipFlop checkout/profile UX    | non-mutating-runtime-smoke-passed; authenticated smoke gated | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deployed; synthetic checkout/profile smoke gated | 5           |
+| F1 FlipFlop backend bridge         | source-prepared; synthetic-runtime-gated | FlipFlop backend worker  | shared Auth client, user-service         | owner-approved synthetic Auth token, non-secret approval id, and authenticated runtime smoke | 4           |
+| F2 FlipFlop checkout/profile UX    | non-mutating-runtime-smoke-passed; synthetic-runtime-gated | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | owner-approved synthetic Auth token, non-secret approval id, and authenticated browser/session smoke | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
-| R1 Rent-a-box Auth migration plan  | current-live-evidence-refreshed; nullable-auth-subject-schema-prepared; migration/backfill-gated | Rent-a-box coordinator | `rent-a-box/apps/api/app/models/domain.py`, `rent-a-box/apps/api/alembic/versions/20260703_0003_customer_profile_auth_subject_id.py`, `rent-a-box/apps/api/tests/test_database_model.py`, `rent-a-box/docs/goals/GOAL-12-auth-subject-binding-backfill-runbook.md`, `rent-a-box/docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | owner-approved live DB migration/backfill plan and production row-count complexity before product-code migration; remote Python deps missing for Alembic/Pytest runtime validation | 7 |
-| CK1 ChytraKoupe checkout selectors | callback-hardened; runtime-smoke-gated | ChytraKoupe worker | `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx`, `chytrakoupe/app/auth/safe-next.ts`, `chytrakoupe/lib/auth/session.ts`, `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/lib/config/env.ts`, `chytrakoupe/k8s/configmap.yaml`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/docs/goal-driven/auth-wallet-guarded-smoke-approval.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | synthetic account/token/test data and non-secret approval id before runtime claim; future non-guest order subject provenance must derive only from validated Auth bearer `sub` | 8 |
+| R1 Rent-a-box Auth migration plan  | current-live-evidence-refreshed; nullable-auth-subject-schema-prepared; live-db-preflight-gated | Rent-a-box coordinator | `rent-a-box/apps/api/app/models/domain.py`, `rent-a-box/apps/api/alembic/versions/20260703_0003_customer_profile_auth_subject_id.py`, `rent-a-box/apps/api/tests/test_database_model.py`, `rent-a-box/docs/goals/GOAL-12-auth-subject-binding-backfill-runbook.md`, `rent-a-box/docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | owner-approved live DB migration/backfill plan and production row-count complexity before product-code migration; remote Python deps missing for Alembic/Pytest runtime validation | 7 |
+| CK1 ChytraKoupe checkout selectors | callback-hardened; synthetic-runtime-gated | ChytraKoupe worker | `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx`, `chytrakoupe/app/auth/safe-next.ts`, `chytrakoupe/lib/auth/session.ts`, `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/lib/config/env.ts`, `chytrakoupe/k8s/configmap.yaml`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/docs/goal-driven/auth-wallet-guarded-smoke-approval.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | synthetic account/token/test data and non-secret approval id before runtime claim; future non-guest order subject provenance must derive only from validated Auth bearer `sub` | 8 |
 | C1 Cliplot plan                    | source-session-policy-prepared; runtime-gated | Cliplot coordinator | `cliplot/docs/auth-wallet-checkout-contract.md`, `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | runtime browser-session implementation, approved synthetic wallet-read evidence, runtime selector/no-PII evidence, runtime field mapping implementation, and runtime guest fallback synthetic evidence | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
@@ -186,6 +187,39 @@ that repo's status/validation report.
 - `[MISSING: Cliplot runtime browser-session implementation, runtime selector behavior evidence, runtime no-PII exposure evidence, runtime field mapping implementation, and runtime guest fallback behavior before wallet selector code changes]`
 - `[MISSING: Cliplot approved synthetic runtime evidence for browser-session wallet reads, runtime selector behavior, runtime no-PII exposure, runtime field mapping, and runtime guest fallback]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-03 Goal 10.61 Consumer Runtime-Gate Audit
+
+- 2026-07-03: Read-only subagent audits confirmed FlipFlop, ChytraKoupe, and
+  Rent-a-box have no remaining material source-only Goal 10 lane before
+  approved synthetic/runtime or live DB preflight inputs.
+- FlipFlop is clean at `2893573 feat: add guarded auth wallet checkout smoke`.
+  Source-only profile UI verifier, checkout selector verifier, and guarded
+  default smoke already pass; the default smoke remains
+  `approval_required_no_live_mutation` and sends no auth header, cookies,
+  request body, response body print, DB read, or checkout submit.
+- ChytraKoupe is clean at
+  `812c405 fix: harden auth callback handoff`. The selector verifier and
+  script syntax pass; selector source, response-shape narrowing, client id,
+  order snapshot boundary, and fragment-only callback hardening are already
+  prepared.
+- Rent-a-box is clean at `d237949 docs: refresh auth wallet live evidence`.
+  Hosted Auth scaffold, Auth validate contract, Rent adapter mapping,
+  nullable `customer_profiles.auth_subject_id` schema prep, and current Auth
+  live evidence are already recorded; product migration is still gated.
+- No code edits, deploys, live Auth calls, authenticated endpoint calls, DB
+  reads/writes, Kubernetes/Vault mutations, secret/token/cookie inspection,
+  production customer/order reads, checkout/order/payment/Warehouse mutations,
+  or notification sends were performed during the audits.
+
+Next required inputs:
+
+- FlipFlop: owner-approved synthetic Auth token, non-secret approval id, and
+  authenticated browser/session smoke approval.
+- ChytraKoupe: owner-approved synthetic Auth account/token, synthetic checkout
+  test data, and non-secret approval id.
+- Rent-a-box: owner-approved metadata-only production row-count/migration
+  complexity preflight and live DB migration/backfill scope.
 
 ## 2026-07-03 Goal 10.56 Cliplot Source-Only Selector Behavior Verifier
 
