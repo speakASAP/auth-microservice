@@ -12,6 +12,7 @@ const remainingAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-
 const postFlipFlopAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-post-flipflop-owner-gated-audit.md');
 const ownerDecisionPacketPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md');
 const completionGapAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-completion-gap-audit.md');
+const approvedLaneEvidencePath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-approved-lane-execution-evidence.md');
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -38,6 +39,7 @@ function main() {
   const postFlipFlopAudit = readText(postFlipFlopAuditPath);
   const ownerDecisionPacket = readText(ownerDecisionPacketPath);
   const completionGapAudit = readText(completionGapAuditPath);
+  const approvedLaneEvidence = readText(approvedLaneEvidencePath);
 
   const gateMarkers = [
     '## Gate 1 - Auth Authenticated Wallet Smoke',
@@ -158,6 +160,16 @@ function main() {
       'apps/api/app/api/admin/admin.py',
       'Rent-a-box has source implementation remaining, but it is dependency-gated on route/onboarding owner approval',
     ]),
+    approvedLaneEvidenceMarkers: includesAll(approvedLaneEvidence, [
+      'Cliplot lane complete',
+      'Rent-a-box source/config migration complete',
+      'Rent-a-box runtime activation blocked by Kubernetes node runtime',
+      'd8e875c ops: add bounded live checkout operator',
+      '4ff0b5c feat: migrate rent auth routes to hosted auth',
+      '6191ba3 chore: enable rent hosted auth rollout flags',
+      'b3a607c fix: align rent database url deployment secret',
+      'Goal 10 is still not complete because Rent-a-box runtime activation must be rerun',
+    ]),
     completionGapAuditMarkers: includesAll(completionGapAudit, [
       'Goal 10 Completion Gap Audit',
       'Status: source-only completion audit; full goal not complete',
@@ -186,6 +198,7 @@ function main() {
     ...missing(checks.remainingAuditMarkers),
     ...missing(checks.postFlipFlopAuditMarkers),
     ...missing(checks.ownerDecisionPacketMarkers),
+    ...missing(checks.approvedLaneEvidenceMarkers),
     ...missing(checks.completionGapAuditMarkers),
     ...(packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js'
       ? []
@@ -218,12 +231,13 @@ function main() {
       remainingGateReadinessAudit: missing(checks.remainingAuditMarkers).length === 0,
       postFlipFlopOwnerGatedAudit: missing(checks.postFlipFlopAuditMarkers).length === 0,
       ownerDecisionPacket: missing(checks.ownerDecisionPacketMarkers).length === 0,
+      approvedLaneEvidence: missing(checks.approvedLaneEvidenceMarkers).length === 0,
       completionGapAudit: missing(checks.completionGapAuditMarkers).length === 0,
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
       completionGapScript: completionGapScript === 'node scripts/check-customer-data-wallet-completion-gap.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'Goal 10 remains active; await owner answer to the Cliplot live commerce packet or Rent-a-box route/onboarding packet before opening the next gated lane',
+    allowedNextAction: 'Goal 10 remains active; repair Alfares Kubernetes node/runtime, then rerun Rent-a-box deploy and post-deploy smoke for the Auth-migrated pods',
   };
 
   console.log(JSON.stringify(result, null, 2));

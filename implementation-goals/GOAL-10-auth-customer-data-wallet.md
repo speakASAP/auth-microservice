@@ -1610,3 +1610,10 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
 - Default runtime preflight remains fail-closed: `mutation=false`, `providerCall=false`, deployment `1/1`, `ORDERS_SERVICE_URL=true`, and `ORDERS_SERVICE_TOKEN=true`.
 - No checkout submit, order create, Warehouse/payment/notification mutation, DB/customer row read, token output, customer-data output, deploy, Kubernetes mutation, or secret mutation occurred.
 - Remaining gate: owner-approved synthetic central Orders create/read/cancel smoke with non-secret approval id plus fixture Catalog product and Warehouse ids to prove persisted runtime `customer.authSubject` and billing snapshot evidence.
+
+## 2026-07-03 Goal 10.101 Approved Lane Execution Evidence
+
+- Cliplot bounded live commerce lane is complete. Repo-owned operator commit `d8e875c` executed the approved live window, produced sanitized HTTP `201` evidence, restored all live flags to `false`, and validated default dry-run fail-closed behavior.
+- Rent-a-box route/onboarding source/config lane is partially complete. Commits `4ff0b5c`, `6191ba3`, and `b3a607c` migrate approved routes to hosted Auth dependencies, enable the required Auth flags in source/config, and align the Kubernetes `DATABASE_URL` manifest with the existing live secretKeyRef.
+- Rent-a-box runtime activation remains blocked by Alfares Kubernetes node/container runtime sandbox failures. The deploy built/pushed images and applied ConfigMap, but new pods did not become ready; rollback to known ready ReplicaSets succeeded.
+- Goal 10 is not complete until Rent-a-box Auth-migrated runtime deployment and post-deploy smoke pass after node runtime repair.

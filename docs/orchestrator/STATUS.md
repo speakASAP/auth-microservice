@@ -5118,3 +5118,26 @@ Next unfinished chunks:
 
 - Cliplot bounded live checkout submit/live commerce window remains owner-gated.
 - Rent-a-box route/onboarding migration and later backfill/product-code migration remain owner-gated.
+
+## 2026-07-03 - Goal 10.101 Approved Lane Execution Evidence
+
+Current focus:
+
+- Recorded actual execution evidence after owner approval unblocked the Cliplot and Rent-a-box lanes.
+
+Execution evidence:
+
+- Cliplot completed the bounded live commerce proof via repo-owned operator commit `d8e875c`; current observed head was `fafbe70`.
+- Cliplot sanitized live result returned HTTP `201`, created the expected bounded commerce side effects, completed cleanup, cancelled the synthetic order, and restored `ENABLE_LIVE_ORDER_SUBMIT`, `ENABLE_LIVE_PAYMENT_CREATE`, `ENABLE_LIVE_NOTIFICATIONS`, and `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE` to `false`.
+- Rent-a-box pushed source route/onboarding migration commit `4ff0b5c`, hosted Auth runtime flag/build commit `6191ba3`, and Kubernetes `DATABASE_URL` manifest repair commit `b3a607c`.
+- Rent-a-box route/onboarding gate, Auth wallet readiness, intent preflight, `git diff --check`, Python compile, and web lint passed.
+- Rent deploy built and pushed images and applied ConfigMap, but runtime activation did not complete because the Alfares Kubernetes node hit a pod sandbox/container runtime failure also visible in unrelated workloads.
+- Rent deployments were rolled back to known ready ReplicaSets. `https://rent-a-box.alfares.cz/` returned HTTP `200` from old-pod availability, not from proven Auth-migrated runtime.
+
+Boundary:
+
+- No Auth DB mutation, secret/token output, customer-data output, raw provider payload output, Rent live DB backfill, unique/non-null enforcement, local credential/profile column removal, or `customer_profiles.id` rewrite occurred.
+
+Next unfinished chunk:
+
+- Repair or wait for Alfares Kubernetes node/container runtime, then rerun Rent deploy and post-deploy smoke to prove the Auth-migrated pods are actually serving.

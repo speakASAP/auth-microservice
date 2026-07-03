@@ -9,6 +9,7 @@ const handoffPacketPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-a
 const laneReadinessIndexPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-lane-readiness-index.json');
 const hostedProfileStaticReportPath = path.join(root, 'reports/validation/goal10-hosted-profile-static-smoke.json');
 const parallelLaneRefreshPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-parallel-lane-refresh.md');
+const approvedLaneEvidencePath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-approved-lane-execution-evidence.md');
 const goalPath = path.join(root, 'implementation-goals/GOAL-10-auth-customer-data-wallet.md');
 const statePath = path.join(root, 'docs/IMPLEMENTATION_STATE.md');
 const statusPath = path.join(root, 'docs/orchestrator/STATUS.md');
@@ -33,6 +34,7 @@ function main() {
   const laneReadinessIndex = JSON.parse(readText(laneReadinessIndexPath));
   const hostedProfileStaticReport = JSON.parse(readText(hostedProfileStaticReportPath));
   const parallelLaneRefresh = readText(parallelLaneRefreshPath);
+  const approvedLaneEvidence = readText(approvedLaneEvidencePath);
   const goal = readText(goalPath);
   const state = readText(statePath);
   const status = readText(statusPath);
@@ -148,6 +150,18 @@ function main() {
     'no safe source-only consumer lane to start',
   ]);
 
+  const approvedLaneEvidenceMarkers = includesAll(approvedLaneEvidence, [
+    'Status: Cliplot lane complete; Rent-a-box source/config migration complete; Rent-a-box runtime activation blocked by Kubernetes node runtime',
+    'Worker commit: `d8e875c ops: add bounded live checkout operator`',
+    'Restoration evidence: `ENABLE_LIVE_ORDER_SUBMIT=false`',
+    'Route/onboarding migration commit: `4ff0b5c feat: migrate rent auth routes to hosted auth`',
+    'Runtime flag/build commit: `6191ba3 chore: enable rent hosted auth rollout flags`',
+    'Kubernetes manifest repair commit: `b3a607c fix: align rent database url deployment secret`',
+    'Rent deployments were rolled back to the known ready ReplicaSets',
+    'Goal 10 owner-input blockers for Cliplot and Rent-a-box are resolved.',
+    'Goal 10 is still not complete because Rent-a-box runtime activation must be rerun',
+  ]);
+
   const hostedProfileStaticReportChecks = [
     {
       marker: 'hosted profile static report passed',
@@ -210,6 +224,7 @@ function main() {
     ...missing(handoffPacketMarkers),
     ...missing(laneReadinessIndexChecks),
     ...missing(parallelLaneRefreshMarkers),
+    ...missing(approvedLaneEvidenceMarkers),
     ...missing(hostedProfileStaticReportChecks),
     ...missing(coordinatorMarkers),
     ...(packageScript === 'node scripts/check-customer-data-wallet-completion-gap.js'
@@ -233,10 +248,11 @@ function main() {
     handoffPacketLinked: missing(handoffPacketMarkers).length === 0,
     laneReadinessIndexLinked: missing(laneReadinessIndexChecks).length === 0,
     parallelLaneRefreshLinked: missing(parallelLaneRefreshMarkers).length === 0,
+    approvedLaneEvidenceLinked: missing(approvedLaneEvidenceMarkers).length === 0,
     hostedProfileStaticLiveSmoke: missing(hostedProfileStaticReportChecks).length === 0,
     coordinatorLinked: missing(coordinatorMarkers).length === 0,
     missing: missingMarkers,
-    allowedNextAction: 'Goal 10 remains active; after owner approval use docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md to start the bounded lane',
+    allowedNextAction: 'Goal 10 remains active; repair Alfares Kubernetes node/runtime, then rerun Rent-a-box deploy and post-deploy smoke for the Auth-migrated pods',
   };
 
   console.log(JSON.stringify(result, null, 2));
