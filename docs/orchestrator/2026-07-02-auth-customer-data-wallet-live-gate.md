@@ -1,6 +1,6 @@
 # Auth Customer Data Wallet Live Gate
 
-Status: Auth SQL/deploy/401 gate completed; synthetic authenticated smoke remains approval-gated
+Status: Auth SQL/deploy/401 gate completed and current-head live refresh verified; synthetic authenticated smoke remains approval-gated
 Created: 2026-07-02
 Scope: `auth-microservice` Goal 10 A1 live SQL apply and deployment.
 
@@ -27,6 +27,17 @@ smoke, and non-mutating FlipFlop post-deploy runtime smoke.
 
 ## Current Gate State
 
+- Latest approved refresh completed from Source Preflight-captured HEAD
+  `712c0bc1558d429c812b55cce8118b1bf515eecf`.
+- Latest deployed Auth image tag is `712c0bc-20260702234019` for backend and
+  web.
+- Latest refresh confirmed schema metadata in the `auth` database, idempotent
+  SQL apply, Auth wallet 401 smoke, and non-mutating FlipFlop runtime smoke.
+- During the latest refresh a cluster-wide sandbox/node reset and bulk
+  namespace scale-down interrupted the deploy script. Recovery restored only
+  the minimum required runtime set to replicas 1, applied the deploy script's
+  non-secret Auth ConfigMap patch, and completed Auth/FlipFlop smoke without
+  reading secrets or customer rows.
 - Auth source for delivery addresses, invoice profiles, checkout aggregate,
   hosted profile wallet management, and runtime wallet route gate exists in the
   deployed Source Preflight HEAD

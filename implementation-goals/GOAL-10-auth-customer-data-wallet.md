@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors source-prepared; Rent-a-box hosted Auth callback scaffold source-prepared; Cliplot readiness lane remains gated; marketplace/channel audit complete; live SQL/deploy/unauthenticated 401 smoke completed; synthetic authenticated smoke and dependent runtime lanes remain approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors source-prepared; Rent-a-box hosted Auth callback scaffold source-prepared; Cliplot readiness lane remains gated; marketplace/channel audit complete; synthetic authenticated smoke and dependent runtime lanes remain approval-gated
 
 ## Intent
 
@@ -76,6 +76,7 @@ Auth customer data wallet:
 - [x] 10.30 Auth live refresh from Source Preflight-captured HEAD completed.
 - [x] 10.31 ChytraKoupe source-prepared checkout selectors and current consumer head refresh.
 - [x] 10.32 Rent-a-box source-backed hosted Auth callback scaffold and current consumer head refresh.
+- [x] 10.33 Auth current-head live refresh and non-mutating FlipFlop runtime smoke completed.
 
 ## Acceptance Criteria
 
@@ -155,6 +156,39 @@ that repo's status/validation report.
 - `[MISSING: ChytraKoupe final hosted Auth client_id decision and authenticated Auth subject linkage decision before production runtime claim]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval, authenticated browser/session contract, no-PII exposure review, and stable wallet response version identifier before code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-03 Goal 10.33 Auth Current-Head Live Refresh
+
+- 2026-07-03: Owner-approved Auth live refresh completed from Source
+  Preflight-captured HEAD `712c0bc1558d429c812b55cce8118b1bf515eecf`.
+- Source validation passed:
+  `npm run check:customer-data-wallet-preflight`,
+  `npm run check:customer-data-wallet-runtime -- --expect=deployed`, focused
+  Auth/User specs 2 suites/15 tests, `npm run test:auth-contract` 3 suites/27
+  tests, `npm run build`, `npm run lint`, and `git diff --check`.
+- Schema-only DB preflight and post-apply verification used metadata only and
+  confirmed the `auth` database has `public.users`, both wallet tables,
+  `gen_random_uuid`, required columns, and required indexes. The idempotent SQL
+  apply ran transactionally with expected existing-object notices.
+- Auth deploy built and pushed backend/web image tag
+  `712c0bc-20260702234019`. A cluster-wide sandbox/node reset and bulk
+  namespace scale-down interrupted the deploy script rollout; recovery restored
+  only the minimum required runtime set to replicas 1, applied the deploy
+  script's non-secret Auth ConfigMap patch, and completed Auth backend/web
+  rollouts to 1/1 on the captured image.
+- Auth wallet runtime smoke passed: `/health` HTTP 200 and the protected wallet
+  endpoints returned HTTP 401 unauthenticated with no auth headers, cookies,
+  request body, response body logging, or DB read.
+- FlipFlop non-mutating runtime smoke passed after restoring its minimum
+  product dependencies: public `/`, `/checkout`, `/profile/addresses`,
+  `/profile/invoice-profiles`, and `/api/products?limit=1` returned HTTP 200;
+  gateway-proxied Auth wallet endpoints returned HTTP 401; source verifiers
+  `npm run verify:auth-wallet-checkout-selectors` and
+  `npm run verify:auth-wallet-profile-ui` passed.
+- No secret/token/password/JWT/cookie value inspection, customer-row read, raw
+  production customer-data inspection, authenticated synthetic smoke, live
+  checkout/order/payment mutation, Warehouse reservation, notification send,
+  destructive DB rollback/drop, or full cluster scale-up was performed.
 
 ## 2026-07-02 Goal 10.27 Consumer Readiness Refresh After Auth 401 Gate
 

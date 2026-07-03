@@ -1,3 +1,71 @@
+## 2026-07-03 - Goal 10.33 Auth Current-Head Live Refresh And FlipFlop Runtime Smoke
+
+Current focus:
+
+- Re-run the owner-approved Auth schema-only live DB preflight, idempotent SQL
+  apply, Auth deploy from Source Preflight-captured HEAD, wallet endpoint 401
+  smoke, and post-deploy FlipFlop runtime smoke for the current Auth head.
+
+Evidence:
+
+- Source Preflight captured Auth HEAD
+  `712c0bc1558d429c812b55cce8118b1bf515eecf` on clean `main`, ahead of
+  `origin/main` by 2 docs commits.
+- Checksums: wallet SQL
+  `0a9b984ac0641d20b0a345c80b372fef43942364ecb2fe5d5a8ab9155ca0e081`,
+  runtime verifier
+  `3786afab774e58dd9800272507ca919b7cfdf8d80a16fb4f09ef1541e482ec26`,
+  deploy script
+  `6f182a01d428bb7631af0ca4c780a5e11691264cbcede43e60c8e4eb81d8078d`.
+- Source validation passed before live operations:
+  `npm run check:customer-data-wallet-preflight`,
+  `npm run check:customer-data-wallet-runtime -- --expect=deployed`, focused
+  Auth/User specs 2 suites/15 tests, `npm run test:auth-contract` 3 suites/27
+  tests, `npm run build`, `npm run lint`, and `git diff --check`.
+- Schema-only DB preflight used metadata only. The Postgres pod default DB was
+  not Auth, so the approved preflight was rerun against the `auth` database and
+  confirmed `public.users`, `user_delivery_addresses`,
+  `user_invoice_profiles`, `gen_random_uuid`, 21 delivery-address columns, 24
+  invoice-profile columns, 4 indexes per wallet table, and zero missing
+  required columns/indexes.
+- Approved SQL apply ran in one transaction and was idempotent with expected
+  existing-object notices. Post-apply metadata verification stayed clean.
+- Auth deploy built and pushed backend/web image tag
+  `712c0bc-20260702234019`.
+- The deploy script timed out during rollout while a cluster-wide
+  sandbox/node reset and bulk namespace scale-down occurred. Recovery kept the
+  Auth source HEAD unchanged, restored only the minimum required runtime set to
+  replicas 1 (`db-server-postgres`, `db-server-redis`, Auth backend/web,
+  Catalog, Warehouse, and FlipFlop frontend/API/product services), applied the
+  deploy script's non-secret Auth ConfigMap patch, and completed rollouts to
+  1/1.
+- Auth wallet runtime smoke passed: `/health` HTTP 200 and
+  `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+  `/auth/profile/invoice-profiles` each returned HTTP 401 unauthenticated with
+  no Authorization header, cookies, request body, response body logging, or DB
+  read.
+- FlipFlop non-mutating runtime smoke passed: `/`, `/checkout`,
+  `/profile/addresses`, `/profile/invoice-profiles`, and
+  `/api/products?limit=1` returned HTTP 200; gateway-proxied
+  `/api/auth/profile/checkout-data`, `/api/auth/profile/delivery-addresses`,
+  and `/api/auth/profile/invoice-profiles` returned HTTP 401.
+- FlipFlop source verifiers also passed:
+  `npm run verify:auth-wallet-checkout-selectors` and
+  `npm run verify:auth-wallet-profile-ui`.
+
+Boundary:
+
+- No secret/token/password/JWT/cookie value inspection, customer-row read, raw
+  production customer-data inspection, authenticated synthetic smoke, live
+  checkout/order/payment mutation, Warehouse reservation, notification send,
+  destructive DB rollback/drop, or full cluster scale-up was performed.
+
+Next unfinished chunk:
+
+- Owner-approved synthetic authenticated Auth wallet CRUD/default/delete and
+  FlipFlop checkout/profile smoke if required, or remaining Rent-a-box,
+  ChytraKoupe, and Cliplot product-code gates.
+
 ## 2026-07-03 - Goal 10.32 Rent-a-box Hosted Auth Callback Scaffold And Consumer Head Refresh
 
 Current focus:
