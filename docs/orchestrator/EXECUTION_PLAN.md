@@ -181,6 +181,57 @@ Validation plan:
 - stale stable-version blocker scan across docs and implementation goals
 - targeted dangerous literal-secret scan on changed source/docs
 
+## Current Execution Addendum - 2026-07-03 Cliplot Schema-Version Readiness Refresh
+
+Selected goal and chunk: Goal 10.35 - update Cliplot-owned source-only
+readiness docs/verifier to consume Auth checkout-data schema version
+`auth.customer-data-wallet.checkout-data.v1`.
+
+Pre-coding gate decision: pass. The work is documentation/verifier-only in the
+consumer lane, preserves Auth as the wallet source of truth, and keeps Cliplot
+runtime wallet integration blocked until selector/session/PII, exact
+response-shape/mapping, and guest fallback decisions are approved.
+
+Intent chain:
+
+- Vision: Auth is the single editable source of truth for registered-user
+  profile, delivery address book, and invoice profile data.
+- Goal impact: Cliplot no longer carries the stable-version unknown after Auth
+  Goal 10.34, while unsafe runtime selector work remains blocked.
+- System: Cliplot source-only readiness verifier and Auth Goal 10 coordinator
+  plans.
+- Feature: dependency-gated Cliplot checkout wallet readiness.
+- Task: replace the stale stable-version blocker with the Auth-defined schema
+  version and preserve the remaining gates.
+- Coding prompt: source-only verifier/docs; no live calls, runtime wallet
+  fetches, checkout mutation, DB, deploy, secrets, tokens, cookies, or
+  production customer/order data.
+
+Sensitive-data handling: source files and validation metadata only. No secrets,
+token values, decoded JWTs, cookies, raw production user rows, addresses,
+invoices, orders, response bodies, DB values, or live checkout data are read or
+recorded.
+
+Contract impact: Cliplot verifier now records
+`authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`.
+It does not enable runtime wallet calls or approve selector behavior.
+
+Parallel execution:
+
+- Cliplot read-only audit subagent: complete; identified exact stale blocker
+  references and validation commands.
+- Auth coordinator: integrated the three-file Cliplot source-only patch,
+  validated, committed Cliplot, and refreshed Auth coordinator docs.
+
+Validation plan:
+
+- Cliplot `npm run readiness:auth-wallet-checkout`
+- Cliplot `node --check scripts/auth-wallet-checkout-readiness.js`
+- Cliplot `npm run check`
+- Cliplot `git diff --check`
+- Cliplot stale stable-version blocker scan
+- Cliplot targeted dangerous literal-secret scan on changed files
+
 ## Current Execution Addendum - 2026-07-02 Auth Customer Data Wallet A1 Source Implementation
 
 Selected goal and chunk: Goal 10.1-10.5 - implement Auth storage model,

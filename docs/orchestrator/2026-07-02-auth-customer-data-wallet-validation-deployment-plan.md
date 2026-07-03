@@ -123,12 +123,13 @@ Consumers:
   billing/delivery snapshots, and no Auth wallet IDs or `customer.authSubject`
   in order payloads. Runtime claim remains blocked until the final Auth
   client-id and authenticated Auth subject linkage decisions are approved.
-- `cliplot`: current `main` is clean at `ea6cd93`; Auth wallet readiness still
+- `cliplot`: current `main` is ahead 1 at `fc7502d`; Auth wallet readiness still
   reports no runtime wallet integration. Checkout mutation and wallet selector
   integration remain approval-gated on selector behavior, browser/session, and
-  PII exposure. Auth wallet response fields and the stable checkout-data
-  response version `auth.customer-data-wallet.checkout-data.v1` are
-  source-backed.
+  PII exposure, exact response-shape/mapping, and guest fallback decisions.
+  Auth checkout-data response version
+  `auth.customer-data-wallet.checkout-data.v1` is now consumed by the
+  Cliplot-owned readiness verifier.
 - Marketplace/channel audit: `catalog-microservice`, `allegro`, `aukro`,
   `bazos`, `heureka`, and `shop-assistant` do not need repo-local wallet plans
   now. Marketplace buyer/contact/order data must remain immutable channel or
@@ -143,7 +144,7 @@ Consumers:
 | `orders-microservice` | Orders contract owner | Clean `main` at `2111389`; Auth subject aliases and immutable snapshots supported, including optional Auth invoice fields from `3c7d0c3` | `npm run verify:create-order-contract` passed; `npm run verify:invoices-read-boundary` passed; earlier build/full-test evidence remains recorded in Goal 10.18 | optional validate-create payload smoke and event privacy check after Auth deploy approval | optional future wallet provenance field names/idempotency semantics not approved |
 | `rent-a-box` | Rent-a-box migration owner | Clean `main` ahead 1 at `6ecd76e`; source-backed hosted Auth `/auth/start` and `/auth/callback` scaffold with `client_id=rent-a-box` and production callback URL; local login/register/JWT/backend/admin/profile flows unchanged | `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py scripts/ips_pre_coding_gate.py` passed; `python3 scripts/check_goal12_auth_wallet_readiness.py --root .` passed with `pass_dependency_gated`; `./scripts/intent_preflight.sh` passed; web lint, web build, and web Playwright tests passed; `git diff --check`, targeted literal-secret scan, and stale callback-blocker scan passed | Auth-backed customer session adapter/local profile binding; admin adapter; consent/profile migration mapping; no backfill without approval | customer session adapter/local profile binding decision, admin role mapping, consent/profile migration mapping, DB migration/backfill, row counts unknown |
 | `chytrakoupe` | ChytraKoupe checkout owner | `main` ahead 1 at `b280f75`; Auth wallet checkout-data client and delivery/invoice selector source prepared; order submit remains immutable snapshot-only and does not send Auth wallet IDs or `customer.authSubject` | `npm run verify:auth-wallet-checkout-selectors` passed; `node --check scripts/verify-auth-wallet-checkout-selectors.mjs` passed; `npm run build` passed; `npm run lint` passed; `git diff --check` and targeted dangerous literal-secret scan passed | runtime selector smoke; final client-id decision; optional Auth subject linkage; no live checkout submit without approval | final Auth client-id decision; authenticated Auth subject linkage if central Orders must persist `customer.authSubject` |
-| `cliplot` | Cliplot coordinator | Clean `main` at `ea6cd93`; Auth wallet readiness still reports no runtime wallet integration; response fields and stable checkout-data version are now Auth source-defined | `node scripts/auth-wallet-checkout-readiness.js` passed read-only; previous `npm run readiness:auth-wallet-checkout`, `npm run check`, and `git diff --check` evidence remains source-only | no live order/payment/Warehouse/notification mutation without approval | selector behavior approval, authenticated browser/session contract, no-PII logging/frontend exposure review |
+| `cliplot` | Cliplot coordinator | `main` ahead 1 at `fc7502d`; Auth wallet readiness still reports no runtime wallet integration; stable checkout-data version is now consumed by Cliplot verifier | `npm run readiness:auth-wallet-checkout`, `node --check scripts/auth-wallet-checkout-readiness.js`, `npm run check`, `git diff --check`, stale blocker scan, and targeted literal-secret scan passed source-only | no live order/payment/Warehouse/notification mutation without approval | selector behavior approval, authenticated browser/session contract, no-PII logging/frontend exposure review, exact response-shape/mapping, guest fallback behavior |
 | marketplace/channel repos | Auth coordinator | `catalog-microservice` `311030d`, `allegro` `6c64a30`, `aukro` `ba61422`, `bazos` `cdcd739`, `heureka` `976a1a8`, `shop-assistant` `4ed76b1` | read-only status/head and bounded source/doc audit completed | no wallet back-write; preserve channel evidence and Orders snapshots | possible later Allegro raw-payload retention review; Bazos/Aukro provider-specific unknowns |
 
 ## Merge And Deployment Order
@@ -167,9 +168,8 @@ Consumers:
    migration decisions are resolved; ChytraKoupe source selector lane is
    prepared but runtime claim remains gated on final client/Auth-subject
    decisions.
-9. Keep Cliplot read-only/guarded until selector/session/PII approvals exist
-   and Cliplot-owned docs/verifiers are refreshed to consume the Auth-defined
-   checkout-data schema version.
+9. Keep Cliplot read-only/guarded until selector/session/PII approvals, exact
+   response-shape/mapping, and guest fallback decisions exist.
 10. Keep marketplace/channel repositories out of Auth wallet back-write scope
     unless a future source change introduces a registered-user checkout wallet
     surface.

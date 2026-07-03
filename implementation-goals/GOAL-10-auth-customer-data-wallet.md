@@ -63,6 +63,7 @@ Auth customer data wallet:
 - [x] 10.17 Auth invoice profile field semantics source-defined.
 - [x] 10.18 Orders and FlipFlop consumer order snapshot support for optional Auth invoice fields source-prepared.
 - [x] 10.19 FlipFlop checkout explicit Auth wallet save-back source-prepared.
+- [x] 10.35 Cliplot Auth wallet schema-version readiness refresh source-prepared in commit `fc7502d`.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -117,7 +118,7 @@ marketplace operations.
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
 | R1 Rent-a-box Auth migration plan  | callback source-prepared; session/admin/migration-gated | Rent-a-box coordinator | `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | customer session adapter/local profile binding, admin role mapping, consent/profile migration mapping, migration approval | 7 |
 | CK1 ChytraKoupe checkout selectors | source-prepared; runtime-gated | ChytraKoupe worker | `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | final client-id decision and optional Auth subject linkage before runtime claim | 8 |
-| C1 Cliplot plan                    | source-facts-recorded; runtime-gated | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js` | selector/session/PII approvals; Cliplot docs/verifier refresh to consume Auth-defined checkout-data schema version | later |
+| C1 Cliplot plan                    | schema-version-refreshed; runtime-gated | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | selector/session/PII approvals, exact response-shape/mapping, and guest fallback decisions | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
 ## Validation
@@ -154,8 +155,33 @@ that repo's status/validation report.
 - `[MISSING: authenticated synthetic FlipFlop checkout/profile runtime smoke, including manual-edit-before-wallet-response, explicit selector override, explicit checkout wallet save-back, and profile invoice CRUD/default selection]`
 - `[MISSING: Auth-backed Rent-a-box customer session adapter/local profile binding decision, admin role mapping, consent/profile migration mapping, and migration/backfill decision before product-code migration]`
 - `[MISSING: ChytraKoupe final hosted Auth client_id decision and authenticated Auth subject linkage decision before production runtime claim]`
-- `[MISSING: Cliplot checkout wallet selector behavior approval, authenticated browser/session contract, and no-PII exposure review before wallet selector code changes]`
+- `[MISSING: Cliplot checkout wallet selector behavior approval, authenticated browser/session contract, no-PII exposure review, exact response-shape/mapping, and guest fallback behavior before wallet selector code changes]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-03 Goal 10.35 Cliplot Schema-Version Readiness Refresh
+
+- 2026-07-03: Cliplot commit `fc7502d docs: record auth wallet schema version`
+  updates the source-only readiness verifier, Goal 10 execution plan, and
+  validation report to consume Auth Goal 10.34
+  `auth.customer-data-wallet.checkout-data.v1`.
+- Cliplot validation passed: `npm run readiness:auth-wallet-checkout`,
+  `node --check scripts/auth-wallet-checkout-readiness.js`, `npm run check`,
+  `git diff --check`, stale stable-version blocker scan, and targeted
+  dangerous literal-secret scan on the three changed files.
+- The verifier now reports
+  `authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`
+  while preserving `runtimeWalletIntegrationPresent=false`, `mutation=false`,
+  `persistence=false`, and `providerCall=false`.
+- The stable response version blocker is resolved in Cliplot-owned docs and
+  verifier only. Cliplot runtime wallet integration remains blocked by selector
+  behavior approval, authenticated browser/session contract, no-PII review,
+  exact Auth wallet response fields, delivery address response shape, invoice
+  profile response shape, field mapping, and guest fallback behavior.
+- No Auth code, live SQL, deploy, Kubernetes mutation, DB query,
+  secret/token/password/JWT/cookie inspection, response-body logging,
+  production customer/order data inspection, live checkout submit,
+  payment/Warehouse mutation, notification send, or runtime consumer
+  integration was performed for this source-only chunk.
 
 ## 2026-07-03 Goal 10.34 Auth Checkout-Data Schema Version Source Definition
 
