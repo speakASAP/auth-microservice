@@ -1,3 +1,32 @@
+## 2026-07-03 - Goal 10.77/10.78 Focused Runtime Evidence Follow-up
+
+Current focus:
+
+- Integrate the two approved follow-up evidence lanes after Cliplot gated fetch path and Rent-a-box dependency gate source prep.
+
+Evidence:
+
+- Rent-a-box commit `df0a08f` resolved the focused adapter/dependency validation blocker by running the tests and ruff in a throwaway Python 3.12 Docker runtime.
+- Focused Rent result: `14 passed in 0.17s`; ruff result: `All checks passed!`.
+- Cliplot commit `5ea0804` cached guarded payment readiness probes to avoid repeated readiness bursts while preserving the non-mutating guard.
+- Cliplot approved browser-session wallet fetch smoke passed with approval id `CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE7` against `https://auth.alfares.cz`.
+- Sanitized Cliplot live fetch evidence: three Auth wallet GET endpoints returned HTTP 200; checkout-data schema version was `auth.customer-data-wallet.checkout-data.v1`; token, body, and customer data were not printed.
+
+Validation:
+
+- Rent-a-box passed focused Docker validation: `PYTHONPATH=. python -m pytest tests/test_auth_adapter.py -q` and `PYTHONPATH=. python -m ruff check app/auth/adapter.py app/auth/dependencies.py tests/test_auth_adapter.py`.
+- Cliplot live smoke result was `sanitized_auth_wallet_browser_session_fetch_recorded` with `authWalletFetch=true`, `browserSessionRead=true`, `checkoutSubmit=false`, `authWalletMutation=false`, `paymentCreation=false`, `warehouseReservation=false`, `notificationSend=false`, `databaseMutation=false`, `kubernetesMutation=false`, and `vaultUsage=false`.
+
+Boundary:
+
+- No checkout submit, Auth wallet mutation, payment/Warehouse/notification mutation, DB mutation, Kubernetes mutation, Vault mutation, raw wallet response body output, token output, or customer-data output occurred.
+- Rent-a-box did not replace local auth globally, perform production backfill, enforce uniqueness, approve route migration, or perform product-code migration.
+
+Next unfinished chunk:
+
+- Rent-a-box: owner-gated route/onboarding migration and later backfill/product-code migration.
+- Cliplot: checkout submit/live commerce mutation remains separately gated; the browser-session wallet fetch evidence gate is closed.
+
 ## 2026-07-03 - Goal 10.75/10.76 Cliplot Gated Fetch Path And Rent Dependency Gate
 
 Current focus:
