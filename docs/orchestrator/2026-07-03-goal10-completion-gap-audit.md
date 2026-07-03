@@ -22,7 +22,6 @@ Goal 10 is not complete. Auth-owned wallet schema/API/source behavior is proven 
 
 - `[MISSING: owner answer to Cliplot bounded live commerce approval packet]`
 - `[MISSING: owner answer to Rent-a-box route/onboarding approval packet]`
-- `[WEAK: fresh live Auth hosted profile/browser smoke was not rerun in this audit]`
 - `[WEAK: future marketplace/channel buyer proofs remain documented negative-boundary evidence rather than fresh subject-bound live proof]`
 
 ## Auth-Owned Requirements
@@ -33,9 +32,9 @@ Goal 10 is not complete. Auth-owned wallet schema/API/source behavior is proven 
 | Multiple invoice profiles per authenticated user | Proven | `src/users/entities/user-invoice-profile.entity.ts`, SQL table/index creation, and `src/users/users.service.ts` define/list/create multiple user-owned rows. |
 | Per-user ownership and default selection | Proven | Service lookups include `id`, `userId`, and `deletedAt: IsNull()`; default clearing is scoped by `userId`; partial unique default indexes exist for delivery and invoice rows. |
 | Sanitized checkout aggregate response | Proven | `src/auth/auth.service.ts` returns schema version, sanitized user, wallet rows, and default ids; sanitizers omit ownership/soft-delete internals; `src/auth/auth-contract.spec.ts` asserts this behavior. |
-| Hosted profile wallet management UI | Proven in source/tests; weak live evidence | `web/public/profile.html` and `web/public/js/profile.js` implement delivery/invoice management and CRUD/default/delete calls; `src/auth/hosted-auth-web.spec.ts` covers route/API wiring. Fresh browser live smoke was not rerun in this audit. |
+| Hosted profile wallet management UI | Proven in source/tests and fresh live static smoke | `web/public/profile.html` and `web/public/js/profile.js` implement delivery/invoice management and CRUD/default/delete calls; `src/auth/hosted-auth-web.spec.ts` covers route/API wiring; `reports/validation/goal10-hosted-profile-static-smoke.json` records live GET-only `/profile` and `/js/profile.js` HTTP 200 evidence with wallet markers and no credentials, mutations, response-body logging, DB reads, or customer-data output. |
 | Contract/tests | Proven | `npm run check:customer-data-wallet-preflight`, `npm run check:customer-data-wallet-runtime-gate-packet`, and `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts src/auth/hosted-auth-web.spec.ts` passed in the read-only Auth audit. |
-| Live deploy/smoke | Weak current evidence | Prior docs record SQL apply, deploy, unauthenticated wallet 401, and authenticated synthetic smoke. This audit did not rerun live HTTP/Kubernetes checks. |
+| Live deploy/smoke | Partially current; owner-gated consumer lanes remain | Prior docs record SQL apply, deploy, unauthenticated wallet 401, and authenticated synthetic smoke; `reports/validation/goal10-hosted-profile-static-smoke.json` records fresh live GET-only hosted profile static evidence. This audit still does not prove Cliplot live commerce or Rent-a-box route/onboarding completion. |
 
 ## Consumer Requirements
 
@@ -54,7 +53,8 @@ Goal 10 is not complete. Auth-owned wallet schema/API/source behavior is proven 
 - Auth: `npm run check:customer-data-wallet-runtime-gate-packet` passed.
 - Auth: `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts src/auth/hosted-auth-web.spec.ts` passed with 2 suites and 22 tests.
 - ChytraKoupe: `npm run verify:auth-wallet-checkout-selectors` passed.
-- Auth coordinator: final packet checker must include this audit before completion can be claimed.
+- Auth: `npm run check:customer-data-wallet-hosted-profile-static -- --base-url=https://auth.alfares.cz --no-write-report` passed after commit `747e8e1`, and `reports/validation/goal10-hosted-profile-static-smoke.json` records the sanitized live static evidence.
+- Auth coordinator: final packet checker includes this audit, the hosted profile static report, owner packet, handoff packet, and lane readiness index before completion can be claimed.
 
 ## Open Completion Gates
 
@@ -66,10 +66,7 @@ Goal 10 is not complete. Auth-owned wallet schema/API/source behavior is proven 
    - Owner must answer `docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md`.
    - Required before Auth-backed route dependencies, hosted Auth handoff consumption, local login/register retirement, admin RBAC migration, DB backfill/waiver, deploy, or uniqueness enforcement.
 
-3. Fresh live Auth hosted profile verification:
-   - Optional but required if completion must rest on current live-browser evidence rather than existing source/tests and prior deploy records.
-
-4. Future marketplace/channel buyer proofs:
+3. Future marketplace/channel buyer proofs:
    - Required only where a future registered-user buyer cabinet or marketplace order access lane needs live subject-bound proof.
 
 ## Coordinator Decision

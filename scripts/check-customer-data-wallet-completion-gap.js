@@ -48,6 +48,22 @@ function main() {
     'ChytraKoupe selector behavior and snapshot boundary',
   ]);
 
+  const auditHostedProfileMarkers = includesAll(audit, [
+    'Hosted profile wallet management UI | Proven in source/tests and fresh live static smoke',
+    'reports/validation/goal10-hosted-profile-static-smoke.json',
+    'live GET-only `/profile` and `/js/profile.js` HTTP 200 evidence',
+    'npm run check:customer-data-wallet-hosted-profile-static -- --base-url=https://auth.alfares.cz --no-write-report',
+  ]);
+
+  const staleAuditMarkers = [
+    {
+      marker: 'stale hosted profile weak audit marker removed',
+      present: !audit.includes('fresh live Auth hosted profile/browser smoke was not rerun in this audit')
+        && !audit.includes('Fresh browser live smoke was not rerun in this audit')
+        && !audit.includes('Fresh live Auth hosted profile verification:'),
+    },
+  ];
+
   const openGateMarkers = includesAll(audit, [
     'Goal 10 is not complete.',
     '[MISSING: owner answer to Cliplot bounded live commerce approval packet]',
@@ -169,6 +185,8 @@ function main() {
   const packageScript = packageJson.scripts?.['check:customer-data-wallet-completion-gap'] || null;
   const missingMarkers = [
     ...missing(provenRequirementMarkers),
+    ...missing(auditHostedProfileMarkers),
+    ...missing(staleAuditMarkers),
     ...missing(openGateMarkers),
     ...missing(ownerPacketMarkers),
     ...missing(handoffPacketMarkers),
@@ -190,6 +208,7 @@ function main() {
     doesNotCallRuntime: true,
     goalComplete: false,
     provenRequirementMarkers: missing(provenRequirementMarkers).length === 0,
+    auditHostedProfileEvidenceCurrent: missing(auditHostedProfileMarkers).length === 0 && missing(staleAuditMarkers).length === 0,
     openGatesPreserved: missing(openGateMarkers).length === 0,
     ownerPacketLinked: missing(ownerPacketMarkers).length === 0,
     handoffPacketLinked: missing(handoffPacketMarkers).length === 0,
