@@ -1,3 +1,61 @@
+## 2026-07-03 - Goal 10.59 Rent-a-box Nullable Auth Subject Binding Schema Prep
+
+Current focus:
+
+- Source-prepare nullable Rent-a-box `customer_profiles.auth_subject_id`
+  binding without product-code migration, live DB access, backfill,
+  uniqueness enforcement, deploy, or production data inspection.
+
+Evidence:
+
+- Rent-a-box commit `204568c feat: prepare nullable auth subject binding`
+  updates `apps/api/app/models/domain.py`,
+  `apps/api/alembic/versions/20260703_0003_customer_profile_auth_subject_id.py`,
+  `apps/api/tests/test_database_model.py`,
+  `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`,
+  `docs/goals/GOAL-12-auth-subject-binding-backfill-runbook.md`,
+  `reports/validation/goal-12-auth-customer-data-wallet-migration-plan.md`,
+  generated validation reports, and
+  `scripts/check_goal12_auth_wallet_readiness.py`.
+- `CustomerProfile.auth_subject_id` is nullable, indexed, and non-unique. The
+  migration is reversible and performs no backfill.
+- `CustomerProfile.id` remains the Rent-owned domain key for existing
+  reservations, rentals, notifications, contracts, and historical snapshots.
+- Product auth remains local; the hosted Auth handoff/session scaffold is not
+  activated as backend request authority in this chunk.
+- The source verifier now reports `auth_subject_schema_prep.status` as
+  `source_only_nullable_schema_prep` with `nullable=true`,
+  `unique_constraint=false`, `backfill=false`, `product_code_migration=false`,
+  and `live_db=false`.
+
+Validation:
+
+- Rent-a-box py_compile passed for changed Python/model/migration/test/verifier
+  files.
+- `python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .` passed
+  with `status=pass_dependency_gated`.
+- `./scripts/intent_preflight.sh` passed.
+- `git diff --check` passed.
+- Targeted dangerous literal-secret scan returned no matches.
+- `alembic upgrade/downgrade` and `pytest apps/api/tests/test_database_model.py`
+  could not run because the remote Python environment does not provide
+  SQLAlchemy/Alembic/Pytest. No dependency install or network access was
+  performed.
+
+Boundary:
+
+- No product auth switch, hosted session activation, live DB read/write,
+  backfill, customer row inspection, token/cookie/secret inspection, deploy,
+  Kubernetes mutation, Auth repo change, production data access, or uniqueness
+  enforcement was performed.
+
+Next unfinished chunk:
+
+- Rent-a-box remains gated on owner-approved live DB migration/backfill plan,
+  production row-count complexity, runtime Auth-backed customer session
+  adapter/local profile binding, admin role mapping, consent/profile mapping,
+  and rollback validation.
+
 ## 2026-07-03 - Goal 10.58 Cliplot Source-Only Browser Session Handoff Verifier
 
 Current focus:
