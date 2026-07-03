@@ -1,3 +1,29 @@
+## 2026-07-03 - Goal 10.68 Gate 4 ChytraKoupe Guarded Selector Smoke
+
+Current focus:
+
+- Execute the owner-approved ChytraKoupe guarded checkout selector smoke using Vault-backed synthetic Auth credentials and sanitized checkout fixture data.
+
+Evidence:
+
+- ChytraKoupe commit `de9fd39 test: add auth wallet checkout selector smoke` added `npm run smoke:auth-wallet-checkout-selectors`.
+- Vault `TEST_EMAIL`/`TEST_PASSWORD` were used only to materialize a fresh Auth bearer into a temporary file; the bearer was passed through process environment and was not printed.
+- Live status was `pass_chytrakoupe_auth_wallet_selector_smoke` with approval id `gate4-chytrakoupe-auth-wallet-selector-smoke-20260703-vault-test-login`.
+- Assertions passed: public `/checkout` HTTP 200, wallet read HTTP 200, schema version `auth.customer-data-wallet.checkout-data.v1`, guest checkout render without Auth, delivery selector render, invoice selector render, manual company edit preserved after delayed wallet response, wallet defaults not auto-selected after manual edit, explicit invoice selector applied, explicit delivery selector applied, checkout submit button present but not clicked, no checkout submit, no Auth wallet mutation, and no raw customer data logged.
+
+Validation:
+
+- Passed in ChytraKoupe: `node --check scripts/smoke-auth-wallet-checkout-selectors.mjs`, `node --check scripts/verify-auth-wallet-checkout-selectors.mjs`, `npm run verify:auth-wallet-checkout-selectors`, live `npm run smoke:auth-wallet-checkout-selectors`, `git diff --check`, changed-file sensitive literal scan, and post-smoke process cleanup check.
+
+Boundary:
+
+- No bearer, password, JWT, cookie, raw request body, raw response body, decoded claim, DB row, secret value, checkout order, payment data, or raw production customer data was printed or recorded.
+- No checkout submit, order/payment/Warehouse mutation, notification send, deploy, Kubernetes/Vault mutation, DB read/write, Auth wallet mutation, or raw production customer-data inspection was performed.
+
+Next unfinished chunk:
+
+- Gate 5 Cliplot synthetic browser/session wallet-read evidence or Gate 6 Rent-a-box metadata-only production preflight remains next after its missing owner inputs exist.
+
 ## 2026-07-03 - Goal 10.67 Gate 3 FlipFlop Browser Session Selector Smoke
 
 Current focus:

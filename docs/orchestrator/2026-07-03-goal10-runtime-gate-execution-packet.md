@@ -2,7 +2,7 @@
 
 Date: 2026-07-03
 Coordinator: Auth Goal 10 orchestrator
-Status: Gates 1-3 completed; Gates 4-6 remain blocked until their named owner inputs exist
+Status: Gates 1-4 completed; Gates 5-6 remain blocked until their named owner inputs exist
 
 ## Intent Preservation Chain
 
@@ -26,6 +26,7 @@ runtime evidence without re-opening source-only discovery.
 - Gate 1 Auth authenticated wallet smoke passed with Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token, redacted output, synthetic rows only, and cleanup verification.
 - Gate 2 FlipFlop guarded gateway wallet smoke passed with the same Vault-backed synthetic login path, redacted output, synthetic rows only, source assertions, and cleanup verification.
 - Gate 3 FlipFlop browser/session selector smoke passed with delayed checkout-data, manual-edit guard evidence, explicit selector evidence, no checkout submit, redacted output, and cleanup verification.
+- Gate 4 ChytraKoupe guarded selector smoke passed with Vault-backed synthetic login, sanitized local checkout-data fixture, selector/manual-edit evidence, no checkout submit, no Auth wallet mutation, and redacted output.
 - FlipFlop, ChytraKoupe, Cliplot, and Rent-a-box source-only readiness lanes
   have been audited. No material source-only consumer lane remains before the
   runtime inputs below.
@@ -35,7 +36,7 @@ runtime evidence without re-opening source-only discovery.
 1. Auth authenticated wallet CRUD/default/delete smoke - completed 2026-07-03.
 2. FlipFlop guarded gateway wallet smoke - completed 2026-07-03.
 3. FlipFlop authenticated browser/session selector smoke - completed 2026-07-03.
-4. ChytraKoupe guarded selector smoke harness and run.
+4. ChytraKoupe guarded selector smoke harness and run - completed 2026-07-03.
 5. Cliplot synthetic browser/session wallet-read evidence, then runtime
    implementation planning.
 6. Rent-a-box metadata-only production row-count/migration-complexity preflight.
@@ -126,29 +127,49 @@ Required future evidence:
 
 ## Gate 4 - ChytraKoupe Guarded Selector Smoke
 
-Source status: approval packet exists; executable smoke harness is not yet
-implemented and must not be added before owner inputs exist.
+Status: completed 2026-07-03.
 
-Required owner inputs:
+Resolved owner inputs:
 
-- `[MISSING: owner-approved synthetic Auth account/token for ChytraKoupe wallet selector smoke]`
-- `[MISSING: owner-approved synthetic checkout test data for ChytraKoupe wallet selector smoke]`
-- `[MISSING: non-secret owner approval id for ChytraKoupe wallet selector smoke]`
+- Owner approved continuing Gate 4 with a Vault-backed synthetic Auth
+  account/token and sanitized synthetic checkout selector fixture data.
+- Non-secret approval id:
+  `gate4-chytrakoupe-auth-wallet-selector-smoke-20260703-vault-test-login`.
+- ChytraKoupe source commit:
+  `de9fd39 test: add auth wallet checkout selector smoke`.
 
-After inputs exist, next coding task:
+Evidence:
 
-- Add a guarded ChytraKoupe smoke harness that reads Auth wallet data for the
-  synthetic subject and proves selector rendering/manual override behavior
-  without checkout submit, Auth wallet mutation, DB read/write, payment,
-  Warehouse, notification, Kubernetes, Vault, or Auth source changes.
+- Passed status: `pass_chytrakoupe_auth_wallet_selector_smoke`.
+- Covered public `/checkout` HTTP 200, wallet read status 200, schema version
+  `auth.customer-data-wallet.checkout-data.v1`, guest checkout render without
+  Auth, delivery selector render, invoice selector render, manual company edit
+  preserved after delayed wallet response, defaults not auto-selected after
+  manual edit, explicit invoice selector applied, explicit delivery selector
+  applied, and checkout submit button present but not clicked.
+- Confirmed `orderSubmitCalled=false`, `authWalletMutationCalled=false`,
+  `authWalletMutationEndpointCalled=false`, `noCheckoutSubmitOccurred=true`,
+  `noAuthWalletMutationOccurred=true`, and `noRawCustomerDataLogged=true`.
+- Output remained redacted and printed no bearer, password, JWT, cookie, raw
+  request body, raw response body, decoded claim, DB row, checkout order,
+  payment data, or raw production customer data.
+- Source validation passed with `npm run verify:auth-wallet-checkout-selectors`,
+  `node --check scripts/verify-auth-wallet-checkout-selectors.mjs`,
+  `node --check scripts/smoke-auth-wallet-checkout-selectors.mjs`, and
+  `git diff --check`.
 
-Baseline source validation before harness work:
+Command shape:
 
 ```bash
-npm run verify:auth-wallet-checkout-selectors
-node --check scripts/verify-auth-wallet-checkout-selectors.mjs
-git diff --check
+ssh alfares 'cd /home/ssf/Documents/Github/chytrakoupe && RUN_LIVE_CHYTRAKOUPE_AUTH_WALLET_SMOKE=1 CHYTRAKOUPE_AUTH_WALLET_SMOKE_CONFIRM=CHECKOUT_SELECTOR_READ_ONLY CHYTRAKOUPE_AUTH_WALLET_SMOKE_APPROVAL_ID=<non-secret-approval-id> CHYTRAKOUPE_AUTH_WALLET_SMOKE_BEARER_TOKEN=<synthetic-token> npm run smoke:auth-wallet-checkout-selectors'
 ```
+
+Forbidden in this gate:
+
+- Checkout submit, order/payment/Warehouse mutation, DB reads/writes, raw
+  request/response body output, token/cookie printing, production customer
+  data inspection, Auth wallet mutation, deploy, Kubernetes mutation, or Vault
+  mutation.
 
 ## Gate 5 - Cliplot Browser/Session Wallet-Read Evidence
 
@@ -238,7 +259,7 @@ Stop immediately and do not retry automatically if:
 
 This packet is valid when:
 
-- Gate 1, Gate 2, and Gate 3 completion evidence remains redacted and Gates 4-6 still show missing owner inputs.
+- Gate 1, Gate 2, Gate 3, and Gate 4 completion evidence remains redacted and Gates 5-6 still show missing owner inputs.
 - Auth coordinator docs link to it.
 - `npm run check:customer-data-wallet-runtime-gate-packet` passes.
 - `git diff --check` passes.
