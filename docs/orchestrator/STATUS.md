@@ -4661,3 +4661,33 @@ Next unfinished chunks:
 - Owner approval is still required for schema-only DB preflight, SQL apply,
   Auth deploy, strict wallet endpoint 401 smoke, and optional synthetic
   authenticated wallet smoke.
+
+## 2026-07-03 - Goal 10.83 Shop Assistant/Invoicing Clarification Audit
+
+Current focus:
+
+- Closed the two source-only follow-up unknowns from the Goal 10 extended surface audit.
+
+Source evidence:
+
+- `shop-assistant` was clean on `main...origin/main` at `82134a9`.
+- `invoices-microservice` was clean on `main...origin/main` at `1990618`.
+- Parallel read-only subagents inspected billing/profile/account-invoice source and docs.
+
+Implementation evidence:
+
+- Added `docs/orchestrator/2026-07-03-goal10-shop-assistant-invoices-clarification.md`.
+- Updated the extended surface audit matrix and remaining unknowns.
+- Updated Goal 10 and implementation state with the closed clarification decision.
+
+Boundary:
+
+- Shop Assistant remains a negative boundary: local search-recipient profiles, saved criteria, billing checkout, entitlement state, and payment-provider handoff metadata are not reusable Auth wallet delivery/invoice profile data.
+- Invoices remains a bounded consumer: it Auth-scopes account invoice access and renders immutable Orders billing snapshots, but must not own invoice profile editing or reusable address/company/tax/VAT storage.
+- No consumer repo edits, runtime calls, deploys, DB reads/writes, env dumps, secret/token inspection, checkout/order mutation, or customer-data output occurred.
+
+Next unfinished chunks:
+
+- FlipFlop authenticated central Orders create/read/cancel smoke remains owner-approved runtime work.
+- Cliplot checkout submit/live commerce and hosted Auth callback/session contract remain separately gated.
+- Rent-a-box route/onboarding migration, backfill, and product-code migration remain owner-approved gates.

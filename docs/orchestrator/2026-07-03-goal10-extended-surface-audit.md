@@ -32,14 +32,16 @@ Owner: Auth Goal 10 coordinator
 No new immediate registered-user checkout/address/invoice wallet implementation
 lane was found outside the known Goal 10 consumers.
 
-Two follow-up clarifications remain source-only and dependency-gated:
+The two source-only follow-up clarifications are now closed in
+`docs/orchestrator/2026-07-03-goal10-shop-assistant-invoices-clarification.md`:
 
-- `shop-assistant`: billing/checkout entitlement and account-profile language
-  exists, but no address/invoice wallet fields were found in the inspected
-  evidence. A future source-only billing checkout field audit may be useful.
-- `invoices-microservice`: invoice/account access is wallet-adjacent, but the
-  inspected evidence did not show an invoice-profile editor. A future source-only
-  Auth-subject access audit may be useful after Goal 10 runtime gates.
+- `shop-assistant` is a negative boundary for current source. Billing checkout,
+  entitlement state, search-recipient profiles, and saved criteria do not store
+  reusable delivery address or invoice profile wallet data.
+- `invoices-microservice` is a bounded wallet-adjacent consumer. It Auth-scopes
+  customer account invoice reads/download-link rotation and renders immutable
+  Orders snapshots, but must not own invoice profile editing or reusable
+  address/company/tax/VAT storage.
 
 ## Matrix
 
@@ -51,12 +53,12 @@ Two follow-up clarifications remain source-only and dependency-gated:
 | `aukro` | clean `main...origin/main` | Negative boundary | Channel/product/account publishing dashboard evidence; no wallet address/invoice editor found. | None. |
 | `bazos` | clean `main...origin/main` | Negative boundary | Marketplace/order replay evidence excludes reusable customer/address profile truth. | None. |
 | `heureka` | clean `main...origin/main` | Negative boundary | Channel dashboard/order ingestion only. | None. |
-| `shop-assistant` | clean `main...origin/main` | Unknown, no immediate wallet lane | Billing/checkout entitlement and account profiles exist; no address/invoice wallet fields found. | Source-only billing checkout field audit. |
+| `shop-assistant` | clean `main...origin/main` at `82134a9` | Negative boundary | Billing checkout/entitlement state and account profiles were audited; no delivery address, invoice profile, company/tax/VAT, legal recipient, or reusable wallet storage found. | None unless a future Auth contract forbids token-derived payment customer payload fields. |
 | `catalog-microservice` | clean `main...origin/main` | Negative boundary | Catalog owns products and user catalog settings, not checkout/profile wallet. | None. |
 | `leads-microservice` | clean `main...origin/main` | Negative boundary | Leads owns non-registered contact/lead records. | None. |
 | `marketing-microservice` | clean `main...origin/main` | Negative boundary | Marketing consumes signals/consent contracts, not editable wallet data. | None. |
 | `payments-microservice` | clean `main...origin/main` | Negative boundary | Provider/payment/Stripe Connect fields only. | None. |
-| `invoices-microservice` | clean `main...origin/main` | Unknown, wallet-adjacent but no editor found | Invoice/account access docs inspected; no Auth invoice-profile editor evidence found. | Source-only account invoice access audit against Auth subject. |
+| `invoices-microservice` | clean `main...origin/main` at `1990618` | Bounded wallet-adjacent consumer | Auth-guarded account invoice access scopes by Auth subject/id with email fallback; invoice rendering consumes immutable Orders billing snapshots; no profile editor route found. | Keep invoice-profile editing in Auth; runtime proof remains on Orders/storefront snapshot gates. |
 | `suppliers-microservice` | clean `main...origin/main` | Negative boundary | Supplier/stock import ownership. | None. |
 | `marathon` | clean `main...origin/main` | Already documented Goal 10-adjacent; no new wallet lane | Auth client/register-contact context exists; no address/invoice editor found. | None from this audit. |
 | `speakasap-portal` | clean `main...origin/main` | Negative boundary / legacy | Legacy student/teacher/admin profile and invoice-like app-local fields inspected. | No Auth wallet lane from this audit; legacy production mutation remains separately governed. |
@@ -74,8 +76,6 @@ Two follow-up clarifications remain source-only and dependency-gated:
 
 ## Remaining Unknowns
 
-- `[UNKNOWN: shop-assistant billing checkout field ownership relative to Auth wallet]`
-- `[UNKNOWN: invoices-microservice account invoice access relationship to Auth subject after Goal 10 runtime gates]`
 - `[UNKNOWN: future registered-user checkout/address/invoice editors introduced after this audit]`
 
 ## Validation Evidence
@@ -89,8 +89,10 @@ ssh alfares 'cd /home/ssf/Documents/Github/runlayer && git status --short --bran
 ssh alfares 'cd /home/ssf/Documents/Github/<repo> && rg -n -i "checkout|billing|invoice|address|wallet|profile" ...'
 ```
 
-Subagents performed independent read-only audits for StateX/RunLayer and for
-marketplace/channel/dashboard repositories.
+Subagents performed independent read-only audits for StateX/RunLayer, for
+marketplace/channel/dashboard repositories, and for the follow-up
+Shop Assistant/Invoicing clarifications recorded in
+`docs/orchestrator/2026-07-03-goal10-shop-assistant-invoices-clarification.md`.
 
 No consumer repo files were edited. No runtime calls, live checkout/order
 mutation, DB reads/writes, env dumps, secret reads, token inspection, deploys,
