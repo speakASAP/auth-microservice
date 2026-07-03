@@ -1,3 +1,55 @@
+## 2026-07-03 - Goal 10.39 ChytraKoupe Response-Shape Verifier Narrowing
+
+Current focus:
+
+- Narrow ChytraKoupe's source-only Auth wallet checkout-data reader and
+  verifier to the Auth v1 response shape while preserving runtime gates.
+
+Evidence:
+
+- ChytraKoupe commit `6d7c47b feat: narrow auth wallet checkout response
+  shape` updates `lib/auth/wallet.ts`,
+  `scripts/verify-auth-wallet-checkout-selectors.mjs`,
+  `implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`,
+  `reports/validation/auth-wallet-checkout-selectors-plan.md`,
+  `docs/goal-driven/STATUS.md`, and `implementation-goals/README.md`.
+- The wallet reader now records Auth checkout-data schema version
+  `auth.customer-data-wallet.checkout-data.v1`, rejects incompatible explicit
+  schema versions, normalizes `defaults`, and copies only allowed
+  delivery-address and invoice-profile fields into selector state.
+- The verifier now fails if the wallet reader regresses to trusting raw
+  `AuthDeliveryAddress[]` or `AuthInvoiceProfile[]` casts.
+- Sanitized wallet row ownership/system fields (`user`, `userId`, `deletedAt`)
+  are omitted before they become ChytraKoupe checkout state.
+- Remaining ChytraKoupe gates are unchanged: final hosted Auth `client_id`
+  decision and authenticated Auth subject linkage decision if central Orders
+  must persist `customer.authSubject`.
+
+Validation:
+
+- ChytraKoupe `npm run verify:auth-wallet-checkout-selectors` passed.
+- ChytraKoupe `node --check scripts/verify-auth-wallet-checkout-selectors.mjs`
+  passed.
+- ChytraKoupe `npm run build` passed.
+- ChytraKoupe `npm run lint` passed.
+- ChytraKoupe `git diff --check` passed.
+- ChytraKoupe targeted dangerous literal-secret scan on changed files returned
+  no matches.
+
+Boundary:
+
+- No Auth code, live SQL, deploy, Kubernetes mutation, DB query,
+  secret/token/password/JWT/cookie inspection, response-body logging,
+  production customer/order data inspection, live checkout submit,
+  payment/Warehouse mutation, notification send, or runtime consumer
+  integration was performed.
+
+Next unfinished chunk:
+
+- Continue with Cliplot/Rent-a-box stale Auth live evidence refreshes, or
+  resolve ChytraKoupe `client_id` and `customer.authSubject` runtime decisions
+  before any production runtime readiness claim.
+
 ## 2026-07-03 - Goal 10.38 Auth Current-Head Live Refresh
 
 Current focus:
