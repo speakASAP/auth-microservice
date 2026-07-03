@@ -6,7 +6,7 @@ YAML metadata:
 - status: validated-source
 - owner: owner-selected-profile-single-source-audit
 - created: 2026-07-01
-- last_updated: 2026-07-01
+- last_updated: 2026-07-03
 - completeness_level: bounded
 - upstream: user production request, docs/UNIFIED_AUTH_CONTRACT.md, docs/orchestrator/PROJECT_INVARIANTS.md
 - downstream: docs/orchestrator/STATUS.md
@@ -112,6 +112,74 @@ Validation plan:
 - `node --check web/server.js`
 - `node --check web/public/js/admin.js`
 - `git diff --check`
+
+## Current Execution Addendum - 2026-07-03 Auth Checkout-Data Schema Version
+
+Selected goal and chunk: Goal 10.34 - source-define the stable response
+identifier for Auth `GET /auth/profile/checkout-data`.
+
+Pre-coding gate decision: pass. The change is additive, Auth-owned, and needed
+by dependency-gated consumer readiness checks. It preserves Auth ownership of
+registered-user reusable customer data and does not move Orders, payments,
+warehouse, catalog, gateway, logging, notification, or consumer checkout
+ownership into Auth.
+
+Intent chain:
+
+- Vision: Auth is the single editable source of truth for registered-user
+  profile, delivery address book, and invoice profile data.
+- Goal impact: consumers can verify the exact Auth wallet checkout-data
+  aggregate version before integrating selectors.
+- System: Auth `/auth/profile/checkout-data`, Auth service info, contract
+  docs, and Goal 10 cross-repo plans.
+- Feature: stable checkout-data schema version.
+- Task: add a top-level `schemaVersion`, pin it in contract tests and service
+  info, update Auth wallet docs/status, and preserve remaining Cliplot gates.
+- Coding prompt: additive field only; do not wrap, rename, or remove existing
+  checkout-data fields; do not log secrets or customer data.
+
+Sensitive-data handling: source and synthetic tests only. No secrets, token
+values, decoded JWTs, cookies, raw production user rows, addresses, invoices,
+orders, response bodies, DB values, or live checkout data are read or recorded.
+
+Contract impact: additive top-level field
+`schemaVersion: "auth.customer-data-wallet.checkout-data.v1"` on the existing
+checkout-data JSON object. Existing `user`, `deliveryAddresses`,
+`invoiceProfiles`, and `defaults` fields remain unchanged.
+
+Allowed files:
+
+- `src/auth/auth.service.ts`
+- `src/auth/auth-contract.spec.ts`
+- `src/info/info.controller.ts`
+- `docs/UNIFIED_AUTH_CONTRACT.md`
+- `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
+- `docs/orchestrator/CONTEXT_PACKAGE.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/IMPLEMENTATION_STATE.md`
+
+Parallel execution:
+
+- Cliplot read-only audit: complete; confirmed stable version identifier is one
+  blocker lane only and current Cliplot runtime wallet integration is absent.
+- FlipFlop/ChytraKoupe compatibility audit: complete; confirmed additive
+  top-level `schemaVersion` is compatible with current source-prepared
+  consumers.
+- Auth coordinator: implement and validate the Auth source/docs/status change.
+
+Validation plan:
+
+- `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts`
+- `npm run test:auth-contract`
+- `npm run build`
+- `npm run lint`
+- `git diff --check`
+- stale stable-version blocker scan across docs and implementation goals
+- targeted dangerous literal-secret scan on changed source/docs
 
 ## Current Execution Addendum - 2026-07-02 Auth Customer Data Wallet A1 Source Implementation
 

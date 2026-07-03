@@ -91,6 +91,7 @@ authenticated checkout forms. The response contains:
 
 ```json
 {
+  "schemaVersion": "auth.customer-data-wallet.checkout-data.v1",
   "user": {},
   "deliveryAddresses": [],
   "invoiceProfiles": [],
@@ -100,6 +101,12 @@ authenticated checkout forms. The response contains:
   }
 }
 ```
+
+`schemaVersion` is the stable response identifier for the checkout aggregate
+shape. Consumers should treat
+`auth.customer-data-wallet.checkout-data.v1` as the Auth-owned v1 contract for
+the top-level checkout-data object, including sanitized `user`,
+`deliveryAddresses`, `invoiceProfiles`, and `defaults` fields.
 
 `invoiceProfiles[]` uses the Auth v1 invoice profile schema:
 

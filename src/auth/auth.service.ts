@@ -36,6 +36,8 @@ import { Response } from 'express';
 import { UserDeliveryAddress } from '../users/entities/user-delivery-address.entity';
 import { UserInvoiceProfile } from '../users/entities/user-invoice-profile.entity';
 
+const AUTH_CHECKOUT_DATA_SCHEMA_VERSION = 'auth.customer-data-wallet.checkout-data.v1';
+
 @Injectable()
 export class AuthService {
   private readonly notificationsServiceUrl: string;
@@ -900,6 +902,7 @@ export class AuthService {
     }
 
     return {
+      schemaVersion: AUTH_CHECKOUT_DATA_SCHEMA_VERSION,
       user: this.sanitizeUser(user),
       deliveryAddresses: deliveryAddresses.map((address) => this.sanitizeDeliveryAddress(address)),
       invoiceProfiles: invoiceProfiles.map((profile) => this.sanitizeInvoiceProfile(profile)),

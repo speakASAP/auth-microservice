@@ -235,6 +235,7 @@ export class InfoController {
           description: 'Get authenticated user profile plus Auth-owned delivery addresses, invoice profiles, and defaults',
           authentication: 'JWT token required',
           response: {
+            schemaVersion: 'auth.customer-data-wallet.checkout-data.v1',
             user: 'sanitized Auth user object',
             deliveryAddresses: 'delivery address array',
             invoiceProfiles: 'invoice profile array',

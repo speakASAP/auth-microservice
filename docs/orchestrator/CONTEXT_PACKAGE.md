@@ -5,7 +5,7 @@ id: AUTH-CONTEXT-PACKAGE
 status: validated
 owner: owner-selected-profile-single-source-audit
 created: 2026-07-01
-last_updated: 2026-07-01
+last_updated: 2026-07-03
 completeness_level: bounded
 upstream:
   - user production request
@@ -393,3 +393,48 @@ Boundary:
 - The verifier proves public route availability and guard behavior only. It
   does not prove DB schema correctness, authenticated CRUD, consumer checkout
   behavior, Orders snapshot semantics, or migration/backfill safety.
+
+## Current Task Addendum - 2026-07-03 Auth Checkout-Data Schema Version
+
+Target task: define a stable Auth-owned response version for
+`GET /auth/profile/checkout-data` so dependency-gated consumers can reference a
+source-backed checkout-data aggregate contract.
+
+Included source and documents:
+
+- `src/auth/auth.service.ts`
+- `src/auth/auth-contract.spec.ts`
+- `src/info/info.controller.ts`
+- `docs/UNIFIED_AUTH_CONTRACT.md`
+- `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md`
+- `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
+- `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
+- `docs/orchestrator/STATUS.md`
+- `docs/orchestrator/EXECUTION_PLAN.md`
+- `docs/IMPLEMENTATION_STATE.md`
+
+Included evidence:
+
+- Cliplot read-only subagent confirmed the current blocker contains a stable
+  response version lane and that adding a top-level `schemaVersion` resolves
+  only that lane, while selector behavior, browser/session, no-PII exposure,
+  guest fallback, and response-shape documentation remain Cliplot-owned gates.
+- FlipFlop/ChytraKoupe read-only subagent confirmed the additive top-level
+  field is compatible with current source-prepared consumers because they read
+  known checkout-data keys and ignore unknown top-level fields.
+- The stable Auth v1 checkout-data aggregate version is
+  `auth.customer-data-wallet.checkout-data.v1`.
+
+Excluded data:
+
+- No live SQL, deploy, Kubernetes mutation, DB query, secret/token/password/JWT
+  value inspection, cookie inspection, response-body logging, production
+  customer/order data inspection, live checkout submit, payment/Warehouse
+  mutation, notification send, or consumer repo edit.
+
+Boundary:
+
+- This chunk is source-only and additive. It does not change JWTs, RBAC,
+  OAuth, magic links, CORS, internal-service auth, wallet table schema, hosted
+  profile UI behavior, Orders snapshots, or consumer checkout runtime behavior.

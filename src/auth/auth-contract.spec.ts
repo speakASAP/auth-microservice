@@ -376,6 +376,7 @@ describe('Auth identifier and contact contract', () => {
     expect(usersService.listDeliveryAddresses).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111');
     expect(usersService.listInvoiceProfiles).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111');
     expect(result).toMatchObject({
+      schemaVersion: 'auth.customer-data-wallet.checkout-data.v1',
       user: expect.objectContaining({
         id: '11111111-1111-4111-8111-111111111111',
         profileAddress: { street: 'Legacy profile street' },

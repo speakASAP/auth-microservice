@@ -34,7 +34,8 @@ Implemented now:
 - Source now exposes authenticated CRUD/default-selection endpoints for
   delivery address books and invoice profiles under `/auth/profile/...`.
 - Source now exposes `GET /auth/profile/checkout-data` for checkout prefill and
-  selector hydration.
+  selector hydration with stable top-level `schemaVersion`
+  `auth.customer-data-wallet.checkout-data.v1`.
 - FlipFlop already reads and updates Auth profile data through its shared Auth
   client and mirrors one default address into its local `delivery_addresses`
   table as a compatibility snapshot.
@@ -121,6 +122,11 @@ Checkout summary:
 profiles, and default IDs in one read optimized for storefront checkout
 prefill. It must not return passwords, tokens, secrets, raw audit data, or
 provider/payment details.
+
+The top-level `schemaVersion` field is
+`auth.customer-data-wallet.checkout-data.v1`. This version identifies the Auth
+v1 aggregate response shape for `user`, `deliveryAddresses`,
+`invoiceProfiles`, and `defaults`.
 
 ## Target Delivery Address Fields
 
@@ -281,7 +287,7 @@ Consumer validation:
 - `[MISSING: owner-approved synthetic account/token for FlipFlop authenticated checkout/profile runtime smoke]`
 - `[MISSING: Auth-backed Rent-a-box customer session adapter/local profile binding decision, admin role mapping, consent/profile migration mapping, and migration/backfill decisions before product-code migration]`
 - `[MISSING: ChytraKoupe final Auth client-id decision and authenticated Auth subject linkage decision if central Orders must persist customer.authSubject before production runtime claim]`
-- `[MISSING: Cliplot selector behavior, authenticated browser/session, no-PII exposure, and stable wallet response version identifier before wallet selector integration]`
+- `[MISSING: Cliplot selector behavior, authenticated browser/session, and no-PII exposure review before wallet selector integration]`
 - `[UNKNOWN: whether all marketplace/channel services have customer checkout surfaces or only operator publishing surfaces]`
 - `[UNKNOWN: whether live users already have legacy perApplicationPreferences.canonicalProfile.address data requiring migration or backfill]`
 
@@ -301,11 +307,11 @@ Resolved for current Goal 10 scope:
 - ChytraKoupe commit `b280f75` source-prepares Auth wallet checkout selectors
   and immutable snapshot payloads while preserving final client-id and optional
   `customer.authSubject` linkage gates before production runtime claim.
-- Cliplot current clean HEAD `f4ceca1` still reports no runtime wallet
-  integration and preserves selector behavior, authenticated session, no-PII
-  exposure, and stable wallet response version gates. Auth wallet response
-  fields are source-backed; the stable wallet response version identifier is
-  still unknown.
+- Cliplot current clean HEAD `ea6cd93` still reports no runtime wallet
+  integration and preserves selector behavior, authenticated session, and
+  no-PII exposure gates. Auth wallet response fields and stable checkout-data
+  response version are source-backed by
+  `auth.customer-data-wallet.checkout-data.v1`.
 - Auth invoice profile v1 field ownership is defined: Auth owns reusable
   `companyId`, `taxId`, `vatId`, and invoice-recipient `email`; Orders stores
   immutable snapshots only, and Payments/accounting issuance remains outside

@@ -1,3 +1,61 @@
+## 2026-07-03 - Goal 10.34 Auth Checkout-Data Schema Version Source Definition
+
+Current focus:
+
+- Source-define the stable response identifier for Auth
+  `GET /auth/profile/checkout-data` so consumer readiness checks can reference
+  an Auth-owned checkout-data aggregate version.
+
+Evidence:
+
+- Auth source now returns top-level `schemaVersion`
+  `auth.customer-data-wallet.checkout-data.v1` from
+  `GET /auth/profile/checkout-data`.
+- The version identifies the existing Auth v1 aggregate shape: sanitized
+  `user`, `deliveryAddresses`, `invoiceProfiles`, and `defaults`.
+- `src/auth/auth-contract.spec.ts`, `src/info/info.controller.ts`,
+  `docs/UNIFIED_AUTH_CONTRACT.md`, and
+  `docs/AUTH_CUSTOMER_DATA_WALLET_CONTRACT.md` now publish and verify the
+  stable response identifier.
+- Cliplot read-only subagent confirmed clean `main` at `ea6cd93`; `node
+  scripts/auth-wallet-checkout-readiness.js` passed and Cliplot still has no
+  runtime wallet integration. `schemaVersion` resolves only the stable
+  response identifier lane; selector behavior, browser/session contract,
+  no-PII frontend/logging review, guest fallback behavior, and delivery/invoice
+  response-shape documentation remain Cliplot-owned gates.
+- FlipFlop/ChytraKoupe read-only subagent confirmed the additive top-level
+  field is compatible with current source-prepared consumers because they read
+  known checkout-data keys and ignore unknown top-level fields. FlipFlop
+  `node scripts/verify-auth-wallet-checkout-selectors.js` and ChytraKoupe
+  `node scripts/verify-auth-wallet-checkout-selectors.mjs` passed.
+
+Validation:
+
+- `npm test -- --runTestsByPath src/auth/auth-contract.spec.ts` passed: 1
+  suite, 13 tests.
+- `npm run test:auth-contract` passed: 3 suites, 27 tests.
+- `npm run build` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
+- Stale active stable-version blocker scan returned only historical
+  pre-Goal-10.34 continuation text before `docs/IMPLEMENTATION_STATE.md` was
+  refreshed in this chunk.
+- Targeted dangerous literal-secret scan on changed source/docs returned no
+  credential-shaped matches.
+
+Boundary:
+
+- No live SQL, deploy, Kubernetes mutation, DB query, secret/token/password/JWT
+  value inspection, cookie inspection, response-body logging, production
+  customer/order data inspection, live checkout submit, payment/Warehouse
+  mutation, notification send, or consumer repo edit was performed.
+
+Next unfinished chunk:
+
+- Update Cliplot-owned docs/verifier to consume the Auth-defined schema version
+  or continue remaining Rent-a-box, ChytraKoupe, Cliplot, and authenticated
+  synthetic smoke gates.
+
 ## 2026-07-03 - Goal 10.33 Auth Current-Head Live Refresh And FlipFlop Runtime Smoke
 
 Current focus:
@@ -94,8 +152,9 @@ Evidence:
   runtime claim.
 - Cliplot final read-only sweep confirmed clean `main` at `f4ceca1`; readiness,
   `node --check`, `npm run check`, and `git diff --check` passed. Runtime
-  wallet integration remains absent. Auth wallet response fields are known,
-  but a stable wallet response version identifier remains `[UNKNOWN]`.
+  wallet integration remained absent. Auth wallet response fields were known,
+  but a stable wallet response version identifier remained `[UNKNOWN]` before
+  Goal 10.34.
 
 Validation:
 
