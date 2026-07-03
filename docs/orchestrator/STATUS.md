@@ -1,3 +1,53 @@
+## 2026-07-03 - Goal 10.47 Rent-a-box Auth Adapter Mapping Contract
+
+Current focus:
+
+- Source-prepare the Rent-a-box Auth adapter/mapping contract so the future
+  runtime migration has explicit session, profile, role, consent, and snapshot
+  boundaries before product-code changes.
+
+Evidence:
+
+- Rent-a-box commit `abf732d docs: add goal 12 auth adapter contract` adds
+  `docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`.
+- The same commit updates
+  `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`,
+  `docs/goals/ORCHESTRATION_STATE.md`, `docs/goals/README.md`,
+  `reports/validation/goal-12-auth-customer-data-wallet-migration-plan.md`,
+  and `scripts/check_goal12_auth_wallet_readiness.py`.
+- The contract defines trusted Auth `/auth/validate` response fields:
+  `valid`, `user_id`, `email`, `roles`, `permissions`, and `expires_at`.
+- The contract preserves local `CustomerProfile.id` binding and records that
+  migration/backfill remains blocked.
+- The contract maps Auth roles/capabilities to Rent-a-box admin boundaries,
+  including `rent-a-box:admin` and local `UserRole.ADMIN`.
+- The contract records consent/profile snapshot handling around
+  `customer_profiles.gdpr_consent_at`.
+- The contract explicitly keeps product-code migration blocked and source-only.
+
+Validation:
+
+- Rent-a-box `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py`
+  passed.
+- Rent-a-box `python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .`
+  passed with `pass_dependency_gated` and no issues.
+- Rent-a-box `git diff --check` passed.
+- Rent-a-box `git diff --cached --check` passed before commit.
+- Rent-a-box targeted literal-secret scan across changed files returned no
+  matches.
+
+Boundary:
+
+- No deploy, DB access, live service calls, Kubernetes mutation, Auth repo
+  change, secret/token/cookie inspection, runtime auth behavior change, product
+  code migration, or production row inspection was performed.
+
+Next unfinished chunk:
+
+- Rent-a-box remains gated on owner-approved live DB migration/backfill plan
+  for local `users` and `customer_profiles`, plus unknown production row counts
+  and migration complexity.
+
 ## 2026-07-03 - Goal 10.46 ChytraKoupe Guarded Wallet Smoke Approval Packet
 
 Current focus:

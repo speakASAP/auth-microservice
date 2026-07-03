@@ -75,6 +75,7 @@ Auth customer data wallet:
 - [x] 10.44 FlipFlop guarded Auth wallet checkout/profile smoke harness source-prepared in commit `2893573`.
 - [x] 10.45 Cliplot current Auth live evidence refresh source-prepared in commit `3522568`; ChytraKoupe and Rent-a-box read-only audits recorded.
 - [x] 10.46 ChytraKoupe guarded Auth wallet smoke approval packet source-prepared in commit `70ce4c5`.
+- [x] 10.47 Rent-a-box Auth adapter/mapping contract source-prepared in commit `abf732d`.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -127,7 +128,7 @@ marketplace operations.
 | F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | Auth deployed; authenticated runtime smoke gated | 4           |
 | F2 FlipFlop checkout/profile UX    | non-mutating-runtime-smoke-passed; authenticated smoke gated | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deployed; synthetic checkout/profile smoke gated | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
-| R1 Rent-a-box Auth migration plan  | read-only-audited; session/admin/migration-gated | Rent-a-box coordinator | `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | customer session adapter/local profile binding, admin role mapping, consent/profile migration mapping, migration approval | 7 |
+| R1 Rent-a-box Auth migration plan  | adapter-contract-prepared; migration/backfill-gated | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | owner-approved live DB migration/backfill plan and production row-count complexity before product-code migration | 7 |
 | CK1 ChytraKoupe checkout selectors | guarded-smoke-packet-prepared; runtime-gated | ChytraKoupe worker | `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/docs/goal-driven/auth-wallet-guarded-smoke-approval.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | final client-id decision, optional Auth subject linkage, synthetic account/token/test data, and non-secret approval id before runtime claim | 8 |
 | C1 Cliplot plan                    | current-live-evidence-refreshed; runtime-gated | Cliplot coordinator | `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | selector/session/PII approvals, approved field mapping, and guest fallback decisions | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
@@ -166,7 +167,8 @@ that repo's status/validation report.
 - `[MISSING: post-deploy consumer runtime smoke confirming Auth invoice profile selection reaches immutable order billing snapshots]`
 - `[MISSING: owner-approved synthetic Auth token and non-secret approval id for FlipFlop guarded gateway wallet smoke execution]`
 - `[MISSING: owner-approved authenticated browser/session smoke for delayed wallet response and selector interaction]`
-- `[MISSING: Auth-backed Rent-a-box customer session adapter/local profile binding decision, admin role mapping, consent/profile migration mapping, and migration/backfill decision before product-code migration]`
+- `[MISSING: owner-approved Rent-a-box live DB migration/backfill plan for local users and customer_profiles before product-code migration]`
+- `[UNKNOWN: Rent-a-box production local users/customer_profiles row counts and migration complexity]`
 - `[MISSING: ChytraKoupe final hosted Auth client_id decision and authenticated Auth subject linkage decision before production runtime claim]`
 - `[MISSING: owner-approved synthetic Auth account/token, synthetic checkout test data, and non-secret approval id for ChytraKoupe guarded wallet selector smoke]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval, authenticated browser/session contract, no-PII exposure review, approved field mapping, and guest fallback behavior before wallet selector code changes]`
