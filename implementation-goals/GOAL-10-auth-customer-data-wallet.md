@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; synthetic authenticated smoke and dependent runtime lanes remain approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, nullable Auth subject schema prep, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; Gate 1 Auth authenticated smoke completed; dependent consumer runtime lanes remain approval-gated
 
 ## Intent
 
@@ -93,6 +93,7 @@ Auth customer data wallet:
 - [x] 10.62 Cliplot runtime-gate audit confirmed all known consumer lanes are now synthetic/runtime or live-DB-preflight gated.
 - [x] 10.63 Consolidated runtime gate execution packet prepared at `docs/orchestrator/2026-07-03-goal10-runtime-gate-execution-packet.md`.
 - [x] 10.64 Source-only runtime gate packet verifier prepared as `npm run check:customer-data-wallet-runtime-gate-packet`.
+- [x] 10.65 Auth authenticated wallet CRUD/default/delete smoke completed using Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token with redacted output and cleanup verification.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -140,7 +141,7 @@ marketplace operations.
 | Workstream                         | Status             | Owner role               | Files                                    | Dependencies              | Merge order |
 | ---------------------------------- | ------------------ | ------------------------ | ---------------------------------------- | ------------------------- | ----------- |
 | A0 Planning                        | complete           | Auth coordinator         | Auth docs only                           | None                      | 1           |
-| A1 Auth backend                    | live-deployed      | Auth backend worker      | Auth source/docs/tests                   | synthetic CRUD smoke optional-gated | 2           |
+| A1 Auth backend                    | live-deployed; authenticated synthetic smoke passed | Auth backend worker      | Auth source/docs/tests                   | Gate 1 complete; consumer synthetic runtime gates remain | 2           |
 | A2 Auth profile UI                 | live-deployed      | Auth frontend worker     | hosted Auth/profile UI                   | authenticated profile smoke gated | 3           |
 | F1 FlipFlop backend bridge         | source-prepared; synthetic-runtime-gated | FlipFlop backend worker  | shared Auth client, user-service         | owner-approved synthetic Auth token, non-secret approval id, and authenticated runtime smoke | 4           |
 | F2 FlipFlop checkout/profile UX    | non-mutating-runtime-smoke-passed; synthetic-runtime-gated | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | owner-approved synthetic Auth token, non-secret approval id, and authenticated browser/session smoke | 5           |
@@ -179,7 +180,6 @@ that repo's status/validation report.
 
 ## Blockers
 
-- `[MISSING: owner-approved synthetic account/token and non-secret approval id for live Auth wallet authenticated CRUD/default/delete smoke execution]`
 - `[MISSING: owner-approved synthetic account for live cross-repo checkout smoke]`
 - `[MISSING: post-deploy consumer runtime smoke confirming Auth invoice profile selection reaches immutable order billing snapshots]`
 - `[MISSING: owner-approved synthetic Auth token and non-secret approval id for FlipFlop guarded gateway wallet smoke execution]`
@@ -190,6 +190,15 @@ that repo's status/validation report.
 - `[MISSING: Cliplot runtime browser-session implementation, runtime selector behavior evidence, runtime no-PII exposure evidence, runtime field mapping implementation, and runtime guest fallback behavior before wallet selector code changes]`
 - `[MISSING: Cliplot approved synthetic runtime evidence for browser-session wallet reads, runtime selector behavior, runtime no-PII exposure, runtime field mapping, and runtime guest fallback]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+
+## 2026-07-03 Goal 10.65 Gate 1 Auth Authenticated Wallet Smoke
+
+- Gate 1 passed with owner-approved Vault-backed synthetic credentials and non-secret approval id `gate1-auth-wallet-smoke-20260703-vault-test-login`.
+- Vault/Kubernetes discovery identified the Auth ExternalSecret path and key names without printing values. The existing Vault `JWT_TOKEN` returned HTTP 401 at initial checkout-data before mutation, so a fresh user access token was materialized from Vault `TEST_EMAIL`/`TEST_PASSWORD` through Auth login into a temporary token file.
+- Auth authenticated smoke status was `pass_authenticated_wallet_crud_default_delete_smoke`. It verified checkout-data GET 200, delivery address create/update/default/delete, invoice profile create/update/default/delete, default selection visibility in checkout data, and post-cleanup absence from delivery/invoice lists.
+- Sensitive-data assertions passed: no Authorization header, token, cookie, request body, response body, DB read, secret, password, JWT, decoded claim, or raw production customer data was printed or recorded; rows were synthetic and cleanup passed.
+- Remaining runtime gates are consumer/runtime scoped: FlipFlop guarded gateway wallet smoke, FlipFlop browser/session selector smoke, ChytraKoupe guarded selector smoke, Cliplot synthetic browser/session wallet-read evidence, and Rent-a-box metadata-only production preflight.
 
 ## 2026-07-03 Goal 10.61 Consumer Runtime-Gate Audit
 

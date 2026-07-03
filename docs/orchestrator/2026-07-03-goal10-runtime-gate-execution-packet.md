@@ -2,7 +2,7 @@
 
 Date: 2026-07-03
 Coordinator: Auth Goal 10 orchestrator
-Status: source-prepared; execution blocked until named owner inputs exist
+Status: Gate 1 completed; Gates 2-6 remain blocked until their named owner inputs exist
 
 ## Intent Preservation Chain
 
@@ -21,15 +21,16 @@ runtime evidence without re-opening source-only discovery.
 - Auth runtime smoke passes with `/health` HTTP 200 and
   `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
   `/auth/profile/invoice-profiles` returning HTTP 401 unauthenticated.
-- Auth smoke output policy confirms no Authorization header, cookies, request
-  body, response body printing, or database reads.
+- Auth unauthenticated smoke output policy confirms no Authorization header,
+  cookies, request body, response body printing, or database reads.
+- Gate 1 Auth authenticated wallet smoke passed with Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token, redacted output, synthetic rows only, and cleanup verification.
 - FlipFlop, ChytraKoupe, Cliplot, and Rent-a-box source-only readiness lanes
   have been audited. No material source-only consumer lane remains before the
   runtime inputs below.
 
 ## Execution Order
 
-1. Auth authenticated wallet CRUD/default/delete smoke.
+1. Auth authenticated wallet CRUD/default/delete smoke - completed 2026-07-03.
 2. FlipFlop guarded gateway wallet smoke.
 3. FlipFlop authenticated browser/session selector smoke.
 4. ChytraKoupe guarded selector smoke harness and run.
@@ -43,20 +44,20 @@ until live data complexity is known.
 
 ## Gate 1 - Auth Authenticated Wallet Smoke
 
-Source status: harness and approval packet are ready.
+Status: completed 2026-07-03.
 
-Required owner inputs:
+Resolved owner inputs:
 
-- `[MISSING: owner-approved synthetic Auth account/token]`
-- `[MISSING: AUTH_WALLET_SMOKE_APPROVAL_ID]`
-- Confirmation that the token may create and delete wallet rows only for its
-  own synthetic subject.
+- Owner approved Gate 1 Auth wallet authenticated smoke using a synthetic Auth account/token stored in Kubernetes/Vault.
+- Non-secret approval id: `gate1-auth-wallet-smoke-20260703-vault-test-login`.
+- Token source: Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived access token, stored only in a temporary token file for the smoke.
+- The pre-existing Vault `JWT_TOKEN` returned initial checkout-data HTTP 401 before any mutation and was not used for the passing run.
 
-Approval phrase:
+Evidence:
 
-```text
-I approve Auth wallet authenticated smoke on alfares for one synthetic account/token, create/update/default/delete synthetic wallet rows only, cleanup required, redacted output only.
-```
+- Passed status: `pass_authenticated_wallet_crud_default_delete_smoke`.
+- Covered checkout-data GET 200; delivery address create/update/default/delete; invoice profile create/update/default/delete; default selection visibility in checkout data; and post-cleanup list verification.
+- Output remained redacted and printed no token, password, JWT, cookie, Authorization header, raw request body, raw response body, decoded claim, DB row, secret value, or raw production customer data.
 
 Command shape:
 
@@ -239,6 +240,7 @@ Stop immediately and do not retry automatically if:
 
 This packet is valid when:
 
+- Gate 1 completion evidence remains redacted and Gates 2-6 still show missing owner inputs.
 - Auth coordinator docs link to it.
 - `npm run check:customer-data-wallet-runtime-gate-packet` passes.
 - `git diff --check` passes.

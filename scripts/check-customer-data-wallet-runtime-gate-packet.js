@@ -41,8 +41,6 @@ function main() {
   ];
 
   const requiredInputMarkers = [
-    '[MISSING: owner-approved synthetic Auth account/token]',
-    '[MISSING: AUTH_WALLET_SMOKE_APPROVAL_ID]',
     '[MISSING: owner-approved synthetic Auth token]',
     '[MISSING: FLIPFLOP_AUTH_WALLET_SMOKE_APPROVAL_ID]',
     '[MISSING: owner-approved authenticated browser/session smoke for delayed wallet response and selector interaction]',
@@ -52,6 +50,12 @@ function main() {
     '[MISSING: approved synthetic Auth browser/session wallet-read evidence]',
     '[MISSING: owner-approved metadata-only production row-count/migration-complexity preflight]',
     '[MISSING: owner-approved live DB migration/backfill scope for local users and customer_profiles]',
+  ];
+
+  const resolvedGateMarkers = [
+    'Status: completed 2026-07-03.',
+    'gate1-auth-wallet-smoke-20260703-vault-test-login',
+    'pass_authenticated_wallet_crud_default_delete_smoke',
   ];
 
   const commandMarkers = [
@@ -79,6 +83,7 @@ function main() {
     packetFilePresent: fs.existsSync(packetPath),
     gateMarkers: includesAll(packet, gateMarkers),
     requiredInputMarkers: includesAll(packet, requiredInputMarkers),
+    resolvedGateMarkers: includesAll(packet, resolvedGateMarkers),
     commandMarkers: includesAll(packet, commandMarkers),
     safetyMarkers: includesAll(packet, safetyMarkers),
     goalLinks: includesAll(goal, coordinatorMarkers),
@@ -96,6 +101,7 @@ function main() {
   const missingMarkers = [
     ...missing(checks.gateMarkers),
     ...missing(checks.requiredInputMarkers),
+    ...missing(checks.resolvedGateMarkers),
     ...missing(checks.commandMarkers),
     ...missing(checks.safetyMarkers),
     ...missing(checks.goalLinks),
@@ -118,7 +124,8 @@ function main() {
     checks: {
       intentChain: packet.includes('Vision -> Goal Impact -> System -> Feature -> Task -> Execution Plan -> Coding Prompt -> Code -> Validation.'),
       executionOrder: missing(checks.gateMarkers).length === 0,
-      ownerInputsMarkedMissing: missing(checks.requiredInputMarkers).length === 0,
+      gate1Resolved: missing(checks.resolvedGateMarkers).length === 0,
+      remainingOwnerInputsMarkedMissing: missing(checks.requiredInputMarkers).length === 0,
       commandShapes: missing(checks.commandMarkers).length === 0,
       sharedOutputContract: packet.includes('## Shared Output Contract'),
       forbiddenOutputContract: packet.includes('Forbidden output across all gates:'),
@@ -128,7 +135,7 @@ function main() {
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'execute exactly one named gate only after its missing owner inputs exist',
+    allowedNextAction: 'execute Gate 2 or another remaining named gate only after its missing owner inputs exist',
   };
 
   console.log(JSON.stringify(result, null, 2));

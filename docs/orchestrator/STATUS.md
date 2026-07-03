@@ -1,3 +1,32 @@
+## 2026-07-03 - Goal 10.65 Gate 1 Auth Authenticated Wallet Smoke
+
+Current focus:
+
+- Execute the owner-approved Gate 1 Auth wallet authenticated smoke using Vault-backed synthetic Auth credentials without exposing secret values.
+
+Evidence:
+
+- Vault/Kubernetes discovery confirmed the Auth ExternalSecret path `secret/prod/auth-microservice` and available key names, including `JWT_TOKEN`, `TEST_EMAIL`, and `TEST_PASSWORD`, without printing values.
+- The existing Vault `JWT_TOKEN` was passed through the guarded token-file smoke path and returned initial checkout-data HTTP 401 before any wallet mutation.
+- A fresh user access token was materialized from Vault `TEST_EMAIL`/`TEST_PASSWORD` through `POST https://auth.alfares.cz/auth/login`; login returned HTTP 201 and the token stayed in a temporary file.
+- `npm run check:customer-data-wallet-authenticated -- --execute` passed with approval id `gate1-auth-wallet-smoke-20260703-vault-test-login` and status `pass_authenticated_wallet_crud_default_delete_smoke`.
+- The smoke covered checkout-data GET 200, delivery address create/update/default/delete, invoice profile create/update/default/delete, default visibility in checkout data, and cleanup verification through post-delete list checks.
+- Output contained only HTTP method/path/status metadata, schema version, booleans, and short non-reversible row hashes.
+
+Validation:
+
+- Passed: `RUN_AUTH_WALLET_AUTHENTICATED_SMOKE=1 AUTH_WALLET_SMOKE_CONFIRM=CREATE_UPDATE_DEFAULT_DELETE AUTH_WALLET_SMOKE_APPROVAL_ID=gate1-auth-wallet-smoke-20260703-vault-test-login AUTH_WALLET_SMOKE_TOKEN_FILE=<temp> npm run check:customer-data-wallet-authenticated -- --execute`.
+- Passed after documentation update: node --check scripts/check-customer-data-wallet-runtime-gate-packet.js, npm run check:customer-data-wallet-runtime-gate-packet, npm run check:customer-data-wallet-runtime -- --expect=deployed, git diff --check, and changed-file sensitive literal scan.
+
+Boundary:
+
+- No token, password, JWT, cookie, raw request body, raw response body, decoded claim, customer row, or secret value was printed or recorded.
+- No checkout submit, order/payment/Warehouse mutation, notification send, deploy, Kubernetes/Vault mutation, DB row read, or raw production customer-data inspection was performed.
+
+Next unfinished chunk:
+
+- Gate 2 FlipFlop guarded gateway wallet smoke now has a usable Vault-backed synthetic-token path, but still requires its own bounded execution and redacted evidence.
+
 ## 2026-07-03 - Goal 10.64 Runtime Gate Packet Source Verifier
 
 Current focus:
