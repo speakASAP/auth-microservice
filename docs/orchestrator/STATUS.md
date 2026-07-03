@@ -1,3 +1,25 @@
+## 2026-07-03 - Goal 10.100 Owner Approval Captured
+
+Current focus:
+
+- Record the owner's approval for the two remaining Goal 10 lanes before parallel execution.
+
+Evidence:
+
+- Added `docs/orchestrator/2026-07-03-goal10-owner-approval-captured.md`.
+- Captured generated non-secret approval IDs, idempotency keys, execution windows, and operator id for Cliplot.
+- Captured approved Rent-a-box route/onboarding migration scope, transitional onboarding decision, route ownership list, admin RBAC mapping, compatibility policy, and no-backfill waiver for this window.
+
+Boundary:
+
+- Coordinator documentation only. Completion still requires worker evidence.
+- No deploy, DB read/write, live checkout/order/payment/Warehouse/notification mutation, route migration, secret/token inspection, or customer-data output occurred in Auth.
+
+Next unfinished chunks:
+
+- Cliplot bounded runtime/live commerce worker evidence.
+- Rent-a-box route/onboarding migration worker evidence.
+
 ## 2026-07-03 - Goal 10.99 Parallel Lane Refresh
 
 Current focus:
