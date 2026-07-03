@@ -353,3 +353,19 @@ Remaining owner inputs for persisted runtime proof:
 Forbidden output remains unchanged: no token values, request/response bodies,
 customer/order rows, DB row data, customer PII, payment/provider credentials,
 Warehouse response bodies, or secrets.
+
+## Follow-up D - Remaining Runtime/Migration Gates Readiness
+
+Status: source/readiness audit complete; runtime and migration gates remain owner-input gated.
+
+Evidence:
+
+- Goal 10.84 remaining gates readiness audit completed in `docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md`.
+- FlipFlop safe validation passes, but live create/read/cancel is not executable until `[MISSING: cleanup path for synthetic central Orders order; current FlipFlop preflight reports ORDERS_STATUS_SERVICE_TOKEN=false]` is resolved.
+- FlipFlop source must be decided before runtime evidence: `[MISSING: coordinator decision whether Goal 10 order snapshot smoke should run from FlipFlop main or current goal24 branch]`.
+- Cliplot safe readiness passes, but live checkout remains gated by `[MISSING: owner-approved bounded live checkout submit/live commerce window]`.
+- Rent-a-box safe readiness passes, but route migration remains gated by `[MISSING: owner-approved RENT_AUTH_ADAPTER_ENABLED route migration window]` and related onboarding/backfill decisions.
+
+Safety decision:
+
+- No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and cleanup/source decisions.

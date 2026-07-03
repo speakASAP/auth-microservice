@@ -4722,3 +4722,23 @@ Next unfinished chunks:
 - FlipFlop: owner-approved synthetic order smoke still needs non-secret approval id, fixture catalog product id, warehouse id, source branch decision, and cleanup path or residual policy.
 - Cliplot: owner-approved bounded live checkout submit/live commerce window and required live flags/session inputs.
 - Rent-a-box: owner-approved route/onboarding migration window, route ownership list, onboarding decision, and backfill scope before product-code auth replacement.
+
+## 2026-07-03 - Goal 10.85 Remaining-Gate Packet Verifier Hardening
+
+Current focus:
+
+- Hardened the Auth coordinator source-only runtime gate packet verifier so it covers the Goal 10.84 remaining-gates audit.
+
+Implementation evidence:
+
+- `scripts/check-customer-data-wallet-runtime-gate-packet.js` now reads `docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md`.
+- The verifier checks the FlipFlop cleanup blocker, FlipFlop source-branch decision blocker, Cliplot bounded live checkout blocker, and Rent-a-box route migration blocker.
+- `docs/orchestrator/2026-07-03-goal10-runtime-gate-execution-packet.md` now includes Follow-up D for remaining runtime/migration gates.
+
+Boundary:
+
+- No consumer repo edit, runtime call, live checkout/order mutation, DB read/write, env dump, secret/token inspection, deploy, payment/Warehouse/notification mutation, live flag opening, or customer-data output occurred.
+
+Next unfinished chunks:
+
+- Same as Goal 10.84: choose and approve one bounded remaining lane with all required cleanup/source/window inputs before live execution.

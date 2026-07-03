@@ -8,6 +8,7 @@ const goalPath = path.join(root, 'implementation-goals/GOAL-10-auth-customer-dat
 const statusPath = path.join(root, 'docs/orchestrator/STATUS.md');
 const statePath = path.join(root, 'docs/IMPLEMENTATION_STATE.md');
 const packagePath = path.join(root, 'package.json');
+const remainingAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md');
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -30,6 +31,7 @@ function main() {
   const status = readText(statusPath);
   const state = readText(statePath);
   const packageJson = JSON.parse(readText(packagePath));
+  const remainingAudit = readText(remainingAuditPath);
 
   const gateMarkers = [
     '## Gate 1 - Auth Authenticated Wallet Smoke',
@@ -41,6 +43,10 @@ function main() {
   ];
 
   const requiredInputMarkers = [
+    '[MISSING: cleanup path for synthetic central Orders order; current FlipFlop preflight reports ORDERS_STATUS_SERVICE_TOKEN=false]',
+    '[MISSING: coordinator decision whether Goal 10 order snapshot smoke should run from FlipFlop main or current goal24 branch]',
+    '[MISSING: owner-approved bounded live checkout submit/live commerce window]',
+    '[MISSING: owner-approved RENT_AUTH_ADAPTER_ENABLED route migration window]',
   ];
 
   const resolvedGateMarkers = [
@@ -60,6 +66,8 @@ function main() {
     'e518725',
     'approval_required_goal12_route_onboarding_migration_gate',
     'route migration remains inactive',
+    'Goal 10.84 remaining gates readiness audit completed',
+    'docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md',
   ];
 
   const commandMarkers = [
@@ -100,6 +108,15 @@ function main() {
     stateLinks: includesAll(state, [
       'Goal 10.63 consolidated runtime gate execution packet prepared',
       'docs/orchestrator/2026-07-03-goal10-runtime-gate-execution-packet.md',
+      'Goal 10.84 remaining gates readiness audit completed',
+      'docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md',
+    ]),
+    remainingAuditMarkers: includesAll(remainingAudit, [
+      'ORDERS_STATUS_SERVICE_TOKEN=false',
+      'coordinator decision whether Goal 10 order snapshot smoke should run from FlipFlop main or current goal24 branch',
+      'owner-approved bounded live checkout submit/live commerce window',
+      'owner-approved RENT_AUTH_ADAPTER_ENABLED route migration window',
+      'No remaining Goal 10 gate is safely executable as a mutating/runtime transition from current state without additional owner inputs and cleanup/source decisions.',
     ]),
     packageScript,
   };
@@ -113,6 +130,7 @@ function main() {
     ...missing(checks.goalLinks),
     ...missing(checks.statusLinks),
     ...missing(checks.stateLinks),
+    ...missing(checks.remainingAuditMarkers),
     ...(packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js'
       ? []
       : ['package script check:customer-data-wallet-runtime-gate-packet']),
@@ -138,10 +156,11 @@ function main() {
       stopConditions: packet.includes('## Stop Conditions'),
       validationSection: packet.includes('## Validation For This Packet'),
       coordinatorLinks: missing(checks.goalLinks).length === 0 && missing(checks.statusLinks).length === 0 && missing(checks.stateLinks).length === 0,
+      remainingGateReadinessAudit: missing(checks.remainingAuditMarkers).length === 0,
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'all named runtime evidence gates and source-only Rent route/onboarding gate are complete; proceed only with separately approved FlipFlop order snapshot smoke, Cliplot checkout submit/live commerce, or Rent-a-box route/backfill migration gates',
+    allowedNextAction: 'all named runtime evidence gates and source-only Rent route/onboarding gate are complete; proceed only after separately approved FlipFlop order snapshot smoke with cleanup/source-branch decision, Cliplot bounded live checkout submit/live commerce window, or Rent-a-box route/backfill migration gates',
   };
 
   console.log(JSON.stringify(result, null, 2));
