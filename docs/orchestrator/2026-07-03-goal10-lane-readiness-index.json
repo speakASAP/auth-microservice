@@ -7,7 +7,8 @@
   "evidenceSources": [
     "docs/orchestrator/2026-07-03-goal10-completion-gap-audit.md",
     "docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md",
-    "docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md"
+    "docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md",
+    "docs/orchestrator/2026-07-03-goal10-parallel-lane-refresh.md"
   ],
   "lanes": [
     {
@@ -51,7 +52,19 @@
         "Orders/Warehouse create/replay/cancel smoke result",
         "ENABLE_LIVE_ORDER_SUBMIT=false after cleanup",
         "no secret/customer/provider payload output"
-      ]
+      ],
+      "lastReadOnlyRefresh": {
+        "date": "2026-07-03",
+        "source": "docs/orchestrator/2026-07-03-goal10-parallel-lane-refresh.md",
+        "repoHead": "ddceee8 docs: record auth wallet live fetch evidence",
+        "worktreeClean": true,
+        "checksPassed": [
+          "npm run readiness:auth-wallet-checkout",
+          "npm run readiness:auth-wallet-runtime-checkout-evidence",
+          "git diff --check"
+        ],
+        "newSourceOnlyWorkFound": false
+      }
     },
     {
       "id": "rent-a-box-route-onboarding-migration",
@@ -105,7 +118,18 @@
         "no production backfill or unique enforcement unless separately approved",
         "local compatibility/retirement policy is documented and tested",
         "no secret/customer-data output"
-      ]
+      ],
+      "lastReadOnlyRefresh": {
+        "date": "2026-07-03",
+        "source": "docs/orchestrator/2026-07-03-goal10-parallel-lane-refresh.md",
+        "repoHead": "e518725 test: add goal 12 route onboarding gate",
+        "worktreeClean": true,
+        "checksPassed": [
+          "python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .",
+          "git diff --check"
+        ],
+        "newSourceOnlyWorkFound": false
+      }
     }
   ],
   "coordinatorNextAction": "Keep Goal 10 active until the owner supplies the missing Cliplot or Rent-a-box approval packet inputs, then dispatch the matching worker from the handoff packet."

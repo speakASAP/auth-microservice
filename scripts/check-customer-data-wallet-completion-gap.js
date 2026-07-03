@@ -8,6 +8,7 @@ const ownerPacketPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-own
 const handoffPacketPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md');
 const laneReadinessIndexPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-lane-readiness-index.json');
 const hostedProfileStaticReportPath = path.join(root, 'reports/validation/goal10-hosted-profile-static-smoke.json');
+const parallelLaneRefreshPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-parallel-lane-refresh.md');
 const goalPath = path.join(root, 'implementation-goals/GOAL-10-auth-customer-data-wallet.md');
 const statePath = path.join(root, 'docs/IMPLEMENTATION_STATE.md');
 const statusPath = path.join(root, 'docs/orchestrator/STATUS.md');
@@ -31,6 +32,7 @@ function main() {
   const handoffPacket = readText(handoffPacketPath);
   const laneReadinessIndex = JSON.parse(readText(laneReadinessIndexPath));
   const hostedProfileStaticReport = JSON.parse(readText(hostedProfileStaticReportPath));
+  const parallelLaneRefresh = readText(parallelLaneRefreshPath);
   const goal = readText(goalPath);
   const state = readText(statePath);
   const status = readText(statusPath);
@@ -128,9 +130,23 @@ function main() {
     {
       marker: 'lane readiness index links source packets',
       present: laneReadinessIndex.evidenceSources?.includes('docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md')
-        && laneReadinessIndex.evidenceSources?.includes('docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md'),
+        && laneReadinessIndex.evidenceSources?.includes('docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md')
+        && laneReadinessIndex.evidenceSources?.includes('docs/orchestrator/2026-07-03-goal10-parallel-lane-refresh.md'),
     },
   ];
+
+  const parallelLaneRefreshMarkers = includesAll(parallelLaneRefresh, [
+    'Goal 10 Parallel Lane Refresh',
+    'read-only parallel subagent refresh; owner-gated lanes remain closed',
+    'ddceee8 docs: record auth wallet live fetch evidence',
+    'e518725 test: add goal 12 route onboarding gate',
+    'npm run readiness:auth-wallet-checkout',
+    'npm run readiness:auth-wallet-runtime-checkout-evidence',
+    'python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .',
+    'approval_required_goal12_route_onboarding_migration_gate',
+    'Goal 10 remains active and not complete.',
+    'no safe source-only consumer lane to start',
+  ]);
 
   const hostedProfileStaticReportChecks = [
     {
@@ -170,6 +186,8 @@ function main() {
       'docs/orchestrator/2026-07-03-goal10-approved-lane-handoff-packet.md',
       'Goal 10.96 lane readiness index prepared',
       'docs/orchestrator/2026-07-03-goal10-lane-readiness-index.json',
+      'Goal 10.99 parallel lane refresh recorded',
+      'docs/orchestrator/2026-07-03-goal10-parallel-lane-refresh.md',
       'Goal 10.97 hosted profile static live smoke prepared',
       'reports/validation/goal10-hosted-profile-static-smoke.json',
     ]),
@@ -191,6 +209,7 @@ function main() {
     ...missing(ownerPacketMarkers),
     ...missing(handoffPacketMarkers),
     ...missing(laneReadinessIndexChecks),
+    ...missing(parallelLaneRefreshMarkers),
     ...missing(hostedProfileStaticReportChecks),
     ...missing(coordinatorMarkers),
     ...(packageScript === 'node scripts/check-customer-data-wallet-completion-gap.js'
@@ -213,6 +232,7 @@ function main() {
     ownerPacketLinked: missing(ownerPacketMarkers).length === 0,
     handoffPacketLinked: missing(handoffPacketMarkers).length === 0,
     laneReadinessIndexLinked: missing(laneReadinessIndexChecks).length === 0,
+    parallelLaneRefreshLinked: missing(parallelLaneRefreshMarkers).length === 0,
     hostedProfileStaticLiveSmoke: missing(hostedProfileStaticReportChecks).length === 0,
     coordinatorLinked: missing(coordinatorMarkers).length === 0,
     missing: missingMarkers,
