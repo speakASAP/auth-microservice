@@ -1,3 +1,62 @@
+## 2026-07-03 - Goal 10.58 Cliplot Source-Only Browser Session Handoff Verifier
+
+Current focus:
+
+- Source-prepare Cliplot Auth wallet browser-session handoff approval criteria
+  without adding runtime wallet reads, browser-session implementation, selector
+  UI, checkout submit changes, live calls, or deployment.
+
+Evidence:
+
+- Cliplot commit `94f97d7 docs: verify auth wallet session handoff policy`
+  updates `docs/auth-wallet-checkout-contract.md`,
+  `implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`,
+  `reports/validation/GOAL-10-auth-wallet-checkout-readiness.md`, and
+  `scripts/auth-wallet-checkout-readiness.js`.
+- The source-only verifier now reports
+  `source_only_browser_session_contract_verified`.
+- Default validation proves no Auth wallet endpoint call, no browser-session
+  wallet implementation, and no token/cookie/JWT content read.
+- Future runtime evidence is constrained to owner-approved synthetic Auth
+  account/session/token input, a non-secret Cliplot approval id, the three Auth
+  wallet endpoints, and sanitized output only.
+- Forbidden runtime evidence and operations are explicit: Authorization headers,
+  bearer tokens, JWTs, refresh tokens, cookies, raw wallet response bodies,
+  decoded token claims, customer PII, checkout submit, Auth wallet mutation,
+  payment creation, Warehouse reservation, notification send, DB read/write,
+  Kubernetes mutation, and Vault mutation remain out of scope.
+- Cliplot refreshed Auth live evidence to Source Preflight HEAD
+  `e484688fae0cc6fcdff593e11265fd49bcab6dbd` and deployed image tag
+  `e484688-20260703071733`.
+
+Validation:
+
+- Cliplot `npm run readiness:auth-wallet-checkout` passed and reported
+  `source_only_browser_session_contract_verified`,
+  `runtimeWalletIntegrationPresent=false`, `mutation=false`,
+  `persistence=false`, and `providerCall=false`.
+- Cliplot `node --check scripts/auth-wallet-checkout-readiness.js` passed.
+- Cliplot `npm run check` passed.
+- Cliplot `git diff --check` passed.
+- Targeted dangerous literal-secret scan returned no matches.
+
+Boundary:
+
+- No runtime checkout files, browser-session implementation, Auth wallet fetch,
+  selector UI, live Auth call, checkout submit, DB query/write, deploy,
+  Kubernetes/Vault mutation, secret/token/cookie content inspection,
+  payment/Warehouse mutation, notification send, or production customer/order
+  data read was performed.
+
+Next unfinished chunk:
+
+- Cliplot remains gated on runtime browser-session implementation, approved
+  synthetic wallet-read evidence, runtime selector behavior, runtime no-PII
+  exposure, runtime field mapping, and runtime guest fallback evidence.
+- Read-only subagent audit found ChytraKoupe has no safe source-only chunk left
+  before approved synthetic smoke; Rent-a-box has a possible nullable
+  `auth_subject_id` local/test schema-prep chunk if selected next.
+
 ## 2026-07-03 - Goal 10.57 Auth Live Refresh From Source Preflight HEAD
 
 Current focus:

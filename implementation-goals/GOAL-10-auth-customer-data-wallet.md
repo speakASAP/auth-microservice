@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; synthetic authenticated smoke and dependent runtime lanes remain approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed and has no remaining source-only Goal 10 chunk before synthetic token/session input; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, Auth subject order snapshot contract, and fragment-only callback hardening source-prepared; Rent-a-box hosted Auth callback scaffold, adapter contract, and Auth subject binding/backfill runbook source-prepared; Cliplot checkout contract plus source-only browser-session/selector behavior/no-PII/mapping/guest fallback verifier prepared; marketplace/channel audit complete; synthetic authenticated smoke and dependent runtime lanes remain approval-gated
 
 ## Intent
 
@@ -86,6 +86,7 @@ Auth customer data wallet:
 - [x] 10.55 ChytraKoupe hosted Auth callback source-hardened in commit `812c405`.
 - [x] 10.56 Cliplot source-only Auth wallet selector behavior verifier prepared in commit `a7656f5`.
 - [x] 10.57 Auth live refresh from Source Preflight-captured HEAD `e484688fae0cc6fcdff593e11265fd49bcab6dbd` completed with wallet 401 and FlipFlop non-mutating runtime smoke.
+- [x] 10.58 Cliplot source-only Auth wallet browser-session handoff verifier prepared in commit `94f97d7`.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -180,11 +181,46 @@ that repo's status/validation report.
 - `[MISSING: owner-approved Rent-a-box live DB migration/backfill plan for local users and customer_profiles before product-code migration]`
 - `[UNKNOWN: Rent-a-box production local users/customer_profiles row counts and migration complexity]`
 - `[MISSING: owner-approved synthetic Auth account/token, synthetic checkout test data, and non-secret approval id for ChytraKoupe guarded wallet selector smoke]`
-- `[MISSING: Cliplot authenticated browser/session contract, runtime selector behavior evidence, runtime no-PII exposure evidence, runtime field mapping implementation, and runtime guest fallback behavior before wallet selector code changes]`
-- `[MISSING: Cliplot implementation and approved synthetic evidence for browser-session wallet reads, runtime selector behavior, runtime no-PII exposure, runtime field mapping, and runtime guest fallback]`
+- `[MISSING: Cliplot runtime browser-session implementation, runtime selector behavior evidence, runtime no-PII exposure evidence, runtime field mapping implementation, and runtime guest fallback behavior before wallet selector code changes]`
+- `[MISSING: Cliplot approved synthetic runtime evidence for browser-session wallet reads, runtime selector behavior, runtime no-PII exposure, runtime field mapping, and runtime guest fallback]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
 
 ## 2026-07-03 Goal 10.56 Cliplot Source-Only Selector Behavior Verifier
+
+## 2026-07-03 Goal 10.58 Cliplot Source-Only Browser Session Handoff Verifier
+
+- 2026-07-03: Cliplot commit `94f97d7 docs: verify auth wallet session
+  handoff policy` extends the source-only Auth wallet checkout contract,
+  execution plan, validation report, and readiness verifier.
+- The verifier now reports `source_only_browser_session_contract_verified` and
+  proves the default source-only lane does not call Auth wallet endpoints, read
+  token/cookie/JWT contents, or add browser-session wallet implementation.
+- Future runtime evidence is constrained to owner-approved synthetic Auth
+  account/session/token input, a non-secret Cliplot approval id, the three Auth
+  wallet endpoints, and sanitized output only.
+- Forbidden runtime evidence and operations are explicit: no Authorization
+  headers, bearer tokens, JWTs, refresh tokens, cookies, raw wallet response
+  bodies, decoded token claims, customer PII, checkout submit, Auth wallet
+  mutation, payment creation, Warehouse reservation, notification send, DB
+  read/write, Kubernetes mutation, or Vault mutation.
+- Cliplot refreshed its Auth live evidence to Source Preflight HEAD
+  `e484688fae0cc6fcdff593e11265fd49bcab6dbd` and deployed image tag
+  `e484688-20260703071733`.
+- Validation passed in Cliplot: `npm run readiness:auth-wallet-checkout`,
+  `node --check scripts/auth-wallet-checkout-readiness.js`, `npm run check`,
+  `git diff --check`, and targeted dangerous literal-secret scan.
+- No runtime checkout files, browser-session implementation, Auth wallet fetch,
+  selector UI, live Auth call, checkout submit, DB query/write, deploy,
+  Kubernetes/Vault mutation, secret/token/cookie content inspection,
+  payment/Warehouse mutation, notification send, or production customer/order
+  data read was performed.
+
+Remaining gates:
+
+- Cliplot runtime browser-session implementation.
+- Approved synthetic wallet-read evidence.
+- Runtime selector behavior, no-PII exposure, field mapping, and guest fallback
+  implementation/evidence.
 
 ## 2026-07-03 Goal 10.57 Auth Live Refresh From Source Preflight HEAD
 
