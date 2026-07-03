@@ -4824,7 +4824,9 @@ Validation evidence:
 
 - `npx tsc --noEmit --skipLibCheck --experimentalDecorators --emitDecoratorMetadata --module commonjs --target es2020 --moduleResolution node --esModuleInterop scripts/provision-internal-service-token.ts` passed.
 - `git diff --check` passed after adding the helper.
-- Runtime dry-run through the current remote `npx ts-node`/Nest bootstrap path exited without diagnostic output; the same behavior was observed for the older catalog/warehouse provisioning helper, so no runtime provisioning evidence is claimed.
+- Direct remote-shell `npx ts-node` cannot resolve `db-server-postgres` from outside Kubernetes and returns a sanitized JSON failure.
+- Compiling the helper to temporary JS and running it inside the live Auth pod with `NODE_PATH=/app/node_modules` passed `--check-db-only` and `--dry-run`.
+- Pod dry-run output was sanitized: `applicationFound=true`, `roleFound=true`, `principal=null`, `wouldCreateUser=true`, `wouldAssignRole=true`, `mutatesDatabase=false`, `emitsToken=false`, and required apply confirmations were reported.
 
 Boundary:
 
@@ -4835,3 +4837,31 @@ Next unfinished chunks:
 - Run or repair a bounded provisioning path for an Auth-valid cleanup bearer with `internal:orders-microservice:admin` or `global:superadmin`.
 - Store that bearer in Vault and project it into `flipflop-order-service` as `ORDERS_STATUS_SERVICE_TOKEN` without printing the value.
 - Run the owner-approved FlipFlop create/read/cancel smoke only after fixture ids, approval id, cleanup confirm, and token projection are all present.
+
+## 2026-07-03 - Goal 10.89 Orders Cleanup Helper Pod Dry-Run
+
+Current focus:
+
+- Proved the new generic internal-token helper can perform the required non-mutating Auth metadata preflight from inside the live Auth runtime environment.
+
+Execution evidence:
+
+- Compiled `scripts/provision-internal-service-token.ts` to temporary JS under `/tmp/auth-internal-token-helper-build`.
+- Copied only the compiled JS to `/tmp/provision-internal-service-token.js` in the running Auth pod.
+- Executed with `NODE_PATH=/app/node_modules` so the script used the pod runtime dependencies and pod-projected DB/JWT environment.
+- Removed the temporary pod JS and remote build directory after the dry-run.
+
+Validation evidence:
+
+- `--check-db-only` passed with `mutatesDatabase=false`, `emitsToken=false`, `applicationFound=true`, `roleFound=true`, `principal=null`, `wouldCreateUser=true`, and `wouldAssignRole=true`.
+- `--dry-run` passed with the same sanitized result and reported required apply confirmations `INTERNAL_SERVICE_PRINCIPAL` and `INTERNAL_SERVICE_JWT`.
+
+Boundary:
+
+- No `--apply`, Auth DB mutation, service-principal creation, role assignment, token issuance, token value output, Vault/Kubernetes durable mutation, ExternalSecret change, deploy, live order smoke, checkout/order/payment/Warehouse mutation, DB row dump, or raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Apply the helper in a bounded approved run to create/normalize the `orders-status-cleanup` service principal, assign `internal:orders-microservice:admin`, and write the JWT only to a 0600 temp file.
+- Store the JWT in Vault and map it into FlipFlop as `ORDERS_STATUS_SERVICE_TOKEN`.
+- Reconcile/restart only `flipflop-order-service`, then run the approved create/read/cancel smoke.

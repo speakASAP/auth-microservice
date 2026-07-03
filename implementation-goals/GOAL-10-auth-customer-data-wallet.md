@@ -101,7 +101,8 @@ Auth customer data wallet:
 - [x] 10.85 Remaining-gate packet verifier hardened; packet check now covers Goal 10.84 cleanup/source/window blockers.
 - [x] 10.86 FlipFlop auth-subject smoke cleanup source guard hardened in branch `codex/goal10-auth-subject-smoke-cleanup` commit `6fe9e07`; runtime cleanup token projection remained gated before merge.
 - [x] 10.87 FlipFlop cleanup source guard integrated to `origin/main` at `6fe9e07`; temporary branch/worktree removed, runtime cleanup token projection and approval remain gated.
-- [x] 10.88 Orders cleanup Auth-token helper source-prepared as `scripts/provision-internal-service-token.ts`; TypeScript validation passed, runtime dry-run remains unproven through the current remote bootstrap path, and live DB/token/Vault projection remains gated.
+- [x] 10.88 Orders cleanup Auth-token helper source-prepared as `scripts/provision-internal-service-token.ts`; TypeScript validation passed.
+- [x] 10.89 Orders cleanup Auth-token helper pod `--check-db-only` and `--dry-run` proven with sanitized output; application/role metadata exists, cleanup principal is absent, and live DB/token/Vault projection remains gated.
 - [x] 10.65 Auth authenticated wallet CRUD/default/delete smoke completed using Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token with redacted output and cleanup verification.
 - [x] 10.66 FlipFlop guarded gateway wallet smoke completed using Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token with redacted output and cleanup verification.
 - [x] 10.67 FlipFlop authenticated browser/session selector smoke completed in commit `75f03eb` with delayed checkout-data, manual-edit guard, explicit selector, no checkout submit, and cleanup verification.

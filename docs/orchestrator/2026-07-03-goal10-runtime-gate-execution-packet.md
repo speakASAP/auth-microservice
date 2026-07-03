@@ -373,3 +373,4 @@ Safety decision:
 ## Follow-up E - Orders Cleanup Token Provisioning
 
 - Runtime projection/proof of an Auth-valid cleanup bearer with `internal:orders-microservice:admin` or `global:superadmin` remains required before running FlipFlop create/read/cancel smoke.
+- Helper preflight is source/pod-dry-run ready: `scripts/provision-internal-service-token.ts` proved `internal:orders-microservice:admin` metadata exists and the `orders-status-cleanup` principal would be created/assigned only in explicit apply mode.
