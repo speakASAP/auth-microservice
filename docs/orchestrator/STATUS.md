@@ -1,3 +1,52 @@
+## 2026-07-03 - Goal 10.52 Rent-a-box Auth Subject Binding Backfill Runbook
+
+Current focus:
+
+- Source-prepare Rent-a-box Auth subject binding/backfill gates without product
+  code migration, live DB row counts, or schema changes.
+
+Evidence:
+
+- Rent-a-box commit `0e1f754 docs: add auth subject binding runbook` adds
+  `docs/goals/GOAL-12-auth-subject-binding-backfill-runbook.md`.
+- The same commit updates
+  `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`,
+  `docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`,
+  `docs/goals/README.md`, `docs/governance/DOCUMENT_STATE_REGISTER.md`,
+  `scripts/check_goal12_auth_wallet_readiness.py`, and generated IPS
+  validation reports.
+- The runbook records future `customer_profiles.auth_subject_id` schema
+  preconditions, `CustomerProfile.id` preservation, email as transitional
+  candidate match only, unique non-null only after approved backfill, and
+  local/test database validation only.
+- Migration/backfill remains blocked by owner-approved live DB
+  migration/backfill plan and production local users/customer_profiles row
+  counts/complexity evidence.
+
+Validation:
+
+- Rent-a-box `python3 -m py_compile
+  scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py
+  scripts/ips_pre_coding_gate.py` passed.
+- Rent-a-box `python3 -B scripts/check_goal12_auth_wallet_readiness.py --root
+  .` passed with `pass_dependency_gated`.
+- Rent-a-box `./scripts/intent_preflight.sh` passed.
+- Rent-a-box `git diff --check` passed.
+- Rent-a-box targeted dangerous literal-secret scan on changed files returned no
+  matches.
+
+Boundary:
+
+- No product-code migration, live DB read/write, production row inspection,
+  password hash/token/cookie/contract storage inspection, deploy, Kubernetes
+  mutation, Auth repo change, or schema migration was performed.
+
+Next unfinished chunk:
+
+- Rent-a-box remains gated on owner-approved live DB migration/backfill plan and
+  production local users/customer_profiles row counts/complexity before
+  product-code migration.
+
 ## 2026-07-03 - Goal 10.51 Cliplot Source-Only Mapping And No-PII Verifier
 
 Current focus:
