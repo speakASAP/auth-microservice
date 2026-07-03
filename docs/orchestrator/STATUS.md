@@ -1,3 +1,48 @@
+## 2026-07-03 - Goal 10.60 Rent-a-box Current Auth Wallet Live Evidence Refresh
+
+Current focus:
+
+- Refresh Rent-a-box Goal 12 source-only Auth wallet evidence to the current
+  Auth live deployment without product-code migration, live DB access, deploy,
+  production row inspection, or product auth behavior changes.
+
+Evidence:
+
+- Rent-a-box commit `d237949 docs: refresh auth wallet live evidence` updates
+  `scripts/check_goal12_auth_wallet_readiness.py`,
+  `docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`,
+  `docs/goals/ORCHESTRATION_STATE.md`,
+  `reports/validation/goal-12-auth-customer-data-wallet-migration-plan.md`,
+  and generated validation reports.
+- The refreshed evidence points to Auth coordinator commit `f9c0cfb`, Source
+  Preflight HEAD `e484688fae0cc6fcdff593e11265fd49bcab6dbd`, and deployed
+  image tag `e484688-20260703071733`.
+- The Rent-a-box verifier still reports `status=pass_dependency_gated` and now
+  includes the current Auth evidence in `resolved_dependency_evidence_present`.
+
+Validation:
+
+- `python3 -m py_compile scripts/check_goal12_auth_wallet_readiness.py scripts/check_doc_state.py scripts/ips_pre_coding_gate.py`
+  passed.
+- `python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .` passed
+  with `status=pass_dependency_gated`.
+- `./scripts/intent_preflight.sh` passed.
+- `git diff --check` passed.
+- Targeted dangerous literal-secret scan returned no matches.
+
+Boundary:
+
+- No product-code migration, live DB read/write, production row inspection,
+  token/cookie/secret inspection, deploy, Kubernetes mutation, Auth source
+  change, production data access, or product auth switch was performed.
+
+Next unfinished chunk:
+
+- Rent-a-box remains gated on owner-approved live DB migration/backfill plan,
+  production row-count complexity, runtime Auth-backed customer session
+  adapter/local profile binding, admin role mapping, consent/profile mapping,
+  and rollback validation.
+
 ## 2026-07-03 - Goal 10.59 Rent-a-box Nullable Auth Subject Binding Schema Prep
 
 Current focus:

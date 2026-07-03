@@ -88,6 +88,7 @@ Auth customer data wallet:
 - [x] 10.57 Auth live refresh from Source Preflight-captured HEAD `e484688fae0cc6fcdff593e11265fd49bcab6dbd` completed with wallet 401 and FlipFlop non-mutating runtime smoke.
 - [x] 10.58 Cliplot source-only Auth wallet browser-session handoff verifier prepared in commit `94f97d7`.
 - [x] 10.59 Rent-a-box nullable Auth subject binding schema prep source-prepared in commit `204568c`.
+- [x] 10.60 Rent-a-box current Auth wallet live evidence refreshed in commit `d237949`.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -140,9 +141,9 @@ marketplace operations.
 | F1 FlipFlop backend bridge         | source-prepared    | FlipFlop backend worker  | shared Auth client, user-service         | Auth deployed; authenticated runtime smoke gated | 4           |
 | F2 FlipFlop checkout/profile UX    | non-mutating-runtime-smoke-passed; authenticated smoke gated | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deployed; synthetic checkout/profile smoke gated | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
-| R1 Rent-a-box Auth migration plan  | nullable-auth-subject-schema-prepared; migration/backfill-gated | Rent-a-box coordinator | `rent-a-box/apps/api/app/models/domain.py`, `rent-a-box/apps/api/alembic/versions/20260703_0003_customer_profile_auth_subject_id.py`, `rent-a-box/apps/api/tests/test_database_model.py`, `rent-a-box/docs/goals/GOAL-12-auth-subject-binding-backfill-runbook.md`, `rent-a-box/docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | owner-approved live DB migration/backfill plan and production row-count complexity before product-code migration; remote Python deps missing for Alembic/Pytest runtime validation | 7 |
+| R1 Rent-a-box Auth migration plan  | current-live-evidence-refreshed; nullable-auth-subject-schema-prepared; migration/backfill-gated | Rent-a-box coordinator | `rent-a-box/apps/api/app/models/domain.py`, `rent-a-box/apps/api/alembic/versions/20260703_0003_customer_profile_auth_subject_id.py`, `rent-a-box/apps/api/tests/test_database_model.py`, `rent-a-box/docs/goals/GOAL-12-auth-subject-binding-backfill-runbook.md`, `rent-a-box/docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | owner-approved live DB migration/backfill plan and production row-count complexity before product-code migration; remote Python deps missing for Alembic/Pytest runtime validation | 7 |
 | CK1 ChytraKoupe checkout selectors | callback-hardened; runtime-smoke-gated | ChytraKoupe worker | `chytrakoupe/app/auth/callback/AuthCallbackClient.tsx`, `chytrakoupe/app/auth/safe-next.ts`, `chytrakoupe/lib/auth/session.ts`, `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/lib/config/env.ts`, `chytrakoupe/k8s/configmap.yaml`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/docs/goal-driven/auth-wallet-guarded-smoke-approval.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | synthetic account/token/test data and non-secret approval id before runtime claim; future non-guest order subject provenance must derive only from validated Auth bearer `sub` | 8 |
-| C1 Cliplot plan                    | source-selector-policy-prepared; runtime-gated | Cliplot coordinator | `cliplot/docs/auth-wallet-checkout-contract.md`, `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | authenticated browser/session implementation, runtime selector/no-PII evidence, runtime field mapping implementation, and runtime guest fallback synthetic evidence | later |
+| C1 Cliplot plan                    | source-session-policy-prepared; runtime-gated | Cliplot coordinator | `cliplot/docs/auth-wallet-checkout-contract.md`, `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | runtime browser-session implementation, approved synthetic wallet-read evidence, runtime selector/no-PII evidence, runtime field mapping implementation, and runtime guest fallback synthetic evidence | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
 ## Validation
@@ -222,6 +223,31 @@ Remaining gates:
 - Approved synthetic wallet-read evidence.
 - Runtime selector behavior, no-PII exposure, field mapping, and guest fallback
   implementation/evidence.
+
+## 2026-07-03 Goal 10.60 Rent-a-box Current Auth Wallet Live Evidence Refresh
+
+- 2026-07-03: Rent-a-box commit `d237949 docs: refresh auth wallet live
+  evidence` refreshes Goal 12 source-only evidence to Auth coordinator commit
+  `f9c0cfb`, Source Preflight HEAD
+  `e484688fae0cc6fcdff593e11265fd49bcab6dbd`, and deployed image tag
+  `e484688-20260703071733`.
+- The Rent-a-box readiness verifier now expects and reports current Auth live
+  evidence while preserving `pass_dependency_gated`.
+- Validation passed in Rent-a-box: py_compile for verifier/state scripts,
+  `python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .`,
+  `./scripts/intent_preflight.sh`, `git diff --check`, and targeted dangerous
+  literal-secret scan.
+- No product-code migration, live DB read/write, production row inspection,
+  token/cookie/secret inspection, deploy, Kubernetes mutation, Auth source
+  change, production data access, or product auth switch was performed.
+
+Remaining gates:
+
+- Owner-approved live DB migration/backfill plan for local users and
+  customer_profiles.
+- Production local users/customer_profiles row counts and migration complexity.
+- Runtime Auth-backed customer session adapter/local profile binding, admin
+  role mapping, consent/profile mapping, and rollback validation.
 
 ## 2026-07-03 Goal 10.59 Rent-a-box Nullable Auth Subject Binding Schema Prep
 
