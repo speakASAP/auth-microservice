@@ -11,6 +11,7 @@ const packagePath = path.join(root, 'package.json');
 const remainingAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md');
 const postFlipFlopAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-post-flipflop-owner-gated-audit.md');
 const ownerDecisionPacketPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md');
+const completionGapAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-completion-gap-audit.md');
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -36,6 +37,7 @@ function main() {
   const remainingAudit = readText(remainingAuditPath);
   const postFlipFlopAudit = readText(postFlipFlopAuditPath);
   const ownerDecisionPacket = readText(ownerDecisionPacketPath);
+  const completionGapAudit = readText(completionGapAuditPath);
 
   const gateMarkers = [
     '## Gate 1 - Auth Authenticated Wallet Smoke',
@@ -119,6 +121,8 @@ function main() {
       'docs/orchestrator/2026-07-03-goal10-post-flipflop-owner-gated-audit.md',
       'Goal 10.92 owner decision packet prepared',
       'docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md',
+      'Goal 10.93 completion gap audit recorded',
+      'docs/orchestrator/2026-07-03-goal10-completion-gap-audit.md',
     ]),
     remainingAuditMarkers: includesAll(remainingAudit, [
       'FlipFlop order snapshot create/read/cancel smoke passed at `origin/main` `7f0ef44`',
@@ -153,6 +157,18 @@ function main() {
       'apps/api/app/api/admin/admin.py',
       'Rent-a-box has source implementation remaining, but it is dependency-gated on route/onboarding owner approval',
     ]),
+    completionGapAuditMarkers: includesAll(completionGapAudit, [
+      'Goal 10 Completion Gap Audit',
+      'Status: source-only completion audit; full goal not complete',
+      'Multiple delivery addresses per authenticated user',
+      'Sanitized checkout aggregate response',
+      'Hosted profile wallet management UI',
+      'FlipFlop can select Auth delivery/invoice entries and save back',
+      'ChytraKoupe selector behavior and snapshot boundary',
+      'Cliplot bounded live commerce window',
+      'Rent-a-box route/onboarding migration',
+      'Do not mark Goal 10 complete.',
+    ]),
     packageScript,
   };
 
@@ -168,6 +184,7 @@ function main() {
     ...missing(checks.remainingAuditMarkers),
     ...missing(checks.postFlipFlopAuditMarkers),
     ...missing(checks.ownerDecisionPacketMarkers),
+    ...missing(checks.completionGapAuditMarkers),
     ...(packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js'
       ? []
       : ['package script check:customer-data-wallet-runtime-gate-packet']),
@@ -196,10 +213,11 @@ function main() {
       remainingGateReadinessAudit: missing(checks.remainingAuditMarkers).length === 0,
       postFlipFlopOwnerGatedAudit: missing(checks.postFlipFlopAuditMarkers).length === 0,
       ownerDecisionPacket: missing(checks.ownerDecisionPacketMarkers).length === 0,
+      completionGapAudit: missing(checks.completionGapAuditMarkers).length === 0,
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'Await owner answer to either docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md Cliplot live commerce packet or Rent-a-box route/onboarding packet before opening the next gated lane',
+    allowedNextAction: 'Goal 10 remains active; await owner answer to the Cliplot live commerce packet or Rent-a-box route/onboarding packet before opening the next gated lane',
   };
 
   console.log(JSON.stringify(result, null, 2));
