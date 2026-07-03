@@ -1,3 +1,24 @@
+## 2026-07-03 - Goal 10.92 Owner Decision Packet
+
+Current focus:
+
+- Convert remaining owner-gated Cliplot and Rent-a-box blockers into exact approval packets.
+
+Evidence:
+
+- Added `docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md`.
+- Cliplot audit confirmed no source-only blocker remains; remaining work requires approval ids, execution windows, operator id, unused idempotency keys, temporary `ENABLE_LIVE_*` flags, duplicate-check, rollback, validation, and immediate flag restoration.
+- Rent-a-box audit confirmed source migration work remains, but it is dependency-gated on route/onboarding approval, route ownership list, transitional onboarding decision, DB backfill plan or waiver, admin RBAC mapping, and local login/register retirement policy.
+
+Boundary:
+
+- No consumer repo edit, deploy, live checkout/order/payment/Warehouse/notification mutation, route migration, DB read/write, secret/token inspection, or customer-data output occurred.
+
+Next unfinished chunks:
+
+- Owner may answer the Cliplot approval packet to open a bounded live commerce window.
+- Owner may answer the Rent-a-box approval packet to open source-controlled route/onboarding migration work.
+
 ## 2026-07-03 - Goal 10.91 Post-FlipFlop Owner-Gated Audit
 
 Current focus:

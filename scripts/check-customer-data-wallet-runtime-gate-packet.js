@@ -10,6 +10,7 @@ const statePath = path.join(root, 'docs/IMPLEMENTATION_STATE.md');
 const packagePath = path.join(root, 'package.json');
 const remainingAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md');
 const postFlipFlopAuditPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-post-flipflop-owner-gated-audit.md');
+const ownerDecisionPacketPath = path.join(root, 'docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md');
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -34,6 +35,7 @@ function main() {
   const packageJson = JSON.parse(readText(packagePath));
   const remainingAudit = readText(remainingAuditPath);
   const postFlipFlopAudit = readText(postFlipFlopAuditPath);
+  const ownerDecisionPacket = readText(ownerDecisionPacketPath);
 
   const gateMarkers = [
     '## Gate 1 - Auth Authenticated Wallet Smoke',
@@ -115,6 +117,8 @@ function main() {
       'docs/orchestrator/2026-07-03-goal10-remaining-gates-readiness-audit.md',
       'Goal 10.91 post-FlipFlop owner-gated audit completed',
       'docs/orchestrator/2026-07-03-goal10-post-flipflop-owner-gated-audit.md',
+      'Goal 10.92 owner decision packet prepared',
+      'docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md',
     ]),
     remainingAuditMarkers: includesAll(remainingAudit, [
       'FlipFlop order snapshot create/read/cancel smoke passed at `origin/main` `7f0ef44`',
@@ -131,6 +135,24 @@ function main() {
       'No additional source-only Cliplot hardening/verifier lane was found before that approval gate.',
       'No additional source-only Rent-a-box hardening/verifier lane was found before that approval gate.',
     ]),
+    ownerDecisionPacketMarkers: includesAll(ownerDecisionPacket, [
+      'Goal 10 Owner Decision Packet',
+      '[MISSING: CLIPLOT_LIVE_ORDER_APPROVAL_ID]',
+      '[MISSING: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID]',
+      '[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID]',
+      '[MISSING: CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID]',
+      '[MISSING: one unused orderIdempotencyKey]',
+      'ENABLE_LIVE_ORDER_SUBMIT=true',
+      'duplicateCheck=IDEMPOTENCY_KEYS_NOT_USED',
+      'CLIPLOT_OWNER_CREATE_REPLAY_CANCEL_SMOKE',
+      '[MISSING: owner-approved RENT_AUTH_ADAPTER_ENABLED route migration window]',
+      '[MISSING: owner decision for RENT_AUTH_TRANSITIONAL_ONBOARDING_ENABLED]',
+      '[MISSING: owner-approved route ownership list before replacing local auth dependencies]',
+      'apps/api/app/api/lifecycle.py',
+      'apps/api/app/api/post_rental.py',
+      'apps/api/app/api/admin/admin.py',
+      'Rent-a-box has source implementation remaining, but it is dependency-gated on route/onboarding owner approval',
+    ]),
     packageScript,
   };
 
@@ -145,6 +167,7 @@ function main() {
     ...missing(checks.stateLinks),
     ...missing(checks.remainingAuditMarkers),
     ...missing(checks.postFlipFlopAuditMarkers),
+    ...missing(checks.ownerDecisionPacketMarkers),
     ...(packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js'
       ? []
       : ['package script check:customer-data-wallet-runtime-gate-packet']),
@@ -172,10 +195,11 @@ function main() {
       coordinatorLinks: missing(checks.goalLinks).length === 0 && missing(checks.statusLinks).length === 0 && missing(checks.stateLinks).length === 0,
       remainingGateReadinessAudit: missing(checks.remainingAuditMarkers).length === 0,
       postFlipFlopOwnerGatedAudit: missing(checks.postFlipFlopAuditMarkers).length === 0,
+      ownerDecisionPacket: missing(checks.ownerDecisionPacketMarkers).length === 0,
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'No remaining source-only Goal 10 consumer lane is open; proceed only after separately approved Cliplot bounded live checkout submit/live commerce window or Rent-a-box route/onboarding and backfill migration gates',
+    allowedNextAction: 'Await owner answer to either docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md Cliplot live commerce packet or Rent-a-box route/onboarding packet before opening the next gated lane',
   };
 
   console.log(JSON.stringify(result, null, 2));
