@@ -41,8 +41,6 @@ function main() {
   ];
 
   const requiredInputMarkers = [
-    '[MISSING: owner-approved synthetic Auth token]',
-    '[MISSING: FLIPFLOP_AUTH_WALLET_SMOKE_APPROVAL_ID]',
     '[MISSING: owner-approved authenticated browser/session smoke for delayed wallet response and selector interaction]',
     '[MISSING: owner-approved synthetic Auth account/token for ChytraKoupe wallet selector smoke]',
     '[MISSING: owner-approved synthetic checkout test data for ChytraKoupe wallet selector smoke]',
@@ -53,9 +51,10 @@ function main() {
   ];
 
   const resolvedGateMarkers = [
-    'Status: completed 2026-07-03.',
     'gate1-auth-wallet-smoke-20260703-vault-test-login',
     'pass_authenticated_wallet_crud_default_delete_smoke',
+    'gate2-flipflop-auth-wallet-smoke-20260703-vault-test-login',
+    'pass_flipflop_auth_wallet_gateway_smoke',
   ];
 
   const commandMarkers = [
@@ -124,7 +123,7 @@ function main() {
     checks: {
       intentChain: packet.includes('Vision -> Goal Impact -> System -> Feature -> Task -> Execution Plan -> Coding Prompt -> Code -> Validation.'),
       executionOrder: missing(checks.gateMarkers).length === 0,
-      gate1Resolved: missing(checks.resolvedGateMarkers).length === 0,
+      resolvedGatesRecorded: missing(checks.resolvedGateMarkers).length === 0,
       remainingOwnerInputsMarkedMissing: missing(checks.requiredInputMarkers).length === 0,
       commandShapes: missing(checks.commandMarkers).length === 0,
       sharedOutputContract: packet.includes('## Shared Output Contract'),
@@ -135,7 +134,7 @@ function main() {
       packageScript: packageScript === 'node scripts/check-customer-data-wallet-runtime-gate-packet.js',
     },
     missing: missingMarkers,
-    allowedNextAction: 'execute Gate 2 or another remaining named gate only after its missing owner inputs exist',
+    allowedNextAction: 'execute Gate 3 or another remaining named gate only after its missing owner inputs exist',
   };
 
   console.log(JSON.stringify(result, null, 2));

@@ -2,7 +2,7 @@
 
 Date: 2026-07-03
 Coordinator: Auth Goal 10 orchestrator
-Status: Gate 1 completed; Gates 2-6 remain blocked until their named owner inputs exist
+Status: Gates 1-2 completed; Gates 3-6 remain blocked until their named owner inputs exist
 
 ## Intent Preservation Chain
 
@@ -24,6 +24,7 @@ runtime evidence without re-opening source-only discovery.
 - Auth unauthenticated smoke output policy confirms no Authorization header,
   cookies, request body, response body printing, or database reads.
 - Gate 1 Auth authenticated wallet smoke passed with Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived token, redacted output, synthetic rows only, and cleanup verification.
+- Gate 2 FlipFlop guarded gateway wallet smoke passed with the same Vault-backed synthetic login path, redacted output, synthetic rows only, source assertions, and cleanup verification.
 - FlipFlop, ChytraKoupe, Cliplot, and Rent-a-box source-only readiness lanes
   have been audited. No material source-only consumer lane remains before the
   runtime inputs below.
@@ -31,7 +32,7 @@ runtime evidence without re-opening source-only discovery.
 ## Execution Order
 
 1. Auth authenticated wallet CRUD/default/delete smoke - completed 2026-07-03.
-2. FlipFlop guarded gateway wallet smoke.
+2. FlipFlop guarded gateway wallet smoke - completed 2026-07-03.
 3. FlipFlop authenticated browser/session selector smoke.
 4. ChytraKoupe guarded selector smoke harness and run.
 5. Cliplot synthetic browser/session wallet-read evidence, then runtime
@@ -76,30 +77,24 @@ Expected pass status:
 
 ## Gate 2 - FlipFlop Guarded Gateway Wallet Smoke
 
-Source status: harness and approval packet are ready.
+Status: completed 2026-07-03.
 
-Required owner inputs:
+Resolved owner inputs:
 
-- `[MISSING: owner-approved synthetic Auth token]`
-- `[MISSING: FLIPFLOP_AUTH_WALLET_SMOKE_APPROVAL_ID]`
-- Confirmation that the token may create/delete wallet rows only for its own
-  synthetic Auth subject.
+- Owner approved continuation after Gate 1, using the Vault-backed synthetic Auth account/token path.
+- Non-secret approval id: `gate2-flipflop-auth-wallet-smoke-20260703-vault-test-login`.
+- Token source: Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived access token, passed only as a redacted process value to the existing guarded smoke.
 
-Approval phrase:
+Evidence:
 
-```text
-I approve FlipFlop Auth wallet smoke on alfares for one synthetic Auth account/token, gateway wallet create/update/default/delete only, no checkout submit, cleanup required, redacted output only.
-```
+- Passed status: `pass_flipflop_auth_wallet_gateway_smoke`.
+- Covered FlipFlop public pages `/checkout`, `/profile/addresses`, and `/profile/invoice-profiles`; gateway checkout-data; delivery address create/update/default/delete; invoice profile create/update/default/delete; default selection visibility in checkout data; source assertions; and post-cleanup list verification.
+- Output remained redacted and printed no token, password, JWT, cookie, raw request body, raw response body, decoded claim, DB row, secret value, checkout order, payment data, or raw production customer data.
 
 Command shape:
 
 ```bash
-ssh alfares 'cd /home/ssf/Documents/Github/flipflop && \
-RUN_LIVE_FLIPFLOP_AUTH_WALLET_SMOKE=1 \
-FLIPFLOP_AUTH_WALLET_SMOKE_CONFIRM=CHECKOUT_PROFILE_WALLET \
-FLIPFLOP_AUTH_WALLET_SMOKE_APPROVAL_ID=<non-secret-approval-id> \
-FLIPFLOP_AUTH_WALLET_SMOKE_BEARER_TOKEN=<synthetic-token> \
-npm run smoke:auth-wallet-checkout-profile -- --execute'
+ssh alfares 'cd /home/ssf/Documents/Github/flipflop && RUN_LIVE_FLIPFLOP_AUTH_WALLET_SMOKE=1 FLIPFLOP_AUTH_WALLET_SMOKE_CONFIRM=CHECKOUT_PROFILE_WALLET FLIPFLOP_AUTH_WALLET_SMOKE_APPROVAL_ID=<non-secret-approval-id> FLIPFLOP_AUTH_WALLET_SMOKE_BEARER_TOKEN=<synthetic-token> npm run smoke:auth-wallet-checkout-profile -- --execute'
 ```
 
 Forbidden in this gate:
@@ -240,7 +235,7 @@ Stop immediately and do not retry automatically if:
 
 This packet is valid when:
 
-- Gate 1 completion evidence remains redacted and Gates 2-6 still show missing owner inputs.
+- Gate 1 and Gate 2 completion evidence remains redacted and Gates 3-6 still show missing owner inputs.
 - Auth coordinator docs link to it.
 - `npm run check:customer-data-wallet-runtime-gate-packet` passes.
 - `git diff --check` passes.

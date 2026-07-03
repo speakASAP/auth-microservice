@@ -1,3 +1,33 @@
+## 2026-07-03 - Goal 10.66 Gate 2 FlipFlop Guarded Gateway Wallet Smoke
+
+Current focus:
+
+- Execute the owner-approved FlipFlop gateway Auth wallet smoke using Vault-backed synthetic Auth credentials without exposing secret values.
+
+Evidence:
+
+- Vault `TEST_EMAIL`/`TEST_PASSWORD` were used only to materialize a fresh Auth user access token through Auth login into a temporary token file; login returned HTTP 201 and the token was not printed.
+- `npm run smoke:auth-wallet-checkout-profile -- --execute` passed with approval id `gate2-flipflop-auth-wallet-smoke-20260703-vault-test-login` and status `pass_flipflop_auth_wallet_gateway_smoke` against `https://flipflop.alfares.cz`.
+- Public pages `/checkout`, `/profile/addresses`, and `/profile/invoice-profiles` returned HTTP 200.
+- FlipFlop gateway `/api/auth/profile/checkout-data` returned HTTP 200 before and after default selection.
+- Gateway delivery address create/update/default/delete and invoice profile create/update/default/delete returned HTTP 200; cleanup verification showed deleted synthetic hashes absent from post-delete lists.
+- Source assertions passed for profile UI, checkout selectors, manual-edit-before-wallet-response guard, explicit selector override, checkout wallet save-back, profile invoice CRUD/default UI, and order payload snapshot boundary.
+
+Validation:
+
+- Passed: `RUN_LIVE_FLIPFLOP_AUTH_WALLET_SMOKE=1 FLIPFLOP_AUTH_WALLET_SMOKE_CONFIRM=CHECKOUT_PROFILE_WALLET FLIPFLOP_AUTH_WALLET_SMOKE_APPROVAL_ID=gate2-flipflop-auth-wallet-smoke-20260703-vault-test-login FLIPFLOP_AUTH_WALLET_SMOKE_BEARER_TOKEN=<redacted> npm run smoke:auth-wallet-checkout-profile -- --execute`.
+- Passed after documentation update: node --check scripts/check-customer-data-wallet-runtime-gate-packet.js, npm run check:customer-data-wallet-runtime-gate-packet, npm run check:customer-data-wallet-runtime -- --expect=deployed, git diff --check, and changed-file sensitive literal scan.
+
+Boundary:
+
+- No token, password, JWT, cookie, raw request body, raw response body, decoded claim, DB row, or secret value was printed or recorded.
+- No checkout submit, order/payment/Warehouse mutation, notification send, deploy, Kubernetes/Vault mutation, DB read/write, or raw production customer-data inspection was performed.
+- FlipFlop repository was not committed because it already had unrelated dirty Goal 24 documentation changes on branch `goal24-flipflop-replay-runtime-smoke`.
+
+Next unfinished chunk:
+
+- Gate 3 FlipFlop authenticated browser/session selector smoke remains separate because it requires browser/session interaction evidence for delayed wallet response and selector behavior.
+
 ## 2026-07-03 - Goal 10.65 Gate 1 Auth Authenticated Wallet Smoke
 
 Current focus:
