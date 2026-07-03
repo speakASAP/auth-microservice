@@ -1,3 +1,33 @@
+## 2026-07-03 - Goal 10.75/10.76 Cliplot Gated Fetch Path And Rent Dependency Gate
+
+Current focus:
+
+- Integrate the next two parallel source-prep lanes: Cliplot approval-gated browser-session wallet fetch evidence path and Rent-a-box opt-in Auth dependency helpers.
+
+Evidence:
+
+- Cliplot commit `ddb9a8c` added a reusable approval-gated Auth wallet browser-session fetch evidence path.
+- Cliplot default evidence remains non-live and sanitized: `authWalletFetch=false`, `browserSessionRead=false`, `checkoutSubmit=false`, `mutation=false`, `persistence=false`, and `providerCall=false`.
+- Cliplot browser-session smoke default status is `approval_required_auth_wallet_browser_session_fetch_source_path`; live execution requires `ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true`, a non-secret approval id, and an approved synthetic bearer.
+- Rent-a-box commit `a54a5cd` added opt-in Auth customer context/profile/admin dependency helpers behind `RENT_AUTH_ADAPTER_ENABLED` and transitional onboarding behind `RENT_AUTH_TRANSITIONAL_ONBOARDING_ENABLED`.
+- Rent verifier still reports `auth_runtime_adapter.status=source_prepared_feature_gated_runtime_adapter`, with `global_local_auth_replacement=false`, `production_backfill=false`, and `uniqueness_enforcement=false`.
+
+Validation:
+
+- Cliplot passed: `npm run readiness:auth-wallet-runtime-checkout-evidence`, `npm run readiness:auth-wallet-browser-session-smoke`, `npm run readiness:auth-wallet-checkout`, `npm run check`, `git diff --check`, `git show --check --oneline HEAD`, and committed-diff token/secret/PII-shaped scan.
+- Rent-a-box passed: `python3 -m py_compile` for requested scripts plus adapter/dependency/test files, `python3 -B scripts/check_goal12_auth_wallet_readiness.py --root .`, `./scripts/intent_preflight.sh`, `git diff --check`, and scoped changed-file secret scan.
+- Rent focused pytest and ruff are still blocked on the remote host by missing runners (`missing_pytest_runner`, `missing_ruff_runner`).
+
+Boundary:
+
+- Cliplot did not perform live browser-session wallet fetch, checkout submit, Auth wallet mutation, payment/Warehouse/notification mutation, DB write, Kubernetes/Vault mutation, deploy, or customer-data output.
+- Rent-a-box did not replace local auth globally, perform production backfill, enforce uniqueness, deploy, mutate Kubernetes/Vault, change Auth source, output raw production rows, or print tokens/cookies/secrets/connection strings.
+
+Next unfinished chunk:
+
+- Cliplot: owner may open the live browser-session smoke window with approved synthetic bearer if runtime fetch evidence is required.
+- Rent-a-box: provide or approve a repo-local pytest-capable runtime, then run focused adapter tests before any product-code route migration.
+
 ## 2026-07-03 - Goal 10.73/10.74 Cliplot Selector UI And Rent Runtime Adapter Source Prep
 
 Current focus:
