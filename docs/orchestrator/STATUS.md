@@ -1,3 +1,50 @@
+## 2026-07-03 - Goal 10.50 ChytraKoupe Auth Subject Order Snapshot Contract
+
+Current focus:
+
+- Source-resolve the ChytraKoupe `customer.authSubject` blocker without
+  changing runtime checkout behavior or running live smokes.
+
+Evidence:
+
+- ChytraKoupe commit `e3fa5e5 docs: resolve auth subject order snapshot
+  contract` updates Goal 06 docs, status, guarded smoke packet, validation
+  reports, implementation-goals README, and verifier expectations.
+- Current ChytraKoupe checkout remains `/api/orders/guest`; it must not submit
+  `customer.authSubject`, `customer.authUserId`, wallet row ids,
+  delivery-address ids, invoice-profile ids, emails, or local storage values as
+  identity provenance.
+- Orders `orders.create.v1` already accepts optional `customer.authSubject`,
+  `authUserId`, `subject`, or `sub`, validates matching UUID aliases, and
+  persists normalized `customer.authUserId` plus `customer.subject`.
+- Future non-guest authenticated ChytraKoupe central Orders submission may set
+  `customer.authSubject` only from the server-validated Auth bearer `sub`.
+
+Validation:
+
+- ChytraKoupe `npm run verify:auth-wallet-checkout-selectors` passed.
+- ChytraKoupe `node --check scripts/verify-auth-wallet-checkout-selectors.mjs`
+  passed.
+- ChytraKoupe `git diff --check` passed.
+- ChytraKoupe `npm run lint` passed.
+- ChytraKoupe `npm run build` passed.
+- ChytraKoupe focused stale Auth subject blocker scan returned no active
+  documentation/report matches outside verifier negative-regex guards.
+- ChytraKoupe targeted dangerous literal-secret scan on changed files returned
+  no matches.
+
+Boundary:
+
+- No deploy, live Auth call, authenticated endpoint call, checkout submit, DB
+  query/write, secret/token/cookie inspection, production customer/order data
+  read, Orders mutation, payment/Warehouse mutation, notification send, or
+  runtime wallet mutation was performed.
+
+Next unfinished chunk:
+
+- ChytraKoupe remains runtime-smoke-gated on owner-approved synthetic Auth
+  account/token, synthetic checkout test data, and non-secret approval id.
+
 ## 2026-07-03 - Goal 10.49 ChytraKoupe Hosted Auth Client ID Default
 
 Current focus:

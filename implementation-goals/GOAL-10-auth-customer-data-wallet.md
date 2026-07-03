@@ -1,6 +1,6 @@
 # GOAL-10 Auth Customer Data Wallet
 
-Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors and Auth wallet response-shape verifier source-prepared; Rent-a-box hosted Auth callback scaffold source-prepared; Cliplot readiness lane remains gated; marketplace/channel audit complete; synthetic authenticated smoke and dependent runtime lanes remain approval-gated
+Status: active; Auth API + hosted profile UI deployed behind protected wallet routes; current Auth head live refresh and unauthenticated wallet 401 smoke completed; FlipFlop non-mutating runtime smoke completed; FlipFlop selectors/save-back/profile invoice management/navigation and Orders/FlipFlop order snapshot support source-prepared; ChytraKoupe checkout selectors, hosted Auth client-id, response-shape verifier, and Auth subject order snapshot contract source-prepared; Rent-a-box hosted Auth callback scaffold source-prepared; Cliplot readiness lane remains gated; marketplace/channel audit complete; synthetic authenticated smoke and dependent runtime lanes remain approval-gated
 
 ## Intent
 
@@ -78,6 +78,7 @@ Auth customer data wallet:
 - [x] 10.47 Rent-a-box Auth adapter/mapping contract source-prepared in commit `abf732d`.
 - [x] 10.48 Cliplot Auth wallet checkout contract source-prepared in commit `dbdc1b4`.
 - [x] 10.49 ChytraKoupe hosted Auth client-id default resolved in commit `65b37aa`.
+- [x] 10.50 ChytraKoupe Auth subject order snapshot contract source-prepared in commit `e3fa5e5`.
 - [x] 10.20 FlipFlop account invoice profile management and Auth default endpoint method alignment source-prepared.
 - [x] 10.21 FlipFlop account invoice profile navigation source-prepared.
 - [x] 10.22 Auth live approval gate source revalidated against current HEAD.
@@ -131,7 +132,7 @@ marketplace operations.
 | F2 FlipFlop checkout/profile UX    | non-mutating-runtime-smoke-passed; authenticated smoke gated | FlipFlop frontend worker | checkout/profile UI, explicit save-back, invoice profile management/navigation | Auth deployed; synthetic checkout/profile smoke gated | 5           |
 | O1 Orders order snapshots          | source-prepared    | Orders worker            | create-order DTO/entity/docs/verifiers   | Auth live 401 complete; optional provenance gated | 6           |
 | R1 Rent-a-box Auth migration plan  | adapter-contract-prepared; migration/backfill-gated | Rent-a-box coordinator | `rent-a-box/docs/goals/GOAL-12-rent-auth-adapter-mapping-contract.md`, `rent-a-box/docs/goals/GOAL-12-auth-customer-data-wallet-migration.md`, `rent-a-box/apps/web/src/app/auth/**`, `rent-a-box/apps/web/src/lib/auth/hosted-auth.ts`, `rent-a-box/apps/web/src/lib/customer-flow/session.ts`, `rent-a-box/scripts/check_goal12_auth_wallet_readiness.py` | owner-approved live DB migration/backfill plan and production row-count complexity before product-code migration | 7 |
-| CK1 ChytraKoupe checkout selectors | client-id-default-resolved; runtime-smoke-gated | ChytraKoupe worker | `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/lib/config/env.ts`, `chytrakoupe/k8s/configmap.yaml`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/docs/goal-driven/auth-wallet-guarded-smoke-approval.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | optional Auth subject linkage, synthetic account/token/test data, and non-secret approval id before runtime claim | 8 |
+| CK1 ChytraKoupe checkout selectors | subject-linkage-contract-prepared; runtime-smoke-gated | ChytraKoupe worker | `chytrakoupe/lib/auth/wallet.ts`, `chytrakoupe/components/checkout/CheckoutClient.tsx`, `chytrakoupe/lib/config/env.ts`, `chytrakoupe/k8s/configmap.yaml`, `chytrakoupe/implementation-goals/GOAL-06-auth-wallet-checkout-selectors.md`, `chytrakoupe/docs/goal-driven/auth-wallet-guarded-smoke-approval.md`, `chytrakoupe/scripts/verify-auth-wallet-checkout-selectors.mjs` | synthetic account/token/test data and non-secret approval id before runtime claim; future non-guest order subject provenance must derive only from validated Auth bearer `sub` | 8 |
 | C1 Cliplot plan                    | checkout-contract-prepared; runtime-gated | Cliplot coordinator | `cliplot/docs/auth-wallet-checkout-contract.md`, `cliplot/implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`, `cliplot/scripts/auth-wallet-checkout-readiness.js`, `cliplot/reports/validation/GOAL-10-auth-wallet-checkout-readiness.md` | selector/session/PII implementation evidence, approved field mapping implementation, and guest fallback synthetic evidence | later |
 | M1 marketplace audit               | complete           | explorer                 | `docs/orchestrator/2026-07-02-auth-wallet-marketplace-channel-audit.md` | none                      | no code     |
 
@@ -171,11 +172,34 @@ that repo's status/validation report.
 - `[MISSING: owner-approved authenticated browser/session smoke for delayed wallet response and selector interaction]`
 - `[MISSING: owner-approved Rent-a-box live DB migration/backfill plan for local users and customer_profiles before product-code migration]`
 - `[UNKNOWN: Rent-a-box production local users/customer_profiles row counts and migration complexity]`
-- `[MISSING: ChytraKoupe authenticated Auth subject linkage decision before production runtime claim if central Orders must persist customer.authSubject]`
 - `[MISSING: owner-approved synthetic Auth account/token, synthetic checkout test data, and non-secret approval id for ChytraKoupe guarded wallet selector smoke]`
 - `[MISSING: Cliplot checkout wallet selector behavior approval, authenticated browser/session contract, no-PII exposure review, approved field mapping, and guest fallback behavior before wallet selector code changes]`
 - `[MISSING: Cliplot implementation and approved synthetic evidence for selector behavior, browser-session wallet reads, no-PII exposure, field mapping, and guest fallback]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
+
+## 2026-07-03 Goal 10.50 ChytraKoupe Auth Subject Order Snapshot Contract
+
+- 2026-07-03: ChytraKoupe commit `e3fa5e5 docs: resolve auth subject order
+  snapshot contract` source-resolves the current `customer.authSubject` blocker.
+- Current ChytraKoupe checkout remains `/api/orders/guest` and must not submit
+  `customer.authSubject`, `customer.authUserId`, wallet row ids,
+  delivery-address ids, invoice-profile ids, emails, or local storage values as
+  identity provenance.
+- Orders `orders.create.v1` already accepts optional `customer.authSubject`,
+  `authUserId`, `subject`, or `sub`, validates matching UUID aliases, and
+  persists normalized `customer.authUserId` plus `customer.subject`.
+- Future non-guest authenticated ChytraKoupe central Orders submission may set
+  `customer.authSubject` only from the server-validated Auth bearer `sub`.
+- Validation passed in ChytraKoupe: `npm run
+  verify:auth-wallet-checkout-selectors`, `node --check
+  scripts/verify-auth-wallet-checkout-selectors.mjs`, `git diff --check`,
+  `npm run lint`, `npm run build`, focused stale Auth subject blocker scan
+  excluding verifier negative-regex guards, and targeted dangerous
+  literal-secret scan on changed files.
+- No deploy, live Auth call, authenticated endpoint call, checkout submit, DB
+  query/write, secret/token/cookie inspection, production customer/order data
+  read, Orders mutation, payment/Warehouse mutation, notification send, or
+  runtime wallet mutation was performed.
 
 ## 2026-07-03 Goal 10.37 Rent-a-box Schema/Response-Shape Evidence Refresh
 
