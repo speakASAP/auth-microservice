@@ -1,3 +1,4 @@
+2026-07-04: Goal 24 Auth actor-bound token provisioning proof completed. [RESOLVED/NARROWED: Goal 24 Auth actor-bound token source can be generated for actor hash 4215870ba488de17 using actorHashField=emailLower, requiredRole=app:flipflop-service:admin, tokenFileMode=0600, authValidationStatusClass=2xx, actorHashMatches=true, requiredAdminRolePresent=true, tokenOutput=false, decodedJwtOutput=false, rawUserOutput=false, rawEmailOutput=false, secretOutput=false, and tokenSourceDestroyedOrInvalidated=true] The proof emitted no token/JWT/user/secret output and removed the token file after validation. It does not authorize checkout, payment, provider calls, Orders/Warehouse/channel mutations, or completed-payment cleanup. Report: reports/validation/VAL-GOAL-24-auth-actor-token-provisioning-2026-07-04.md.
 # Auth Implementation Orchestrator
 
 Use this file as the master prompt for every new Codex session.
