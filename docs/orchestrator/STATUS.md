@@ -1,3 +1,28 @@
+## 2026-07-06 - Consumer Profile Runtime Refresh
+
+Current focus:
+
+- Refresh current consumer profile-centralization evidence after Auth runtime activation completed.
+
+Evidence:
+
+- Consumer Profile Runtime Refresh.
+- Marathon main is clean at 8842b44; hosted Auth contract checker passed 17/17; read-only Marathon/Auth reconciliation dry-run passed with aggregate-only output and applyAllowed=false.
+- Payments main is clean at 1544d93; npm run check:hosted-auth passed; focused Jest passed 2 suites/12 tests.
+- Aukro main is clean at c521762; orders lifecycle UI verifier passed; focused UI controller spec passed and covers hosted Auth profile/wallet links.
+- Cliplot main is clean at 7bfb686; Auth wallet checkout readiness passed; runtime checkout evidence passed with no live calls; browser-session smoke stayed approval-gated by default with no Auth wallet fetch/session read/mutation.
+
+Boundary:
+
+- No consumer deploy, live checkout/order/payment/provider mutation, Auth wallet mutation, DB write, Kubernetes/Vault mutation, raw customer-data output, token output, password output, or email output occurred. Marathon dry-run used read-only aggregate DB/Auth mapping queries only.
+
+Next unfinished chunks:
+
+- Marathon: owner-approved reconciliation apply and migrated-user smoke.
+- Payments: owner-approved authenticated admin UI/session proof.
+- Aukro: runtime/session packet proof if required beyond source/UI spec evidence.
+- Cliplot: owner-approved synthetic browser-session wallet fetch or separate Auth-owned mutation contract for write surfaces.
+
 ## 2026-07-06 - Email Change Synthetic Runtime Smoke Completed
 
 Current focus:
@@ -154,7 +179,7 @@ Current focus:
 Evidence:
 
 - Marathon `main` is clean at `bec1564`; `python3 scripts/check-marathon-hosted-auth-contract.py` passed 17/17. No safe source-only remediation remains. Remaining gates: approved migration/reconciliation execution, confirmed Auth `/auth/profile` runtime adoption beyond token validation payload, deployed consumer hardening, and sanitized migrated-user smoke.
-- Payments `main` now includes `55a1785 test: harden hosted auth contract checker`; `node scripts/check-hosted-auth-contract.js` passed after quote-style tolerant service-actor assertions, focused Jest passed 2 suites/12 tests, and the commit was pushed. Existing unrelated staged/modified Payments admin/report files were left untouched. Remaining gate: owner-approved admin test session packet for authenticated runtime admin UI proof.
+- Payments `main` now includes `55a1785 test: harden hosted auth contract checker`; `npm run check:hosted-auth` passed after quote-style tolerant service-actor assertions, focused Jest passed 2 suites/12 tests, and the commit was pushed. Existing unrelated staged/modified Payments admin/report files were left untouched. Remaining gate: owner-approved admin test session packet for authenticated runtime admin UI proof.
 - Aukro `main` is clean at `c521762`; hosted Auth profile/wallet/settings links are source-proven and focused UI validation passed. No remaining Auth profile-link source blocker; remaining proof is runtime/session packet related.
 - Cliplot `main` is clean at `7bfb686`; `npm run readiness:auth-wallet-checkout` passed with `mutation=false`, `persistence=false`, and Auth wallet write scope deliberately disabled. Remaining gate: owner-approved Auth-owned mutation contract with consent, idempotency, audit, rollback, no-PII evidence, and validation ownership.
 
