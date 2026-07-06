@@ -1,3 +1,28 @@
+## 2026-07-06 - Consumer Profile-Centralization Refresh
+
+Current focus:
+
+- Refresh the remaining consumer gates after Auth source remediation and activation-packet cleanup.
+
+Evidence:
+
+- Marathon `main` is clean at `bec1564`; `python3 scripts/check-marathon-hosted-auth-contract.py` passed 17/17. No safe source-only remediation remains. Remaining gates: approved migration/reconciliation execution, confirmed Auth `/auth/profile` runtime adoption beyond token validation payload, deployed consumer hardening, and sanitized migrated-user smoke.
+- Payments `main` now includes `55a1785 test: harden hosted auth contract checker`; `node scripts/check-hosted-auth-contract.js` passed after quote-style tolerant service-actor assertions, focused Jest passed 2 suites/12 tests, and the commit was pushed. Existing unrelated staged/modified Payments admin/report files were left untouched. Remaining gate: owner-approved admin test session packet for authenticated runtime admin UI proof.
+- Aukro `main` is clean at `c521762`; hosted Auth profile/wallet/settings links are source-proven and focused UI validation passed. No remaining Auth profile-link source blocker; remaining proof is runtime/session packet related.
+- Cliplot `main` is clean at `7bfb686`; `npm run readiness:auth-wallet-checkout` passed with `mutation=false`, `persistence=false`, and Auth wallet write scope deliberately disabled. Remaining gate: owner-approved Auth-owned mutation contract with consent, idempotency, audit, rollback, no-PII evidence, and validation ownership.
+
+Boundary:
+
+- Consumer refresh was read-only except for the source-only Payments checker hardening commit. No deploy, SQL/DB mutation, authenticated API call, customer-data read, secret/token/password/email output, provider/payment/refund mutation, or Auth runtime mutation occurred.
+
+Next unfinished chunks:
+
+- Auth: owner-approved DB/deploy window for email-change SQL, Auth deploy, hosted static smoke, and synthetic email-change request/confirm smoke.
+- Marathon: owner-approved reconciliation/adoption runtime proof.
+- Payments: owner-approved admin test session packet for authenticated UI smoke.
+- Aukro: owner-approved runtime/session packet proof when needed.
+- Cliplot: owner-approved mutation contract before any write-surface implementation.
+
 ## 2026-07-06 - Profile Centralization Activation Packet Refined
 
 Current focus:

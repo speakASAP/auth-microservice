@@ -52,3 +52,12 @@ Expected current status:
 ## Boundary
 
 No SQL apply, deploy, live static smoke, live email-change request/confirm, production DB read/write, secret/token/password/email output, notification payload output, or raw customer-data output occurred in this checkpoint.
+
+## 2026-07-06 Consumer Refresh Update
+
+| Consumer | Current Evidence | Remaining Gate |
+| --- | --- | --- |
+| Marathon | Clean `main` at `bec1564`; hosted Auth contract checker passed 17/17 | Approved reconciliation/runtime adoption proof and migrated-user smoke |
+| Payments | Pushed `55a1785`; hosted Auth checker and focused Jest passed | Owner-approved admin test session packet for authenticated UI proof |
+| Aukro | Clean `main` at `c521762`; hosted Auth profile/wallet/settings link source proof validated | Runtime/session packet proof only |
+| Cliplot | Clean `main` at `7bfb686`; read-only Auth wallet/profile readiness passed | Owner-approved mutation contract before any write-surface implementation |
