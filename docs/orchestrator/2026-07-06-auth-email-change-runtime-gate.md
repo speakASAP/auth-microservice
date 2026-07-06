@@ -1,0 +1,82 @@
+# 2026-07-06 Auth Email Change Runtime Gate
+
+## Intent Preservation Chain
+
+- Vision: Auth is the central source of truth for account email and registered-user contact identity across the ecosystem.
+- Goal Impact: a user can request an email change from an app profile surface, but the actual account email update happens only in Auth after verified confirmation.
+- System: Auth owns `users.email`, primary email contact data, password proof, one-time email-change tokens, and hosted `/profile` email-change UI wiring.
+- Feature: approval-gated runtime activation evidence for verified email change.
+- Task: prepare a non-mutating-by-default smoke harness and runtime gate packet for DB migration, deploy, static profile smoke, request smoke, and confirm smoke.
+- Execution Plan: do not apply SQL, deploy, read DB rows, print tokens/passwords/email bodies, or run live email-change mutation without the owner-approved runtime window and required input files.
+- Coding Prompt: keep the harness fail-closed; use token/password/confirmation-token files; emit only sanitized booleans/status codes.
+- Code: `scripts/check-auth-email-change-runtime-smoke.js` and `npm run check:auth-email-change-runtime`.
+- Validation: source-only guarded check, node syntax check, package script verification, Auth contract tests, build, lint, and `git diff --check`.
+
+## Runtime Gate Order
+
+0. Source-only activation preflight must pass before any runtime work:
+
+```bash
+npm run check:auth-email-change-activation-source
+```
+
+This verifies root TypeORM entity registration, feature repository wiring, SQL/entity shape, hosted profile markers, guarded runtime smoke safety, package scripts, and that `scripts/deploy.sh` does not apply SQL or enable `DB_SYNC=true`.
+
+1. Apply `scripts/create-email-change-table.sql` in the approved Auth DB change window.
+2. Deploy Auth from a clean `main` head containing the email-change source commit.
+3. Run GET-only hosted profile static smoke:
+
+```bash
+npm run check:customer-data-wallet-hosted-profile-static -- --no-write-report
+```
+
+4. Request smoke with synthetic account/new email:
+
+```bash
+RUN_AUTH_EMAIL_CHANGE_SMOKE=1 \
+AUTH_EMAIL_CHANGE_SMOKE_CONFIRM=VERIFIED_EMAIL_CHANGE \
+AUTH_EMAIL_CHANGE_SMOKE_APPROVAL_ID=<non-secret approval id> \
+AUTH_EMAIL_CHANGE_SMOKE_TOKEN_FILE=<0600 bearer file> \
+AUTH_EMAIL_CHANGE_SMOKE_NEW_EMAIL_FILE=<0600 synthetic new email file> \
+AUTH_EMAIL_CHANGE_SMOKE_CURRENT_PASSWORD_FILE=<0600 current password file, only for password accounts> \
+npm run check:auth-email-change-runtime -- --execute --mode=request
+```
+
+5. Confirm smoke only after the approved operator/inbox path provides the one-time confirmation token in a local 0600 file:
+
+```bash
+RUN_AUTH_EMAIL_CHANGE_SMOKE=1 \
+AUTH_EMAIL_CHANGE_SMOKE_CONFIRM=VERIFIED_EMAIL_CHANGE \
+AUTH_EMAIL_CHANGE_SMOKE_APPROVAL_ID=<same or linked non-secret approval id> \
+AUTH_EMAIL_CHANGE_CONFIRM_TOKEN_FILE=<0600 email-change token file> \
+npm run check:auth-email-change-runtime -- --execute --mode=confirm
+```
+
+## Output Contract
+
+Allowed output:
+
+- mode, approval-id presence, HTTP method/path/status, success booleans, expected field-presence booleans, report status, and whether Authorization/request body were sent.
+
+Forbidden output:
+
+- bearer tokens, passwords, email-change tokens, JWT claims, email addresses, email message bodies, request bodies, response bodies, DB rows, production customer data, notification payloads, cookies, OAuth tokens, magic-link tokens, reset tokens, API keys, connection strings, and secret values.
+
+## Stop Conditions
+
+- Any DB migration failure.
+- Auth deploy failure or rollout health failure.
+- Hosted `/profile` static smoke fails after deploy.
+- Email-change request returns a non-2xx status for the approved synthetic account.
+- Confirmation token cannot be obtained through the approved operator/inbox path without printing email/token contents.
+- Confirmation returns a non-2xx status.
+- Any command would require printing or storing secret/customer-data values in docs, git, logs, or reports.
+
+## Current Status
+
+- Source harness prepared and fail-closed.
+- Root TypeORM entity registration preflight prepared.
+- SQL apply: not run.
+- Deploy: not run.
+- Live static smoke: not run after email-change deployment.
+- Live request/confirm smoke: not run.

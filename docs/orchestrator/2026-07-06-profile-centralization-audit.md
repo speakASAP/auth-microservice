@@ -41,11 +41,12 @@
 | Auth backend audit | complete | subagent | read-only Auth API/DTO/entity/docs inspection | confirmed avatar/settings/email-change gaps and existing core profile/wallet/password support |
 | Consumer integration audit | complete | subagent | read-only scan of consumer repos | repo-by-repo centralization matrix recorded below |
 | Email-change source implementation | dependency-gated | orchestrator | Auth token/entity/API/UI/tests/docs | source validated; runtime activation requires SQL apply/deploy gate |
+| Email-change runtime activation gate | dependency-gated | orchestrator | root TypeORM entity registration, source verifier, guarded smoke harness, runtime gate docs | source preflight passes; SQL apply/deploy/live smoke remain gated |
 | Production deploy/live static smoke | dependency-gated | owner/deploy gate | `./scripts/deploy.sh`, then hosted `/profile` live static smoke | requires deploy approval per repo workflow |
 
 ## Current Verdict
 
-Auth now has source-level first-class support for central profile image metadata and user-visible profile settings through the existing central profile API, without moving ownership to consumers. The broader ecosystem guarantee still depends on consumer apps reading/writing Auth profile APIs and on runtime activation of the Auth email-change table/deploy.
+Auth now has source-level first-class support for central profile image metadata, user-visible profile settings, and verified email-change source/runtime-gate preparation through Auth-owned APIs, without moving ownership to consumers. The broader ecosystem guarantee still depends on consumer apps reading/writing Auth profile APIs and on approved runtime activation of the Auth email-change table/deploy/smoke gate.
 
 ## Consumer Audit Matrix
 
@@ -88,4 +89,5 @@ Auth now has source-level first-class support for central profile image metadata
 - No worker deployed.
 - No worker ran DB writes, live checkout/order/payment mutations, provider/bank mutations, or Auth repo edits.
 - Commit/stage must stay per repo and per lane because multiple repos contain pre-existing or parallel unrelated untracked/modified files.
-- Auth source remediation, including verified email change, is ready for one Auth repo commit after final validation.
+- Auth source remediation and email-change activation preflight are ready for one Auth repo commit after final validation.
+- Subagent activation audit found `EmailChangeToken` missing from root TypeORM entities; this checkpoint fixes that registration and adds `npm run check:auth-email-change-activation-source` to keep it covered.

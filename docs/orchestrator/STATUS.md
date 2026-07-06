@@ -1,3 +1,41 @@
+## 2026-07-06 - Auth Email Change Runtime Gate Prepared
+
+Current focus:
+
+- Convert the remaining verified email-change runtime activation work into a source-controlled, fail-closed runtime gate.
+
+Implementation evidence:
+
+- Added root TypeORM registration for `EmailChangeToken` in `shared/database/database.module.ts`.
+- Added `scripts/check-auth-email-change-runtime-smoke.js`.
+- Added `scripts/check-auth-email-change-activation-source.js` and package script `npm run check:auth-email-change-activation-source`.
+- Added package script `npm run check:auth-email-change-runtime`.
+- Added `docs/orchestrator/2026-07-06-auth-email-change-runtime-gate.md` with gate order, allowed outputs, forbidden outputs, stop conditions, and exact approved-window command shapes.
+- The smoke defaults to source-only `approval_required_auth_email_change_runtime_smoke` and does not call runtime unless `--execute`, `RUN_AUTH_EMAIL_CHANGE_SMOKE=1`, `AUTH_EMAIL_CHANGE_SMOKE_CONFIRM=VERIFIED_EMAIL_CHANGE`, non-secret approval id, and required input files are present.
+- Root TypeORM entity registration for `EmailChangeToken` was added after read-only activation audit found it missing from the root `entities` list.
+
+Validation evidence:
+
+- `npm run check:auth-email-change-activation-source`: passed with `pass_auth_email_change_activation_source_gate`.
+- `npm run check:auth-email-change-runtime -- --no-write-report`: passed source-only fail-closed with `approval_required_auth_email_change_runtime_smoke`.
+- `npm run test:auth-contract`: passed, 3 suites / 31 tests.
+- `npm run build`: passed.
+- `npm run lint`: passed.
+- `node --check scripts/check-auth-email-change-runtime-smoke.js`: passed.
+- `node --check scripts/check-auth-email-change-activation-source.js`: passed.
+- `git diff --check`: passed.
+
+Boundary:
+
+- No SQL apply, deploy, live static smoke, live email-change request/confirm, DB read/write, token/password/email output, notification payload output, or customer-data output occurred.
+
+Next unfinished chunks:
+
+- Owner-approved Auth DB migration window for `scripts/create-email-change-table.sql`.
+- Auth deploy from clean `main`.
+- GET-only hosted `/profile` static smoke.
+- Bounded synthetic request/confirm smoke using file-based bearer/password/new-email/confirmation-token inputs and sanitized output only.
+
 ## 2026-07-06 - Verified Email Change Source Implementation
 
 Current focus:

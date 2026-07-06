@@ -23,7 +23,9 @@
     "check:aos-auth-readiness": "bash scripts/check-aos-auth-modernization-readiness.sh",
     "check:customer-data-wallet-completion-gap": "node scripts/check-customer-data-wallet-completion-gap.js",
     "check:customer-data-wallet-hosted-profile-static": "node scripts/check-customer-data-wallet-hosted-profile-static.js",
-    "verify:orders-action-admin-rbac-seed": "node scripts/verify-orders-action-admin-rbac-seed.js"
+    "verify:orders-action-admin-rbac-seed": "node scripts/verify-orders-action-admin-rbac-seed.js",
+    "check:auth-email-change-runtime": "node scripts/check-auth-email-change-runtime-smoke.js",
+    "check:auth-email-change-activation-source": "node scripts/check-auth-email-change-activation-source.js"
   },
   "jest": {
     "moduleFileExtensions": [
