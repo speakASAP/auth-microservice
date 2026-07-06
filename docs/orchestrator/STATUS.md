@@ -1,3 +1,31 @@
+## 2026-07-06 - Profile Centralization Approved Runtime Window Executed
+
+Current focus:
+
+- Record approved Marathon reconciliation execution and Cliplot synthetic browser-session wallet/profile read evidence.
+
+Evidence:
+
+- Marathon approved execution used ticket `MAR-AUTH-RECON-2026-07-06`, approval phrase `OWNER_APPROVED_MARATHON_AUTH_RECONCILIATION_2026_07_06`, first batch limit `25`, phase order `auth` then `marathon`, and current candidate `4977534`.
+- Marathon `auth` phase passed with aggregate-only output: `selectedDistinctLegacyIds=1`, `mappedDistinctLegacyIds=0`, `mappedParticipantRows=0`, `targetDistinctAuthUsers=0`, `missingRoleAssignmentsBefore=0`, `missingMarkersBefore=0`, `insertedRoleAssignments=0`, and `updatedMarkers=0`.
+- Marathon `marathon` phase passed with aggregate-only output: `mappingCount=0`, `candidateRows=0`, and `updatedRows=0`.
+- Marathon post-run dry-run remained stable: `numericRows=1`, `uuidRows=54211`, `mappingCount=0`, `candidateRows=0`, `updatedRows=0`, and the one unmapped numeric legacy id remains quarantined outside the correction set.
+- Marathon in-pod `npm run check:production-smoke` passed with masked identifiers only: `ok=true`, `smoke=production-safe-payment-gift-winner-finished-nps`, `stepsSubmitted=29`, `participantFinished=true`, `paymentConfirmedByGift=true`, NPS create/update passed, `fullIdsPrinted=false`, `giftCodePrinted=false`, `tokenPrinted=false`, and `paymentWebhookKeyPrinted=false`.
+- Cliplot synthetic Auth bearer was created through a temporary `0600` file; synthetic email, token, response body, and customer data were not printed.
+- Cliplot approved live read-only smoke used approval id `CLIPLOT-AUTH-WALLET-SMOKE-20260706-REVIEW-01`, `AUTH_WALLET_SYNTHETIC_BEARER_FILE`, and `https://auth.alfares.cz`.
+- Cliplot approved live read-only smoke passed: `status=sanitized_auth_wallet_browser_session_fetch_recorded`, `liveExecutionAllowed=true`, `authWalletFetch=true`, `browserSessionRead=true`, `endpointCount=3`, all three allowed Auth wallet/profile endpoints returned HTTP 200, checkout-data schema version was `auth.customer-data-wallet.checkout-data.v1`, and every result reported `bodyPrinted=false`, `tokenPrinted=false`, and `customerDataPrinted=false`.
+- Cliplot reset validation passed after the live window: default `npm run readiness:auth-wallet-browser-session-smoke` returned `approval_required_auth_wallet_browser_session_fetch_source_path`, `liveExecutionAllowed=false`, `authWalletFetch=false`, and `browserSessionRead=false`.
+
+Boundary:
+
+- No raw user IDs, raw emails, raw phones, raw names, raw response bodies, tokens, bearer/session values, cookies, decoded JWTs, passwords, DSNs, `.env` values, DB rows, or customer data were printed.
+- Marathon helper executed but changed zero roles, zero markers, and zero Marathon rows because the current mapped correction set is empty.
+- Cliplot performed only approved GET reads of Auth wallet/profile endpoints. No checkout submit, Auth wallet/profile mutation, payment creation, Warehouse reservation, notification send, provider call, DB mutation, Kubernetes mutation, Vault mutation, deploy, or persistence occurred.
+
+Next unfinished chunks:
+
+- No further action is required for the current audited profile-centralization runtime gates. Residual Marathon data-hygiene exceptions remain quarantined for a separate targeted Auth-owned mapping/restore decision if the owner wants to resolve them later.
+
 ## 2026-07-06 - Profile Centralization Missing Inputs Search
 
 Current focus:

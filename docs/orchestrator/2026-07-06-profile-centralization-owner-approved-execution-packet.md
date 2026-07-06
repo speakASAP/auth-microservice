@@ -246,3 +246,17 @@ Blocked for live execution. Read-only readiness is ready and passed, the file-ba
 - Any drift from the recorded target heads before a mutating or authenticated execution.
 - Any request to combine Marathon phases without a renewed cross-DB transaction risk acceptance.
 - Any request to run Cliplot checkout submit, payment, warehouse, notification, order, Auth wallet mutation, DB, Kubernetes, Vault, or deploy work under the browser-session read packet.
+
+
+## Execution Evidence - 2026-07-06 Approved Runtime Window
+
+- Marathon ticket: `MAR-AUTH-RECON-2026-07-06`.
+- Marathon approval phrase: `OWNER_APPROVED_MARATHON_AUTH_RECONCILIATION_2026_07_06`.
+- Marathon phases: `auth` then `marathon`, limit `25`.
+- Marathon result: both phases passed; `insertedRoleAssignments=0`, `updatedMarkers=0`, `mappingCount=0`, `candidateRows=0`, and `updatedRows=0`.
+- Marathon post-run dry-run stayed aggregate-only and stable.
+- Marathon in-pod production smoke passed with masked identifiers only and no token/gift-code/payment-webhook output.
+- Cliplot approval id: `CLIPLOT-AUTH-WALLET-SMOKE-20260706-REVIEW-01`.
+- Cliplot bearer source: `AUTH_WALLET_SYNTHETIC_BEARER_FILE` with a temporary `0600` file; token value was not printed and the file was removed.
+- Cliplot result: all three allowed Auth wallet/profile endpoints returned HTTP 200 with sanitized evidence; no body, token, or customer data was printed; no mutation occurred.
+- Cliplot reset: default readiness returned to `approval_required_auth_wallet_browser_session_fetch_source_path` with no live fetch/session read.

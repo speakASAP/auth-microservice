@@ -22,11 +22,11 @@ This audit checks the user's requested end state:
 | Completed consumer lanes are pushed and clean | Read-only subagent audit reported Marathon, Payments, Aukro, and Cliplot clean on `origin/main` with no unpushed work | Source-proven |
 | Runtime activation for email change | `docs/orchestrator/2026-07-06-auth-email-change-runtime-gate.md`, `npm run check:auth-email-change-activation-source`, `npm run check:auth-email-change-runtime` fail-closed | Executed |
 
-## Not Complete Yet
+## Completion Verdict
 
 Auth runtime activation is complete: SQL apply, Auth deploy, GET-only hosted /profile static smoke, profile-centralization runtime readiness, and bounded synthetic email-change request/confirm smoke all passed with sanitized evidence.
 
-The remaining end-to-end profile-centralization proof is outside Auth and is limited to consumer runtime/session/mutation gates recorded below.
+The audited consumer runtime/session/mutation gates have now executed or resolved at the current safe scope. Marathon reconciliation ran with approved phased commands and changed zero rows/roles because no mapped correction candidates remain; Marathon in-pod production smoke passed with masked evidence. Cliplot live read-only Auth wallet/profile smoke passed through file-based synthetic bearer input and reset back to fail-closed default mode. Payments and Aukro gates were already complete at the validated level.
 
 ## Source-Only Completion Checker
 
@@ -69,3 +69,10 @@ Four separate subagents re-ran the remaining consumer gates after Auth activatio
 ## 2026-07-06 Missing Inputs Search Update
 
 Missing-input workers found/proposed non-secret packet values without running live mutations. Marathon candidate head is 4977534, proposed ticket id is `MAR-AUTH-RECON-2026-07-06`, first batch limit is `25`, phase order is `auth` then `marathon`, and conservative policies keep unmapped/orphaned rows quarantined until Auth-owned proof or targeted correction exists. Cliplot head is now 25f90e0 with `AUTH_WALLET_SYNTHETIC_BEARER_FILE` support, Auth base URL `https://auth.alfares.cz`, Cliplot runtime URL `https://cliplot.alfares.cz`, and proposed non-secret approval id `CLIPLOT-AUTH-WALLET-SMOKE-20260706-REVIEW-01`. Marathon apply and Cliplot live browser-session fetch remain blocked until the exact remaining runtime inputs are supplied.
+
+
+## 2026-07-06 Approved Runtime Window Execution Update
+
+Marathon approved runtime execution used ticket `MAR-AUTH-RECON-2026-07-06`, approval phrase `OWNER_APPROVED_MARATHON_AUTH_RECONCILIATION_2026_07_06`, limit `25`, and phases `auth` then `marathon`. Both phases passed with aggregate-only output and changed zero role assignments, zero markers, and zero Marathon rows because the mapped correction set is empty. In-pod `npm run check:production-smoke` passed with masked identifiers and no token/gift-code/payment-webhook output.
+
+Cliplot approved live read-only wallet/profile smoke used `CLIPLOT-AUTH-WALLET-SMOKE-20260706-REVIEW-01`, `AUTH_WALLET_SYNTHETIC_BEARER_FILE`, and `https://auth.alfares.cz`. All three allowed Auth wallet/profile endpoints returned HTTP 200; checkout-data returned schemaVersion `auth.customer-data-wallet.checkout-data.v1`; body, token, and customer data were not printed; reset validation returned to fail-closed default mode.
