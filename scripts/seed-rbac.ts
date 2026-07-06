@@ -139,6 +139,11 @@ const PREDEFINED_ROLES = [
 
   // Internal service roles (will be created per internal service)
   { name: 'admin', scope: RoleScope.INTERNAL, description: 'Admin access to internal services' },
+  {
+    name: 'action-admin',
+    scope: RoleScope.INTERNAL,
+    description: 'Approved lifecycle action authority for internal services',
+  },
 ];
 
 async function seedRBAC(adminEmail?: string) {
