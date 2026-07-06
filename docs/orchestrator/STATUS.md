@@ -1,3 +1,26 @@
+## 2026-07-06 - Profile Centralization Owner-Approved Execution Packet
+
+Current focus:
+
+- Prepare exact source-only execution packets for the two remaining owner-gated profile-centralization lanes.
+
+Evidence:
+
+- Added `docs/orchestrator/2026-07-06-profile-centralization-owner-approved-execution-packet.md`.
+- Added `npm run check:profile-centralization-owner-approved-execution-packet`.
+- Marathon current observed head is 4977534 after a parallel worker committed the apply helper optimization; packet preserves phased Auth then Marathon apply templates, aggregate-only validation, forward-fix recovery, and migrated-user smoke requirements.
+- Cliplot current observed head is 7bfb686; packet preserves read-only readiness commands, approval-gated browser-session wallet/profile fetch template, cleanup/reset validation, and forbidden checkout/payment/Warehouse/notification/Auth mutation boundaries.
+- Execution remains blocked until all listed owner inputs are present, including Marathon approval phrase/ticket/batch/fixture/mapping policies and Cliplot approval id/synthetic bearer-session packet/base URL.
+
+Boundary:
+
+- Source-only packet/checker update. No Marathon apply, no Cliplot live browser-session fetch, no DB read/write, no deploy, no Kubernetes/Vault mutation, no checkout/order/payment/provider/Warehouse/notification mutation, no raw customer-data output, no token/session output, no email output, no password output, and no secret output occurred.
+
+Next unfinished chunks:
+
+- Marathon: provide exact owner-approved production mutation packet inputs and missing mapping policies before any apply.
+- Cliplot: provide current owner-approved non-secret synthetic browser-session packet before any live wallet/profile fetch.
+
 ## 2026-07-06 - Parallel Subagent Consumer Gate Refresh
 
 Current focus:

@@ -40,6 +40,8 @@ function main() {
   const activationPacket = read('scripts/check-profile-centralization-activation-packet.js');
   const runtimeReadiness = read('scripts/check-profile-centralization-runtime-readiness.js');
   const commandPacket = read('scripts/create-profile-centralization-activation-command-packet.js');
+  const ownerApprovedExecutionPacket = read('docs/orchestrator/2026-07-06-profile-centralization-owner-approved-execution-packet.md');
+  const ownerApprovedExecutionPacketChecker = read('scripts/check-profile-centralization-owner-approved-execution-packet.js');
 
   const checks = {
     authProfileSourceOfTruth: includesAll(authService + authController + contract, [
@@ -125,6 +127,18 @@ function main() {
       'authenticated admin smoke recorded resolved',
       'Owner-approved synthetic browser-session wallet/profile packet or Auth-owned mutation contract before write surfaces',
     ]),
+    ownerApprovedExecutionPacket: includesAll(ownerApprovedExecutionPacket + ownerApprovedExecutionPacketChecker + status + state + completionAudit + packageJsonToText(packageJson), [
+      'Profile Centralization Owner-Approved Execution Packet',
+      'pass_profile_centralization_owner_approved_execution_packet_source_gate',
+      'check:profile-centralization-owner-approved-execution-packet',
+      'Marathon current observed head is 4977534',
+      'Cliplot current observed head is 7bfb686',
+      'Execution remains blocked until all listed owner inputs are present',
+      'MARATHON_AUTH_RECONCILIATION_APPLY=OWNER_APPROVED_MARATHON_AUTH_RECONCILIATION_2026_07_06',
+      'CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID=CLIPLOT-AUTH-WALLET-SMOKE-<ID>',
+      '[MISSING: resolution policy for one numeric legacy id without Auth mapping]',
+      '[MISSING: current synthetic browser-session packet source that can be used without printing or persisting the bearer/session]',
+    ]),
     remainingRuntimeGatesExplicit: includesAll(audit + emailRuntimeGate + status + state, [
       'approved runtime activation',
       'production DB apply/deploy completed',
@@ -162,6 +176,10 @@ function main() {
       {
         marker: 'package script check:profile-centralization-activation-command-packet',
         present: packageJson.scripts?.['check:profile-centralization-activation-command-packet'] === 'node scripts/create-profile-centralization-activation-command-packet.js',
+      },
+      {
+        marker: 'package script check:profile-centralization-owner-approved-execution-packet',
+        present: packageJson.scripts?.['check:profile-centralization-owner-approved-execution-packet'] === 'node scripts/check-profile-centralization-owner-approved-execution-packet.js',
       },
     ],
   };

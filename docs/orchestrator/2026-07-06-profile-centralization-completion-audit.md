@@ -60,3 +60,7 @@ No secret/token/password/email output, notification payload output, raw customer
 ## 2026-07-06 Parallel Subagent Refresh Update
 
 Four separate subagents re-ran the remaining consumer gates after Auth activation. Marathon, Payments, Aukro, and Cliplot validation commands passed at their allowed read-only/session-proof level. Marathon and Cliplot still have explicit owner-gated live/mutation packets. Payments and Aukro are complete for the requested centralized Auth profile consumer gate at the currently validated level. No consumer deploy, DB write, provider/payment/order/checkout mutation, Auth wallet mutation, raw customer-data output, token output, password output, email output, or secret/session dump occurred.
+
+## 2026-07-06 Owner-Approved Execution Packet Update
+
+`docs/orchestrator/2026-07-06-profile-centralization-owner-approved-execution-packet.md` now records the exact remaining Marathon and Cliplot command packets. Marathon current observed head is 4977534; Cliplot current observed head is 7bfb686. Execution remains blocked until all listed owner inputs are present. This update is source-only and does not run Marathon apply, Cliplot live browser-session fetch, DB work, deploy, checkout/order/payment/provider/Warehouse/notification mutation, Auth wallet mutation, or secret/session/customer-data output.

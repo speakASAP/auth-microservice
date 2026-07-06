@@ -30,7 +30,8 @@
     "check:profile-centralization-current-state": "node scripts/check-profile-centralization-current-state.js",
     "check:profile-centralization-activation-packet": "node scripts/check-profile-centralization-activation-packet.js",
     "check:profile-centralization-runtime-readiness": "node scripts/check-profile-centralization-runtime-readiness.js",
-    "check:profile-centralization-activation-command-packet": "node scripts/create-profile-centralization-activation-command-packet.js"
+    "check:profile-centralization-activation-command-packet": "node scripts/create-profile-centralization-activation-command-packet.js",
+    "check:profile-centralization-owner-approved-execution-packet": "node scripts/check-profile-centralization-owner-approved-execution-packet.js"
   },
   "jest": {
     "moduleFileExtensions": [
