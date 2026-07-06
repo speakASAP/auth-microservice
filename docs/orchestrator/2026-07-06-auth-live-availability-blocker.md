@@ -33,3 +33,34 @@ No SQL apply, deploy, rollout restart, pod deletion, Kubernetes mutation, DB rea
 2. Confirm `deployment/auth-microservice` and `deployment/auth-microservice-web` are `1/1` with non-empty service endpoints.
 3. Re-run GET-only `/health` and hosted `/profile` static smoke.
 4. Only then continue to owner-approved email-change SQL apply/deploy/request-confirm runtime smoke.
+
+
+## 2026-07-06 18:27 Follow-up
+
+A narrow Auth-only rollout restart was attempted to recover empty Auth endpoints after the node returned to `Ready`:
+
+```bash
+kubectl rollout restart deployment/auth-microservice deployment/auth-microservice-web -n statex-apps
+```
+
+Outcome:
+
+- Auth web partially recovered: `deployment/auth-microservice-web` became `1/1`, with endpoint `10.42.0.190:3372`.
+- Auth backend did not recover: `deployment/auth-microservice` stayed `0/1`.
+- New backend pod `auth-microservice-56565699cf-2lk7q` remained `Init:0/2` with no pod IP.
+- Old backend pod `auth-microservice-868d44d6c9-rwtmh` remained `Unknown`.
+- Public `https://auth.alfares.cz/health` still returned `no available server`.
+
+Parallel read-only subagent triage found this is not an Auth application/source failure:
+
+- Host uptime was only about 16-18 minutes and `k3s` had recently restarted.
+- Node was `Ready=True` with no memory, disk, or PID pressure.
+- Load was still high.
+- Many unrelated workloads were non-running, `ContainerCreating`, or `Unknown`.
+- Events/journal showed `NodeNotReady`, broad `SandboxChanged`, `context deadline exceeded`, stale container reservations, k3s API/lease timeouts, and an etcd/kine consistency error.
+
+Verdict update:
+
+- Pause deploys and runtime smokes.
+- Treat remaining backend unavailability as operator-level k3s/containerd/control-plane recovery, not an Auth-only fix.
+- Re-check Auth backend/web readiness and endpoints after cluster runtime stabilizes.

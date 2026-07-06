@@ -1,3 +1,28 @@
+## 2026-07-06 - Auth Availability Restart Attempt Still Blocked
+
+Current focus:
+
+- Attempt the narrowest non-deploy recovery after Auth backend/web endpoints were empty and node status returned to Ready.
+
+Evidence:
+
+- Ran `kubectl rollout restart deployment/auth-microservice deployment/auth-microservice-web -n statex-apps`.
+- Auth web partially recovered to `1/1` with endpoint `10.42.0.190:3372`.
+- Auth backend remained `0/1`; new backend pod `auth-microservice-56565699cf-2lk7q` stayed `Init:0/2` with no pod IP; old backend pod remained `Unknown`.
+- Public `https://auth.alfares.cz/health` still returned `no available server`.
+- Read-only subagent triage found broad node/runtime instability across unrelated workloads and recommended operator-level k3s/containerd/control-plane recovery rather than further Auth-only restarts.
+- Updated `docs/orchestrator/2026-07-06-auth-live-availability-blocker.md`.
+
+Boundary:
+
+- No SQL apply, no Auth source deploy, no new image rollout, no pod deletion, no DB read/write, no secret/token/password/email output, no authenticated API call, no email-change runtime smoke, and no raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Pause deploys/runtime smokes until k3s/containerd/control-plane health stabilizes.
+- Operator-level recovery for container creation/API/etcd-kine consistency issues.
+- Then re-check Auth backend/web `1/1`, non-empty endpoints, `/health`, and hosted `/profile` static smoke.
+
 ## 2026-07-06 - Auth Live Availability Blocker
 
 Current focus:
