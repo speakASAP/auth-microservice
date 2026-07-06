@@ -1,3 +1,26 @@
+## 2026-07-06 - Profile Centralization Missing Inputs Search
+
+Current focus:
+
+- Find remaining Marathon and Cliplot execution-packet inputs without exposing secrets or running live mutations.
+
+Evidence:
+
+- Marathon current apply candidate remains `4977534`; sanitized source/dry-run checks confirmed repo clean, plan-only output, aggregate-only output policy, and fail-closed apply requirements.
+- Marathon found/proposed inputs: ticket/change id `MAR-AUTH-RECON-2026-07-06`, first batch limit `25`, phase order `auth` then `marathon`, and conservative quarantine/forward-fix policies for the one unmapped numeric legacy id and 348 UUID-like Marathon ids missing in Auth.
+- Marathon aggregate state after the optimized apply helper: 54283 participants, 54212 bound rows, 71 unbound rows, 1 numeric legacy row, 54211 UUID-like rows, 45979 UUID-like IDs existing in Auth, 348 UUID-like IDs missing in Auth, 424 rows affected by missing UUID Auth users, 45982 `app:marathon:user` assignments, and 45981 `authSources.marathon` marked users.
+- Cliplot current head is `25f90e0` after adding repo-owned `AUTH_WALLET_SYNTHETIC_BEARER_FILE` support for the guarded Auth wallet browser-session smoke harness.
+- Cliplot found/proposed inputs: Auth base URL `https://auth.alfares.cz`, Cliplot runtime URL `https://cliplot.alfares.cz`, prior non-secret approval ids `CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE5` and `CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE7`, and conservative future approval id `CLIPLOT-AUTH-WALLET-SMOKE-20260706-REVIEW-01`.
+
+Boundary:
+
+- No Marathon apply, no Cliplot live browser-session fetch, no DB write, no secret read/output, no bearer/session output, no customer-data output, no deploy, no checkout/order/payment/provider/Warehouse/notification mutation, and no Kubernetes/Vault mutation occurred.
+
+Next unfinished chunks:
+
+- Marathon: explicit production mutation approval for the exact found/proposed values, plus a migrated completed-user smoke fixture path/token source that does not expose token or customer data.
+- Cliplot: approved current synthetic bearer/session source value for `AUTH_WALLET_SYNTHETIC_BEARER_FILE`, plus explicit execution window before live browser-session fetch.
+
 ## 2026-07-06 - Profile Centralization Owner-Approved Execution Packet
 
 Current focus:
@@ -9,7 +32,7 @@ Evidence:
 - Added `docs/orchestrator/2026-07-06-profile-centralization-owner-approved-execution-packet.md`.
 - Added `npm run check:profile-centralization-owner-approved-execution-packet`.
 - Marathon current observed head is 4977534 after a parallel worker committed the apply helper optimization; packet preserves phased Auth then Marathon apply templates, aggregate-only validation, forward-fix recovery, and migrated-user smoke requirements.
-- Cliplot current observed head is 7bfb686; packet preserves read-only readiness commands, approval-gated browser-session wallet/profile fetch template, cleanup/reset validation, and forbidden checkout/payment/Warehouse/notification/Auth mutation boundaries.
+- Cliplot current observed head is 25f90e0; packet preserves read-only readiness commands, approval-gated browser-session wallet/profile fetch template, cleanup/reset validation, and forbidden checkout/payment/Warehouse/notification/Auth mutation boundaries.
 - Execution remains blocked until all listed owner inputs are present, including Marathon approval phrase/ticket/batch/fixture/mapping policies and Cliplot approval id/synthetic bearer-session packet/base URL.
 
 Boundary:

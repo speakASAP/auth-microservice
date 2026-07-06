@@ -112,14 +112,14 @@ ssh alfares 'cd /home/ssf/Documents/Github/marathon && \
 ### Required Owner Inputs
 
 - Exact production mutation approval phrase: `OWNER_APPROVED_MARATHON_AUTH_RECONCILIATION_2026_07_06`.
-- Ticket/change id.
-- Batch limit; recommended first limit: `25`.
-- Phase order approval: `auth` first, then `marathon` after aggregate validation.
+- Ticket/change id: proposed non-secret id `MAR-AUTH-RECON-2026-07-06`.
+- Batch limit: `25` for the first bounded run.
+- Phase order: `auth` first, then `marathon` after aggregate validation.
 - Known migrated completed user/test account token for post-apply smoke.
 - Approved `marathoner-id` and `step-id` only if saved-submission smoke is required.
-- `[MISSING: resolution policy for one numeric legacy id without Auth mapping]`.
-- `[MISSING: resolution policy for 348 UUID-like Marathon user ids missing in Auth]`.
-- `[MISSING: confirmation whether current Marathon head 4977534 is the owner-approved apply candidate]`.
+- Proposed policy for the one numeric legacy id without Auth mapping: do not synthesize a mapping and do not rewrite it; leave it quarantined/unmigrated until an Auth-owned identity source proves the mapping, then handle through a targeted owner-approved forward-fix.
+- Proposed policy for 348 UUID-like Marathon user ids missing in Auth: do not rewrite, delete, or role-mark automatically; treat them as orphaned imported Auth references and resolve only through Auth-owned restore/provisioning or a targeted correction packet with sanitized aggregate evidence.
+- Current apply candidate confirmed by source/dry-run workers: `4977534`.
 
 ### Forbidden Outputs And Actions
 
@@ -133,14 +133,14 @@ ssh alfares 'cd /home/ssf/Documents/Github/marathon && \
 
 ### Execution Readiness
 
-Blocked. The helper and command templates are present and fail closed, but execution still needs exact owner inputs and missing mapping policies.
+Blocked for production execution. The helper and command templates are present and fail closed, and the ticket id, first batch limit, phase order, apply candidate head, and conservative mapping policies are now proposed. Live apply still needs explicit production mutation approval for these exact values and a migrated completed-user smoke fixture path/token source that does not expose token or customer data.
 
 ## Gate B - Cliplot Synthetic Browser-Session Wallet/Profile Read
 
 Current repo evidence:
 
 - Remote repo: `/home/ssf/Documents/Github/cliplot`.
-- Current observed head: `7bfb686 (HEAD -> main, origin/main) docs: record Auth wallet read-only scope`.
+- Current observed head after file-based bearer source hardening: `25f90e0 (HEAD -> main, origin/main) fix: support file-based auth wallet smoke bearer`.
 - Worktree: clean at final worker check.
 - Read-only validators passed.
 - Default browser-session smoke remained blocked with `liveExecutionAllowed=false`, `authWalletFetch=false`, and `browserSessionRead=false`.
@@ -172,7 +172,7 @@ Do not run until every required owner input below is present.
 ssh alfares 'cd /home/ssf/Documents/Github/cliplot && \
   ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true \
   CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID=CLIPLOT-AUTH-WALLET-SMOKE-<ID> \
-  AUTH_WALLET_SYNTHETIC_BEARER=<approved-synthetic-bearer> \
+  AUTH_WALLET_SYNTHETIC_BEARER_FILE=<0600-approved-token-file> \
   npm run smoke:auth-wallet-browser-session -- <base-url>'
 ```
 
@@ -207,10 +207,10 @@ Expected reset evidence:
 ### Required Owner Inputs
 
 - Non-secret approval id matching `CLIPLOT-AUTH-WALLET-SMOKE-<ID>`.
-- Owner-approved synthetic Auth bearer or session input for the bounded evidence window.
-- Owner-approved base URL; likely `https://auth.alfares.cz`.
+- Owner-approved synthetic Auth bearer/session input for the bounded evidence window, preferably through `AUTH_WALLET_SYNTHETIC_BEARER_FILE=<0600-approved-token-file>`.
+- Owner-approved base URL: `https://auth.alfares.cz` for direct Auth wallet reads; Cliplot runtime base URL remains `https://cliplot.alfares.cz` for Cliplot-scoped checks.
 - Explicit confirmation that checkout submit, payment, Warehouse reservation, notification send, Auth wallet mutation, DB, Kubernetes, Vault, and deploy actions are out of scope.
-- `[MISSING: current synthetic browser-session packet source that can be used without printing or persisting the bearer/session]`.
+- Repo-owned file-based bearer input support added in Cliplot `25f90e0`; current synthetic bearer/session value source is still `[MISSING: approved current synthetic bearer/session source value]`.
 
 ### Forbidden Outputs And Actions
 
@@ -224,7 +224,7 @@ Expected reset evidence:
 
 ### Execution Readiness
 
-Blocked. Read-only readiness is ready and passed, but live browser-session fetch still needs a current owner-approved non-secret approval id plus synthetic bearer/session packet. Auth-owned wallet/profile mutation remains separately blocked by `[MISSING: owner-approved Auth-owned delivery/invoice/profile mutation contract for Cliplot write surfaces]`.
+Blocked for live execution. Read-only readiness is ready and passed, the file-based token path is source-prepared, and a conservative non-secret future approval id is `CLIPLOT-AUTH-WALLET-SMOKE-20260706-REVIEW-01`. Live browser-session fetch still needs an approved current synthetic bearer/session source value and explicit execution window. Auth-owned wallet/profile mutation remains separately blocked by `[MISSING: owner-approved Auth-owned delivery/invoice/profile mutation contract for Cliplot write surfaces]`.
 
 ## Parallel Execution Matrix
 
@@ -235,7 +235,7 @@ Blocked. Read-only readiness is ready and passed, but live browser-session fetch
 | Marathon apply phase marathon | blocked | Marathon reconciliation operator | approval-gated mapped participant/user rewrite batch | Auth phase validation | Auth orchestrator | after Auth phase |
 | Marathon migrated-user smoke | blocked | Marathon runtime validation worker | known migrated user journey smoke | approved fixture token | Auth orchestrator | after apply phases |
 | Cliplot read-only readiness | ready now | Cliplot runtime validation worker | readiness gates only | none | Auth orchestrator | parallel with Marathon preflight |
-| Cliplot browser-session fetch | blocked | Cliplot runtime validation worker | read-only Auth wallet/profile fetch | approval id plus synthetic bearer/session | Auth orchestrator | after read-only readiness |
+| Cliplot browser-session fetch | blocked | Cliplot runtime validation worker | read-only Auth wallet/profile fetch | approval id plus file-based synthetic bearer/session source | Auth orchestrator | after read-only readiness |
 | Cliplot write surfaces | blocked | Contract owner | future Auth-owned mutation contract | consent/idempotency/audit/rollback/no-PII packet | Auth orchestrator | separate future lane |
 
 ## Stop Conditions

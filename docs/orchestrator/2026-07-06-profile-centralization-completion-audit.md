@@ -54,7 +54,7 @@ No secret/token/password/email output, notification payload output, raw customer
 | Marathon | Clean main at 8842b44; hosted Auth contract checker passed 17/17; read-only reconciliation dry-run passed with aggregate-only output and applyAllowed=false | Owner-approved reconciliation apply and migrated-user smoke |
 | Payments | Remote main at bcf944a; npm run check:hosted-auth passed; focused Jest passed 2 suites/13 tests; authenticated admin smoke recorded resolved with no token/session output and no provider/payment mutation; caveat: untracked non-gate validation file left untouched | Complete for centralized Auth profile consumer gate; downstream non-gate blockers remain |
 | Aukro | Clean main at c521762; orders lifecycle UI verifier passed; focused UI controller spec passed and covers hosted Auth profile/wallet links | Complete for current read-only/UI-spec gate; runtime/session packet only if owner requires deeper proof |
-| Cliplot | Clean main at 7bfb686; Auth wallet checkout readiness passed; runtime checkout evidence passed with no live calls; browser-session smoke stayed approval-gated by default with liveExecutionAllowed=false, authWalletFetch=false, and browserSessionRead=false | Owner-approved synthetic browser-session wallet/profile packet or Auth-owned mutation contract before write surfaces |
+| Cliplot | Clean main at 25f90e0; Auth wallet checkout readiness passed; runtime checkout evidence passed with no live calls; browser-session smoke stayed approval-gated by default; repo-owned file-based bearer input support is source-prepared | Owner-approved current synthetic bearer/session source value and execution window, or Auth-owned mutation contract before write surfaces |
 
 
 ## 2026-07-06 Parallel Subagent Refresh Update
@@ -63,4 +63,9 @@ Four separate subagents re-ran the remaining consumer gates after Auth activatio
 
 ## 2026-07-06 Owner-Approved Execution Packet Update
 
-`docs/orchestrator/2026-07-06-profile-centralization-owner-approved-execution-packet.md` now records the exact remaining Marathon and Cliplot command packets. Marathon current observed head is 4977534; Cliplot current observed head is 7bfb686. Execution remains blocked until all listed owner inputs are present. This update is source-only and does not run Marathon apply, Cliplot live browser-session fetch, DB work, deploy, checkout/order/payment/provider/Warehouse/notification mutation, Auth wallet mutation, or secret/session/customer-data output.
+`docs/orchestrator/2026-07-06-profile-centralization-owner-approved-execution-packet.md` now records the exact remaining Marathon and Cliplot command packets. Marathon current observed head is 4977534; Cliplot current observed head is 25f90e0. Execution remains blocked until all listed owner inputs are present. This update is source-only and does not run Marathon apply, Cliplot live browser-session fetch, DB work, deploy, checkout/order/payment/provider/Warehouse/notification mutation, Auth wallet mutation, or secret/session/customer-data output.
+
+
+## 2026-07-06 Missing Inputs Search Update
+
+Missing-input workers found/proposed non-secret packet values without running live mutations. Marathon candidate head is 4977534, proposed ticket id is `MAR-AUTH-RECON-2026-07-06`, first batch limit is `25`, phase order is `auth` then `marathon`, and conservative policies keep unmapped/orphaned rows quarantined until Auth-owned proof or targeted correction exists. Cliplot head is now 25f90e0 with `AUTH_WALLET_SYNTHETIC_BEARER_FILE` support, Auth base URL `https://auth.alfares.cz`, Cliplot runtime URL `https://cliplot.alfares.cz`, and proposed non-secret approval id `CLIPLOT-AUTH-WALLET-SMOKE-20260706-REVIEW-01`. Marathon apply and Cliplot live browser-session fetch remain blocked until the exact remaining runtime inputs are supplied.
