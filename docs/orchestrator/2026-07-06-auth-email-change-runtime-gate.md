@@ -21,6 +21,7 @@ npm run check:auth-email-change-activation-source
 npm run check:auth-email-change-preflight
 npm run check:profile-centralization-activation-packet
 npm run check:profile-centralization-runtime-readiness -- --base-url=https://auth.alfares.cz --no-write-report
+npm run check:profile-centralization-activation-command-packet
 ```
 
 This verifies root TypeORM entity registration, feature repository wiring, SQL/entity shape, hosted profile markers, email-change SQL preflight safety, guarded runtime smoke safety, package scripts, and that `scripts/deploy.sh` does not apply SQL or enable `DB_SYNC=true`.
@@ -106,3 +107,7 @@ This does not authorize SQL apply or deployment. The next mutable step remains a
 ## 2026-07-06 Runtime Readiness Checker
 
 `npm run check:profile-centralization-runtime-readiness -- --base-url=https://auth.alfares.cz --no-write-report` performs a GET-only runtime readiness snapshot across `/health`, `/profile`, and `/js/profile.js`. It sends no Authorization header, cookies, or request body, reads no database, prints no response body, and distinguishes Auth availability from stale hosted profile assets.
+
+## 2026-07-06 Activation Command Packet
+
+`npm run check:profile-centralization-activation-command-packet` emits a source-only operator command packet for the approved activation window. It lists preflight, SQL apply, post-apply verification, deploy, readiness/static smoke, and bounded synthetic email-change request/confirm command templates, while marking approval requirements, forbidden outputs, and stop conditions. It does not read environment, connect to DB, deploy, apply SQL, call runtime, or print secrets.

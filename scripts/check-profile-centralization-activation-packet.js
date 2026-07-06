@@ -28,6 +28,7 @@ const activation = read('scripts/check-auth-email-change-activation-source.js');
 const runtime = read('scripts/check-auth-email-change-runtime-smoke.js');
 const staticSmoke = read('scripts/check-customer-data-wallet-hosted-profile-static.js');
 const runtimeReadiness = read('scripts/check-profile-centralization-runtime-readiness.js');
+const commandPacket = read('scripts/create-profile-centralization-activation-command-packet.js');
 const deploy = read('scripts/deploy.sh');
 
 const checks = {
@@ -51,6 +52,10 @@ const checks = {
     {
       marker: 'package script check:profile-centralization-runtime-readiness',
       present: packageJson.scripts?.['check:profile-centralization-runtime-readiness'] === 'node scripts/check-profile-centralization-runtime-readiness.js',
+    },
+    {
+      marker: 'package script check:profile-centralization-activation-command-packet',
+      present: packageJson.scripts?.['check:profile-centralization-activation-command-packet'] === 'node scripts/create-profile-centralization-activation-command-packet.js',
     },
   ],
   gateOrder: checkAll(runtimeGate, [
@@ -116,6 +121,23 @@ const checks = {
     'Deploy: not run',
     'Live request/confirm smoke: not run',
     'post-deploy hosted profile static smoke',
+  ]),
+  commandPacketSafety: checkAll(commandPacket, [
+    'pass_profile_centralization_activation_command_packet_source_gate',
+    'Owner-approved Auth profile-centralization activation window',
+    'sourceOnly: true',
+    'mutatesDatabase: false',
+    'deploys: false',
+    'readsEnvironment: false',
+    'printsSecrets: false',
+    'metadata preflight',
+    'apply email-change SQL',
+    'deploy Auth current main',
+    'post-deploy readiness/static smoke',
+    'synthetic email-change request smoke',
+    'synthetic email-change confirm smoke',
+    'forbiddenOutputs',
+    'stopConditions',
   ]),
   runtimeReadinessSafety: checkAll(runtimeReadiness, [
     'fail_profile_centralization_runtime_readiness',

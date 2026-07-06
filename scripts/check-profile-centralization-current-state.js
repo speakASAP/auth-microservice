@@ -39,6 +39,7 @@ function main() {
   const completionAudit = read('docs/orchestrator/2026-07-06-profile-centralization-completion-audit.md');
   const activationPacket = read('scripts/check-profile-centralization-activation-packet.js');
   const runtimeReadiness = read('scripts/check-profile-centralization-runtime-readiness.js');
+  const commandPacket = read('scripts/create-profile-centralization-activation-command-packet.js');
 
   const checks = {
     authProfileSourceOfTruth: includesAll(authService + authController + contract, [
@@ -73,7 +74,7 @@ function main() {
       "fetchJson('/auth/email-change-request')",
       "return_url: window.location.origin + '/profile'",
     ]),
-    sourceActivationGates: includesAll(emailActivation + emailPreflight + activationPacket + runtimeReadiness + emailRuntimeGate + emailRuntime + packageJsonToText(packageJson), [
+    sourceActivationGates: includesAll(emailActivation + emailPreflight + activationPacket + runtimeReadiness + commandPacket + emailRuntimeGate + emailRuntime + packageJsonToText(packageJson), [
       'pass_auth_email_change_activation_source_gate',
       'approval_required_auth_email_change_runtime_smoke',
       'RUN_AUTH_EMAIL_CHANGE_SMOKE',
@@ -91,6 +92,9 @@ function main() {
       'activationReady',
       'fail_profile_centralization_runtime_readiness',
       'check:profile-centralization-runtime-readiness',
+      'Owner-approved Auth profile-centralization activation window',
+      'pass_profile_centralization_activation_command_packet_source_gate',
+      'check:profile-centralization-activation-command-packet',
       'scripts/create-email-change-table.sql',
       'SQL apply: not run',
       'Deploy: not run',
@@ -154,6 +158,10 @@ function main() {
       {
         marker: 'package script check:profile-centralization-runtime-readiness',
         present: packageJson.scripts?.['check:profile-centralization-runtime-readiness'] === 'node scripts/check-profile-centralization-runtime-readiness.js',
+      },
+      {
+        marker: 'package script check:profile-centralization-activation-command-packet',
+        present: packageJson.scripts?.['check:profile-centralization-activation-command-packet'] === 'node scripts/create-profile-centralization-activation-command-packet.js',
       },
     ],
   };

@@ -1,3 +1,24 @@
+## 2026-07-06 - Activation Command Packet Added
+
+Current focus:
+
+- Add a source-only operator command packet for the approved Auth profile-centralization activation window.
+
+Evidence:
+
+- Added `scripts/create-profile-centralization-activation-command-packet.js` and package script `npm run check:profile-centralization-activation-command-packet`.
+- The packet emits the ordered activation commands/templates for source preflight, runtime readiness, DB metadata preflight, SQL apply, post-apply verification, deploy, post-deploy readiness/static smoke, and bounded synthetic email-change request/confirm smokes.
+- The packet records required approvals, required input files, forbidden outputs, and stop conditions without reading environment, connecting to DB, deploying, applying SQL, calling runtime, or printing secrets.
+- Wired the packet into `npm run check:profile-centralization-activation-packet` and `npm run check:profile-centralization-current-state`.
+
+Boundary:
+
+- Source-only command packet/checker update. No SQL apply, Auth deploy, DB read/write, environment read, runtime call, authenticated API call, token/password/email output, or raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Owner-approved activation window execution using the generated command packet.
+
 ## 2026-07-06 - Runtime Readiness Wired Into Gates
 
 Current focus:
