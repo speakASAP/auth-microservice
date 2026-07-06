@@ -1,3 +1,27 @@
+## 2026-07-06 - Parallel Subagent Consumer Gate Refresh
+
+Current focus:
+
+- Refresh all four remaining consumer gates through separate subagents after Auth runtime activation.
+
+Evidence:
+
+- Marathon subagent: remote `/home/ssf/Documents/Github/marathon` stayed clean on `main...origin/main` at `8842b44`; `python3 scripts/check-marathon-hosted-auth-contract.py` passed 17/17; `node scripts/dry-run-marathon-auth-reconciliation.js` passed in dry-run mode with `ok=true` and `applyAllowed=false`.
+- Payments subagent: Payments remote main at bcf944a; remote `/home/ssf/Documents/Github/payments-microservice` was on `main...origin/main` at `bcf944a`; `npm run check:hosted-auth` passed; focused Jest passed 2 suites/13 tests for `src/auth/jwt-roles.guard.spec.ts` and `src/admin/admin-config.service.spec.ts`; the repo report records authenticated admin smoke resolved with no token/session output and no provider/payment mutation. Caveat: `git status --short --branch` reported untracked `12_validation/VAL-2026-07-06-payments-admin-flow-map-read-model.md`, left untouched.
+- Aukro subagent: remote `/home/ssf/Documents/Github/aukro` stayed clean on `main...origin/main` at `c521762`; `node scripts/verify-orders-lifecycle-ui.js` passed; focused `services/aukro-service/src/ui/ui.controller.spec.ts` passed; lifecycle verifier reported `success=true`, 13 lifecycle stages, polling plus manual Orders refresh button coverage, and spec coverage.
+- Cliplot subagent: remote `/home/ssf/Documents/Github/cliplot` stayed clean on `main...origin/main` at `7bfb686`; `npm run readiness:auth-wallet-checkout`, `npm run readiness:auth-wallet-runtime-checkout-evidence`, and `npm run readiness:auth-wallet-browser-session-smoke` passed as guarded read-only checks. Browser-session smoke reported `liveExecutionAllowed=false`, `authWalletFetch=false`, and `browserSessionRead=false`.
+
+Boundary:
+
+- Subagents were read-only for consumer runtime gates. No consumer deploy, live checkout/order/payment/provider mutation, Auth wallet mutation, DB write, Kubernetes/Vault mutation, raw customer-data output, token output, password output, email output, secret dump, or session dump occurred.
+
+Next unfinished chunks:
+
+- Marathon: `[MISSING: owner-approved reconciliation apply packet]`, including DB userId rewrite approval, Auth DB `app:marathon:user` assignment/authSources marker approval, rollback/forward-fix policy, exact runtime context, and migrated-user smoke.
+- Cliplot: `[MISSING: owner-approved synthetic browser-session wallet/profile packet]`, including `ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true`, a non-secret approval id, and an approved synthetic bearer/session input; write surfaces also remain gated on a separate Auth-owned mutation contract.
+- Payments: centralized Auth profile consumer gate complete at this level; non-gate downstream blockers remain outside the profile-centralization gate.
+- Aukro: centralized Auth profile consumer gate complete at this level; deeper live runtime/session packet is only needed if the owner wants proof beyond current UI/spec evidence.
+
 ## 2026-07-06 - Consumer Profile Runtime Refresh
 
 Current focus:

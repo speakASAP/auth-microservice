@@ -52,6 +52,11 @@ No secret/token/password/email output, notification payload output, raw customer
 | Consumer | Current Evidence | Remaining Gate |
 | --- | --- | --- |
 | Marathon | Clean main at 8842b44; hosted Auth contract checker passed 17/17; read-only reconciliation dry-run passed with aggregate-only output and applyAllowed=false | Owner-approved reconciliation apply and migrated-user smoke |
-| Payments | Clean main at 1544d93; npm run check:hosted-auth passed; focused Jest passed 2 suites/12 tests | Owner-approved authenticated admin UI/session proof |
-| Aukro | Clean main at c521762; orders lifecycle UI verifier passed; focused UI controller spec passed and covers hosted Auth profile/wallet links | Runtime/session packet proof if required beyond source/UI spec evidence |
-| Cliplot | Clean main at 7bfb686; Auth wallet checkout readiness passed; runtime checkout evidence passed with no live calls; browser-session smoke stayed approval-gated by default | Owner-approved synthetic browser-session wallet fetch or Auth-owned mutation contract before write surfaces |
+| Payments | Remote main at bcf944a; npm run check:hosted-auth passed; focused Jest passed 2 suites/13 tests; authenticated admin smoke recorded resolved with no token/session output and no provider/payment mutation; caveat: untracked non-gate validation file left untouched | Complete for centralized Auth profile consumer gate; downstream non-gate blockers remain |
+| Aukro | Clean main at c521762; orders lifecycle UI verifier passed; focused UI controller spec passed and covers hosted Auth profile/wallet links | Complete for current read-only/UI-spec gate; runtime/session packet only if owner requires deeper proof |
+| Cliplot | Clean main at 7bfb686; Auth wallet checkout readiness passed; runtime checkout evidence passed with no live calls; browser-session smoke stayed approval-gated by default with liveExecutionAllowed=false, authWalletFetch=false, and browserSessionRead=false | Owner-approved synthetic browser-session wallet/profile packet or Auth-owned mutation contract before write surfaces |
+
+
+## 2026-07-06 Parallel Subagent Refresh Update
+
+Four separate subagents re-ran the remaining consumer gates after Auth activation. Marathon, Payments, Aukro, and Cliplot validation commands passed at their allowed read-only/session-proof level. Marathon and Cliplot still have explicit owner-gated live/mutation packets. Payments and Aukro are complete for the requested centralized Auth profile consumer gate at the currently validated level. No consumer deploy, DB write, provider/payment/order/checkout mutation, Auth wallet mutation, raw customer-data output, token output, password output, email output, or secret/session dump occurred.
