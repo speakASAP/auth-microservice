@@ -81,5 +81,5 @@ The live profile-centralization guarantee is still not complete:
 Updated verdict:
 
 - The initial 503/empty-endpoint blocker is resolved enough for read-only checks.
-- Do not run SQL/deploy while Kubernetes rollout/container runtime is still transitioning.
+- The Kubernetes rollout is now clean enough for read-only verification, but SQL/deploy still require an owner-approved DB/deploy window.
 - The remaining profile-centralization runtime gap is activation of current `main`: approved email-change SQL apply, Auth deploy, hosted static smoke, and bounded synthetic email-change request/confirm smoke.

@@ -1,3 +1,27 @@
+## 2026-07-06 - Profile Centralization Activation Packet Refined
+
+Current focus:
+
+- Remove stale runtime-transition wording after Auth backend/web rollouts completed and preserve the exact remaining activation gate.
+
+Evidence:
+
+- Remote repo remained clean at `2a78941` before this documentation update.
+- `deployment/auth-microservice` and `deployment/auth-microservice-web` are `1/1` with endpoints `10.42.0.248:3370` and `10.42.0.249:3372`.
+- Public `/health` returns ok.
+- GET-only hosted profile static smoke still fails on HTTP `200` assets because deployed image `e484688-20260703071733` is stale and lacks current `avatarUrl`, `settings`, and email-change markers.
+- `npm run check:profile-centralization-current-state -- --no-write-report` still passes source-only with `goalComplete=false`.
+
+Boundary:
+
+- Documentation/status refinement only. No SQL apply, Auth deploy, image build/push, DB read/write, authenticated API call, live email-change request/confirm smoke, secret/token/password/email output, or raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Owner-approved DB/deploy window for `scripts/create-email-change-table.sql` plus Auth deploy from clean `main`.
+- Post-deploy GET-only hosted `/profile` static smoke.
+- Bounded synthetic email-change request/confirm smoke using file-based inputs and sanitized output only.
+
 ## 2026-07-06 - Auth Runtime Recovered, Static Profile Still Stale
 
 Current focus:
@@ -19,8 +43,8 @@ Boundary:
 
 Next unfinished chunks:
 
-- Let the Auth rollout/container runtime finish cleanly; avoid deploy/SQL while replacement pods are still transitioning.
-- Request owner-approved DB/deploy window for `scripts/create-email-change-table.sql` and Auth deploy from clean `main`.
+- Auth rollout is now clean; keep SQL/deploy gated on an owner-approved DB/deploy window.
+- Use that window for `scripts/create-email-change-table.sql` and Auth deploy from clean `main`.
 - After approved deploy, re-run GET-only hosted `/profile` static smoke, then run bounded synthetic email-change request/confirm smoke with file-based inputs and sanitized output only.
 
 ## 2026-07-06 - Auth Availability Restart Attempt Still Blocked

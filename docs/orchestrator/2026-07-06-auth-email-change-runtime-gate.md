@@ -78,5 +78,15 @@ Forbidden output:
 - Root TypeORM entity registration preflight prepared.
 - SQL apply: not run.
 - Deploy: not run.
-- Live static smoke: not run after email-change deployment.
+- Live static smoke: current deployed image checked read-only and failed as stale; post-deploy smoke not run after email-change deployment.
 - Live request/confirm smoke: not run.
+
+## 2026-07-06 Readiness Update
+
+Read-only runtime availability has recovered enough for the next approved activation window:
+
+- Auth backend and web deployments are `1/1` with non-empty endpoints.
+- Public `/health` returns ok.
+- Live hosted profile static smoke reaches `/profile` and `/js/profile.js` with HTTP `200`, but fails because the deployed image is still stale and does not include current profile image/settings/email-change UI markers.
+
+This does not authorize SQL apply or deployment. The next mutable step remains an owner-approved DB/deploy window for `scripts/create-email-change-table.sql` and Auth deploy from clean `main`, followed by the static and synthetic email-change smokes defined above.
