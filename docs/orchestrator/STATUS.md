@@ -1,3 +1,23 @@
+## 2026-07-06 - Email Change SQL Preflight Added
+
+Current focus:
+
+- Prepare a source-only SQL/deploy preflight for the remaining approved Auth activation window.
+
+Evidence:
+
+- Added `scripts/check-auth-email-change-preflight.js` and package script `npm run check:auth-email-change-preflight`.
+- The preflight validates `scripts/create-email-change-table.sql`, rejects destructive/data-mutating SQL lines, emits sanitized metadata preflight/post-apply/apply command templates, and does not read environment, connect to DB, apply SQL, deploy, or print secrets.
+- Wired the preflight into `npm run check:auth-email-change-activation-source` and `npm run check:profile-centralization-current-state`.
+
+Boundary:
+
+- Source-only checker/doc update. No SQL apply, Auth deploy, DB read/write, environment read, authenticated API call, email-change request/confirm smoke, secret/token/password/email output, or raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Owner-approved DB/deploy window for running the emitted metadata preflight/apply/post-apply commands, Auth deploy, hosted static smoke, and bounded synthetic email-change request/confirm smoke.
+
 ## 2026-07-06 - Consumer Profile-Centralization Refresh
 
 Current focus:

@@ -26,6 +26,7 @@
     "verify:orders-action-admin-rbac-seed": "node scripts/verify-orders-action-admin-rbac-seed.js",
     "check:auth-email-change-runtime": "node scripts/check-auth-email-change-runtime-smoke.js",
     "check:auth-email-change-activation-source": "node scripts/check-auth-email-change-activation-source.js",
+    "check:auth-email-change-preflight": "node scripts/check-auth-email-change-preflight.js",
     "check:profile-centralization-current-state": "node scripts/check-profile-centralization-current-state.js"
   },
   "jest": {

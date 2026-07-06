@@ -26,6 +26,7 @@ function main() {
   const sql = read('scripts/create-email-change-table.sql');
   const hostedStatic = read('scripts/check-customer-data-wallet-hosted-profile-static.js');
   const runtimeSmoke = read('scripts/check-auth-email-change-runtime-smoke.js');
+  const preflight = read('scripts/check-auth-email-change-preflight.js');
   const deploy = read('scripts/deploy.sh');
   const packageJson = JSON.parse(read('package.json'));
 
@@ -65,6 +66,15 @@ function main() {
       "fetchJson('/auth/email-change-request')",
       "return_url: window.location.origin + '/profile'",
     ]),
+    preflightSafety: includesAll(preflight, [
+      'pass_auth_email_change_preflight_source_gate',
+      'doesNotReadEnvironment: true',
+      'doesNotConnectToDatabase: true',
+      'forbiddenMutatingLines: 0',
+      'schema-only live DB preflight',
+      'applyCommandTemplate',
+      'scripts/create-email-change-table.sql',
+    ]),
     runtimeSmokeSafety: includesAll(runtimeSmoke, [
       'approval_required_auth_email_change_runtime_smoke',
       'RUN_AUTH_EMAIL_CHANGE_SMOKE',
@@ -91,6 +101,10 @@ function main() {
       {
         marker: 'package script check:auth-email-change-activation-source',
         present: packageJson.scripts?.['check:auth-email-change-activation-source'] === 'node scripts/check-auth-email-change-activation-source.js',
+      },
+      {
+        marker: 'package script check:auth-email-change-preflight',
+        present: packageJson.scripts?.['check:auth-email-change-preflight'] === 'node scripts/check-auth-email-change-preflight.js',
       },
     ],
     negativeDeployBoundary: [

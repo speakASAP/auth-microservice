@@ -18,9 +18,10 @@
 
 ```bash
 npm run check:auth-email-change-activation-source
+npm run check:auth-email-change-preflight
 ```
 
-This verifies root TypeORM entity registration, feature repository wiring, SQL/entity shape, hosted profile markers, guarded runtime smoke safety, package scripts, and that `scripts/deploy.sh` does not apply SQL or enable `DB_SYNC=true`.
+This verifies root TypeORM entity registration, feature repository wiring, SQL/entity shape, hosted profile markers, email-change SQL preflight safety, guarded runtime smoke safety, package scripts, and that `scripts/deploy.sh` does not apply SQL or enable `DB_SYNC=true`.
 
 1. Apply `scripts/create-email-change-table.sql` in the approved Auth DB change window.
 2. Deploy Auth from a clean `main` head containing the email-change source commit.
@@ -76,6 +77,7 @@ Forbidden output:
 
 - Source harness prepared and fail-closed.
 - Root TypeORM entity registration preflight prepared.
+- Email-change SQL source-only preflight prepared.
 - SQL apply: not run.
 - Deploy: not run.
 - Live static smoke: current deployed image checked read-only and failed as stale; post-deploy smoke not run after email-change deployment.
@@ -90,3 +92,7 @@ Read-only runtime availability has recovered enough for the next approved activa
 - Live hosted profile static smoke reaches `/profile` and `/js/profile.js` with HTTP `200`, but fails because the deployed image is still stale and does not include current profile image/settings/email-change UI markers.
 
 This does not authorize SQL apply or deployment. The next mutable step remains an owner-approved DB/deploy window for `scripts/create-email-change-table.sql` and Auth deploy from clean `main`, followed by the static and synthetic email-change smokes defined above.
+
+## 2026-07-06 SQL Preflight Update
+
+`npm run check:auth-email-change-preflight` reports `pass_auth_email_change_preflight_source_gate` without reading environment, connecting to the database, applying SQL, or printing secrets. It validates `scripts/create-email-change-table.sql`, rejects destructive/data-mutating SQL lines, and emits sanitized metadata preflight, post-apply verification, and apply command templates for the owner-approved window.

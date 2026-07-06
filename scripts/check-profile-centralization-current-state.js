@@ -34,6 +34,7 @@ function main() {
   const profileJs = read('web/public/js/profile.js');
   const hostedStatic = read('scripts/check-customer-data-wallet-hosted-profile-static.js');
   const emailActivation = read('scripts/check-auth-email-change-activation-source.js');
+  const emailPreflight = read('scripts/check-auth-email-change-preflight.js');
   const emailRuntime = read('scripts/check-auth-email-change-runtime-smoke.js');
   const completionAudit = read('docs/orchestrator/2026-07-06-profile-centralization-completion-audit.md');
 
@@ -70,7 +71,7 @@ function main() {
       "fetchJson('/auth/email-change-request')",
       "return_url: window.location.origin + '/profile'",
     ]),
-    sourceActivationGates: includesAll(emailActivation + emailRuntimeGate + emailRuntime + packageJsonToText(packageJson), [
+    sourceActivationGates: includesAll(emailActivation + emailPreflight + emailRuntimeGate + emailRuntime + packageJsonToText(packageJson), [
       'pass_auth_email_change_activation_source_gate',
       'approval_required_auth_email_change_runtime_smoke',
       'RUN_AUTH_EMAIL_CHANGE_SMOKE',
@@ -79,6 +80,9 @@ function main() {
       'AUTH_EMAIL_CHANGE_CONFIRM_TOKEN_FILE',
       'check:auth-email-change-activation-source',
       'check:auth-email-change-runtime',
+      'schema-only live DB preflight',
+      'pass_auth_email_change_preflight_source_gate',
+      'check:auth-email-change-preflight',
       'scripts/create-email-change-table.sql',
       'SQL apply: not run',
       'Deploy: not run',
@@ -126,6 +130,10 @@ function main() {
       {
         marker: 'package script check:auth-email-change-runtime',
         present: packageJson.scripts?.['check:auth-email-change-runtime'] === 'node scripts/check-auth-email-change-runtime-smoke.js',
+      },
+      {
+        marker: 'package script check:auth-email-change-preflight',
+        present: packageJson.scripts?.['check:auth-email-change-preflight'] === 'node scripts/check-auth-email-change-preflight.js',
       },
       {
         marker: 'package script check:profile-centralization-current-state',
