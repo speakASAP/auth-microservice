@@ -37,6 +37,7 @@ function main() {
   const emailPreflight = read('scripts/check-auth-email-change-preflight.js');
   const emailRuntime = read('scripts/check-auth-email-change-runtime-smoke.js');
   const completionAudit = read('docs/orchestrator/2026-07-06-profile-centralization-completion-audit.md');
+  const activationPacket = read('scripts/check-profile-centralization-activation-packet.js');
 
   const checks = {
     authProfileSourceOfTruth: includesAll(authService + authController + contract, [
@@ -71,7 +72,7 @@ function main() {
       "fetchJson('/auth/email-change-request')",
       "return_url: window.location.origin + '/profile'",
     ]),
-    sourceActivationGates: includesAll(emailActivation + emailPreflight + emailRuntimeGate + emailRuntime + packageJsonToText(packageJson), [
+    sourceActivationGates: includesAll(emailActivation + emailPreflight + activationPacket + emailRuntimeGate + emailRuntime + packageJsonToText(packageJson), [
       'pass_auth_email_change_activation_source_gate',
       'approval_required_auth_email_change_runtime_smoke',
       'RUN_AUTH_EMAIL_CHANGE_SMOKE',
@@ -83,6 +84,9 @@ function main() {
       'schema-only live DB preflight',
       'pass_auth_email_change_preflight_source_gate',
       'check:auth-email-change-preflight',
+      'Activation packet is prepared',
+      'pass_profile_centralization_activation_packet_source_gate',
+      'check:profile-centralization-activation-packet',
       'scripts/create-email-change-table.sql',
       'SQL apply: not run',
       'Deploy: not run',
@@ -138,6 +142,10 @@ function main() {
       {
         marker: 'package script check:profile-centralization-current-state',
         present: packageJson.scripts?.['check:profile-centralization-current-state'] === 'node scripts/check-profile-centralization-current-state.js',
+      },
+      {
+        marker: 'package script check:profile-centralization-activation-packet',
+        present: packageJson.scripts?.['check:profile-centralization-activation-packet'] === 'node scripts/check-profile-centralization-activation-packet.js',
       },
     ],
   };

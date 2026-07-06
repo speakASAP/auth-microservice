@@ -1,3 +1,23 @@
+## 2026-07-06 - Activation Packet Checker Added
+
+Current focus:
+
+- Add a machine-readable source-only checker for the complete Auth profile-centralization activation packet.
+
+Evidence:
+
+- Added `scripts/check-profile-centralization-activation-packet.js` and package script `npm run check:profile-centralization-activation-packet`.
+- The checker validates package scripts, gate order, approval/input gates, output restrictions, SQL/deploy boundaries, stop conditions, current blocked state, and GET-only static-smoke safety.
+- Wired the checker into `npm run check:profile-centralization-current-state`.
+
+Boundary:
+
+- Source-only checker/doc update. No runtime call, SQL apply, Auth deploy, DB read/write, environment read, authenticated API call, secret/token/password/email output, or raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Owner-approved activation window for SQL metadata preflight/apply/post-apply, Auth deploy, hosted profile static smoke, and bounded synthetic email-change request/confirm smoke.
+
 ## 2026-07-06 - Email Change SQL Preflight Added
 
 Current focus:
@@ -16,7 +36,7 @@ Boundary:
 
 Next unfinished chunks:
 
-- Owner-approved DB/deploy window for running the emitted metadata preflight/apply/post-apply commands, Auth deploy, hosted static smoke, and bounded synthetic email-change request/confirm smoke.
+- Owner-approved DB/deploy window for running the emitted metadata preflight/apply/post-apply commands, Auth deploy, post-deploy hosted profile static smoke, and bounded synthetic email-change request/confirm smoke.
 
 ## 2026-07-06 - Consumer Profile-Centralization Refresh
 
@@ -37,7 +57,7 @@ Boundary:
 
 Next unfinished chunks:
 
-- Auth: owner-approved DB/deploy window for email-change SQL, Auth deploy, hosted static smoke, and synthetic email-change request/confirm smoke.
+- Auth: owner-approved DB/deploy window for email-change SQL, Auth deploy, post-deploy hosted profile static smoke, and synthetic email-change request/confirm smoke.
 - Marathon: owner-approved reconciliation/adoption runtime proof.
 - Payments: owner-approved admin test session packet for authenticated UI smoke.
 - Aukro: owner-approved runtime/session packet proof when needed.

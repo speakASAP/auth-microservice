@@ -19,13 +19,14 @@
 ```bash
 npm run check:auth-email-change-activation-source
 npm run check:auth-email-change-preflight
+npm run check:profile-centralization-activation-packet
 ```
 
 This verifies root TypeORM entity registration, feature repository wiring, SQL/entity shape, hosted profile markers, email-change SQL preflight safety, guarded runtime smoke safety, package scripts, and that `scripts/deploy.sh` does not apply SQL or enable `DB_SYNC=true`.
 
 1. Apply `scripts/create-email-change-table.sql` in the approved Auth DB change window.
 2. Deploy Auth from a clean `main` head containing the email-change source commit.
-3. Run GET-only hosted profile static smoke:
+3. Run GET-only post-deploy hosted profile static smoke:
 
 ```bash
 npm run check:customer-data-wallet-hosted-profile-static -- --no-write-report
@@ -89,10 +90,14 @@ Read-only runtime availability has recovered enough for the next approved activa
 
 - Auth backend and web deployments are `1/1` with non-empty endpoints.
 - Public `/health` returns ok.
-- Live hosted profile static smoke reaches `/profile` and `/js/profile.js` with HTTP `200`, but fails because the deployed image is still stale and does not include current profile image/settings/email-change UI markers.
+- Live post-deploy hosted profile static smoke reaches `/profile` and `/js/profile.js` with HTTP `200`, but fails because the deployed image is still stale and does not include current profile image/settings/email-change UI markers.
 
 This does not authorize SQL apply or deployment. The next mutable step remains an owner-approved DB/deploy window for `scripts/create-email-change-table.sql` and Auth deploy from clean `main`, followed by the static and synthetic email-change smokes defined above.
 
 ## 2026-07-06 SQL Preflight Update
 
 `npm run check:auth-email-change-preflight` reports `pass_auth_email_change_preflight_source_gate` without reading environment, connecting to the database, applying SQL, or printing secrets. It validates `scripts/create-email-change-table.sql`, rejects destructive/data-mutating SQL lines, and emits sanitized metadata preflight, post-apply verification, and apply command templates for the owner-approved window.
+
+## 2026-07-06 Activation Packet Checker
+
+`npm run check:profile-centralization-activation-packet` verifies the full source-only activation packet: package scripts, gate order, approval/input gates, output restrictions, SQL/deploy boundaries, stop conditions, current blocked state, and GET-only static-smoke safety. It does not call runtime, read environment, deploy, apply SQL, or print secrets.
