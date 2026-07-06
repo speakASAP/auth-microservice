@@ -24,6 +24,8 @@ This audit checks the user's requested end state:
 
 ## Not Complete Yet
 
+Live availability blocker: `docs/orchestrator/2026-07-06-auth-live-availability-blocker.md` records that Auth backend/web deployments were `0/1`, endpoints were empty, and `/profile` returned HTTP 503 during read-only verification.
+
 The full user-facing runtime guarantee is not proven until these approved runtime gates pass:
 
 1. Apply `scripts/create-email-change-table.sql` in an approved Auth DB change window.

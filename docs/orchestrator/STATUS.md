@@ -1,3 +1,28 @@
+## 2026-07-06 - Auth Live Availability Blocker
+
+Current focus:
+
+- Refresh non-mutating live runtime evidence before any email-change SQL/deploy/live smoke gate.
+
+Evidence:
+
+- `https://auth.alfares.cz/health` returned `no available server`.
+- GET-only hosted profile static smoke failed: `/profile` HTTP `503`, `/js/profile.js` HTTP `200`, and latest email-change/avatar/settings markers were absent from the deployed static assets.
+- `deployment/auth-microservice` and `deployment/auth-microservice-web` were both `0/1`.
+- Auth backend and web service endpoints were empty.
+- Auth backend/web pods were terminated with reason `Unknown`; recent events showed broad `NodeNotReady`, `SandboxChanged`, `context deadline exceeded`, and reserved container-name failures across unrelated workloads.
+- Evidence recorded in `docs/orchestrator/2026-07-06-auth-live-availability-blocker.md`.
+
+Boundary:
+
+- Read-only only. No SQL apply, deploy, rollout restart, pod deletion, Kubernetes mutation, DB read/write, authenticated API call, token/password/email output, notification payload output, response-body dump, or raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Restore or operator-confirm cluster/node/container runtime health.
+- Confirm Auth backend/web deployments are ready with non-empty endpoints.
+- Re-run `/health` and GET-only hosted `/profile` static smoke before any approved email-change SQL/deploy/request-confirm runtime smoke.
+
 ## 2026-07-06 - Profile Centralization Current-State Completion Audit
 
 Current focus:
