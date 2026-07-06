@@ -101,3 +101,7 @@ This does not authorize SQL apply or deployment. The next mutable step remains a
 ## 2026-07-06 Activation Packet Checker
 
 `npm run check:profile-centralization-activation-packet` verifies the full source-only activation packet: package scripts, gate order, approval/input gates, output restrictions, SQL/deploy boundaries, stop conditions, current blocked state, and GET-only static-smoke safety. It does not call runtime, read environment, deploy, apply SQL, or print secrets.
+
+## 2026-07-06 Runtime Readiness Checker
+
+`npm run check:profile-centralization-runtime-readiness -- --base-url=https://auth.alfares.cz --no-write-report` performs a GET-only runtime readiness snapshot across `/health`, `/profile`, and `/js/profile.js`. It sends no Authorization header, cookies, or request body, reads no database, prints no response body, and distinguishes Auth availability from stale hosted profile assets.

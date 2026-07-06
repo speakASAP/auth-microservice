@@ -1,3 +1,22 @@
+## 2026-07-06 - Runtime Readiness Checker Added
+
+Current focus:
+
+- Add a GET-only runtime readiness checker for the profile-centralization activation gap.
+
+Evidence:
+
+- Added `scripts/check-profile-centralization-runtime-readiness.js` and package script `npm run check:profile-centralization-runtime-readiness`.
+- The checker fetches only public `/health`, `/profile`, and `/js/profile.js`; it sends no Authorization header, cookies, or request body, reads no database, prints no response body, and reports whether Auth is down versus reachable with stale hosted profile assets.
+
+Boundary:
+
+- Read-only checker/doc update. No SQL apply, Auth deploy, DB read/write, authenticated API call, token/password/email output, or raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Owner-approved activation window for SQL metadata preflight/apply/post-apply, Auth deploy, post-deploy hosted profile static smoke, and bounded synthetic email-change request/confirm smoke.
+
 ## 2026-07-06 - Activation Packet Checker Added
 
 Current focus:

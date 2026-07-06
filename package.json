@@ -28,7 +28,8 @@
     "check:auth-email-change-activation-source": "node scripts/check-auth-email-change-activation-source.js",
     "check:auth-email-change-preflight": "node scripts/check-auth-email-change-preflight.js",
     "check:profile-centralization-current-state": "node scripts/check-profile-centralization-current-state.js",
-    "check:profile-centralization-activation-packet": "node scripts/check-profile-centralization-activation-packet.js"
+    "check:profile-centralization-activation-packet": "node scripts/check-profile-centralization-activation-packet.js",
+    "check:profile-centralization-runtime-readiness": "node scripts/check-profile-centralization-runtime-readiness.js"
   },
   "jest": {
     "moduleFileExtensions": [
