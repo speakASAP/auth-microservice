@@ -153,7 +153,7 @@ export class AuthService {
     });
 
     // Generate tokens
-    const tokens = await this.generateTokens(user.id, 'password');
+    const tokens = await this.generateTokens(user.id, 'password', registerDto.client_id, registerDto.return_url);
 
     this.audit('info', 'register', 'success', {
       identifier: user.email,
@@ -233,7 +233,7 @@ export class AuthService {
         throw new UnauthorizedException('User account is inactive');
       }
 
-      const tokens = await this.generateTokens(user.id, authenticatedVia);
+      const tokens = await this.generateTokens(user.id, authenticatedVia, loginDto.client_id, loginDto.return_url);
       this.audit('info', 'login', 'success', {
         identifier: user.email || user.phone || lookupIdentifier,
         user_id: user.id,
@@ -320,6 +320,17 @@ export class AuthService {
 
   private isUuid(value: unknown): value is string {
     return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  }
+
+  private normalizeClientId(clientId?: string | null): string | undefined {
+    const normalized = (clientId || '').trim().toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (!/^[a-z0-9][a-z0-9._-]{0,99}$/.test(normalized)) {
+      throw new BadRequestException('Invalid client_id');
+    }
+    return normalized;
   }
 
   async refreshToken(refreshToken: string) {
@@ -524,7 +535,12 @@ export class AuthService {
     return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
   }
 
-  private async generateTokens(userId: string, authMethod: string) {
+  private async generateTokens(userId: string, authMethod: string, clientId?: string | null, returnUrl?: string | null) {
+    const normalizedClientId = this.normalizeClientId(clientId);
+    if (normalizedClientId) {
+      await this.rolesService.assignDefaultApplicationAccess(userId, normalizedClientId, userId, returnUrl || undefined);
+    }
+
     // Get user and roles
     const user = await this.usersService.findById(userId);
     if (!user) {
@@ -866,7 +882,7 @@ export class AuthService {
     const nextFirstName = this.cleanOptionalString(dto.firstName);
     const nextLastName = this.cleanOptionalString(dto.lastName);
     const nextPhone = this.normalizePhone(dto.phone);
-    const nextPreferences = this.mergeCanonicalProfile(user.perApplicationPreferences, dto.profile, dto.address);
+    const nextPreferences = this.mergeCanonicalProfile(user.perApplicationPreferences, this.cleanCanonicalProfilePatch(dto), dto.address);
     const nextContacts = nextPhone
       ? this.upsertPrimaryContact(user.contactInfo || [], {
           type: 'phone',
@@ -963,6 +979,18 @@ export class AuthService {
 
   async setDefaultInvoiceProfile(userId: string, profileId: string) {
     return this.sanitizeInvoiceProfile(await this.usersService.setDefaultInvoiceProfile(userId, profileId));
+  }
+
+  private cleanCanonicalProfilePatch(dto: UpdateProfileDto): Record<string, unknown> {
+    const patch: Record<string, unknown> = dto.profile && typeof dto.profile === 'object' && !Array.isArray(dto.profile) ? { ...dto.profile } : {};
+    const avatarUrl = this.cleanOptionalString(dto.avatarUrl);
+    if (avatarUrl !== undefined) {
+      patch.avatarUrl = avatarUrl;
+    }
+    if (dto.settings && typeof dto.settings === 'object' && !Array.isArray(dto.settings)) {
+      patch.settings = dto.settings;
+    }
+    return patch;
   }
 
   private mergeCanonicalProfile(existing: Record<string, unknown> | null | undefined, profilePatch?: Record<string, unknown>, addressPatch?: UpdateProfileDto['address']): Record<string, unknown> {
@@ -1410,8 +1438,8 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired sign-in code');
     }
 
-    const tokens = await this.generateTokens(user.id, `${contactType}_code`);
     const finalReturnUrl = this.validateReturnUrl(dto.return_url || token.returnUrl);
+    const tokens = await this.generateTokens(user.id, `${contactType}_code`, token.clientId || dto.client_id, finalReturnUrl);
 
     this.audit('info', 'contact_code_verify', 'success', {
       identifier,
@@ -1491,7 +1519,7 @@ export class AuthService {
       return;
     }
 
-    const tokens = await this.generateTokens(user.id, 'magic_link');
+    const tokens = await this.generateTokens(user.id, 'magic_link', token.clientId, finalReturnUrl);
     const redirectUrl = this.buildTokenHandoffUrl(finalReturnUrl, tokens, 'magic_link', token.state || undefined);
 
     const durationMs = Date.now() - startedAt;
@@ -1654,7 +1682,7 @@ export class AuthService {
       });
     }
 
-    const tokens = await this.generateTokens(user.id, provider);
+    const tokens = await this.generateTokens(user.id, provider, stateEntry.clientId, stateEntry.returnUrl);
     const redirectUrl = this.buildTokenHandoffUrl(stateEntry.returnUrl, tokens, provider, stateEntry.appState);
 
     const durationMs = Date.now() - startedAt;
@@ -1675,9 +1703,15 @@ export class AuthService {
     const canonicalProfile = preferences?.canonicalProfile && typeof preferences.canonicalProfile === 'object' && !Array.isArray(preferences.canonicalProfile) ? (preferences.canonicalProfile as Record<string, unknown>) : undefined;
     const profileAddress = canonicalProfile?.address && typeof canonicalProfile.address === 'object' && !Array.isArray(canonicalProfile.address) ? canonicalProfile.address : undefined;
 
+    const profileSettings = canonicalProfile?.settings && typeof canonicalProfile.settings === 'object' && !Array.isArray(canonicalProfile.settings) ? canonicalProfile.settings : undefined;
+    const avatarUrl = typeof canonicalProfile?.avatarUrl === 'string' ? canonicalProfile.avatarUrl : undefined;
+
     return {
       ...sanitized,
+      ...(canonicalProfile ? { canonicalProfile } : {}),
       ...(profileAddress ? { profileAddress } : {}),
+      ...(avatarUrl ? { avatarUrl, profileImageUrl: avatarUrl } : {}),
+      ...(profileSettings ? { profileSettings } : {}),
     };
   }
 

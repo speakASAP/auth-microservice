@@ -29,7 +29,19 @@ Verify these sections against source before changing Auth behavior:
 - Redirect allowlist: `AUTH_ALLOWED_REDIRECT_ORIGINS`
 - CORS: `CORS_ORIGIN`
 - RBAC enforcement: centralized roles and `roles` token claim
+- First-visit application access: successful hosted flows with configured `client_id` assign `app:<client_id>:user` before token signing; unknown apps, missing default roles, domain mismatch, and expired assignments fail closed
 - Internal registered-user preferences APIs protected by `InternalServiceGuard`
+
+## First-Visit Application Access
+
+Use synthetic tests or an owner-approved runtime packet to verify:
+
+- `client_id` matches an active registered application name.
+- The application has an active application-scoped `user` role.
+- The successful token contains `app:<client_id>:user` in `roles`.
+- A second login is idempotent and does not duplicate `user_roles`.
+- Missing app, inactive app, missing role, domain mismatch, and expired assignment do not issue tokens.
+- Output never includes JWT values, refresh tokens, raw user rows, or secrets.
 
 ## Redirect Safety
 

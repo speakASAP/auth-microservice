@@ -22,13 +22,15 @@ https://auth.alfares.cz/register?client_id=<client_id>&return_url=<https callbac
 Required parameters:
 
 - `return_url`: absolute HTTPS callback URL owned by the consumer.
-- `client_id`: stable logical client ID. Use lowercase app identifiers such as `marathon`, `speakasap`, `school-committee`, or `catalog-microservice`.
+- `client_id`: stable logical client ID and first-visit application access key. It must match an active Auth registered application name. Use lowercase app identifiers such as `marathon`, `speakasap`, `school-committee`, or `catalog-microservice`.
 
 Recommended parameter:
 
 - `state`: caller-generated opaque CSRF/return state. Consumers must validate it after callback before trusting the handoff.
 
 Auth validates `return_url` through the same logic used by `/auth/validate-return-url`. In production, `AUTH_ALLOWED_REDIRECT_ORIGINS` must contain allowed consumer origins. If the allowlist is empty, current code allows any HTTPS origin; that is compatibility behavior, not the desired production posture.
+
+On successful hosted Auth with `client_id`, Auth assigns baseline application access by ensuring the user has the active registered application's application-scoped `user` role. The assignment is idempotent and happens before token signing so the returned `roles` claim can contain `app:<client_id>:user`. Consumers must not use `client_id` to request admin roles or product entitlements, and Auth does not create missing applications or roles during login.
 
 ## Callback Handoff
 
@@ -105,7 +107,7 @@ Recommended existing-user flow:
 2. If an Auth account exists and a password is required, hosted Auth asks for password.
 3. If the user forgot the password, hosted Auth password reset is available.
 4. If passwordless is enabled for that contact, hosted Auth contact-code flow sends and verifies the code.
-5. Consumer receives only the Auth token handoff and binds product profile by Auth `sub`.
+5. Consumer receives only the Auth token handoff and binds product profile by Auth `sub`. If `client_id` was supplied and configured in Auth, the token may already include `app:<client_id>:user` for baseline access.
 
 Marathon-specific transitional rule:
 
@@ -161,6 +163,7 @@ After code changes:
 
 - Local credential form no longer collects password/phone-code/reset credentials unless explicitly transitional.
 - Login/register actions route to hosted Auth with `client_id`, `return_url`, and `state`.
+- The Auth registry has an active application plus active application-scoped `user` role for that `client_id`, or the consumer documents why first-visit access must fail closed until configured.
 - Callback parses fragment, validates state, stores session, strips fragment, and redirects to a safe app route.
 - Backend protected routes continue to return 401/403 correctly.
 - Build/tests/static marker checks pass.
@@ -169,7 +172,7 @@ After code changes:
 ## Open Gates
 
 - `[BLOCKED: Vault sealed]` until `vault-backend` is Ready and Auth allowlist/runtime config can be verified.
-- `[MISSING: approved Auth client registry source of truth]` beyond this planning draft.
+- `[MISSING: approved Auth client registry source of truth]` beyond this planning draft. First-visit access requires the runtime `applications` and `roles` tables to contain each active `client_id` and default `user` role.
 - `[MISSING: centralized refresh-token revocation/global logout contract]`.
 - `[MISSING: owner approval for Marathon live read-only backfill dry-run]`.
 - `[UNKNOWN: Notifications WhatsApp/channel-registry provider readiness for real phone-code delivery]`.

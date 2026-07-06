@@ -1,3 +1,27 @@
+# Current Execution Addendum - 2026-07-06 Goal 11 First-Visit Application Access
+
+Selected goal and chunk: Goal 11.1-11.5, Auth-only first-visit application access assignment for hosted Auth `client_id` flows.
+
+Pre-coding gate decision: pass. The owner explicitly selected this outgoal after verification showed the gap. DocsRAG returned HTTP 200 and confirmed Auth is the identity/token authority while domain services keep product authorization tied to Auth `sub`.
+
+Intent chain:
+
+- Vision: Auth is the Statex ecosystem identity and access authority.
+- Goal Impact: a user registered once in Auth can enter another configured Alfares application through hosted Auth and receive baseline `app:<client_id>:user` access without duplicate registration.
+- System: Auth hosted login/register, passwordless/OAuth flows, Applications/Roles/UserRoles RBAC tables, JWT role claim.
+- Feature: first-visit application access assignment.
+- Task: validate `client_id`, require an active app and active application `user` role, assign idempotently before token signing, propagate hosted payload context, and document/validate the contract.
+- Execution Plan: Auth source/test/docs only; no consumer edits, no schema change, no deploy in this chunk.
+- Coding Prompt: do not create applications/roles/entitlements during login; fail closed on missing registry facts; preserve JWT shape and secret safety.
+- Code: `src/auth/**`, `src/roles/**`, `web/public/index.html`, Auth contract/orchestrator docs.
+- Validation: focused Jest suites, `npm run test:auth-contract`, build, lint, diff-check, and secret scan.
+
+Parallel execution:
+
+- Contract explorer: completed read-only; defined smallest safe first-visit app-access contract.
+- Implementation explorer: completed read-only; identified source touchpoints and module-cycle risk.
+- Coordinator/integration owner: original thread; owns source edits, docs, validation, and final status.
+
 # Auth Execution Plan
 
 ## Goal 10.43 Auth Authenticated Wallet Smoke Harness Source Prep

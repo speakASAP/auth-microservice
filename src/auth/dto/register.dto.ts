@@ -2,7 +2,7 @@
  * Register DTO
  */
 
-import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsUrl } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
@@ -23,5 +23,13 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   phone?: string;
+
+  @IsString()
+  @IsOptional()
+  client_id?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  return_url?: string;
 }
 

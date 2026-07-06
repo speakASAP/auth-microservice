@@ -552,3 +552,23 @@ Excluded data:
   response-body logging, production customer/order data inspection, live
   checkout submit, payment/Warehouse mutation, notification send, or runtime
   consumer integration.
+
+## Current Task Addendum - 2026-07-06 Goal 11 First-Visit App Access
+
+Included context:
+
+- Owner request: implement first-visit application access assignment using goal-driven development and subagents.
+- DocsRAG query from running Auth pod returned HTTP 200 with Auth-as-identity-provider and consumer-domain-authorization boundaries.
+- `docs/UNIFIED_AUTH_CONTRACT.md`, `docs/HOSTED_AUTH_CONSUMER_STANDARD.md`, `src/auth/auth.service.ts`, DTOs, hosted Auth UI, `src/roles/roles.service.ts`, and RBAC entities.
+- Read-only subagents inspected contract and implementation touchpoints.
+
+Excluded context:
+
+- No production DB rows, secrets, JWT values, refresh tokens, raw user data, or consumer runtime payloads.
+- No consumer repository edits.
+- No deployment or Kubernetes mutation in this source chunk.
+
+Boundary:
+
+- Auth assigns only baseline `app:<client_id>:user`.
+- Consumer services remain responsible for domain entitlements, onboarding, purchases, subscriptions, orders, and product-local authorization.

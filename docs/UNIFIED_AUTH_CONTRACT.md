@@ -23,10 +23,12 @@ Applications should send users to Auth-hosted UI rather than hosting their own c
 Supported auth-flow query parameters:
 
 - `return_url`: absolute HTTPS URL to return to after OAuth or magic-link authentication.
-- `client_id`: optional logical caller ID for logging/client-specific behavior.
+- `client_id`: optional logical caller ID and first-visit application access key. When present in a successful hosted flow, it must match an active Auth application name.
 - `state`: optional opaque caller state. Callers must validate it when returned.
 
-The backend serves `/login`, `/register`, and `/reset-password` from `web/public/index.html`. The hosted login form submits `{ identifier, password }` to `/auth/login`, where `identifier` may be an email or phone number. The hosted register form still creates email/password accounts through `/auth/register`; when `client_id=marathon`, the form requires a phone number before submission so Marathon registrations always carry a phone contact. The hosted login surface also exposes password reset and an Auth-owned contact-code flow for email or phone. `POST /auth/contact-code/request` creates a verified-proof challenge and sends a 6-digit code through Notifications when a provider is configured; `POST /auth/contact-code/verify` consumes that proof and returns the same JWT contract plus `redirectUrl` fragment handoff. Phone delivery is centralized through Auth and Notifications; the current production default is `AUTH_CONTACT_CODE_PHONE_CHANNEL=whatsapp` because notifications-microservice does not dispatch direct SMS yet. Consumers must not implement local phone-code forms. The hosted Auth UI must collect and verify contact codes inline on the Auth page, using a one-time-code input and Auth-owned verify action; browser prompts and consumer-local code-entry screens are not part of the supported contract.
+The backend serves `/login`, `/register`, and `/reset-password` from `web/public/index.html`. The hosted login form submits `{ identifier, password, client_id, return_url }` to `/auth/login`, where `identifier` may be an email or phone number. The hosted register form creates email/password accounts through `/auth/register` and submits `{ email, password, firstName, lastName, phone, client_id, return_url }`; when `client_id=marathon`, the form requires a phone number before submission so Marathon registrations always carry a phone contact. The hosted login surface also exposes password reset and an Auth-owned contact-code flow for email or phone. `POST /auth/contact-code/request` creates a verified-proof challenge and sends a 6-digit code through Notifications when a provider is configured; `POST /auth/contact-code/verify` consumes that proof and returns the same JWT contract plus `redirectUrl` fragment handoff. Phone delivery is centralized through Auth and Notifications; the current production default is `AUTH_CONTACT_CODE_PHONE_CHANNEL=whatsapp` because notifications-microservice does not dispatch direct SMS yet. Consumers must not implement local phone-code forms. The hosted Auth UI must collect and verify contact codes inline on the Auth page, using a one-time-code input and Auth-owned verify action; browser prompts and consumer-local code-entry screens are not part of the supported contract.
+
+First-visit application access assignment is Auth-owned and RBAC-only. On successful password login, password registration, contact-code verification, magic-link verification, or OAuth callback with `client_id`, Auth validates the `client_id`, requires an active registered application, optionally checks the supplied `return_url` host against the application's configured domain, requires an active application-scoped `user` role, and idempotently assigns `app:<client_id>:user` before signing tokens. Unknown/inactive applications, missing default `user` roles, malformed `client_id`, mismatched `return_url`, or expired existing assignments fail closed before token issuance. Auth does not create applications, roles, product entitlements, orders, payments, domain profiles, or app-local onboarding rows in this path.
 
 ## Core API Endpoints
 
@@ -74,16 +76,18 @@ Email/password `register` and `login` responses include:
 `POST /auth/login` accepts the new identifier shape and the legacy email shape:
 
 ```json
-{ "identifier": "user@example.com or +420777123456", "password": "password" }
+{ "identifier": "user@example.com or +420777123456", "password": "password", "client_id": "marathon", "return_url": "https://marathon.alfares.cz/auth/callback" }
 ```
 
 ```json
-{ "email": "user@example.com", "password": "password" }
+{ "email": "user@example.com", "password": "password", "client_id": "marathon", "return_url": "https://marathon.alfares.cz/auth/callback" }
 ```
 
 When the identifier is an email address, Auth looks up the canonical email. When it is not an email address, Auth normalizes it as a phone number and looks in both `users.phone` and phone entries in `users.contactInfo`. Successful email and phone password login return the same `user`, `accessToken`, and `refreshToken` contract.
 
-`GET /auth/profile` is the canonical profile read for consuming applications after hosted Auth handoff. Consumers must initialize or refresh local application profile views from this Auth-owned response, not from application-local registration forms or stale JWT claims. The response is read from the Auth `users` table for the authenticated subject and is sanitized before return; it includes Auth-owned identity/contact fields such as `email`, `firstName`, `lastName`, `phone`, `contactInfo`, and Auth-owned preference/source metadata when present, and never includes `password`.
+`GET /auth/profile` is the canonical profile read for consuming applications after hosted Auth handoff. Consumers must initialize or refresh local application profile views from this Auth-owned response, not from application-local registration forms or stale JWT claims. The response is read from the Auth `users` table for the authenticated subject and is sanitized before return; it includes Auth-owned identity/contact fields such as `email`, `firstName`, `lastName`, `phone`, `contactInfo`, central profile image fields `avatarUrl`/`profileImageUrl`, `profileSettings`, and Auth-owned preference/source metadata when present, and never includes `password`.
+
+`PATCH /auth/profile` updates central Auth-owned profile fields for the authenticated subject. Supported self-service profile fields are `firstName`, `lastName`, `phone`, `avatarUrl`, `settings`, `address`, and compatibility `profile` metadata. Consumers that offer profile editors must write these reusable fields through this endpoint so the next profile read in any other application observes the same values. Email changes remain gated on a verified email-change flow and must not be implemented as an unverified profile patch. Password changes use `/auth/password-change` or reset/set endpoints, not `/auth/profile`.
 
 Auth also owns reusable customer data wallet entries for authenticated users.
 Consumers should call `GET /auth/profile/checkout-data` before rendering
@@ -203,7 +207,7 @@ Current token payload includes:
 - `sub`: Auth user ID.
 - `email`: primary email address.
 - `type`: user type, defaulting to `end_user`.
-- `roles`: role strings from centralized RBAC.
+- `roles`: role strings from centralized RBAC. Successful hosted flows with a configured `client_id` may include the newly assigned first-visit application role `app:<client_id>:user` in the same token.
 - `auth_method`: included when known, such as `password`, `magic_link`, `google`, or `facebook`.
 - Standard JWT fields from Nest JWT signing, including `iat` and `exp`.
 
@@ -218,7 +222,7 @@ Consumers send access tokens with:
 Authorization: Bearer <accessToken>
 ```
 
-Services may enforce roles locally, but Auth remains the authority for role assignment and role claims.
+Services may enforce roles locally, but Auth remains the authority for role assignment and role claims. Consumer services must treat first-visit `app:<client_id>:user` as baseline application access only; domain entitlements, onboarding approval, subscriptions, purchases, school roles, marathon participant state, and other product authorization remain consumer-owned unless a separate Auth contract explicitly says otherwise.
 
 ## Consumer Token Validation Standard
 

@@ -227,24 +227,45 @@
     }
   }
 
+  function canonicalProfile() {
+    const user = walletState.user || {};
+    if (user.canonicalProfile && typeof user.canonicalProfile === 'object') {
+      return user.canonicalProfile;
+    }
+
+    const preferences = user.perApplicationPreferences || {};
+    return preferences.canonicalProfile || {};
+  }
+
   function profileAddress() {
     const user = walletState.user || {};
     if (user.profileAddress && typeof user.profileAddress === 'object') {
       return user.profileAddress;
     }
 
-    const preferences = user.perApplicationPreferences || {};
-    const canonicalProfile = preferences.canonicalProfile || {};
-    return canonicalProfile.address || {};
+    return canonicalProfile().address || {};
+  }
+
+  function profileSettings() {
+    const user = walletState.user || {};
+    if (user.profileSettings && typeof user.profileSettings === 'object') {
+      return user.profileSettings;
+    }
+
+    return canonicalProfile().settings || {};
   }
 
   function renderCanonicalProfile() {
     const user = walletState.user || {};
     const address = profileAddress();
+    const canonical = canonicalProfile();
+    const settings = profileSettings();
 
     setValue('profile-first-name', user.firstName || address.firstName);
     setValue('profile-last-name', user.lastName || address.lastName);
     setValue('profile-phone', user.phone || address.phone);
+    setValue('profile-avatar-url', user.avatarUrl || canonical.avatarUrl);
+    setValue('profile-settings-json', Object.keys(settings).length ? JSON.stringify(settings, null, 2) : '');
     setValue('profile-address-street', address.street);
     setValue('profile-address-city', address.city);
     setValue('profile-address-postal-code', address.postalCode);
@@ -255,11 +276,27 @@
     const firstName = $('profile-first-name').value.trim();
     const lastName = $('profile-last-name').value.trim();
     const phone = $('profile-phone').value.trim();
+    const avatarUrl = $('profile-avatar-url').value.trim();
+    const settingsText = $('profile-settings-json').value.trim();
+    let settings = {};
+
+    if (settingsText) {
+      try {
+        settings = JSON.parse(settingsText);
+      } catch (_) {
+        throw new Error('Profile settings must be valid JSON.');
+      }
+      if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+        throw new Error('Profile settings must be a JSON object.');
+      }
+    }
 
     return {
       firstName,
       lastName,
       phone,
+      avatarUrl,
+      settings,
       address: {
         firstName,
         lastName,

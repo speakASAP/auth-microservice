@@ -1,3 +1,73 @@
+## 2026-07-06 - Goal 11 First-Visit Application Access Source-Validated
+
+- Goal 11 source implementation and contract docs are complete in the remote Auth repo.
+- Behavior implemented:
+  - hosted password login/register propagate `client_id` and validated `return_url`;
+  - contact-code, magic-link, and OAuth token issuance use persisted `client_id`;
+  - `RolesService.assignDefaultApplicationAccess` validates `client_id`, active application, active application-scoped `user` role, optional configured domain/return URL match, and expired existing assignments;
+  - role assignment is idempotent and occurs before JWT signing, so `roles` can include `app:<client_id>:user` in the returned token;
+  - missing/inactive app, missing role, malformed client id, domain mismatch, and expired assignment fail closed.
+- Boundary preserved: no application/role auto-creation, no admin-role grant, no product entitlement/onboarding/order/payment/subscription/profile ownership moved into Auth, and no JWT shape change beyond existing `roles` values.
+- Validation evidence:
+  - `npm test -- --runTestsByPath src/roles/roles.service.spec.ts src/auth/auth-contract.spec.ts src/auth/auth-contact-code.spec.ts src/auth/hosted-auth-web.spec.ts`: passed, 4 suites / 33 tests.
+  - `npm run test:auth-contract`: passed, 3 suites / 29 tests.
+  - `npm run build`: passed.
+  - `npm run lint`: passed.
+  - `git diff --check`: passed.
+  - targeted secret-pattern review found only placeholders/synthetic literals and existing variable names such as `client_secret`, not raw secret/token values.
+- Deployment was not run. Runtime proof remains gated on owner-approved deploy plus a synthetic hosted Auth flow with configured runtime `applications` and `roles` data.
+- Worktree caveat: unrelated/overlapping profile/avatar changes were already present in the same remote worktree and remain uncommitted; Goal 11 was not committed separately to avoid mixing ownership.
+
+## 2026-07-06 - Goal 11 First-Visit Application Access Source Implementation
+
+- Owner-selected goal: implement first-visit application access assignment for hosted Auth `client_id` flows.
+- Gate decision: pass for Auth-only source/docs/tests. No deploy or production DB inspection/mutation was performed.
+- DocsRAG query from running Auth pod returned HTTP 200 and confirmed Auth identity/token authority plus consumer-owned domain authorization boundaries.
+- Subagents used:
+  - Contract explorer: completed read-only and defined the smallest safe contract.
+  - Implementation explorer: completed read-only and identified AuthService/RolesService/DTO/UI/test touchpoints.
+- Implemented source behavior:
+  - hosted password login/register propagate `client_id` and validated `return_url`.
+  - successful password, contact-code, magic-link, and OAuth token issuance paths call idempotent first-visit app access assignment before JWT signing.
+  - Auth requires valid `client_id`, active registered application, active application-scoped `user` role, non-expired existing assignment, and optional return URL/application domain match.
+  - Auth fails closed instead of auto-creating applications, roles, admin access, product entitlements, or consumer-local records.
+- Focused validation run so far:
+  - `npm test -- --runTestsByPath src/roles/roles.service.spec.ts src/auth/auth-contract.spec.ts src/auth/auth-contact-code.spec.ts src/auth/hosted-auth-web.spec.ts`: passed, 4 suites / 33 tests.
+- Remaining validation: `npm run test:auth-contract`, build, lint, diff-check, and secret scan.
+
+## 2026-07-06 - Profile Centralization Audit And Auth Source Remediation
+
+Current focus:
+
+- Audit whether registered users can centrally read/update profile data through Auth and source-remediate safe Auth-owned profile gaps.
+
+Evidence:
+
+- Added `docs/orchestrator/2026-07-06-profile-centralization-audit.md`.
+- Added explicit `avatarUrl` and `settings` fields to `PATCH /auth/profile`.
+- `GET /auth/profile` now exposes sanitized `canonicalProfile`, `avatarUrl`, `profileImageUrl`, and `profileSettings` aliases when present.
+- Hosted `/profile` now renders/saves profile image URL and profile settings JSON through Auth.
+- Updated unified contract docs and hosted-profile static checker source markers.
+- Validation passed: `npm run test:auth-contract`, `npm run build`, `git diff --check`.
+
+Boundary:
+
+- No production deploy or live static smoke was run in this checkpoint.
+- No DB read/write, schema migration, JWT claim change, consumer repo edit, secret/token output, password output, or raw customer-data output occurred.
+- Email change remains blocked on `[MISSING: verified email-change policy covering new-email verification, uniqueness conflict UX, active refresh-token/session behavior, audit event requirements, and consumer callback behavior]`.
+
+Parallel execution:
+
+- Auth backend audit subagent completed read-only and confirmed existing core profile/wallet/password support plus avatar/settings/email-change gaps.
+- Consumer integration audit subagent completed read-only and produced the repo-by-repo matrix now recorded in `docs/orchestrator/2026-07-06-profile-centralization-audit.md`.
+- Follow-up read/write workers completed in disjoint repos for Marathon, Payments, Aukro, and Cliplot; results are recorded in `docs/orchestrator/2026-07-06-profile-centralization-audit.md`.
+
+Next unfinished chunks:
+
+- Review/stage lane-specific changes separately in Auth, Marathon, Payments, Aukro, and Cliplot; do not deploy until each repo's remaining gates are resolved.
+- Owner/deploy gate for production deployment and live hosted `/profile` static smoke.
+- Email-change policy/design before any email mutation endpoint.
+
 ## 2026-07-03 - Goal 10.100 Owner Approval Captured
 
 Current focus:

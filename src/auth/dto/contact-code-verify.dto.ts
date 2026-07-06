@@ -12,4 +12,8 @@ export class ContactCodeVerifyDto {
   @IsOptional()
   @IsUrl({ require_tld: false })
   return_url?: string;
+
+  @IsOptional()
+  @IsString()
+  client_id?: string;
 }

@@ -56,9 +56,13 @@ Auth uses the same state-driven orchestration shape as Goalkeeper:
 
 ## Active Work
 
-Goal 10 - Auth Customer Data Wallet is active.
+No active implementation goal remains after source-validating Goal 11. Next work is deployment/runtime evidence only if the owner requests it.
 
 Current chunk:
+
+- 11.1-11.5 source implementation, docs, focused tests, build, lint, diff-check, and sanitized scans are complete for Auth-only first-visit app access assignment.
+
+Previous Goal 10 summary:
 
 - 10.1-10.5 Auth backend/customer data wallet source is implemented and source-validated.
 - 10.6-10.7 FlipFlop client/selector source prep is complete and runtime-gated.
@@ -91,6 +95,7 @@ Planning artifacts:
 
 Parallel execution summary:
 
+- Goal 11 Auth source/doc/test changes are handled by the coordinator with read-only subagents for contract and implementation touchpoints.
 - Auth SQL apply/deploy remains owner-approval gated.
 - FlipFlop runtime smoke remains gated on Auth SQL/deploy, but its active
   target branch is source-integrated and source-validated.

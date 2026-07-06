@@ -3,7 +3,7 @@
  * Manages roles and user role assignments
  */
 
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role, RoleScope } from './entities/role.entity';
@@ -247,6 +247,130 @@ export class RolesService {
       actor_id: removedBy,
       duration_ms: Date.now() - startedAt,
     });
+  }
+
+  async assignDefaultApplicationAccess(
+    userId: string,
+    clientId: string,
+    grantedBy?: string,
+    returnUrl?: string,
+  ): Promise<{ assigned: boolean; role: string; applicationId: string }> {
+    const startedAt = Date.now();
+    const normalizedClientId = (clientId || '').trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9._-]{0,99}$/.test(normalizedClientId)) {
+      throw new BadRequestException('Invalid client_id');
+    }
+
+    const application = await this.applicationsRepository.findOne({
+      where: { name: normalizedClientId },
+    });
+    if (!application || !application.isActive) {
+      this.audit('first_visit_app_access', 'failure', {
+        target_user_id: userId,
+        client_id: normalizedClientId,
+        actor_id: grantedBy,
+        reason: 'application_not_found_or_inactive',
+        duration_ms: Date.now() - startedAt,
+      });
+      throw new BadRequestException('Unknown or inactive client_id');
+    }
+
+    this.assertReturnUrlMatchesApplication(application, returnUrl);
+
+    const role = await this.rolesRepository.findOne({
+      where: {
+        name: 'user',
+        scope: RoleScope.APPLICATION,
+        applicationId: application.id,
+        isActive: true,
+      },
+    });
+    if (!role) {
+      this.audit('first_visit_app_access', 'failure', {
+        target_user_id: userId,
+        client_id: normalizedClientId,
+        application_id: application.id,
+        actor_id: grantedBy,
+        reason: 'default_user_role_missing',
+        duration_ms: Date.now() - startedAt,
+      });
+      throw new BadRequestException('Application default user role is not configured');
+    }
+
+    const existing = await this.userRolesRepository.findOne({
+      where: {
+        userId,
+        roleId: role.id,
+        applicationId: application.id,
+      },
+    });
+    const roleString = `app:${application.name}:${role.name}`;
+    if (existing) {
+      if (existing.expiresAt && existing.expiresAt.getTime() <= Date.now()) {
+        this.audit('first_visit_app_access', 'failure', {
+          target_user_id: userId,
+          role_id: role.id,
+          application_id: application.id,
+          client_id: normalizedClientId,
+          actor_id: grantedBy,
+          reason: 'assignment_expired',
+          duration_ms: Date.now() - startedAt,
+        });
+        throw new BadRequestException('Application access assignment is expired');
+      }
+      this.audit('first_visit_app_access', 'existing', {
+        target_user_id: userId,
+        role_id: role.id,
+        application_id: application.id,
+        client_id: normalizedClientId,
+        actor_id: grantedBy,
+        duration_ms: Date.now() - startedAt,
+      });
+      return { assigned: false, role: roleString, applicationId: application.id };
+    }
+
+    const userRole = this.userRolesRepository.create({
+      userId,
+      roleId: role.id,
+      applicationId: application.id,
+      grantedBy,
+    });
+    await this.userRolesRepository.save(userRole);
+    this.audit('first_visit_app_access', 'success', {
+      target_user_id: userId,
+      role_id: role.id,
+      application_id: application.id,
+      client_id: normalizedClientId,
+      actor_id: grantedBy,
+      duration_ms: Date.now() - startedAt,
+    });
+
+    return { assigned: true, role: roleString, applicationId: application.id };
+  }
+
+  private assertReturnUrlMatchesApplication(application: Application, returnUrl?: string): void {
+    const configuredDomain = (application.domain || '').trim().toLowerCase();
+    if (!configuredDomain || !returnUrl) {
+      return;
+    }
+
+    let expectedHost = configuredDomain;
+    try {
+      expectedHost = new URL(configuredDomain.includes('://') ? configuredDomain : `https://${configuredDomain}`).hostname.toLowerCase();
+    } catch {
+      expectedHost = configuredDomain;
+    }
+
+    try {
+      const actualHost = new URL(returnUrl).hostname.toLowerCase();
+      if (actualHost === expectedHost || actualHost.endsWith(`.${expectedHost}`)) {
+        return;
+      }
+    } catch {
+      throw new BadRequestException('Invalid return_url');
+    }
+
+    throw new BadRequestException('return_url does not match client_id');
   }
 
   async getUserRolesForApplication(userId: string, applicationId: string): Promise<string[]> {

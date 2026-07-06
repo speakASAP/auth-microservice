@@ -88,16 +88,18 @@ describe('Auth identifier and contact contract', () => {
     };
     const service: any = Object.create(AuthService.prototype);
     service.usersService = usersService;
-    service.rolesService = {
+    const rolesService = {
       getUserRoles: jest.fn(async () => ['app:test:user']),
+      assignDefaultApplicationAccess: jest.fn(async () => ({ assigned: true, role: 'app:marathon:user', applicationId: 'app-1' })),
     };
+    service.rolesService = rolesService;
     service.jwtService = {
       sign: jest.fn(() => 'tok'),
       verify: jest.fn(() => ({ sub: user.id })),
     };
     service.logger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
     service.legacyIdentityMappingRepository = { createQueryBuilder: jest.fn() };
-    return { service: service as AuthService, usersService };
+    return { service: service as AuthService, usersService, rolesService };
   }
 
   afterEach(() => {
@@ -123,6 +125,40 @@ describe('Auth identifier and contact contract', () => {
       accessToken: 'tok',
       refreshToken: 'tok',
     });
+  });
+
+  it('assigns first-visit application access before signing hosted password login tokens', async () => {
+    jest.spyOn(bcryptjs, 'compare').mockResolvedValue(true as never);
+    const { service, rolesService } = makeService();
+    const order: string[] = [];
+
+    rolesService.assignDefaultApplicationAccess.mockImplementation(async () => {
+      order.push('assign');
+      return { assigned: true, role: 'app:marathon:user', applicationId: 'app-1' };
+    });
+    rolesService.getUserRoles.mockImplementation(async () => {
+      order.push('roles');
+      return ['app:marathon:user'];
+    });
+    (service as any).jwtService.sign.mockImplementation((payload: any) => {
+      order.push('sign');
+      expect(payload.roles).toContain('app:marathon:user');
+      return 'tok';
+    });
+
+    await service.login({
+      identifier: '+420 777 123 456',
+      password: 'valid-password',
+      client_id: 'Marathon',
+    });
+
+    expect(rolesService.assignDefaultApplicationAccess).toHaveBeenCalledWith(
+      '11111111-1111-4111-8111-111111111111',
+      'marathon',
+      '11111111-1111-4111-8111-111111111111',
+      undefined,
+    );
+    expect(order.slice(0, 3)).toEqual(['assign', 'roles', 'sign']);
   });
 
   it('preserves legacy email login payloads', async () => {
@@ -240,6 +276,10 @@ describe('Auth identifier and contact contract', () => {
           hevrike: { source: 'hevrike', provisioned: true },
           bazos: { source: 'bazos', provisioned: true },
         },
+        canonicalProfile: {
+          avatarUrl: 'https://cdn.example.test/avatar.png',
+          settings: { locale: 'cs-CZ', profileVisibility: 'private' },
+        },
       },
     } as any);
 
@@ -253,6 +293,13 @@ describe('Auth identifier and contact contract', () => {
       lastName: 'Lovelace',
       phone: '+420777123456',
       contactInfo: [{ type: 'phone', value: '+420777123456', isPrimary: true }],
+      avatarUrl: 'https://cdn.example.test/avatar.png',
+      profileImageUrl: 'https://cdn.example.test/avatar.png',
+      profileSettings: { locale: 'cs-CZ', profileVisibility: 'private' },
+      canonicalProfile: expect.objectContaining({
+        avatarUrl: 'https://cdn.example.test/avatar.png',
+        settings: { locale: 'cs-CZ', profileVisibility: 'private' },
+      }),
       perApplicationPreferences: expect.objectContaining({
         authSources: expect.objectContaining({
           hevrike: expect.objectContaining({ source: 'hevrike' }),
@@ -312,6 +359,8 @@ describe('Auth identifier and contact contract', () => {
       firstName: 'Ada',
       lastName: 'Lovelace',
       phone: '+420 777 123 456',
+      avatarUrl: 'https://cdn.example.test/new-avatar.png',
+      settings: { locale: 'en-US', marketingOptIn: false },
       address: {
         street: 'Vaclavske namesti 1',
         city: 'Praha',
@@ -338,6 +387,8 @@ describe('Auth identifier and contact contract', () => {
             flipflop: expect.objectContaining({ source: 'flipflop' }),
           }),
           canonicalProfile: expect.objectContaining({
+            avatarUrl: 'https://cdn.example.test/new-avatar.png',
+            settings: { locale: 'en-US', marketingOptIn: false },
             address: expect.objectContaining({
               street: 'Vaclavske namesti 1',
               city: 'Praha',

@@ -21,7 +21,11 @@ describe('Auth contact code contract', () => {
     };
     const service: any = Object.create(AuthService.prototype);
     service.usersService = usersService;
-    service.rolesService = { getUserRoles: jest.fn(async () => ['app:test:user']) };
+    const rolesService = {
+      getUserRoles: jest.fn(async () => ['app:test:user']),
+      assignDefaultApplicationAccess: jest.fn(async () => ({ assigned: true, role: 'app:marathon:user', applicationId: 'app-1' })),
+    };
+    service.rolesService = rolesService;
     service.jwtService = {
       sign: jest.fn(() => 'tok'),
       decode: jest.fn(() => ({ exp: Math.floor(Date.now() / 1000) + 3600 })),
@@ -49,7 +53,7 @@ describe('Auth contact code contract', () => {
     };
     jest.spyOn(service, 'sendContactCode').mockResolvedValue(true);
     jest.spyOn(service, 'generateContactCode').mockReturnValue('123456');
-    return { service: service as AuthService, usersService, savedTokens };
+    return { service: service as AuthService, usersService, savedTokens, rolesService };
   }
 
   afterEach(() => {
@@ -80,7 +84,7 @@ describe('Auth contact code contract', () => {
   });
 
   it('verifies a phone sign-in proof and returns the standard JWT contract', async () => {
-    const { service } = makeService();
+    const { service, rolesService } = makeService();
     await service.requestContactCode({
       identifier: '+420777123456',
       return_url: 'https://marathon.alfares.cz/profile',
@@ -98,6 +102,23 @@ describe('Auth contact code contract', () => {
     });
     expect(result.redirectUrl).toContain('auth_method=phone_code');
     expect(result.redirectUrl).toContain('access_token=tok');
+    expect(rolesService.assignDefaultApplicationAccess).not.toHaveBeenCalled();
+  });
+
+  it('assigns first-visit app access from the stored contact-code client id before issuing tokens', async () => {
+    const { service, rolesService } = makeService();
+    await service.requestContactCode({
+      identifier: '+420777123456',
+      return_url: 'https://marathon.alfares.cz/profile',
+      client_id: 'marathon',
+    }, '127.0.0.1');
+
+    await service.verifyContactCode({
+      identifier: '+420777123456',
+      code: '123456',
+    });
+
+    expect(rolesService.assignDefaultApplicationAccess).toHaveBeenCalledWith('user-1', 'marathon', 'user-1', 'https://marathon.alfares.cz/profile');
   });
 
   it('rejects invalid contact proof codes', async () => {

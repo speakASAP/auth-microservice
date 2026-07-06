@@ -8,9 +8,11 @@ describe('hosted auth web contract', () => {
   const mainTs = readFileSync(join(process.cwd(), 'src/main.ts'), 'utf8');
   const webServer = readFileSync(join(process.cwd(), 'web/server.js'), 'utf8');
 
-  it('posts password login with the central identifier field', () => {
+  it('posts password login with the central identifier field and client id', () => {
     expect(html).toContain('id="identifier"');
-    expect(html).toContain('{ identifier, password }');
+    expect(html).toContain('{ identifier, password, client_id: clientId || undefined, return_url: validatedReturnUrl }');
+    expect(html).toContain('client_id: clientId || undefined');
+    expect(html).toContain('return_url: validatedReturnUrl');
     expect(html).not.toContain('body: JSON.stringify({ email, password })');
   });
 

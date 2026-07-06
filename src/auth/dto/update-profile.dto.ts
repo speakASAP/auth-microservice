@@ -55,6 +55,15 @@ export class UpdateProfileDto {
   phone?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  avatarUrl?: string;
+
+  @IsOptional()
+  @IsObject()
+  settings?: Record<string, unknown>;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => AuthProfileAddressDto)
   address?: AuthProfileAddressDto;

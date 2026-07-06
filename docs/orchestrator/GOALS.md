@@ -180,7 +180,7 @@ Acceptance criteria:
 
 ## Goal 10 - Auth Customer Data Wallet
 
-Status: active
+Status: done
 
 Intent: Auth must be the single editable source of truth for registered-user profile data, delivery address books, and invoice/billing profiles, while Orders keeps immutable order snapshots and consumer checkouts use Auth selectors instead of app-local reusable profile stores.
 
@@ -226,3 +226,25 @@ Planning artifacts:
 - `docs/orchestrator/2026-07-02-auth-customer-data-wallet-cross-repo-plan.md`
 - `docs/orchestrator/2026-07-02-auth-customer-data-wallet-validation-deployment-plan.md`
 - `implementation-goals/GOAL-10-auth-customer-data-wallet.md`
+
+## Goal 11 - First-Visit Application Access Assignment
+
+Status: done
+
+Intent: Auth assigns baseline application access the first time a central user authenticates through a hosted Auth flow with a configured `client_id`, while keeping domain/product authorization outside Auth.
+
+Chunks:
+
+- [x] 11.1 Verify current gap and define bounded Auth RBAC contract.
+- [x] 11.2 Add idempotent first-visit `app:<client_id>:user` assignment before token signing.
+- [x] 11.3 Propagate `client_id` and validated `return_url` through hosted password login/register and existing passwordless/OAuth contexts.
+- [x] 11.4 Add focused Auth/RBAC/hosted-web tests.
+- [x] 11.5 Run full validation and record final evidence.
+
+Acceptance criteria:
+
+- Valid configured hosted flows assign `app:<client_id>:user` before token issuance.
+- Missing/inactive app, missing active application `user` role, mismatched configured app domain, malformed client id, and expired existing assignments fail closed.
+- JWT payload shape is unchanged; only existing `roles` content can include the baseline app role.
+- Auth does not create product entitlements or consumer-local records.
+- No secrets, token values, raw production user data, or production DB dumps are recorded.

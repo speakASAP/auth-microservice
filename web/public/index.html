@@ -290,8 +290,8 @@
 
       const endpoint = mode === 'register' ? '/auth/register' : '/auth/login';
       const payload = mode === 'register'
-        ? { email: identifier, password, firstName: firstName || undefined, lastName: lastName || undefined, phone: phone || undefined }
-        : { identifier, password };
+        ? { email: identifier, password, firstName: firstName || undefined, lastName: lastName || undefined, phone: phone || undefined, client_id: clientId || undefined, return_url: validatedReturnUrl }
+        : { identifier, password, client_id: clientId || undefined, return_url: validatedReturnUrl };
 
       try {
         const response = await fetch(endpoint, {
@@ -424,6 +424,7 @@
             identifier: contactCodeRequestedFor,
             code,
             return_url: validatedReturnUrl,
+            client_id: clientId || undefined,
           }),
         });
         if (!verifyResponse.ok) {

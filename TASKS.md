@@ -23,6 +23,7 @@
 - Completed `RBAC-REM-07` Logging admin role-enforcement verification
 - Completed `AUTH-ALPHA-01` hosted token handoff URL normalization
 - Completed Goal 09 Auth contract production smoke verification after AUTH-ALPHA-01 and RBAC-REM-07 deployment
+- Source-validated Goal 11 first-visit application access assignment for hosted Auth client_id flows
 
 ## Project Completion Marker
 

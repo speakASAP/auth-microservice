@@ -2,7 +2,7 @@
  * Login DTO
  */
 
-import { IsString, ValidateIf } from 'class-validator';
+import { IsOptional, IsString, IsUrl, ValidateIf } from 'class-validator';
 
 export class LoginDto {
   @ValidateIf((dto) => !dto.identifier)
@@ -15,4 +15,12 @@ export class LoginDto {
 
   @IsString()
   password: string;
+
+  @IsOptional()
+  @IsString()
+  client_id?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  return_url?: string;
 }

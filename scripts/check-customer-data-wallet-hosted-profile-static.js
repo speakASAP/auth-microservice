@@ -132,6 +132,8 @@ async function main() {
     'name="companyId"',
     'name="taxId"',
     'name="vatId"',
+    'name="avatarUrl"',
+    'name="settings"',
     '<script src="/js/profile.js"></script>',
   ]);
 
@@ -148,6 +150,10 @@ async function main() {
     "params.get('access_token') || params.get('accessToken')",
     "params.get('refresh_token') || params.get('refreshToken')",
     "body: JSON.stringify({ identifier, password })",
+    "setValue('profile-avatar-url', user.avatarUrl || canonical.avatarUrl)",
+    "setValue('profile-settings-json', Object.keys(settings).length ? JSON.stringify(settings, null, 2) : '')",
+    "avatarUrl,",
+    "settings,",
   ]);
 
   const negativeMarkers = [

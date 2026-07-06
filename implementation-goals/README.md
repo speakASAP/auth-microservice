@@ -25,6 +25,7 @@ AUTH ORCHESTRATOR: implement goal number 6
 8. `GOAL-08-auth-alpha-hosted-token-handoff.md` - completed Auth Alpha hosted token handoff URL normalization.
 9. `GOAL-09-auth-contract-production-smoke-verification.md` - completed production contract smoke verification after deployment.
 10. `GOAL-10-auth-customer-data-wallet.md` - planned Auth-owned profile, delivery address book, invoice profile, and checkout selector rollout.
+11. `GOAL-11-first-visit-application-access.md` - source-validated first-visit application access assignment for hosted Auth `client_id` flows.
 
 ## Execution Order
 
@@ -36,6 +37,7 @@ Safe default:
 
 Goal 06 touches ecosystem consumers and should start only when the owner confirms scope or requests it explicitly.
 Goal 10 touches Auth plus consumer checkout repositories. Start with Auth contract/storage before consumer code changes.
+Goal 11 is Auth-only and must assign only baseline `app:<client_id>:user` access before token signing; do not move product authorization into Auth.
 
 ## Source Documents
 
