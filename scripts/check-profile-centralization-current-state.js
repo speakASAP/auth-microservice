@@ -98,7 +98,7 @@ function main() {
       'scripts/create-email-change-table.sql',
       'SQL apply: completed',
       'Deploy: completed',
-      'Live request/confirm smoke: blocked on confirmation token path',
+      'Live request/confirm smoke: completed',
     ]),
     consumerAuditAndParallelWorkers: includesAll(audit + status, [
       'Consumer Audit Matrix',
@@ -132,7 +132,7 @@ function main() {
       'Auth deploy from clean `main`',
       'GET-only hosted `/profile` static smoke',
       'Request smoke with synthetic account/new email',
-      'SQL apply, deploy, and live static smoke completed; live email-change confirm not run',
+      'SQL apply, deploy, live static smoke, and live email-change request/confirm completed',
     ]),
     packageScripts: [
       {
@@ -174,7 +174,7 @@ function main() {
     status: ok ? 'pass_profile_centralization_current_state_source_audit' : 'fail_profile_centralization_current_state_source_audit',
     sourceOnly: true,
     goalComplete: false,
-    reasonGoalNotComplete: 'Runtime activation completed through SQL apply, Auth deploy, and hosted static smoke; bounded synthetic email-change confirm remains gated on approved confirmation token path.',
+    reasonGoalNotComplete: 'Runtime activation completed through SQL apply, Auth deploy, hosted static smoke, and bounded synthetic email-change request/confirm smoke; remaining gates are consumer runtime/session/mutation proofs outside Auth.',
     mutatesDatabase: false,
     deploys: false,
     callsRuntime: false,

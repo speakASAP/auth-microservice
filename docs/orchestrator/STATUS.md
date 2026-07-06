@@ -1,3 +1,26 @@
+## 2026-07-06 - Email Change Synthetic Runtime Smoke Completed
+
+Current focus:
+
+- Record owner-approved bounded synthetic email-change request/confirm runtime evidence for Auth profile centralization.
+
+Evidence:
+
+- Live request/confirm smoke: completed.
+- Synthetic registration returned HTTP 201 and produced a bearer token file without printing the token.
+- Email-change request smoke returned HTTP 201 with a message field present.
+- Confirmation token was handed off through a temporary 0600 file without printing token or email contents.
+- Email-change confirm smoke returned HTTP 201 with message, user, and returnUrl fields present.
+- pass_auth_email_change_synthetic_request_confirm_smoke.
+
+Boundary:
+
+- Synthetic-only runtime smoke. No bearer token values, passwords, email-change tokens, email addresses, request bodies, response bodies, DB rows, or customer data were printed.
+
+Next unfinished chunks:
+
+- Auth profile centralization is runtime-activated; remaining profile-centralization evidence outside Auth is limited to previously recorded consumer runtime/session/mutation gates.
+
 ## 2026-07-06 - Profile Centralization Activation Window Executed
 
 Current focus:
@@ -12,8 +35,8 @@ Evidence:
 - Deploy: completed.
 - GET-only hosted /profile static smoke passed after deploy.
 - Runtime readiness passed for https://auth.alfares.cz with live /health, /profile, and /js/profile.js HTTP 200 and profile/avatar/settings/email-change markers present.
-- SQL apply, deploy, and live static smoke completed; live email-change confirm not run.
-- Live request/confirm smoke: blocked on confirmation token path.
+- SQL apply, deploy, live static smoke, and live email-change request/confirm completed.
+- Live request/confirm smoke: completed.
 
 Boundary:
 
@@ -21,8 +44,7 @@ Boundary:
 
 Next unfinished chunks:
 
-- Request smoke with synthetic account/new email only when a synthetic bearer token and synthetic new-email file are available.
-- Confirm smoke requires [MISSING: approved confirmation token path] that does not print email body or token contents.
+- Auth runtime activation gates are complete; remaining profile-centralization evidence outside Auth is limited to previously recorded consumer runtime/session/mutation gates.
 
 ## 2026-07-06 - Activation Command Packet Added
 

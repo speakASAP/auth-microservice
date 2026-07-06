@@ -84,7 +84,7 @@ Forbidden output:
 - SQL apply: completed.
 - Deploy: completed.
 - Live static smoke: post-deploy GET-only hosted profile static smoke passed after email-change deployment.
-- Live request/confirm smoke: blocked on confirmation token path.
+- Live request/confirm smoke: completed.
 
 ## 2026-07-06 Readiness Update
 

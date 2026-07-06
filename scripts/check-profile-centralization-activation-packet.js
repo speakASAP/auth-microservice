@@ -119,7 +119,7 @@ const checks = {
     'Owner-approved DB/deploy window',
     'SQL apply: completed',
     'Deploy: completed',
-    'Live request/confirm smoke: blocked on confirmation token path',
+    'Live request/confirm smoke: completed',
     'post-deploy hosted profile static smoke',
   ]),
   commandPacketSafety: checkAll(commandPacket, [
@@ -174,7 +174,7 @@ const report = {
   readsEnvironment: false,
   printsSecrets: false,
   goalComplete: false,
-  reasonGoalNotComplete: 'Activation packet executed through SQL apply, Auth deploy, and hosted static smoke; bounded email-change confirm remains gated on approved confirmation token path.',
+  reasonGoalNotComplete: 'Activation packet executed through SQL apply, Auth deploy, hosted static smoke, and bounded email-change request/confirm smoke.',
   checks: Object.fromEntries(Object.entries(checks).map(([key, results]) => [key, summarize(results)])),
   missing,
 };
