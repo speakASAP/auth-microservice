@@ -24,7 +24,7 @@ This audit checks the user's requested end state:
 
 ## Not Complete Yet
 
-Live availability blocker: `docs/orchestrator/2026-07-06-auth-live-availability-blocker.md` records that Auth backend/web deployments were `0/1`, endpoints were empty, and `/profile` returned HTTP 503 during read-only verification.
+Live availability update: `docs/orchestrator/2026-07-06-auth-live-availability-blocker.md` records the earlier empty-endpoint/HTTP 503 blocker and the later recovery to `1/1` backend/web deployments with public `/health` ok. GET-only hosted profile static smoke now reaches `/profile` and `/js/profile.js` with HTTP 200, but still fails because deployed assets are stale and missing current `avatarUrl`, `settings`, and email-change markers.
 
 The full user-facing runtime guarantee is not proven until these approved runtime gates pass:
 

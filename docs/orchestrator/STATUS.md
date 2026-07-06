@@ -1,3 +1,28 @@
+## 2026-07-06 - Auth Runtime Recovered, Static Profile Still Stale
+
+Current focus:
+
+- Re-check live Auth availability after the narrow Auth-only rollout restart and independent read-only subagent runtime triage.
+
+Evidence:
+
+- `deployment/auth-microservice` recovered to `1/1` with endpoint `10.42.0.248:3370`.
+- `deployment/auth-microservice-web` recovered to `1/1` with endpoint `10.42.0.249:3372`.
+- Public `https://auth.alfares.cz/health` returned sanitized JSON with `success=true`, `status=ok`, and `service=auth-microservice`.
+- GET-only hosted profile static smoke reached `/profile` HTTP `200` and `/js/profile.js` HTTP `200`, but failed because deployed static assets are still the old `e484688-20260703071733` runtime and are missing the latest profile centralization markers: `id="email-change-form"`, `name="avatarUrl"`, `name="settings"`, `fetchJson('/auth/email-change-request')`, and related avatar/settings save markers.
+- Independent read-only subagent confirmed the remaining rollout churn is consistent with node/container-runtime recovery symptoms, not a confirmed Auth source regression.
+- `npm run check:profile-centralization-current-state -- --no-write-report` passed source-only with `pass_profile_centralization_current_state_source_audit` and `goalComplete=false`.
+
+Boundary:
+
+- No SQL apply, no Auth deploy, no new image build/push, no DB read/write, no authenticated API call, no live email-change request/confirm smoke, no secret/token/password/email output, and no raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Let the Auth rollout/container runtime finish cleanly; avoid deploy/SQL while replacement pods are still transitioning.
+- Request owner-approved DB/deploy window for `scripts/create-email-change-table.sql` and Auth deploy from clean `main`.
+- After approved deploy, re-run GET-only hosted `/profile` static smoke, then run bounded synthetic email-change request/confirm smoke with file-based inputs and sanitized output only.
+
 ## 2026-07-06 - Auth Availability Restart Attempt Still Blocked
 
 Current focus:

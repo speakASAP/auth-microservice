@@ -64,3 +64,22 @@ Verdict update:
 - Pause deploys and runtime smokes.
 - Treat remaining backend unavailability as operator-level k3s/containerd/control-plane recovery, not an Auth-only fix.
 - Re-check Auth backend/web readiness and endpoints after cluster runtime stabilizes.
+
+## 2026-07-06 18:39 Follow-up
+
+Basic Auth availability recovered after the earlier node/container-runtime churn:
+
+- `deployment/auth-microservice` became `1/1` with endpoint `10.42.0.248:3370`.
+- `deployment/auth-microservice-web` became `1/1` with endpoint `10.42.0.249:3372`.
+- Public `https://auth.alfares.cz/health` returned ok.
+
+The live profile-centralization guarantee is still not complete:
+
+- GET-only hosted profile static smoke reached `/profile` HTTP `200` and `/js/profile.js` HTTP `200`.
+- The smoke failed because live static assets are still the old deployed image `e484688-20260703071733` and do not contain the latest `avatarUrl`, `settings`, or email-change markers from current `main`.
+
+Updated verdict:
+
+- The initial 503/empty-endpoint blocker is resolved enough for read-only checks.
+- Do not run SQL/deploy while Kubernetes rollout/container runtime is still transitioning.
+- The remaining profile-centralization runtime gap is activation of current `main`: approved email-change SQL apply, Auth deploy, hosted static smoke, and bounded synthetic email-change request/confirm smoke.
