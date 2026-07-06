@@ -27,6 +27,7 @@ const preflight = read('scripts/check-auth-email-change-preflight.js');
 const activation = read('scripts/check-auth-email-change-activation-source.js');
 const runtime = read('scripts/check-auth-email-change-runtime-smoke.js');
 const staticSmoke = read('scripts/check-customer-data-wallet-hosted-profile-static.js');
+const runtimeReadiness = read('scripts/check-profile-centralization-runtime-readiness.js');
 const deploy = read('scripts/deploy.sh');
 
 const checks = {
@@ -46,6 +47,10 @@ const checks = {
     {
       marker: 'package script check:customer-data-wallet-hosted-profile-static',
       present: packageJson.scripts?.['check:customer-data-wallet-hosted-profile-static'] === 'node scripts/check-customer-data-wallet-hosted-profile-static.js',
+    },
+    {
+      marker: 'package script check:profile-centralization-runtime-readiness',
+      present: packageJson.scripts?.['check:profile-centralization-runtime-readiness'] === 'node scripts/check-profile-centralization-runtime-readiness.js',
     },
   ],
   gateOrder: checkAll(runtimeGate, [
@@ -111,6 +116,18 @@ const checks = {
     'Deploy: not run',
     'Live request/confirm smoke: not run',
     'post-deploy hosted profile static smoke',
+  ]),
+  runtimeReadinessSafety: checkAll(runtimeReadiness, [
+    'fail_profile_centralization_runtime_readiness',
+    'pass_profile_centralization_runtime_readiness',
+    'liveReadOnly: true',
+    'sendsAuthorizationHeader: false',
+    'sendsCookies: false',
+    'sendsRequestBody: false',
+    'printsResponseBody: false',
+    'readsDatabase: false',
+    'activationReady',
+    'reasonNotReady',
   ]),
   staticSmokeSafety: checkAll(staticSmoke, [
     'liveStaticGetOnly: true',

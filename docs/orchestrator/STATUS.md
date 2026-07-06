@@ -1,3 +1,22 @@
+## 2026-07-06 - Runtime Readiness Wired Into Gates
+
+Current focus:
+
+- Make the runtime readiness checker part of the source-only activation and current-state gates.
+
+Evidence:
+
+- `npm run check:profile-centralization-activation-packet` now verifies the runtime-readiness package script and safety markers.
+- `npm run check:profile-centralization-current-state` now requires `check:profile-centralization-runtime-readiness`, `fail_profile_centralization_runtime_readiness`, and `activationReady` markers.
+
+Boundary:
+
+- Source-only checker/doc update. No SQL apply, Auth deploy, DB read/write, environment read, authenticated API call, token/password/email output, or raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Owner-approved activation window for SQL metadata preflight/apply/post-apply, Auth deploy, runtime readiness/static smoke, and bounded synthetic email-change request/confirm smoke.
+
 ## 2026-07-06 - Runtime Readiness Checker Added
 
 Current focus:

@@ -20,6 +20,7 @@
 npm run check:auth-email-change-activation-source
 npm run check:auth-email-change-preflight
 npm run check:profile-centralization-activation-packet
+npm run check:profile-centralization-runtime-readiness -- --base-url=https://auth.alfares.cz --no-write-report
 ```
 
 This verifies root TypeORM entity registration, feature repository wiring, SQL/entity shape, hosted profile markers, email-change SQL preflight safety, guarded runtime smoke safety, package scripts, and that `scripts/deploy.sh` does not apply SQL or enable `DB_SYNC=true`.
