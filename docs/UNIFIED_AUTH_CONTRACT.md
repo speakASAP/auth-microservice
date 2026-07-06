@@ -87,7 +87,17 @@ When the identifier is an email address, Auth looks up the canonical email. When
 
 `GET /auth/profile` is the canonical profile read for consuming applications after hosted Auth handoff. Consumers must initialize or refresh local application profile views from this Auth-owned response, not from application-local registration forms or stale JWT claims. The response is read from the Auth `users` table for the authenticated subject and is sanitized before return; it includes Auth-owned identity/contact fields such as `email`, `firstName`, `lastName`, `phone`, `contactInfo`, central profile image fields `avatarUrl`/`profileImageUrl`, `profileSettings`, and Auth-owned preference/source metadata when present, and never includes `password`.
 
-`PATCH /auth/profile` updates central Auth-owned profile fields for the authenticated subject. Supported self-service profile fields are `firstName`, `lastName`, `phone`, `avatarUrl`, `settings`, `address`, and compatibility `profile` metadata. Consumers that offer profile editors must write these reusable fields through this endpoint so the next profile read in any other application observes the same values. Email changes remain gated on a verified email-change flow and must not be implemented as an unverified profile patch. Password changes use `/auth/password-change` or reset/set endpoints, not `/auth/profile`.
+`PATCH /auth/profile` updates central Auth-owned profile fields for the authenticated subject. Supported self-service profile fields are `firstName`, `lastName`, `phone`, `avatarUrl`, `settings`, `address`, and compatibility `profile` metadata. Consumers that offer profile editors must write these reusable fields through this endpoint so the next profile read in any other application observes the same values. Email changes must use the verified email-change flow and must not be implemented as an unverified profile patch. Password changes use `/auth/password-change` or reset/set endpoints, not `/auth/profile`.
+
+Verified email change endpoints:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/auth/email-change-request` | Authenticated request for a new account email. Requires bearer auth, checks the new email is available, and requires `currentPassword` when the account has a password. Sends a one-time confirmation link to the new email. |
+| `POST` | `/auth/email-change-confirm` | Confirm a one-time email-change token and update Auth `users.email` plus the primary email contact. |
+| `GET` | `/auth/email-change-confirm?token=...` | Browser-link equivalent of the confirm endpoint for email clients. |
+
+Existing JWTs may contain the previous email claim until refresh or re-login; consumers that need fresh account email must call `GET /auth/profile` after confirmation.
 
 Auth also owns reusable customer data wallet entries for authenticated users.
 Consumers should call `GET /auth/profile/checkout-data` before rendering

@@ -12,6 +12,8 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
 import { PasswordResetConfirmDto } from './dto/password-reset-confirm.dto';
 import { PasswordChangeDto } from './dto/password-change.dto';
+import { EmailChangeRequestDto } from './dto/email-change-request.dto';
+import { EmailChangeConfirmDto } from './dto/email-change-confirm.dto';
 import { ContactRegisterDto } from './dto/contact-register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
@@ -74,6 +76,22 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async setInitialPassword(@Request() req, @Body() body: { newPassword: string }) {
     return this.authService.setInitialPassword(req.user.id, body.newPassword);
+  }
+
+  @Post('email-change-request')
+  @UseGuards(JwtAuthGuard)
+  async requestEmailChange(@Request() req, @Body() dto: EmailChangeRequestDto) {
+    return this.authService.requestEmailChange(req.user.id, dto);
+  }
+
+  @Post('email-change-confirm')
+  async confirmEmailChange(@Body() dto: EmailChangeConfirmDto) {
+    return this.authService.confirmEmailChange(dto.token);
+  }
+
+  @Get('email-change-confirm')
+  async confirmEmailChangeLink(@Query('token') token: string) {
+    return this.authService.confirmEmailChange(token);
   }
 
   @Post('register-contact')

@@ -608,6 +608,35 @@
     }
   }
 
+  async function doEmailChangeRequest(e) {
+    e.preventDefault();
+    showEl('email-change-error', false);
+    showEl('email-change-success', false);
+
+    try {
+      const data = await fetchJson('/auth/email-change-request', {
+        method: 'POST',
+        body: JSON.stringify({
+          newEmail: $('new-email').value.trim(),
+          currentPassword: $('email-change-current-password').value || undefined,
+          return_url: window.location.origin + '/profile',
+        }),
+      });
+      const el = $('email-change-success');
+      if (el) {
+        el.textContent = data.message || 'Confirmation link sent.';
+        el.classList.remove('hidden');
+      }
+      $('email-change-form').reset();
+    } catch (err) {
+      const el = $('email-change-error');
+      if (el) {
+        el.textContent = err.message;
+        el.classList.remove('hidden');
+      }
+    }
+  }
+
   async function doPasswordChange(e) {
     e.preventDefault();
     const current = $('current-password').value;

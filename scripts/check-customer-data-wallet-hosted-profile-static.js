@@ -129,6 +129,7 @@ async function main() {
     'id="delivery-address-form"',
     'id="invoice-profiles-section"',
     'id="invoice-profile-form"',
+    'id="email-change-form"',
     'name="companyId"',
     'name="taxId"',
     'name="vatId"',
@@ -140,6 +141,7 @@ async function main() {
   const scriptMarkers = includesAll(profileJs.body, [
     "fetchJson('/auth/profile')",
     "fetchJson('/auth/profile/checkout-data')",
+    "fetchJson('/auth/email-change-request')",
     "'/auth/profile/delivery-addresses'",
     "'/auth/profile/invoice-profiles'",
     "Authorization: 'Bearer ' + getToken()",
@@ -154,6 +156,7 @@ async function main() {
     "setValue('profile-settings-json', Object.keys(settings).length ? JSON.stringify(settings, null, 2) : '')",
     "avatarUrl,",
     "settings,",
+    "return_url: window.location.origin + '/profile'",
   ]);
 
   const negativeMarkers = [

@@ -266,6 +266,24 @@
       <div id="copy-success" class="success hidden">Copied to clipboard!</div>
     </div>
 
+    <!-- Change Email -->
+    <div class="profile-card">
+      <h2>Change Email</h2>
+      <form id="email-change-form">
+        <div class="form-group">
+          <label for="new-email">New email</label>
+          <input type="email" id="new-email" name="newEmail" required autocomplete="email" maxlength="255">
+        </div>
+        <div class="form-group">
+          <label for="email-change-current-password">Current Password</label>
+          <input type="password" id="email-change-current-password" name="currentPassword" autocomplete="current-password">
+        </div>
+        <div id="email-change-error" class="error hidden"></div>
+        <div id="email-change-success" class="success hidden"></div>
+        <button type="submit" class="btn">Send confirmation link</button>
+      </form>
+    </div>
+
     <!-- Change Password -->
     <div class="profile-card">
       <h2>Change Password</h2>

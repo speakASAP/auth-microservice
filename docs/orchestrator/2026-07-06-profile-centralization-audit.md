@@ -5,12 +5,12 @@
 - Vision: Auth remains the Statex ecosystem source of truth for registered-user identity, credentials, profile/contact data, profile image metadata, user-visible profile settings, delivery address books, and invoice profiles.
 - Goal Impact: a registered user can edit reusable profile data through Auth-owned APIs/surfaces and see the same data reflected in consumer applications that read Auth profile data.
 - System: Auth owns user identity, password change/reset/set, canonical profile read/update, delivery address CRUD, invoice profile CRUD, registered-user communication preferences, and service-authentication boundaries. Consumer applications may render profile editors/selectors, but reusable account/profile writes must flow back to Auth.
-- Feature: central profile audit and first source-side remediation for missing profile image/settings fields.
-- Task: inspect Auth profile capabilities, add explicit Auth-owned `avatarUrl` and `settings` support to `PATCH /auth/profile`, expose sanitized profile image/settings aliases from `GET /auth/profile`, wire hosted `/profile`, and record remaining gaps.
+- Feature: central profile audit and source-side remediation for profile image/settings plus verified email change.
+- Task: inspect Auth profile capabilities, add explicit Auth-owned `avatarUrl` and `settings` support to `PATCH /auth/profile`, expose sanitized profile image/settings aliases from `GET /auth/profile`, add verified one-time email-change request/confirm endpoints, wire hosted `/profile`, and record remaining runtime gates.
 - Execution Plan: remote-only edits in `auth-microservice`; no database schema migration; no JWT shape change; no consumer repo mutation; no production deploy without owner deploy gate.
 - Coding Prompt: keep Auth boundaries, avoid secrets/user data, validate source contract and build, document blockers as `[MISSING: ...]`.
-- Code: changed Auth DTO/service/tests, hosted profile assets, static checker markers, unified contract docs, and orchestrator status.
-- Validation: `npm run test:auth-contract`, `npm run build`, and `git diff --check` passed remotely on `alfares`.
+- Code: changed Auth DTO/entity/service/controller/tests, hosted profile assets, static checker markers, source SQL migration script, unified contract docs, and orchestrator status.
+- Validation: `npm run test:auth-contract`, `npm run build`, `git diff --check`, and hosted profile script syntax checks passed remotely on `alfares`.
 
 ## Audit Blocks
 
@@ -25,9 +25,9 @@
    - Gap addressed: hosted `/profile` now includes profile image URL and profile settings JSON fields.
 
 3. Email change
-   - Status: blocked by policy, not implemented.
-   - Blocker: `[MISSING: verified email-change policy covering new-email verification, uniqueness conflict UX, active refresh-token/session behavior, audit event requirements, and consumer callback behavior]`.
-   - Boundary: email remains readable in Auth profile and writable only through existing registration/provisioning flows; this session did not add unverified email mutation.
+   - Status: source-prepared with verified one-time token flow; production DB apply/deploy remains gated.
+   - Policy: authenticated request, new-email uniqueness check, current-password proof for password accounts, one-time token sent to the new email, confirm updates Auth `users.email` and primary email contact, existing JWT email claims refresh on re-login/refresh.
+   - Boundary: `PATCH /auth/profile` still does not mutate email; no production DB apply or deploy occurred.
 
 4. Consumer applications
    - Status: audited and parallel source lanes executed where safe.
@@ -40,12 +40,12 @@
 | Auth API/UI remediation | ready now, executed | orchestrator | `auth-microservice` DTO/service/tests/web/docs | `npm run test:auth-contract`; `npm run build`; `git diff --check` |
 | Auth backend audit | complete | subagent | read-only Auth API/DTO/entity/docs inspection | confirmed avatar/settings/email-change gaps and existing core profile/wallet/password support |
 | Consumer integration audit | complete | subagent | read-only scan of consumer repos | repo-by-repo centralization matrix recorded below |
-| Email-change design | blocked | owner/security policy | Auth email-change flow and session semantics | requires `[MISSING: verified email-change policy]` |
+| Email-change source implementation | dependency-gated | orchestrator | Auth token/entity/API/UI/tests/docs | source validated; runtime activation requires SQL apply/deploy gate |
 | Production deploy/live static smoke | dependency-gated | owner/deploy gate | `./scripts/deploy.sh`, then hosted `/profile` live static smoke | requires deploy approval per repo workflow |
 
 ## Current Verdict
 
-Auth now has source-level first-class support for central profile image metadata and user-visible profile settings through the existing central profile API, without moving ownership to consumers. The broader ecosystem guarantee still depends on consumer apps reading/writing Auth profile APIs and on a verified email-change policy.
+Auth now has source-level first-class support for central profile image metadata and user-visible profile settings through the existing central profile API, without moving ownership to consumers. The broader ecosystem guarantee still depends on consumer apps reading/writing Auth profile APIs and on runtime activation of the Auth email-change table/deploy.
 
 ## Consumer Audit Matrix
 
@@ -88,4 +88,4 @@ Auth now has source-level first-class support for central profile image metadata
 - No worker deployed.
 - No worker ran DB writes, live checkout/order/payment mutations, provider/bank mutations, or Auth repo edits.
 - Commit/stage must stay per repo and per lane because multiple repos contain pre-existing or parallel unrelated untracked/modified files.
-- Auth source remediation is not committed because parallel Auth changes overlap `auth.service.ts` and related tests/docs.
+- Auth source remediation, including verified email change, is ready for one Auth repo commit after final validation.

@@ -1,4 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import * as bcryptjs from 'bcryptjs';
 import { AuthService } from './auth.service';
 
@@ -557,6 +558,91 @@ describe('Auth identifier and contact contract', () => {
     expect(usersService.findById).not.toHaveBeenCalled();
     expect((service as any).logger.warn).toHaveBeenCalledWith(expect.stringContaining('reason=invalid_subject'), 'AuthAudit');
     expect((service as any).logger.error).not.toHaveBeenCalled();
+  });
+
+  it('creates a verified email-change token without mutating email immediately', async () => {
+    jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+    const { service, usersService } = makeService();
+    const savedTokens: any[] = [];
+    (service as any).emailChangeTokenRepository = {
+      create: jest.fn((payload: any) => payload),
+      save: jest.fn(async (payload: any) => {
+        savedTokens.push(payload);
+        return payload;
+      }),
+    };
+    (service as any).notificationsServiceUrl = '';
+    process.env.FRONTEND_URL = 'https://auth.example.test';
+    usersService.findByEmail.mockImplementation(async (email: string) => (email === 'person@example.test' ? baseUser : null));
+
+    const result = await service.requestEmailChange('11111111-1111-4111-8111-111111111111', {
+      newEmail: 'new-person@example.test',
+      currentPassword: 'valid-password',
+    });
+
+    expect(result.message).toContain('confirmation link');
+    expect(savedTokens[0]).toMatchObject({
+      userId: '11111111-1111-4111-8111-111111111111',
+      oldEmail: 'person@example.test',
+      newEmail: 'new-person@example.test',
+      used: false,
+    });
+    expect(usersService.update).not.toHaveBeenCalled();
+  });
+
+  it('confirms an email-change token and updates the Auth-owned primary email contact', async () => {
+    const { service, usersService } = makeService({
+      ...baseUser,
+      contactInfo: [{ type: 'email', value: 'person@example.test', isPrimary: true }],
+    } as any);
+    const token = {
+      userId: '11111111-1111-4111-8111-111111111111',
+      token: 'email-change-token',
+      oldEmail: 'person@example.test',
+      newEmail: 'new-person@example.test',
+      returnUrl: 'https://app.example.test/profile',
+      expiresAt: new Date(Date.now() + 60000),
+      used: false,
+    };
+    (service as any).emailChangeTokenRepository = {
+      findOne: jest.fn(async () => token),
+      save: jest.fn(async (payload: any) => payload),
+    };
+    usersService.findByEmail.mockImplementation(async (email: string) => (email === 'person@example.test' ? baseUser : null));
+    usersService.findById
+      .mockResolvedValueOnce({
+        ...baseUser,
+        contactInfo: [{ type: 'email', value: 'person@example.test', isPrimary: true }],
+      } as any)
+      .mockResolvedValueOnce({
+        ...baseUser,
+        email: 'new-person@example.test',
+        contactInfo: [
+          { type: 'email', value: 'person@example.test', isPrimary: false },
+          { type: 'email', value: 'new-person@example.test', isPrimary: true },
+        ],
+      } as any);
+
+    const result = await service.confirmEmailChange('email-change-token');
+
+    expect(usersService.update).toHaveBeenCalledWith(
+      '11111111-1111-4111-8111-111111111111',
+      expect.objectContaining({
+        email: 'new-person@example.test',
+        isVerified: true,
+        contactInfo: expect.arrayContaining([
+          { type: 'email', value: 'person@example.test', isPrimary: false },
+          { type: 'email', value: 'new-person@example.test', isPrimary: true },
+        ]),
+      }),
+    );
+    expect(token.used).toBe(true);
+    expect(result).toMatchObject({
+      message: expect.stringContaining('Email changed successfully'),
+      returnUrl: 'https://app.example.test/profile',
+      user: expect.objectContaining({ email: 'new-person@example.test' }),
+    });
+    expect(result.user).not.toHaveProperty('password');
   });
 
   it('does not add service actor fields to normal users during token validation', async () => {

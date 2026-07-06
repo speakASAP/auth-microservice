@@ -16,6 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
 import { PasswordResetConfirmDto } from './dto/password-reset-confirm.dto';
 import { PasswordChangeDto } from './dto/password-change.dto';
+import { EmailChangeRequestDto } from './dto/email-change-request.dto';
 import { ContactRegisterDto } from './dto/contact-register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { LoggerService } from '../../shared/logger/logger.service';
@@ -24,6 +25,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { MagicLinkToken } from './entities/magic-link-token.entity';
+import { EmailChangeToken } from './entities/email-change-token.entity';
 import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping.entity';
 import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
@@ -73,6 +75,8 @@ export class AuthService {
     private readonly passwordResetTokenRepository: Repository<PasswordResetToken>,
     @InjectRepository(MagicLinkToken)
     private readonly magicLinkTokenRepository: Repository<MagicLinkToken>,
+    @InjectRepository(EmailChangeToken)
+    private readonly emailChangeTokenRepository: Repository<EmailChangeToken>,
     @InjectRepository(LegacyIdentityMapping)
     private readonly legacyIdentityMappingRepository: Repository<LegacyIdentityMapping>,
   ) {
@@ -737,6 +741,176 @@ export class AuthService {
     });
 
     return { message: 'Password changed successfully' };
+  }
+
+  async requestEmailChange(userId: string, dto: EmailChangeRequestDto) {
+    const startedAt = Date.now();
+    const user = await this.usersService.findById(userId);
+    if (!user || !user.isActive) {
+      this.audit('warn', 'email_change_request', 'failure', {
+        user_id: userId,
+        reason: 'user_not_found_or_inactive',
+        duration_ms: Date.now() - startedAt,
+      });
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    const newEmail = this.normalizeEmail(dto.newEmail);
+    if (!newEmail || !this.isEmailIdentifier(newEmail)) {
+      throw new BadRequestException('A valid new email is required');
+    }
+
+    const currentEmail = this.normalizeEmail(user.email);
+    if (currentEmail && newEmail === currentEmail) {
+      throw new BadRequestException('New email must be different from current email');
+    }
+
+    const existing = await this.usersService.findByEmail(newEmail);
+    if (existing && existing.id !== userId) {
+      this.audit('warn', 'email_change_request', 'failure', {
+        user_id: userId,
+        reason: 'email_exists',
+        duration_ms: Date.now() - startedAt,
+      });
+      throw new ConflictException('Email is already in use');
+    }
+
+    if (user.password) {
+      if (!dto.currentPassword) {
+        throw new UnauthorizedException('Current password is required');
+      }
+      const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.password);
+      if (!isPasswordValid) {
+        this.audit('warn', 'email_change_request', 'failure', {
+          user_id: userId,
+          reason: 'current_password_invalid',
+          duration_ms: Date.now() - startedAt,
+        });
+        throw new UnauthorizedException('Current password is incorrect');
+      }
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const ttlMinutes = Number(process.env.AUTH_EMAIL_CHANGE_TTL_MINUTES || '60');
+    const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
+    const returnUrl = dto.return_url ? this.validateReturnUrl(dto.return_url) : null;
+    const emailChangeToken = this.emailChangeTokenRepository.create({
+      userId,
+      token,
+      oldEmail: currentEmail || null,
+      newEmail,
+      returnUrl,
+      expiresAt,
+      used: false,
+    });
+    await this.emailChangeTokenRepository.save(emailChangeToken);
+
+    const baseUrl = this.resolvePublicBaseUrl();
+    const verifyUrl = `${baseUrl}/auth/email-change-confirm?token=${encodeURIComponent(token)}`;
+    if (this.notificationsServiceUrl) {
+      try {
+        await firstValueFrom(
+          this.httpService.post(
+            `${this.notificationsServiceUrl}/notifications/send`,
+            {
+              channel: 'email',
+              type: 'custom',
+              recipient: newEmail,
+              subject: 'Confirm your email change',
+              message: `Confirm your Auth account email change: ${verifyUrl}\n\nThis link expires in ${ttlMinutes} minutes.`,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${this.notificationServiceToken}`,
+              },
+            },
+          ),
+        );
+      } catch (error) {
+        this.audit('error', 'email_change_request', 'email_send_failed', {
+          user_id: userId,
+          reason: (error as Error).message,
+          duration_ms: Date.now() - startedAt,
+        }, (error as Error).stack);
+      }
+    }
+
+    this.audit('info', 'email_change_request', 'created', {
+      user_id: userId,
+      duration_ms: Date.now() - startedAt,
+    });
+
+    return { message: 'If the new email can be used, a confirmation link has been sent.' };
+  }
+
+  async confirmEmailChange(tokenValue: string) {
+    const startedAt = Date.now();
+    if (!tokenValue || typeof tokenValue !== 'string') {
+      throw new BadRequestException('Email change token is required');
+    }
+
+    const token = await this.emailChangeTokenRepository.findOne({
+      where: { token: tokenValue, used: false },
+      relations: ['user'],
+    });
+
+    if (!token || new Date() > token.expiresAt) {
+      this.audit('warn', 'email_change_confirm', 'failure', {
+        reason: token ? 'expired_token' : 'invalid_or_used_token',
+        duration_ms: Date.now() - startedAt,
+      });
+      throw new BadRequestException('Invalid or expired email change token');
+    }
+
+    const user = await this.usersService.findById(token.userId);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    const existing = await this.usersService.findByEmail(token.newEmail);
+    if (existing && existing.id !== token.userId) {
+      throw new ConflictException('Email is already in use');
+    }
+
+    const nextContacts = this.upsertPrimaryContact(user.contactInfo || [], {
+      type: 'email',
+      value: token.newEmail,
+      isPrimary: true,
+    });
+    await this.usersService.update(token.userId, {
+      ...user,
+      email: token.newEmail,
+      contactInfo: nextContacts,
+      isVerified: true,
+      lastActivity: new Date(),
+    } as User);
+
+    token.used = true;
+    await this.emailChangeTokenRepository.save(token);
+    const updatedUser = await this.usersService.findById(token.userId);
+    if (!updatedUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    this.audit('info', 'email_change_confirm', 'success', {
+      user_id: token.userId,
+      duration_ms: Date.now() - startedAt,
+    });
+
+    return {
+      message: 'Email changed successfully. Sign in again or refresh your token so other applications receive the updated email claim.',
+      user: this.sanitizeUser(updatedUser),
+      returnUrl: token.returnUrl || null,
+    };
+  }
+
+  private resolvePublicBaseUrl(): string {
+    const domain = process.env.DOMAIN;
+    const baseUrl = domain ? `https://${domain}` : process.env.FRONTEND_URL;
+    if (!baseUrl) {
+      throw new BadRequestException('Public Auth URL is not configured');
+    }
+    return baseUrl.replace(/\/+$/, '');
   }
 
   async setInitialPassword(userId: string, newPassword: string) {

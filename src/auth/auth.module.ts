@@ -18,6 +18,7 @@ import { RolesModule } from '../roles/roles.module';
 import { LoggerModule } from '../../shared/logger/logger.module';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { MagicLinkToken } from './entities/magic-link-token.entity';
+import { EmailChangeToken } from './entities/email-change-token.entity';
 import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping.entity';
 
 @Module({
@@ -27,7 +28,7 @@ import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping
     LoggerModule,
     PassportModule,
     HttpModule,
-    TypeOrmModule.forFeature([PasswordResetToken, MagicLinkToken, LegacyIdentityMapping]),
+    TypeOrmModule.forFeature([PasswordResetToken, MagicLinkToken, EmailChangeToken, LegacyIdentityMapping]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default-secret',
       signOptions: {

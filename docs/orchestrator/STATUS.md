@@ -1,3 +1,37 @@
+## 2026-07-06 - Verified Email Change Source Implementation
+
+Current focus:
+
+- Close the profile-centralization gap where Auth owned `users.email` but lacked a first-class verified self-service email-change flow.
+
+Implementation evidence:
+
+- Added Auth-owned email-change token entity, DTOs, repository wiring, and source SQL migration script.
+- Added `POST /auth/email-change-request`, `POST /auth/email-change-confirm`, and browser-link `GET /auth/email-change-confirm?token=...`.
+- Request flow requires bearer auth, validates normalized new-email uniqueness, requires current-password proof for password accounts, writes no email until confirmation, and sends the confirmation link to the requested new email when Notifications integration is configured.
+- Confirm flow consumes a one-time token, updates Auth `users.email`, updates the primary Auth email contact, marks the email verified, and returns the sanitized Auth profile. Existing JWT email claims refresh after re-login/refresh; no JWT payload shape change was introduced.
+- Hosted `/profile` now exposes the request form and posts to the Auth-owned email-change endpoint.
+- Hosted-profile static checker source markers now include the email-change form and endpoint wiring.
+
+Validation evidence:
+
+- `npm run test:auth-contract`: passed, 3 suites / 31 tests.
+- `npm run build`: passed.
+- `git diff --check`: passed.
+- `node --check web/public/js/profile.js`: passed.
+- `node --check scripts/check-customer-data-wallet-hosted-profile-static.js`: passed.
+
+Boundary:
+
+- No production DB apply, deploy, live static smoke, DB read/write, secret/token output, password output, notification payload output, or raw customer-data output occurred.
+- `PATCH /auth/profile` still does not mutate email.
+- Runtime activation remains gated on applying `scripts/create-email-change-table.sql` and an owner-approved Auth deploy.
+
+Next unfinished chunks:
+
+- Apply the email-change table migration in the approved runtime window.
+- Deploy Auth, then run GET-only hosted `/profile` static smoke and a bounded synthetic email-change smoke without printing tokens, email bodies, passwords, or customer data.
+
 ## 2026-07-06 - Goal 11 First-Visit Application Access Source-Validated
 
 - Goal 11 source implementation and contract docs are complete in the remote Auth repo.
@@ -54,7 +88,7 @@ Boundary:
 
 - No production deploy or live static smoke was run in this checkpoint.
 - No DB read/write, schema migration, JWT claim change, consumer repo edit, secret/token output, password output, or raw customer-data output occurred.
-- Email change remains blocked on `[MISSING: verified email-change policy covering new-email verification, uniqueness conflict UX, active refresh-token/session behavior, audit event requirements, and consumer callback behavior]`.
+- Email change was blocked at this checkpoint; it is now source-remediated by the later verified email-change checkpoint and remains runtime-gated on SQL apply/deploy.
 
 Parallel execution:
 
@@ -66,7 +100,7 @@ Next unfinished chunks:
 
 - Review/stage lane-specific changes separately in Auth, Marathon, Payments, Aukro, and Cliplot; do not deploy until each repo's remaining gates are resolved.
 - Owner/deploy gate for production deployment and live hosted `/profile` static smoke.
-- Email-change policy/design before any email mutation endpoint.
+- Email-change runtime activation after SQL apply/deploy approval.
 
 ## 2026-07-03 - Goal 10.100 Owner Approval Captured
 
