@@ -138,6 +138,7 @@ This registry is a planning artifact. Runtime allowlist truth still lives in Aut
 | `statex` | `[MISSING: production origin]/auth/callback` | static frontend inventory | planned migration |
 | `shop-assistant` | `[MISSING: production origin]/auth/callback` | static hosted-auth redirect inventory | verification lane |
 | `marketing-microservice` | `https://marketing.alfares.cz/auth/callback` | static route/status inventory | verification lane |
+| `payments-microservice` | `https://payments.alfares.cz/auth/callback` | Payments admin Lane C source audit; first-pass admin role contract uses `global:superadmin` and `internal:payments-microservice:admin` only; 2026-07-06 public revalidation returned HTTP 503 `no available server` and must be rerun before runtime smoke | verification blocked on public route availability |
 | `monitoring-web` | `[MISSING: production origin]/auth/callback` | platform/ops handoff | verification lane |
 | `minio-microservice` | `[MISSING: production origin]/auth/callback` | platform/ops handoff | verification lane |
 | `runlayer` | `[MISSING: production origin]/auth/callback` | platform/ops handoff | verification lane |
