@@ -25,7 +25,8 @@
     "check:customer-data-wallet-hosted-profile-static": "node scripts/check-customer-data-wallet-hosted-profile-static.js",
     "verify:orders-action-admin-rbac-seed": "node scripts/verify-orders-action-admin-rbac-seed.js",
     "check:auth-email-change-runtime": "node scripts/check-auth-email-change-runtime-smoke.js",
-    "check:auth-email-change-activation-source": "node scripts/check-auth-email-change-activation-source.js"
+    "check:auth-email-change-activation-source": "node scripts/check-auth-email-change-activation-source.js",
+    "check:profile-centralization-current-state": "node scripts/check-profile-centralization-current-state.js"
   },
   "jest": {
     "moduleFileExtensions": [

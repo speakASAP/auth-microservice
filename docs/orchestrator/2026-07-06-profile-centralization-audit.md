@@ -89,5 +89,6 @@ Auth now has source-level first-class support for central profile image metadata
 - No worker deployed.
 - No worker ran DB writes, live checkout/order/payment mutations, provider/bank mutations, or Auth repo edits.
 - Commit/stage must stay per repo and per lane because multiple repos contain pre-existing or parallel unrelated untracked/modified files.
-- Auth source remediation and email-change activation preflight are ready for one Auth repo commit after final validation.
-- Subagent activation audit found `EmailChangeToken` missing from root TypeORM entities; this checkpoint fixes that registration and adds `npm run check:auth-email-change-activation-source` to keep it covered.
+- Auth source remediation was committed and pushed in `ba17910`; email-change activation preflight/root TypeORM registration was committed and pushed in `081d764`.
+- Subagent activation audit found `EmailChangeToken` missing from root TypeORM entities; `081d764` fixes that registration and adds `npm run check:auth-email-change-activation-source` to keep it covered.
+- Current-state completion audit is recorded in `docs/orchestrator/2026-07-06-profile-centralization-completion-audit.md`; `npm run check:profile-centralization-current-state` is expected to pass source-only with `goalComplete=false` until runtime activation gates pass.

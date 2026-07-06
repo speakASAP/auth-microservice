@@ -1,3 +1,36 @@
+## 2026-07-06 - Profile Centralization Current-State Completion Audit
+
+Current focus:
+
+- Make the overall profile-centralization objective auditable requirement-by-requirement without pretending runtime gates are complete.
+
+Implementation evidence:
+
+- Added `docs/orchestrator/2026-07-06-profile-centralization-completion-audit.md`.
+- Added `scripts/check-profile-centralization-current-state.js`.
+- Added package script `npm run check:profile-centralization-current-state`.
+- Updated the profile centralization audit integration notes to point at pushed commits `ba17910` and `081d764`.
+
+Validation evidence:
+
+- `npm run check:profile-centralization-current-state`: passed with `pass_profile_centralization_current_state_source_audit` and `goalComplete=false`.
+- `npm run check:auth-email-change-activation-source`: passed with `pass_auth_email_change_activation_source_gate`.
+- `npm run check:auth-email-change-runtime -- --no-write-report`: passed source-only fail-closed with `approval_required_auth_email_change_runtime_smoke`.
+- `npm run test:auth-contract`: passed, 3 suites / 31 tests.
+- `npm run build`: passed.
+- `npm run lint`: passed.
+- `node --check scripts/check-profile-centralization-current-state.js`: passed.
+- `git diff --check`: passed.
+
+Boundary:
+
+- Source-only audit/checker. No SQL apply, deploy, live static smoke, live email-change request/confirm, DB read/write, environment read, secret/token/password/email output, notification payload output, or raw customer-data output occurred.
+
+Next unfinished chunks:
+
+- Approved email-change SQL apply/deploy/static smoke/request smoke/confirm smoke.
+- Any consumer runtime proof still listed as `[MISSING: ...]` in the profile centralization audit.
+
 ## 2026-07-06 - Auth Email Change Runtime Gate Prepared
 
 Current focus:
