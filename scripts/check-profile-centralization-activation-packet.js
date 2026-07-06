@@ -117,9 +117,9 @@ const checks = {
   ]),
   currentBlockedState: checkAll(status + state + runtimeGate, [
     'Owner-approved DB/deploy window',
-    'SQL apply: not run',
-    'Deploy: not run',
-    'Live request/confirm smoke: not run',
+    'SQL apply: completed',
+    'Deploy: completed',
+    'Live request/confirm smoke: blocked on confirmation token path',
     'post-deploy hosted profile static smoke',
   ]),
   commandPacketSafety: checkAll(commandPacket, [
@@ -174,7 +174,7 @@ const report = {
   readsEnvironment: false,
   printsSecrets: false,
   goalComplete: false,
-  reasonGoalNotComplete: 'Activation packet is prepared, but SQL apply, Auth deploy, static smoke, and bounded email-change request/confirm smoke remain owner-approved runtime gates.',
+  reasonGoalNotComplete: 'Activation packet executed through SQL apply, Auth deploy, and hosted static smoke; bounded email-change confirm remains gated on approved confirmation token path.',
   checks: Object.fromEntries(Object.entries(checks).map(([key, results]) => [key, summarize(results)])),
   missing,
 };

@@ -81,10 +81,10 @@ Forbidden output:
 - Source harness prepared and fail-closed.
 - Root TypeORM entity registration preflight prepared.
 - Email-change SQL source-only preflight prepared.
-- SQL apply: not run.
-- Deploy: not run.
-- Live static smoke: current deployed image checked read-only and failed as stale; post-deploy smoke not run after email-change deployment.
-- Live request/confirm smoke: not run.
+- SQL apply: completed.
+- Deploy: completed.
+- Live static smoke: post-deploy GET-only hosted profile static smoke passed after email-change deployment.
+- Live request/confirm smoke: blocked on confirmation token path.
 
 ## 2026-07-06 Readiness Update
 

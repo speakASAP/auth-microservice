@@ -138,7 +138,7 @@ async function main() {
   const scriptMarkers = includesAll(profileJs.body, [
     "fetchJson('/auth/profile')",
     "fetchJson('/auth/profile/checkout-data')",
-    "fetchJson('/auth/email-change-request')",
+    "fetchJson('/auth/email-change-request',",
     "setValue('profile-avatar-url', user.avatarUrl || canonical.avatarUrl)",
     "setValue('profile-settings-json', Object.keys(settings).length ? JSON.stringify(settings, null, 2) : '')",
     'avatarUrl,',

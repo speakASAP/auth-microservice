@@ -63,7 +63,7 @@ function main() {
     ]),
     hostedProfileStaticMarkers: includesAll(hostedStatic, [
       'id="email-change-form"',
-      "fetchJson('/auth/email-change-request')",
+      "fetchJson('/auth/email-change-request',",
       "return_url: window.location.origin + '/profile'",
     ]),
     preflightSafety: includesAll(preflight, [

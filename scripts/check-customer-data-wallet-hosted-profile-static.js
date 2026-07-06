@@ -141,7 +141,7 @@ async function main() {
   const scriptMarkers = includesAll(profileJs.body, [
     "fetchJson('/auth/profile')",
     "fetchJson('/auth/profile/checkout-data')",
-    "fetchJson('/auth/email-change-request')",
+    "fetchJson('/auth/email-change-request',",
     "'/auth/profile/delivery-addresses'",
     "'/auth/profile/invoice-profiles'",
     "Authorization: 'Bearer ' + getToken()",

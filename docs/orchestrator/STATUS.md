@@ -1,3 +1,29 @@
+## 2026-07-06 - Profile Centralization Activation Window Executed
+
+Current focus:
+
+- Record approved Auth profile-centralization activation evidence after SQL apply, Auth deploy, and live hosted profile static smoke.
+
+Evidence:
+
+- Owner-approved Auth DB migration window was used for schema-only metadata preflight, SQL apply, post-apply metadata verification, and Auth deploy from clean main.
+- production DB apply/deploy completed.
+- SQL apply: completed.
+- Deploy: completed.
+- GET-only hosted /profile static smoke passed after deploy.
+- Runtime readiness passed for https://auth.alfares.cz with live /health, /profile, and /js/profile.js HTTP 200 and profile/avatar/settings/email-change markers present.
+- SQL apply, deploy, and live static smoke completed; live email-change confirm not run.
+- Live request/confirm smoke: blocked on confirmation token path.
+
+Boundary:
+
+- No DB rows, customer data, bearer token values, passwords, email-change tokens, email addresses, request bodies, response bodies, or secret values were printed.
+
+Next unfinished chunks:
+
+- Request smoke with synthetic account/new email only when a synthetic bearer token and synthetic new-email file are available.
+- Confirm smoke requires [MISSING: approved confirmation token path] that does not print email body or token contents.
+
 ## 2026-07-06 - Activation Command Packet Added
 
 Current focus:
