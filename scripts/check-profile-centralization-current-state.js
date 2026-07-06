@@ -35,6 +35,7 @@ function main() {
   const hostedStatic = read('scripts/check-customer-data-wallet-hosted-profile-static.js');
   const emailActivation = read('scripts/check-auth-email-change-activation-source.js');
   const emailRuntime = read('scripts/check-auth-email-change-runtime-smoke.js');
+  const completionAudit = read('docs/orchestrator/2026-07-06-profile-centralization-completion-audit.md');
 
   const checks = {
     authProfileSourceOfTruth: includesAll(authService + authController + contract, [
@@ -95,6 +96,18 @@ function main() {
       'Added Auth-hosted `profile`, `wallet`, and `settings` links',
       'Kept Cliplot read-only',
       'No worker deployed',
+    ]),
+    consumerRefreshEvidence: includesAll(completionAudit + status + state, [
+      'Consumer Profile-Centralization Refresh',
+      'Consumer Refresh Update',
+      'Marathon `main` is clean at `bec1564`',
+      'hosted Auth contract checker passed 17/17',
+      'Payments `main` now includes `55a1785 test: harden hosted auth contract checker`',
+      'node scripts/check-hosted-auth-contract.js` passed',
+      'Aukro `main` is clean at `c521762`',
+      'Cliplot `main` is clean at `7bfb686`',
+      'Owner-approved admin test session packet for authenticated UI proof',
+      'Owner-approved mutation contract before any write-surface implementation',
     ]),
     remainingRuntimeGatesExplicit: includesAll(audit + emailRuntimeGate + status + state, [
       'approved runtime activation',

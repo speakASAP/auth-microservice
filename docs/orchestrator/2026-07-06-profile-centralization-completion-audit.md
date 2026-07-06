@@ -47,6 +47,7 @@ Expected current status:
 
 - `pass_profile_centralization_current_state_source_audit`
 - `goalComplete=false`
+- current consumer refresh evidence for Marathon, Payments, Aukro, and Cliplot is present
 - no runtime call, deploy, DB read/write, environment read, or secret output
 
 ## Boundary
