@@ -617,7 +617,21 @@ export class AuthService {
       });
       throw new BadRequestException('Frontend URL is not configured');
     }
-    const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+    const resetUrlParams = new URLSearchParams({ token });
+    if (passwordResetRequestDto.return_url) {
+      try {
+        resetUrlParams.set('return_url', this.validateReturnUrl(passwordResetRequestDto.return_url));
+      } catch {
+        // Ignore invalid return_url - don't fail the reset request over it
+      }
+    }
+    if (passwordResetRequestDto.client_id) {
+      resetUrlParams.set('client_id', passwordResetRequestDto.client_id);
+    }
+    if (passwordResetRequestDto.state) {
+      resetUrlParams.set('state', passwordResetRequestDto.state);
+    }
+    const resetUrl = `${frontendUrl}/reset-password?${resetUrlParams.toString()}`;
     try {
       await firstValueFrom(
         this.httpService.post(

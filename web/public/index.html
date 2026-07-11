@@ -453,7 +453,12 @@
         const response = await fetch('/auth/password-reset-request', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: identifier }),
+          body: JSON.stringify({
+            email: identifier,
+            return_url: returnUrlRaw || undefined,
+            client_id: clientId || undefined,
+            state: state || undefined,
+          }),
         });
         if (!response.ok) {
           const body = await response.json().catch(() => ({ message: 'Could not request password reset' }));
