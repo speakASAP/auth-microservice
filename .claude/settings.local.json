@@ -1,11 +1,12 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(rtk *)",
+      "Bash(python3 -c \"import urllib.parse; print\\(urllib.parse.quote\\('https://catalog.alfares.cz/auth/callback'\\)\\)\")"
+    ]
+  },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "docker"
-  ],
-  "permissions": {
-    "allow": [
-      "Bash(rtk *)"
-    ]
-  }
+  ]
 }
