@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(rtk *)",
-      "Bash(python3 -c \"import urllib.parse; print\\(urllib.parse.quote\\('https://catalog.alfares.cz/auth/callback'\\)\\)\")"
+      "mcp__plugin_playwright_playwright__browser_fill_form",
+      "Bash(python3 *)"
     ]
   },
   "enableAllProjectMcpServers": true,
