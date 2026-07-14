@@ -249,7 +249,7 @@ export class AuthService {
         ...tokens,
       };
     } catch (err) {
-      if (err instanceof UnauthorizedException) throw err;
+      if (err instanceof UnauthorizedException || err instanceof BadRequestException) throw err;
       this.audit(
         'error',
         'login',

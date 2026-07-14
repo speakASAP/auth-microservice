@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role, RoleScope } from './entities/role.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
-import { Application } from '../applications/entities/application.entity';
+import { Application, ApplicationType } from '../applications/entities/application.entity';
 import { LoggerService } from '../../shared/logger/logger.service';
 
 @Injectable()
@@ -273,6 +273,19 @@ export class RolesService {
         duration_ms: Date.now() - startedAt,
       });
       throw new BadRequestException('Unknown or inactive client_id');
+    }
+
+    if (application.type !== ApplicationType.USER_FACING) {
+      this.audit('first_visit_app_access', 'skipped', {
+        target_user_id: userId,
+        client_id: normalizedClientId,
+        application_id: application.id,
+        application_type: application.type,
+        actor_id: grantedBy,
+        reason: 'non_user_facing_application',
+        duration_ms: Date.now() - startedAt,
+      });
+      return { assigned: false, role: '', applicationId: application.id };
     }
 
     this.assertReturnUrlMatchesApplication(application, returnUrl);

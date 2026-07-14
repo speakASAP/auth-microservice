@@ -12,6 +12,7 @@ describe('RolesService first-visit application access', () => {
       findOne: jest.fn(async () => Object.prototype.hasOwnProperty.call(options, 'application') ? options.application : {
         id: 'app-1',
         name: 'marathon',
+        type: 'user_facing',
         isActive: true,
         domain: 'marathon.alfares.cz',
       }),
@@ -78,6 +79,24 @@ describe('RolesService first-visit application access', () => {
     expect(userRolesRepository.create).not.toHaveBeenCalled();
     expect(userRolesRepository.save).not.toHaveBeenCalled();
     expect(result).toEqual({ assigned: false, role: 'app:marathon:user', applicationId: 'app-1' });
+  });
+
+  it('skips default application user assignment for internal microservices', async () => {
+    const { service, rolesRepository, userRolesRepository } = makeService({
+      application: {
+        id: 'app-warehouse',
+        name: 'warehouse-microservice',
+        type: 'internal',
+        isActive: true,
+        domain: 'warehouse.alfares.cz',
+      },
+    });
+
+    const result = await service.assignDefaultApplicationAccess('user-1', 'warehouse-microservice', 'user-1', 'https://warehouse.alfares.cz/admin');
+
+    expect(rolesRepository.findOne).not.toHaveBeenCalled();
+    expect(userRolesRepository.create).not.toHaveBeenCalled();
+    expect(result).toEqual({ assigned: false, role: '', applicationId: 'app-warehouse' });
   });
 
   it('fails closed when return_url does not match a configured application domain', async () => {
