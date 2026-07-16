@@ -20,7 +20,7 @@ describe('UsersService admin list query filters', () => {
     const walletRepository = {};
 
     return {
-      service: new UsersService(repository as any, walletRepository as any, walletRepository as any),
+      service: new UsersService(repository as any, walletRepository as any, walletRepository as any, walletRepository as any),
       query,
       whereClauses,
     };

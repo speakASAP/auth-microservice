@@ -8,6 +8,7 @@ import { Brackets, In, IsNull, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { UserDeliveryAddress } from './entities/user-delivery-address.entity';
 import { UserInvoiceProfile } from './entities/user-invoice-profile.entity';
+import { LegacyIdentityMapping } from './entities/legacy-identity-mapping.entity';
 import { MagicLinkToken } from '../auth/entities/magic-link-token.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
@@ -48,7 +49,17 @@ export class UsersService {
     private readonly deliveryAddressRepository: Repository<UserDeliveryAddress>,
     @InjectRepository(UserInvoiceProfile)
     private readonly invoiceProfileRepository: Repository<UserInvoiceProfile>,
+    @InjectRepository(LegacyIdentityMapping)
+    private readonly legacyIdentityMappingRepository: Repository<LegacyIdentityMapping>,
   ) {}
+
+  async findLegacyMapping(legacySystem: string, legacyUserId: number): Promise<{ authUserId: string | null; normalizedEmail: string | null } | null> {
+    const mapping = await this.legacyIdentityMappingRepository.findOne({
+      where: { legacySystem, legacyUserId },
+    });
+    if (!mapping) return null;
+    return { authUserId: mapping.authUserId ?? null, normalizedEmail: mapping.normalizedEmail ?? null };
+  }
 
   async findByEmail(email: string): Promise<User | null> {
     const normalizedEmail = this.normalizeEmail(email);
