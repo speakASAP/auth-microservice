@@ -9,6 +9,11 @@
 <body>
   <div class="container">
     <div class="login-box">
+      <div id="lang-switcher" class="lang-switcher" role="group" aria-label="Language">
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+        <button type="button" class="lang-btn" data-lang="cs">CS</button>
+        <button type="button" class="lang-btn" data-lang="ru">RU</button>
+      </div>
       <h2 id="auth-title">Sign in</h2>
       <p id="auth-subtitle" style="margin: 0 0 1rem 0; color: var(--muted);">Continue with your Alfares account</p>
 
@@ -20,11 +25,11 @@
       <form id="auth-form" onsubmit="return false;">
         <div id="name-row" style="display: none; gap: 0.5rem;">
           <div class="form-group" style="flex: 1;">
-            <label for="firstName">First name</label>
+            <label id="firstName-label" for="firstName">First name</label>
             <input id="firstName" name="firstName" type="text" autocomplete="given-name">
           </div>
           <div class="form-group" style="flex: 1;">
-            <label for="lastName">Last name</label>
+            <label id="lastName-label" for="lastName">Last name</label>
             <input id="lastName" name="lastName" type="text" autocomplete="family-name">
           </div>
         </div>
@@ -35,7 +40,7 @@
         </div>
 
         <div id="phone-row" class="form-group" style="display: none;">
-          <label for="phone">Phone</label>
+          <label id="phone-label" for="phone">Phone</label>
           <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel">
         </div>
 
@@ -45,12 +50,12 @@
         </div>
 
         <div id="password-confirm-row" class="form-group" style="display: none;">
-          <label for="password-confirm">Confirm new password</label>
+          <label id="password-confirm-label" for="password-confirm">Confirm new password</label>
           <input id="password-confirm" name="password-confirm" type="password" minlength="6" autocomplete="new-password">
         </div>
 
         <div id="contact-code-row" class="form-group" style="display: none;">
-          <label for="contact-code">Sign-in code</label>
+          <label id="contact-code-label" for="contact-code">Sign-in code</label>
           <input id="contact-code" name="contact-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code">
           <button id="verify-code-btn" type="button" class="btn btn-secondary" style="margin-left: 0; width: 100%; margin-top: 0.5rem;">Verify sign-in code</button>
         </div>
@@ -66,19 +71,236 @@
       </div>
 
       <p id="reset-login-link" style="display: none; margin-top: 1rem; color: var(--muted); font-size: 0.85rem;">
-        Remembered your password? <a href="/login">Back to login</a>
+        <span id="reset-login-text">Remembered your password?</span> <a id="reset-login-anchor" href="/login">Back to login</a>
       </p>
       <p id="return-url-row" style="margin-top: 1rem; color: var(--muted); font-size: 0.85rem;">
-        Redirect target:
+        <span id="redirect-target-label">Redirect target:</span>
         <code id="return-url-label">(not set)</code>
       </p>
       <p style="margin-top: 0.25rem; color: var(--muted); font-size: 0.85rem;">
-        Need admin tools? <a href="/admin">Open admin panel</a>
+        <span id="admin-tools-text">Need admin tools?</span> <a id="admin-link" href="/admin">Open admin panel</a>
       </p>
     </div>
   </div>
 
   <script>
+    const SUPPORTED_LANGS = ['en', 'cs', 'ru'];
+    const LANG_STORAGE_KEY = 'auth_lang';
+
+    const I18N = {
+      en: {
+        pageTitle: 'Auth Service',
+        signIn: 'Sign in',
+        createAccount: 'Create account',
+        resetPassword: 'Reset password',
+        subtitleLogin: 'Continue with email or phone',
+        subtitleRegister: 'Create an Alfares account',
+        subtitleRegisterMarathon: 'Create an account for your marathon profile',
+        subtitleReset: 'Choose a new password for your Alfares account',
+        tabLogin: 'Login',
+        tabRegister: 'Register',
+        firstName: 'First name',
+        lastName: 'Last name',
+        emailOrPhone: 'Email or phone',
+        email: 'Email',
+        phone: 'Phone',
+        password: 'Password',
+        newPassword: 'New password',
+        confirmNewPassword: 'Confirm new password',
+        signInCode: 'Sign-in code',
+        codePlaceholder: '6-digit code',
+        verifySignInCode: 'Verify sign-in code',
+        continue: 'Continue',
+        login: 'Login',
+        register: 'Register',
+        sendSignInCode: 'Send sign-in code',
+        forgotPassword: 'Forgot password?',
+        rememberedPassword: 'Remembered your password?',
+        backToLogin: 'Back to login',
+        redirectTarget: 'Redirect target:',
+        notSet: '(not set)',
+        requiredByApp: '(required by application)',
+        needAdmin: 'Need admin tools?',
+        openAdmin: 'Open admin panel',
+        phoneRequiredMarathon: 'Phone is required for marathon registration.',
+        invalidReturnUrl: 'Invalid return_url',
+        authFailed: 'Authentication failed',
+        accountExists: 'This account already exists. Switch to Login and enter your password, or use password reset.',
+        missingAccessToken: 'Missing access token in auth response',
+        invalidResetToken: 'Invalid or missing password reset token.',
+        passwordMinLength: 'Password must be at least 6 characters.',
+        passwordsMismatch: 'Passwords do not match.',
+        resetFailed: 'Could not reset password',
+        resetSuccess: 'Password reset successfully. You can now sign in.',
+        enterEmailOrPhone: 'Enter your email or phone first.',
+        codeRequestFailed: 'Could not request sign-in code',
+        codeSent: 'Sign-in code requested. Enter the 6-digit code here when it arrives.',
+        codeFlowFailed: 'Could not complete sign-in code flow',
+        requestCodeFirst: 'Request a sign-in code first.',
+        enterSixDigitCode: 'Enter the 6-digit sign-in code.',
+        invalidCode: 'Invalid or expired sign-in code',
+        verifyFailed: 'Could not verify sign-in code',
+        enterEmailToReset: 'Enter your account email to reset the password.',
+        resetRequestFailed: 'Could not request password reset',
+        resetRequested: 'Password reset instructions were requested for this email.',
+      },
+      cs: {
+        pageTitle: 'Auth služba',
+        signIn: 'Přihlášení',
+        createAccount: 'Vytvořit účet',
+        resetPassword: 'Obnovení hesla',
+        subtitleLogin: 'Pokračujte e-mailem nebo telefonem',
+        subtitleRegister: 'Vytvořte si účet Alfares',
+        subtitleRegisterMarathon: 'Vytvořte účet pro svůj marathon profil',
+        subtitleReset: 'Zvolte nové heslo pro svůj účet Alfares',
+        tabLogin: 'Přihlásit',
+        tabRegister: 'Registrace',
+        firstName: 'Jméno',
+        lastName: 'Příjmení',
+        emailOrPhone: 'E-mail nebo telefon',
+        email: 'E-mail',
+        phone: 'Telefon',
+        password: 'Heslo',
+        newPassword: 'Nové heslo',
+        confirmNewPassword: 'Potvrďte nové heslo',
+        signInCode: 'Přihlašovací kód',
+        codePlaceholder: '6místný kód',
+        verifySignInCode: 'Ověřit přihlašovací kód',
+        continue: 'Pokračovat',
+        login: 'Přihlásit',
+        register: 'Registrovat',
+        sendSignInCode: 'Poslat přihlašovací kód',
+        forgotPassword: 'Zapomenuté heslo?',
+        rememberedPassword: 'Vzpomněli jste si na heslo?',
+        backToLogin: 'Zpět na přihlášení',
+        redirectTarget: 'Cíl přesměrování:',
+        notSet: '(nenastaveno)',
+        requiredByApp: '(vyžadováno aplikací)',
+        needAdmin: 'Potřebujete admin nástroje?',
+        openAdmin: 'Otevřít admin panel',
+        phoneRequiredMarathon: 'Pro registraci marathon je telefon povinný.',
+        invalidReturnUrl: 'Neplatná return_url',
+        authFailed: 'Přihlášení se nezdařilo',
+        accountExists: 'Tento účet již existuje. Přepněte na Přihlásit a zadejte heslo, nebo použijte obnovení hesla.',
+        missingAccessToken: 'V odpovědi chybí access token',
+        invalidResetToken: 'Neplatný nebo chybějící token pro obnovení hesla.',
+        passwordMinLength: 'Heslo musí mít alespoň 6 znaků.',
+        passwordsMismatch: 'Hesla se neshodují.',
+        resetFailed: 'Heslo se nepodařilo obnovit',
+        resetSuccess: 'Heslo bylo úspěšně obnoveno. Nyní se můžete přihlásit.',
+        enterEmailOrPhone: 'Nejdříve zadejte e-mail nebo telefon.',
+        codeRequestFailed: 'Nepodařilo se požádat o přihlašovací kód',
+        codeSent: 'Přihlašovací kód byl odeslán. Zadejte 6místný kód, až dorazí.',
+        codeFlowFailed: 'Nepodařilo se dokončit přihlášení kódem',
+        requestCodeFirst: 'Nejdříve si vyžádejte přihlašovací kód.',
+        enterSixDigitCode: 'Zadejte 6místný přihlašovací kód.',
+        invalidCode: 'Neplatný nebo vypršelý přihlašovací kód',
+        verifyFailed: 'Nepodařilo se ověřit přihlašovací kód',
+        enterEmailToReset: 'Pro obnovení hesla zadejte e-mail účtu.',
+        resetRequestFailed: 'Nepodařilo se požádat o obnovení hesla',
+        resetRequested: 'Instrukce pro obnovení hesla byly odeslány na tento e-mail.',
+      },
+      ru: {
+        pageTitle: 'Сервис авторизации',
+        signIn: 'Вход',
+        createAccount: 'Создать аккаунт',
+        resetPassword: 'Сброс пароля',
+        subtitleLogin: 'Продолжите с email или телефоном',
+        subtitleRegister: 'Создайте аккаунт Alfares',
+        subtitleRegisterMarathon: 'Создайте аккаунт для профиля марафона',
+        subtitleReset: 'Выберите новый пароль для аккаунта Alfares',
+        tabLogin: 'Вход',
+        tabRegister: 'Регистрация',
+        firstName: 'Имя',
+        lastName: 'Фамилия',
+        emailOrPhone: 'Email или телефон',
+        email: 'Email',
+        phone: 'Телефон',
+        password: 'Пароль',
+        newPassword: 'Новый пароль',
+        confirmNewPassword: 'Подтвердите новый пароль',
+        signInCode: 'Код для входа',
+        codePlaceholder: '6-значный код',
+        verifySignInCode: 'Проверить код',
+        continue: 'Продолжить',
+        login: 'Войти',
+        register: 'Зарегистрироваться',
+        sendSignInCode: 'Отправить код для входа',
+        forgotPassword: 'Забыли пароль?',
+        rememberedPassword: 'Вспомнили пароль?',
+        backToLogin: 'Вернуться ко входу',
+        redirectTarget: 'Адрес перенаправления:',
+        notSet: '(не задан)',
+        requiredByApp: '(требуется приложением)',
+        needAdmin: 'Нужны инструменты админа?',
+        openAdmin: 'Открыть админ-панель',
+        phoneRequiredMarathon: 'Для регистрации marathon телефон обязателен.',
+        invalidReturnUrl: 'Некорректный return_url',
+        authFailed: 'Ошибка аутентификации',
+        accountExists: 'Этот аккаунт уже существует. Перейдите во Вход и введите пароль или сбросьте пароль.',
+        missingAccessToken: 'В ответе отсутствует access token',
+        invalidResetToken: 'Недействительный или отсутствующий токен сброса пароля.',
+        passwordMinLength: 'Пароль должен содержать не менее 6 символов.',
+        passwordsMismatch: 'Пароли не совпадают.',
+        resetFailed: 'Не удалось сбросить пароль',
+        resetSuccess: 'Пароль успешно сброшен. Теперь вы можете войти.',
+        enterEmailOrPhone: 'Сначала введите email или телефон.',
+        codeRequestFailed: 'Не удалось запросить код для входа',
+        codeSent: 'Код для входа запрошен. Введите 6-значный код, когда он придёт.',
+        codeFlowFailed: 'Не удалось завершить вход по коду',
+        requestCodeFirst: 'Сначала запросите код для входа.',
+        enterSixDigitCode: 'Введите 6-значный код для входа.',
+        invalidCode: 'Недействительный или истёкший код',
+        verifyFailed: 'Не удалось проверить код',
+        enterEmailToReset: 'Введите email аккаунта для сброса пароля.',
+        resetRequestFailed: 'Не удалось запросить сброс пароля',
+        resetRequested: 'Инструкции по сбросу пароля запрошены для этого email.',
+      },
+    };
+
+    function normalizeLang(raw) {
+      if (!raw) return '';
+      const primary = String(raw).trim().toLowerCase().split(/[-_]/)[0];
+      return SUPPORTED_LANGS.includes(primary) ? primary : '';
+    }
+
+    function resolveLang() {
+      const params = new URLSearchParams(window.location.search);
+      return normalizeLang(params.get('lang'))
+        || normalizeLang(sessionStorage.getItem(LANG_STORAGE_KEY))
+        || 'en';
+    }
+
+    function t(key) {
+      const dict = I18N[currentLang] || I18N.en;
+      return dict[key] || I18N.en[key] || key;
+    }
+
+    function buildSearchParams(extra) {
+      const next = new URLSearchParams(window.location.search);
+      Object.keys(extra || {}).forEach((key) => {
+        const value = extra[key];
+        if (value === null || value === undefined || value === '') next.delete(key);
+        else next.set(key, value);
+      });
+      if (currentLang) next.set('lang', currentLang);
+      const qs = next.toString();
+      return qs ? '?' + qs : '';
+    }
+
+    function setLangInUrl(lang) {
+      const path = window.location.pathname;
+      const next = new URLSearchParams(window.location.search);
+      next.set('lang', lang);
+      window.history.replaceState(null, '', path + '?' + next.toString());
+    }
+
+    let currentLang = resolveLang();
+    sessionStorage.setItem(LANG_STORAGE_KEY, currentLang);
+    if (!new URLSearchParams(window.location.search).get('lang')) {
+      setLangInUrl(currentLang);
+    }
+
     const params = new URLSearchParams(window.location.search);
     const initialMode = window.location.pathname === '/register' ? 'register' : (window.location.pathname === '/reset-password' ? 'reset' : 'login');
     const returnUrlRaw = params.get('return_url') || '';
@@ -123,6 +345,38 @@
 
     let mode = initialMode;
     let validatedReturnUrl = '';
+
+    function applyI18n(lang) {
+      currentLang = normalizeLang(lang) || 'en';
+      sessionStorage.setItem(LANG_STORAGE_KEY, currentLang);
+      document.documentElement.lang = currentLang;
+      document.title = t('pageTitle');
+      document.querySelectorAll('.lang-btn').forEach((btn) => {
+        btn.classList.toggle('lang-btn-active', btn.getAttribute('data-lang') === currentLang);
+      });
+      document.getElementById('firstName-label').textContent = t('firstName');
+      document.getElementById('lastName-label').textContent = t('lastName');
+      document.getElementById('phone-label').textContent = t('phone');
+      document.getElementById('password-confirm-label').textContent = t('confirmNewPassword');
+      document.getElementById('contact-code-label').textContent = t('signInCode');
+      contactCodeInput.placeholder = t('codePlaceholder');
+      verifyCodeBtn.textContent = t('verifySignInCode');
+      tabLogin.textContent = t('tabLogin');
+      tabRegister.textContent = t('tabRegister');
+      magicLinkBtn.textContent = t('sendSignInCode');
+      resetPasswordBtn.textContent = t('forgotPassword');
+      document.getElementById('reset-login-text').textContent = t('rememberedPassword');
+      document.getElementById('reset-login-anchor').textContent = t('backToLogin');
+      document.getElementById('redirect-target-label').textContent = t('redirectTarget');
+      document.getElementById('admin-tools-text').textContent = t('needAdmin');
+      document.getElementById('admin-link').textContent = t('openAdmin');
+      if (!validatedReturnUrl && !returnUrlRaw) {
+        returnUrlLabel.textContent = t('notSet');
+      } else if (!validatedReturnUrl && returnUrlRaw) {
+        returnUrlLabel.textContent = t('requiredByApp');
+      }
+      syncMode();
+    }
 
     function applyPrefill() {
       if (mode === 'register') {
@@ -179,12 +433,12 @@
     function syncMode() {
       const isRegister = mode === 'register';
       const isReset = mode === 'reset';
-      authTitle.textContent = isReset ? 'Reset password' : (isRegister ? 'Create account' : 'Sign in');
+      authTitle.textContent = isReset ? t('resetPassword') : (isRegister ? t('createAccount') : t('signIn'));
       authSubtitle.textContent = isReset
-        ? 'Choose a new password for your Alfares account'
+        ? t('subtitleReset')
         : (isRegister
-          ? (marathonPhoneRequired ? 'Create an account for your marathon profile' : 'Create an Alfares account')
-          : 'Continue with email or phone');
+          ? (marathonPhoneRequired ? t('subtitleRegisterMarathon') : t('subtitleRegister'))
+          : t('subtitleLogin'));
       authTabs.style.display = isReset ? 'none' : 'flex';
       nameRow.style.display = isRegister ? 'flex' : 'none';
       phoneRow.style.display = isRegister ? 'block' : 'none';
@@ -194,24 +448,25 @@
       passwordRow.style.display = 'block';
       passwordConfirmRow.style.display = isReset ? 'block' : 'none';
       passwordConfirmInput.required = isReset;
-      passwordLabel.textContent = isReset ? 'New password' : 'Password';
-      identifierLabel.textContent = isRegister ? 'Email' : 'Email or phone';
+      passwordLabel.textContent = isReset ? t('newPassword') : t('password');
+      identifierLabel.textContent = isRegister ? t('email') : t('emailOrPhone');
       identifierInput.type = isRegister ? 'email' : 'text';
       identifierInput.autocomplete = isRegister ? 'email' : 'username';
       identifierInput.inputMode = isRegister ? 'email' : 'text';
       passwordInput.autocomplete = isRegister || isReset ? 'new-password' : 'current-password';
-      submitBtn.textContent = isReset ? 'Reset password' : (isRegister ? 'Register' : 'Login');
+      submitBtn.textContent = isReset ? t('resetPassword') : (isRegister ? t('register') : t('login'));
       submitBtn.style.display = 'block';
       submitBtn.disabled = !isReset && !validatedReturnUrl;
       magicLinkBtn.disabled = !validatedReturnUrl;
       authLinks.style.display = isRegister || isReset ? 'none' : 'block';
       resetLoginLink.style.display = isReset ? 'block' : 'none';
-      const resetLoginAnchor = resetLoginLink.querySelector('a');
+      const resetLoginAnchor = document.getElementById('reset-login-anchor');
       if (resetLoginAnchor) {
         const loginParams = new URLSearchParams();
         if (returnUrlRaw) loginParams.set('return_url', returnUrlRaw);
         if (clientId) loginParams.set('client_id', clientId);
         if (state) loginParams.set('state', state);
+        if (currentLang) loginParams.set('lang', currentLang);
         resetLoginAnchor.href = loginParams.toString() ? `/login?${loginParams.toString()}` : '/login';
       }
       returnUrlRow.style.display = isReset ? 'none' : 'block';
@@ -229,8 +484,15 @@
       contactCodeInput.value = '';
       contactCodeRow.style.display = 'none';
       const targetPath = nextMode === 'register' ? '/register' : '/login';
-      window.history.replaceState(null, '', targetPath + window.location.search);
+      window.history.replaceState(null, '', targetPath + buildSearchParams());
       syncMode();
+    }
+
+    function switchLang(lang) {
+      const next = normalizeLang(lang) || 'en';
+      if (next === currentLang) return;
+      setLangInUrl(next);
+      applyI18n(next);
     }
 
     async function validateReturnUrl() {
@@ -238,7 +500,7 @@
         return;
       }
       if (!returnUrlRaw) {
-        returnUrlLabel.textContent = '(required by application)';
+        returnUrlLabel.textContent = t('requiredByApp');
         submitBtn.disabled = true;
         magicLinkBtn.disabled = true;
         return;
@@ -247,8 +509,8 @@
       try {
         const response = await fetch('/auth/validate-return-url?return_url=' + encodeURIComponent(returnUrlRaw));
         if (!response.ok) {
-          const body = await response.json().catch(() => ({ message: 'Invalid return_url' }));
-          throw new Error(body.message || 'Invalid return_url');
+          const body = await response.json().catch(() => ({ message: t('invalidReturnUrl') }));
+          throw new Error(body.message || t('invalidReturnUrl'));
         }
         const data = await response.json();
         validatedReturnUrl = data.return_url;
@@ -256,7 +518,7 @@
         submitBtn.disabled = false;
         magicLinkBtn.disabled = false;
       } catch (error) {
-        setError(error.message || 'Invalid return_url');
+        setError(error.message || t('invalidReturnUrl'));
         submitBtn.disabled = true;
         magicLinkBtn.disabled = true;
       }
@@ -271,7 +533,7 @@
         return;
       }
       if (!validatedReturnUrl) {
-        setError('Invalid return_url');
+        setError(t('invalidReturnUrl'));
         return;
       }
 
@@ -283,7 +545,7 @@
       const phone = phoneInput.value.trim();
 
       if (mode === 'register' && marathonPhoneRequired && !phone) {
-        setError('Phone is required for marathon registration.');
+        setError(t('phoneRequiredMarathon'));
         submitBtn.disabled = false;
         return;
       }
@@ -300,39 +562,39 @@
           body: JSON.stringify(payload),
         });
         if (!response.ok) {
-          const body = await response.json().catch(() => ({ message: 'Authentication failed' }));
-          const message = body.message || 'Authentication failed';
+          const body = await response.json().catch(() => ({ message: t('authFailed') }));
+          const message = body.message || t('authFailed');
           if (response.status === 409 && mode === 'register') {
-            throw new Error('This account already exists. Switch to Login and enter your password, or use password reset.');
+            throw new Error(t('accountExists'));
           }
           throw new Error(message);
         }
 
         const data = await response.json();
         if (!data.accessToken) {
-          throw new Error('Missing access token in auth response');
+          throw new Error(t('missingAccessToken'));
         }
 
         window.location.assign(buildTokenHandoffUrl(validatedReturnUrl, data, state));
       } catch (error) {
-        setError(error.message || 'Authentication failed');
+        setError(error.message || t('authFailed'));
         submitBtn.disabled = false;
       }
     }
 
     async function submitPasswordReset() {
       if (!resetToken) {
-        setError('Invalid or missing password reset token.');
+        setError(t('invalidResetToken'));
         return;
       }
       const newPassword = passwordInput.value;
       const confirmPassword = passwordConfirmInput.value;
       if (!newPassword || newPassword.length < 6) {
-        setError('Password must be at least 6 characters.');
+        setError(t('passwordMinLength'));
         return;
       }
       if (newPassword !== confirmPassword) {
-        setError('Passwords do not match.');
+        setError(t('passwordsMismatch'));
         return;
       }
       submitBtn.disabled = true;
@@ -343,17 +605,17 @@
           body: JSON.stringify({ token: resetToken, newPassword }),
         });
         if (!response.ok) {
-          const body = await response.json().catch(() => ({ message: 'Could not reset password' }));
-          throw new Error(body.message || 'Could not reset password');
+          const body = await response.json().catch(() => ({ message: t('resetFailed') }));
+          throw new Error(body.message || t('resetFailed'));
         }
         passwordInput.value = '';
         passwordConfirmInput.value = '';
         passwordRow.style.display = 'none';
         passwordConfirmRow.style.display = 'none';
         submitBtn.style.display = 'none';
-        setSuccess('Password reset successfully. You can now sign in.');
+        setSuccess(t('resetSuccess'));
       } catch (error) {
-        setError(error.message || 'Could not reset password');
+        setError(error.message || t('resetFailed'));
         submitBtn.disabled = false;
       }
     }
@@ -363,11 +625,11 @@
       setSuccess('');
       const identifier = identifierInput.value.trim();
       if (!validatedReturnUrl) {
-        setError('Invalid return_url');
+        setError(t('invalidReturnUrl'));
         return;
       }
       if (!identifier) {
-        setError('Enter your email or phone first.');
+        setError(t('enterEmailOrPhone'));
         return;
       }
       magicLinkBtn.disabled = true;
@@ -381,19 +643,20 @@
             client_id: clientId || undefined,
             state: state || undefined,
             app_domain: window.location.hostname,
+            lang: currentLang,
           }),
         });
         if (!response.ok) {
-          const body = await response.json().catch(() => ({ message: 'Could not request sign-in code' }));
-          throw new Error(body.message || 'Could not request sign-in code');
+          const body = await response.json().catch(() => ({ message: t('codeRequestFailed') }));
+          throw new Error(body.message || t('codeRequestFailed'));
         }
         contactCodeRequestedFor = identifier;
         contactCodeInput.value = '';
         contactCodeRow.style.display = 'block';
         contactCodeInput.focus();
-        setSuccess('Sign-in code requested. Enter the 6-digit code here when it arrives.');
+        setSuccess(t('codeSent'));
       } catch (error) {
-        setError(error.message || 'Could not complete sign-in code flow');
+        setError(error.message || t('codeFlowFailed'));
       } finally {
         magicLinkBtn.disabled = false;
       }
@@ -404,15 +667,15 @@
       setSuccess('');
       const code = contactCodeInput.value.trim();
       if (!validatedReturnUrl) {
-        setError('Invalid return_url');
+        setError(t('invalidReturnUrl'));
         return;
       }
       if (!contactCodeRequestedFor) {
-        setError('Request a sign-in code first.');
+        setError(t('requestCodeFirst'));
         return;
       }
       if (!/^\d{6}$/.test(code)) {
-        setError('Enter the 6-digit sign-in code.');
+        setError(t('enterSixDigitCode'));
         return;
       }
       verifyCodeBtn.disabled = true;
@@ -428,13 +691,13 @@
           }),
         });
         if (!verifyResponse.ok) {
-          const body = await verifyResponse.json().catch(() => ({ message: 'Invalid or expired sign-in code' }));
-          throw new Error(body.message || 'Invalid or expired sign-in code');
+          const body = await verifyResponse.json().catch(() => ({ message: t('invalidCode') }));
+          throw new Error(body.message || t('invalidCode'));
         }
         const data = await verifyResponse.json();
         window.location.assign(data.redirectUrl || buildTokenHandoffUrl(validatedReturnUrl, data, state));
       } catch (error) {
-        setError(error.message || 'Could not verify sign-in code');
+        setError(error.message || t('verifyFailed'));
       } finally {
         verifyCodeBtn.disabled = false;
       }
@@ -445,7 +708,7 @@
       setSuccess('');
       const identifier = identifierInput.value.trim();
       if (!identifier || !isEmail(identifier)) {
-        setError('Enter your account email to reset the password.');
+        setError(t('enterEmailToReset'));
         return;
       }
       resetPasswordBtn.disabled = true;
@@ -458,20 +721,24 @@
             return_url: returnUrlRaw || undefined,
             client_id: clientId || undefined,
             state: state || undefined,
+            lang: currentLang,
           }),
         });
         if (!response.ok) {
-          const body = await response.json().catch(() => ({ message: 'Could not request password reset' }));
-          throw new Error(body.message || 'Could not request password reset');
+          const body = await response.json().catch(() => ({ message: t('resetRequestFailed') }));
+          throw new Error(body.message || t('resetRequestFailed'));
         }
-        setSuccess('Password reset instructions were requested for this email.');
+        setSuccess(t('resetRequested'));
       } catch (error) {
-        setError(error.message || 'Could not request password reset');
+        setError(error.message || t('resetRequestFailed'));
       } finally {
         resetPasswordBtn.disabled = false;
       }
     }
 
+    document.querySelectorAll('.lang-btn').forEach((btn) => {
+      btn.addEventListener('click', () => switchLang(btn.getAttribute('data-lang')));
+    });
     tabLogin.addEventListener('click', () => gotoMode('login'));
     tabRegister.addEventListener('click', () => gotoMode('register'));
     magicLinkBtn.addEventListener('click', requestMagicLink);
@@ -479,7 +746,7 @@
     resetPasswordBtn.addEventListener('click', requestPasswordReset);
     form.addEventListener('submit', submitAuth);
 
-    syncMode();
+    applyI18n(currentLang);
     validateReturnUrl();
   </script>
 </body>

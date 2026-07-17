@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class EmailChangeRequestDto {
   @IsEmail()
@@ -11,4 +11,8 @@ export class EmailChangeRequestDto {
   @IsOptional()
   @IsUrl({ require_tld: false })
   return_url?: string;
+
+  @IsOptional()
+  @IsIn(['en', 'cs', 'ru'])
+  lang?: string;
 }

@@ -202,6 +202,32 @@ a:hover {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  position: relative;
+}
+.lang-switcher {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+  margin: 0 0 1rem 0;
+}
+.lang-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 4px;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lang-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.lang-btn-active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(88, 166, 255, 0.15);
 }
 .login-box h2 {
   margin: 0 0 1.5rem 0;

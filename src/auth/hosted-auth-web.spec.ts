@@ -33,6 +33,18 @@ describe('hosted auth web contract', () => {
     expect(html).toContain('Forgot password?');
   });
 
+  it('supports en/cs/ru hosted UI language via lang param and switcher', () => {
+    expect(html).toContain('id="lang-switcher"');
+    expect(html).toContain('data-lang="en"');
+    expect(html).toContain('data-lang="cs"');
+    expect(html).toContain('data-lang="ru"');
+    expect(html).toContain('function resolveLang()');
+    expect(html).toContain('function applyI18n(lang)');
+    expect(html).toContain("const SUPPORTED_LANGS = ['en', 'cs', 'ru']");
+    expect(html).toContain('lang: currentLang');
+    expect(html).toContain("loginParams.set('lang', currentLang)");
+  });
+
   it('serves emailed password reset links from the hosted Auth page', () => {
     expect(mainTs).toContain("['/login', '/register', '/reset-password']");
     expect(webServer).toContain("['/login', '/register', '/reset-password']");

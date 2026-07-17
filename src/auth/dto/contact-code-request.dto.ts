@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class ContactCodeRequestDto {
   @IsString()
@@ -20,4 +20,8 @@ export class ContactCodeRequestDto {
   @IsOptional()
   @IsString()
   app_domain?: string;
+
+  @IsOptional()
+  @IsIn(['en', 'cs', 'ru'])
+  lang?: string;
 }

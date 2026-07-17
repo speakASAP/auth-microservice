@@ -2,7 +2,7 @@
  * Password Reset Request DTO
  */
 
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class PasswordResetRequestDto {
   @IsEmail()
@@ -19,5 +19,9 @@ export class PasswordResetRequestDto {
   @IsOptional()
   @IsString()
   state?: string;
+
+  @IsOptional()
+  @IsIn(['en', 'cs', 'ru'])
+  lang?: string;
 }
 

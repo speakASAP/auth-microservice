@@ -631,9 +631,12 @@ export class AuthService {
     if (passwordResetRequestDto.state) {
       resetUrlParams.set('state', passwordResetRequestDto.state);
     }
+    const lang = this.normalizeAuthLang(passwordResetRequestDto.lang);
+    resetUrlParams.set('lang', lang);
     const resetUrl = `${frontendUrl}/reset-password?${resetUrlParams.toString()}`;
     const fromDomain = process.env.DOMAIN || '';
     const resetTtlMinutes = 60;
+    const resetCopy = this.getAuthEmailCopy('password_reset', lang, resetTtlMinutes);
     try {
       await firstValueFrom(
         this.httpService.post(
@@ -642,8 +645,8 @@ export class AuthService {
             channel: 'email',
             type: 'custom',
             recipient: user.email,
-            subject: 'Password Reset Request',
-            message: this.buildPasswordResetHtml(resetUrl, fromDomain, resetTtlMinutes),
+            subject: resetCopy.subject,
+            message: this.buildAuthEmailHtml(resetUrl, fromDomain, resetCopy, lang),
             contentType: 'text/html',
             fromName: fromDomain,
           },
@@ -825,8 +828,10 @@ export class AuthService {
 
     const baseUrl = this.resolvePublicBaseUrl();
     const verifyUrl = `${baseUrl}/auth/email-change-confirm?token=${encodeURIComponent(token)}`;
+    const lang = this.normalizeAuthLang(dto.lang);
     if (this.notificationsServiceUrl) {
       try {
+        const emailChangeCopy = this.getPlainEmailCopy('email_change', lang, ttlMinutes, verifyUrl);
         await firstValueFrom(
           this.httpService.post(
             `${this.notificationsServiceUrl}/notifications/send`,
@@ -834,8 +839,8 @@ export class AuthService {
               channel: 'email',
               type: 'custom',
               recipient: newEmail,
-              subject: 'Confirm your email change',
-              message: `Confirm your Auth account email change: ${verifyUrl}\n\nThis link expires in ${ttlMinutes} minutes.`,
+              subject: emailChangeCopy.subject,
+              message: emailChangeCopy.message,
             },
             {
               headers: {
@@ -1417,8 +1422,13 @@ export class AuthService {
               channel: 'email',
               type: 'custom',
               recipient: dto.email,
-              subject: 'Sign-in link',
-              message: this.buildMagicLinkHtml(verifyUrl, fromDomain, this.magicLinkTtlMinutes),
+              subject: this.getAuthEmailCopy('magic_link', this.normalizeAuthLang(dto.lang), this.magicLinkTtlMinutes).subject,
+              message: this.buildAuthEmailHtml(
+                verifyUrl,
+                fromDomain,
+                this.getAuthEmailCopy('magic_link', this.normalizeAuthLang(dto.lang), this.magicLinkTtlMinutes),
+                this.normalizeAuthLang(dto.lang),
+              ),
               contentType: 'text/html',
               fromName: fromDomain,
             },
@@ -1485,22 +1495,29 @@ export class AuthService {
     return 'whatsapp';
   }
 
-  private async sendContactCode(contactType: 'email' | 'phone', identifier: string, code: string, appDomain?: string): Promise<boolean> {
+  private async sendContactCode(
+    contactType: 'email' | 'phone',
+    identifier: string,
+    code: string,
+    appDomain?: string,
+    langRaw?: string,
+  ): Promise<boolean> {
     if (!this.notificationsServiceUrl) {
       return false;
     }
 
+    const lang = this.normalizeAuthLang(langRaw);
     const fromDomain = appDomain || process.env.DOMAIN || '';
     const channel = contactType === 'phone' ? this.contactCodePhoneChannel : 'email';
     const channelKey = contactType === 'phone' ? this.contactCodePhoneChannelKey : this.contactCodeEmailChannelKey;
-    const message = `Your Alfares sign-in code is ${code}. It expires in ${this.magicLinkTtlMinutes} minutes.`;
+    const contactCopy = this.getPlainEmailCopy('contact_code', lang, this.magicLinkTtlMinutes, undefined, code);
     const payload: Record<string, string | undefined> = {
       channel: channelKey ? undefined : channel,
       channelKey: channelKey || undefined,
       type: 'custom',
       recipient: identifier,
-      subject: contactType === 'email' ? 'Alfares sign-in code' : undefined,
-      message,
+      subject: contactType === 'email' ? contactCopy.subject : undefined,
+      message: contactCopy.message,
       contentType: contactType === 'email' ? 'text/plain' : undefined,
       fromName: fromDomain,
       service: 'auth-microservice',
@@ -1558,7 +1575,7 @@ export class AuthService {
 
     let delivered = false;
     try {
-      delivered = await this.sendContactCode(contactType, identifier, code, dto.app_domain);
+      delivered = await this.sendContactCode(contactType, identifier, code, dto.app_domain, dto.lang);
     } catch (error) {
       this.audit(
         'error',
@@ -2017,54 +2034,133 @@ export class AuthService {
     res.status(400).send(`<html><body><h1>Authentication error</h1><p>${message}</p></body></html>`);
   }
 
-  private buildPasswordResetHtml(resetUrl: string, domain: string, ttlMinutes: number): string {
-    const BG_URL = 'https://speakasap.com/static/big_brother/assets/bg.png';
-    const BLUE = '#1E88E5';
-    const LIGHT_BLUE = '#BBDEFB';
-    const CARD_BG = '#F5F5F5';
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Password Reset Request</title></head>
-<body style="margin:0;padding:0;background-color:${LIGHT_BLUE};background-image:url('${BG_URL}');background-size:cover;background-position:center;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tr><td align="center" style="padding:40px 16px;">
-    <table width="100%" style="max-width:640px;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.12);" cellpadding="0" cellspacing="0" border="0">
-      <tr><td style="background:${BLUE};padding:24px 32px;">
-        <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:20px;font-weight:bold;">${domain}</a>
-      </td></tr>
-      <tr><td style="background:${CARD_BG};padding:32px;">
-        <h2 style="margin:0 0 16px;color:#212121;font-size:22px;">Reset your password</h2>
-        <div style="border-left:4px solid ${BLUE};background:#E3F2FD;padding:16px 20px;border-radius:4px;margin-bottom:24px;">
-          <p style="margin:0;color:#1565C0;font-size:15px;">Click the button below to set a new password. This link will expire in <strong>${ttlMinutes} minutes</strong>.</p>
-        </div>
-        <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 24px;">
-          <tr><td align="center" style="border-radius:6px;background:${BLUE};">
-            <a href="${resetUrl}" style="display:inline-block;padding:14px 32px;color:#fff;font-size:16px;font-weight:bold;text-decoration:none;border-radius:6px;">Reset password</a>
-          </td></tr>
-        </table>
-        <p style="color:#757575;font-size:13px;margin:0;">If the button does not work, copy this link into your browser:<br><a href="${resetUrl}" style="color:${BLUE};word-break:break-all;">${resetUrl}</a></p>
-        <p style="color:#9E9E9E;font-size:12px;margin:16px 0 0;">If you did not request this email, you can safely ignore it.</p>
-      </td></tr>
-      <tr><td style="background:${BLUE};padding:16px 32px;text-align:center;">
-        <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:13px;">${domain}</a>
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-</body>
-</html>`;
+  private normalizeAuthLang(raw?: string): 'en' | 'cs' | 'ru' {
+    if (!raw) return 'en';
+    const primary = String(raw).trim().toLowerCase().split(/[-_]/)[0];
+    if (primary === 'cs' || primary === 'ru' || primary === 'en') {
+      return primary;
+    }
+    return 'en';
   }
 
-  private buildMagicLinkHtml(verifyUrl: string, domain: string, ttlMinutes: number): string {
+  private getAuthEmailCopy(
+    kind: 'password_reset' | 'magic_link',
+    lang: 'en' | 'cs' | 'ru',
+    ttlMinutes: number,
+  ): { subject: string; title: string; body: string; cta: string; fallback: string; ignore: string } {
+    const copies = {
+      password_reset: {
+        en: {
+          subject: 'Password Reset Request',
+          title: 'Reset your password',
+          body: `Click the button below to set a new password. This link will expire in <strong>${ttlMinutes} minutes</strong>.`,
+          cta: 'Reset password',
+          fallback: 'If the button does not work, copy this link into your browser:',
+          ignore: 'If you did not request this email, you can safely ignore it.',
+        },
+        cs: {
+          subject: 'Obnovení hesla',
+          title: 'Obnovte si heslo',
+          body: `Kliknutím na tlačítko níže si nastavíte nové heslo. Odkaz je platný <strong>${ttlMinutes} minut</strong>.`,
+          cta: 'Obnovit heslo',
+          fallback: 'Pokud tlačítko nefunguje, zkopírujte tento odkaz do prohlížeče:',
+          ignore: 'Pokud jste tento e-mail neočekávali, můžete ho ignorovat.',
+        },
+        ru: {
+          subject: 'Сброс пароля',
+          title: 'Сбросьте пароль',
+          body: `Нажмите кнопку ниже, чтобы задать новый пароль. Ссылка действует <strong>${ttlMinutes} мин.</strong>.`,
+          cta: 'Сбросить пароль',
+          fallback: 'Если кнопка не работает, скопируйте эту ссылку в браузер:',
+          ignore: 'Если вы не запрашивали это письмо, просто проигнорируйте его.',
+        },
+      },
+      magic_link: {
+        en: {
+          subject: 'Sign-in link',
+          title: 'Sign in with one click',
+          body: `Click the button below to sign in to your account. This link will expire in <strong>${ttlMinutes} minutes</strong>.`,
+          cta: 'Sign in',
+          fallback: 'If the button does not work, copy this link into your browser:',
+          ignore: 'If you did not request this email, you can safely ignore it.',
+        },
+        cs: {
+          subject: 'Přihlašovací odkaz',
+          title: 'Přihlaste se jedním kliknutím',
+          body: `Kliknutím na tlačítko níže se přihlásíte do svého účtu. Odkaz je platný <strong>${ttlMinutes} minut</strong>.`,
+          cta: 'Přihlásit se',
+          fallback: 'Pokud tlačítko nefunguje, zkopírujte tento odkaz do prohlížeče:',
+          ignore: 'Pokud jste tento e-mail neočekávali, můžete ho ignorovat.',
+        },
+        ru: {
+          subject: 'Ссылка для входа',
+          title: 'Войдите одним нажатием',
+          body: `Нажмите кнопку ниже, чтобы войти в аккаунт. Ссылка действует <strong>${ttlMinutes} мин.</strong>.`,
+          cta: 'Войти',
+          fallback: 'Если кнопка не работает, скопируйте эту ссылку в браузер:',
+          ignore: 'Если вы не запрашивали это письмо, просто проигнорируйте его.',
+        },
+      },
+    } as const;
+    return copies[kind][lang];
+  }
+
+  private getPlainEmailCopy(
+    kind: 'contact_code' | 'email_change',
+    lang: 'en' | 'cs' | 'ru',
+    ttlMinutes: number,
+    verifyUrl?: string,
+    code?: string,
+  ): { subject: string; message: string } {
+    if (kind === 'contact_code') {
+      const messages = {
+        en: {
+          subject: 'Alfares sign-in code',
+          message: `Your Alfares sign-in code is ${code}. It expires in ${ttlMinutes} minutes.`,
+        },
+        cs: {
+          subject: 'Přihlašovací kód Alfares',
+          message: `Váš přihlašovací kód Alfares je ${code}. Platí ${ttlMinutes} minut.`,
+        },
+        ru: {
+          subject: 'Код входа Alfares',
+          message: `Ваш код входа Alfares: ${code}. Он действует ${ttlMinutes} мин.`,
+        },
+      } as const;
+      return messages[lang];
+    }
+
+    const messages = {
+      en: {
+        subject: 'Confirm your email change',
+        message: `Confirm your Auth account email change: ${verifyUrl}\n\nThis link expires in ${ttlMinutes} minutes.`,
+      },
+      cs: {
+        subject: 'Potvrďte změnu e-mailu',
+        message: `Potvrďte změnu e-mailu u účtu Auth: ${verifyUrl}\n\nTento odkaz vyprší za ${ttlMinutes} minut.`,
+      },
+      ru: {
+        subject: 'Подтвердите смену email',
+        message: `Подтвердите смену email аккаунта Auth: ${verifyUrl}\n\nСсылка действует ${ttlMinutes} мин.`,
+      },
+    } as const;
+    return messages[lang];
+  }
+
+  private buildAuthEmailHtml(
+    actionUrl: string,
+    domain: string,
+    copy: { subject: string; title: string; body: string; cta: string; fallback: string; ignore: string },
+    lang: 'en' | 'cs' | 'ru',
+  ): string {
     const BG_URL = 'https://speakasap.com/static/big_brother/assets/bg.png';
     const BLUE = '#1E88E5';
     const LIGHT_BLUE = '#BBDEFB';
     const CARD_BG = '#F5F5F5';
 
     return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign-in link</title></head>
+<html lang="${lang}">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${copy.subject}</title></head>
 <body style="margin:0;padding:0;background-color:${LIGHT_BLUE};background-image:url('${BG_URL}');background-size:cover;background-position:center;font-family:Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr><td align="center" style="padding:40px 16px;">
@@ -2073,17 +2169,17 @@ export class AuthService {
         <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:20px;font-weight:bold;">${domain}</a>
       </td></tr>
       <tr><td style="background:${CARD_BG};padding:32px;">
-        <h2 style="margin:0 0 16px;color:#212121;font-size:22px;">Sign in with one click</h2>
+        <h2 style="margin:0 0 16px;color:#212121;font-size:22px;">${copy.title}</h2>
         <div style="border-left:4px solid ${BLUE};background:#E3F2FD;padding:16px 20px;border-radius:4px;margin-bottom:24px;">
-          <p style="margin:0;color:#1565C0;font-size:15px;">Click the button below to sign in to your account. This link will expire in <strong>${ttlMinutes} minutes</strong>.</p>
+          <p style="margin:0;color:#1565C0;font-size:15px;">${copy.body}</p>
         </div>
         <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 24px;">
           <tr><td align="center" style="border-radius:6px;background:${BLUE};">
-            <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;color:#fff;font-size:16px;font-weight:bold;text-decoration:none;border-radius:6px;">Sign in</a>
+            <a href="${actionUrl}" style="display:inline-block;padding:14px 32px;color:#fff;font-size:16px;font-weight:bold;text-decoration:none;border-radius:6px;">${copy.cta}</a>
           </td></tr>
         </table>
-        <p style="color:#757575;font-size:13px;margin:0;">If the button does not work, copy this link into your browser:<br><a href="${verifyUrl}" style="color:${BLUE};word-break:break-all;">${verifyUrl}</a></p>
-        <p style="color:#9E9E9E;font-size:12px;margin:16px 0 0;">If you did not request this email, you can safely ignore it.</p>
+        <p style="color:#757575;font-size:13px;margin:0;">${copy.fallback}<br><a href="${actionUrl}" style="color:${BLUE};word-break:break-all;">${actionUrl}</a></p>
+        <p style="color:#9E9E9E;font-size:12px;margin:16px 0 0;">${copy.ignore}</p>
       </td></tr>
       <tr><td style="background:${BLUE};padding:16px 32px;text-align:center;">
         <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:13px;">${domain}</a>

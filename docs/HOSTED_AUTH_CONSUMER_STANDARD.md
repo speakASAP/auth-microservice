@@ -15,8 +15,8 @@ Legacy `speakasap-portal` is out of scope and must not be changed under this sta
 Use Auth-hosted UI for human credential collection:
 
 ```text
-https://auth.alfares.cz/login?client_id=<client_id>&return_url=<https callback url>&state=<opaque state>
-https://auth.alfares.cz/register?client_id=<client_id>&return_url=<https callback url>&state=<opaque state>
+https://auth.alfares.cz/login?client_id=<client_id>&return_url=<https callback url>&state=<opaque state>&lang=en|cs|ru
+https://auth.alfares.cz/register?client_id=<client_id>&return_url=<https callback url>&state=<opaque state>&lang=en|cs|ru
 ```
 
 Required parameters:
@@ -24,9 +24,10 @@ Required parameters:
 - `return_url`: absolute HTTPS callback URL owned by the consumer.
 - `client_id`: stable logical client ID and first-visit application access key. It must match an active Auth registered application name. Use lowercase app identifiers such as `marathon`, `speakasap`, `school-committee`, or `catalog-microservice`.
 
-Recommended parameter:
+Recommended parameters:
 
 - `state`: caller-generated opaque CSRF/return state. Consumers must validate it after callback before trusting the handoff.
+- `lang`: UI and transactional-email language. Allowed values: `en`, `cs`, `ru` (BCP-47 tags like `cs-CZ` are normalized to the primary subtag). Invalid or missing values default to `en`. Hosted Auth shows an EN/CS/RU switcher that may override the initial value; consumers should pass their current locale when building Auth URLs so the first paint matches the product language.
 
 Auth validates `return_url` through the same logic used by `/auth/validate-return-url`. In production, `AUTH_ALLOWED_REDIRECT_ORIGINS` must contain allowed consumer origins. If the allowlist is empty, current code allows any HTTPS origin; that is compatibility behavior, not the desired production posture.
 

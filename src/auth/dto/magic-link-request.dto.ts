@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class MagicLinkRequestDto {
   @IsEmail()
@@ -21,5 +21,9 @@ export class MagicLinkRequestDto {
   @IsOptional()
   @IsString()
   app_domain?: string;
+
+  @IsOptional()
+  @IsIn(['en', 'cs', 'ru'])
+  lang?: string;
 }
 
