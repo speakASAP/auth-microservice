@@ -632,6 +632,8 @@ export class AuthService {
       resetUrlParams.set('state', passwordResetRequestDto.state);
     }
     const resetUrl = `${frontendUrl}/reset-password?${resetUrlParams.toString()}`;
+    const fromDomain = process.env.DOMAIN || '';
+    const resetTtlMinutes = 60;
     try {
       await firstValueFrom(
         this.httpService.post(
@@ -641,7 +643,9 @@ export class AuthService {
             type: 'custom',
             recipient: user.email,
             subject: 'Password Reset Request',
-            message: `Click the following link to reset your password: ${resetUrl}\n\nThis link will expire in 1 hour.`,
+            message: this.buildPasswordResetHtml(resetUrl, fromDomain, resetTtlMinutes),
+            contentType: 'text/html',
+            fromName: fromDomain,
           },
           {
             headers: {
@@ -1413,7 +1417,7 @@ export class AuthService {
               channel: 'email',
               type: 'custom',
               recipient: dto.email,
-              subject: 'Přihlašovací odkaz',
+              subject: 'Sign-in link',
               message: this.buildMagicLinkHtml(verifyUrl, fromDomain, this.magicLinkTtlMinutes),
               contentType: 'text/html',
               fromName: fromDomain,
@@ -2013,15 +2017,15 @@ export class AuthService {
     res.status(400).send(`<html><body><h1>Authentication error</h1><p>${message}</p></body></html>`);
   }
 
-  private buildMagicLinkHtml(verifyUrl: string, domain: string, ttlMinutes: number): string {
+  private buildPasswordResetHtml(resetUrl: string, domain: string, ttlMinutes: number): string {
     const BG_URL = 'https://speakasap.com/static/big_brother/assets/bg.png';
     const BLUE = '#1E88E5';
     const LIGHT_BLUE = '#BBDEFB';
     const CARD_BG = '#F5F5F5';
 
     return `<!DOCTYPE html>
-<html lang="cs">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Přihlašovací odkaz</title></head>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Password Reset Request</title></head>
 <body style="margin:0;padding:0;background-color:${LIGHT_BLUE};background-image:url('${BG_URL}');background-size:cover;background-position:center;font-family:Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr><td align="center" style="padding:40px 16px;">
@@ -2030,17 +2034,56 @@ export class AuthService {
         <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:20px;font-weight:bold;">${domain}</a>
       </td></tr>
       <tr><td style="background:${CARD_BG};padding:32px;">
-        <h2 style="margin:0 0 16px;color:#212121;font-size:22px;">Přihlaste se jedním kliknutím</h2>
+        <h2 style="margin:0 0 16px;color:#212121;font-size:22px;">Reset your password</h2>
         <div style="border-left:4px solid ${BLUE};background:#E3F2FD;padding:16px 20px;border-radius:4px;margin-bottom:24px;">
-          <p style="margin:0;color:#1565C0;font-size:15px;">Kliknutím na tlačítko níže se přihlásíte do svého účtu. Odkaz je platný <strong>${ttlMinutes} minut</strong>.</p>
+          <p style="margin:0;color:#1565C0;font-size:15px;">Click the button below to set a new password. This link will expire in <strong>${ttlMinutes} minutes</strong>.</p>
         </div>
         <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 24px;">
           <tr><td align="center" style="border-radius:6px;background:${BLUE};">
-            <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;color:#fff;font-size:16px;font-weight:bold;text-decoration:none;border-radius:6px;">Přihlásit se</a>
+            <a href="${resetUrl}" style="display:inline-block;padding:14px 32px;color:#fff;font-size:16px;font-weight:bold;text-decoration:none;border-radius:6px;">Reset password</a>
           </td></tr>
         </table>
-        <p style="color:#757575;font-size:13px;margin:0;">Pokud tlačítko nefunguje, zkopírujte tento odkaz do prohlížeče:<br><a href="${verifyUrl}" style="color:${BLUE};word-break:break-all;">${verifyUrl}</a></p>
-        <p style="color:#9E9E9E;font-size:12px;margin:16px 0 0;">Pokud jste tento e-mail neočekávali, můžete ho ignorovat.</p>
+        <p style="color:#757575;font-size:13px;margin:0;">If the button does not work, copy this link into your browser:<br><a href="${resetUrl}" style="color:${BLUE};word-break:break-all;">${resetUrl}</a></p>
+        <p style="color:#9E9E9E;font-size:12px;margin:16px 0 0;">If you did not request this email, you can safely ignore it.</p>
+      </td></tr>
+      <tr><td style="background:${BLUE};padding:16px 32px;text-align:center;">
+        <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:13px;">${domain}</a>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+  }
+
+  private buildMagicLinkHtml(verifyUrl: string, domain: string, ttlMinutes: number): string {
+    const BG_URL = 'https://speakasap.com/static/big_brother/assets/bg.png';
+    const BLUE = '#1E88E5';
+    const LIGHT_BLUE = '#BBDEFB';
+    const CARD_BG = '#F5F5F5';
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign-in link</title></head>
+<body style="margin:0;padding:0;background-color:${LIGHT_BLUE};background-image:url('${BG_URL}');background-size:cover;background-position:center;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td align="center" style="padding:40px 16px;">
+    <table width="100%" style="max-width:640px;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.12);" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="background:${BLUE};padding:24px 32px;">
+        <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:20px;font-weight:bold;">${domain}</a>
+      </td></tr>
+      <tr><td style="background:${CARD_BG};padding:32px;">
+        <h2 style="margin:0 0 16px;color:#212121;font-size:22px;">Sign in with one click</h2>
+        <div style="border-left:4px solid ${BLUE};background:#E3F2FD;padding:16px 20px;border-radius:4px;margin-bottom:24px;">
+          <p style="margin:0;color:#1565C0;font-size:15px;">Click the button below to sign in to your account. This link will expire in <strong>${ttlMinutes} minutes</strong>.</p>
+        </div>
+        <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 24px;">
+          <tr><td align="center" style="border-radius:6px;background:${BLUE};">
+            <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;color:#fff;font-size:16px;font-weight:bold;text-decoration:none;border-radius:6px;">Sign in</a>
+          </td></tr>
+        </table>
+        <p style="color:#757575;font-size:13px;margin:0;">If the button does not work, copy this link into your browser:<br><a href="${verifyUrl}" style="color:${BLUE};word-break:break-all;">${verifyUrl}</a></p>
+        <p style="color:#9E9E9E;font-size:12px;margin:16px 0 0;">If you did not request this email, you can safely ignore it.</p>
       </td></tr>
       <tr><td style="background:${BLUE};padding:16px 32px;text-align:center;">
         <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:13px;">${domain}</a>
