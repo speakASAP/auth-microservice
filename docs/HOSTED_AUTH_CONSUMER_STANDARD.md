@@ -27,7 +27,7 @@ Required parameters:
 Recommended parameters:
 
 - `state`: caller-generated opaque CSRF/return state. Consumers must validate it after callback before trusting the handoff.
-- `lang`: UI and transactional-email language. Allowed values: `en`, `cs`, `ru` (BCP-47 tags like `cs-CZ` are normalized to the primary subtag). Invalid or missing values default to `en`. Hosted Auth shows an EN/CS/RU switcher that may override the initial value; consumers should pass their current locale when building Auth URLs so the first paint matches the product language.
+- `lang`: UI and transactional-email language. Allowed values: `en`, `cs`, `ru` (BCP-47 tags like `cs-CZ` are normalized to the primary subtag). When the parameter is missing or invalid, Hosted Auth resolves the language as: previously stored user choice (`auth_lang` in localStorage, persisted across sessions) → browser `navigator.language` → `en`. Hosted Auth shows an EN/CS/RU switcher that may override the initial value; consumers should still pass their current locale when building Auth URLs so the first paint matches the product language. The hosted profile page (`/profile`) follows the same resolution and shares the stored choice. Known backend error messages are localized on the hosted pages at display time; API error responses stay English on the wire, so consumers matching on `message` strings are unaffected.
 
 Auth validates `return_url` through the same logic used by `/auth/validate-return-url`. In production, `AUTH_ALLOWED_REDIRECT_ORIGINS` must contain allowed consumer origins. If the allowlist is empty, current code allows any HTTPS origin; that is compatibility behavior, not the desired production posture.
 

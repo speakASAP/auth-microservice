@@ -2,6 +2,384 @@
   const STORAGE_ACCESS = 'auth_profile_access';
   const STORAGE_REFRESH = 'auth_profile_refresh';
   const STORAGE_EMAIL = 'auth_profile_email';
+  const LANG_STORAGE_KEY = 'auth_lang';
+  const SUPPORTED_LANGS = ['en', 'cs', 'ru'];
+
+  const I18N = {
+    en: {
+      pageTitle: 'Profile – Auth Service',
+      signInToView: 'Sign in to view your profile',
+      emailOrPhone: 'Email or phone',
+      password: 'Password',
+      signIn: 'Sign in',
+      myProfile: 'My Profile',
+      signOut: 'Sign out',
+      canonicalProfile: 'Canonical Profile',
+      refresh: 'Refresh',
+      firstName: 'First name',
+      lastName: 'Last name',
+      phone: 'Phone',
+      profileImageUrl: 'Profile image URL',
+      street: 'Street',
+      city: 'City',
+      postalCode: 'Postal code',
+      country: 'Country',
+      profileSettingsJson: 'Profile settings JSON',
+      saveProfile: 'Save profile',
+      deliveryAddresses: 'Delivery Addresses',
+      newAddress: 'New address',
+      label: 'Label',
+      company: 'Company',
+      street2: 'Street 2',
+      region: 'Region',
+      email: 'Email',
+      deliveryInstructions: 'Delivery instructions',
+      defaultDeliveryAddress: 'Default delivery address',
+      saveAddress: 'Save address',
+      clear: 'Clear',
+      invoiceProfiles: 'Invoice Profiles',
+      newInvoiceProfile: 'New invoice profile',
+      type: 'Type',
+      typePerson: 'Person',
+      typeCompany: 'Company',
+      companyName: 'Company name',
+      companyId: 'Company ID',
+      taxId: 'Tax ID',
+      vatId: 'VAT ID',
+      invoiceEmail: 'Invoice email',
+      defaultInvoiceProfile: 'Default invoice profile',
+      saveInvoiceProfile: 'Save invoice profile',
+      accessToken: 'Access Token',
+      tokenHint: 'Your JWT token for use in API calls across the ecosystem. Keep it secure.',
+      tokenPlaceholder: "Click 'Show' to reveal",
+      show: 'Show',
+      hide: 'Hide',
+      copy: 'Copy',
+      copiedToClipboard: 'Copied to clipboard!',
+      changeEmail: 'Change Email',
+      newEmail: 'New email',
+      currentPassword: 'Current Password',
+      sendConfirmationLink: 'Send confirmation link',
+      changePassword: 'Change Password',
+      newPassword: 'New Password',
+      confirmNewPassword: 'Confirm New Password',
+      updatePassword: 'Update Password',
+      sessionExpired: 'Session expired. Sign in again.',
+      requestFailed: 'Request failed',
+      loginFailed: 'Login failed',
+      noTokenReturned: 'No token returned',
+      loadingProfile: 'Loading profile data...',
+      profileCurrent: 'Profile data is current.',
+      savingProfile: 'Saving profile...',
+      profileSaved: 'Profile saved.',
+      settingsMustBeJson: 'Profile settings must be valid JSON.',
+      settingsMustBeObject: 'Profile settings must be a JSON object.',
+      deliveryAddressFallback: 'Delivery address',
+      invoiceProfileFallback: 'Invoice profile',
+      defaultBadge: 'Default',
+      edit: 'Edit',
+      makeDefault: 'Default',
+      deleteAction: 'Delete',
+      noDeliveryAddresses: 'No delivery addresses saved.',
+      noInvoiceProfiles: 'No invoice profiles saved.',
+      updateAddress: 'Update address',
+      savingDeliveryAddress: 'Saving delivery address...',
+      updatingDeliveryAddress: 'Updating delivery address...',
+      deliveryAddressSaved: 'Delivery address saved.',
+      updateInvoiceProfile: 'Update invoice profile',
+      savingInvoiceProfile: 'Saving invoice profile...',
+      updatingInvoiceProfile: 'Updating invoice profile...',
+      invoiceProfileSaved: 'Invoice profile saved.',
+      confirmDeleteDelivery: 'Delete this delivery address?',
+      confirmDeleteInvoice: 'Delete this invoice profile?',
+      confirmationLinkSent: 'Confirmation link sent.',
+      passwordsMismatch: 'Passwords do not match',
+      passwordUpdateFailed: 'Failed to update password',
+      passwordUpdated: 'Password updated successfully',
+      errInvalidCredentials: 'Invalid email/phone or password.',
+      errAccountInactive: 'This account is inactive. Contact support.',
+      errEmailInUse: 'Email is already in use.',
+      errValidEmailRequired: 'A valid new email is required.',
+      errEmailMustDiffer: 'New email must be different from current email.',
+      errCurrentPasswordIncorrect: 'Current password is incorrect.',
+      errNoPasswordSet: 'User not found or password not set.',
+      errTooManyRequests: 'Too many attempts. Please try again later.',
+    },
+    cs: {
+      pageTitle: 'Profil – Auth služba',
+      signInToView: 'Přihlaste se pro zobrazení profilu',
+      emailOrPhone: 'E-mail nebo telefon',
+      password: 'Heslo',
+      signIn: 'Přihlásit se',
+      myProfile: 'Můj profil',
+      signOut: 'Odhlásit se',
+      canonicalProfile: 'Kanonický profil',
+      refresh: 'Obnovit',
+      firstName: 'Jméno',
+      lastName: 'Příjmení',
+      phone: 'Telefon',
+      profileImageUrl: 'URL profilového obrázku',
+      street: 'Ulice',
+      city: 'Město',
+      postalCode: 'PSČ',
+      country: 'Země',
+      profileSettingsJson: 'Nastavení profilu (JSON)',
+      saveProfile: 'Uložit profil',
+      deliveryAddresses: 'Doručovací adresy',
+      newAddress: 'Nová adresa',
+      label: 'Označení',
+      company: 'Firma',
+      street2: 'Ulice 2',
+      region: 'Kraj',
+      email: 'E-mail',
+      deliveryInstructions: 'Pokyny pro doručení',
+      defaultDeliveryAddress: 'Výchozí doručovací adresa',
+      saveAddress: 'Uložit adresu',
+      clear: 'Vyčistit',
+      invoiceProfiles: 'Fakturační profily',
+      newInvoiceProfile: 'Nový fakturační profil',
+      type: 'Typ',
+      typePerson: 'Osoba',
+      typeCompany: 'Firma',
+      companyName: 'Název firmy',
+      companyId: 'IČO',
+      taxId: 'Daňové ID',
+      vatId: 'DIČ (VAT)',
+      invoiceEmail: 'Fakturační e-mail',
+      defaultInvoiceProfile: 'Výchozí fakturační profil',
+      saveInvoiceProfile: 'Uložit fakturační profil',
+      accessToken: 'Přístupový token',
+      tokenHint: 'Váš JWT token pro API volání v rámci ekosystému. Uchovejte ho v bezpečí.',
+      tokenPlaceholder: 'Klikněte na „Zobrazit“ pro odhalení',
+      show: 'Zobrazit',
+      hide: 'Skrýt',
+      copy: 'Kopírovat',
+      copiedToClipboard: 'Zkopírováno do schránky!',
+      changeEmail: 'Změna e-mailu',
+      newEmail: 'Nový e-mail',
+      currentPassword: 'Současné heslo',
+      sendConfirmationLink: 'Poslat potvrzovací odkaz',
+      changePassword: 'Změna hesla',
+      newPassword: 'Nové heslo',
+      confirmNewPassword: 'Potvrďte nové heslo',
+      updatePassword: 'Změnit heslo',
+      sessionExpired: 'Relace vypršela. Přihlaste se znovu.',
+      requestFailed: 'Požadavek se nezdařil',
+      loginFailed: 'Přihlášení se nezdařilo',
+      noTokenReturned: 'Server nevrátil token',
+      loadingProfile: 'Načítání dat profilu...',
+      profileCurrent: 'Data profilu jsou aktuální.',
+      savingProfile: 'Ukládání profilu...',
+      profileSaved: 'Profil uložen.',
+      settingsMustBeJson: 'Nastavení profilu musí být platný JSON.',
+      settingsMustBeObject: 'Nastavení profilu musí být JSON objekt.',
+      deliveryAddressFallback: 'Doručovací adresa',
+      invoiceProfileFallback: 'Fakturační profil',
+      defaultBadge: 'Výchozí',
+      edit: 'Upravit',
+      makeDefault: 'Výchozí',
+      deleteAction: 'Smazat',
+      noDeliveryAddresses: 'Žádné uložené doručovací adresy.',
+      noInvoiceProfiles: 'Žádné uložené fakturační profily.',
+      updateAddress: 'Aktualizovat adresu',
+      savingDeliveryAddress: 'Ukládání doručovací adresy...',
+      updatingDeliveryAddress: 'Aktualizace doručovací adresy...',
+      deliveryAddressSaved: 'Doručovací adresa uložena.',
+      updateInvoiceProfile: 'Aktualizovat fakturační profil',
+      savingInvoiceProfile: 'Ukládání fakturačního profilu...',
+      updatingInvoiceProfile: 'Aktualizace fakturačního profilu...',
+      invoiceProfileSaved: 'Fakturační profil uložen.',
+      confirmDeleteDelivery: 'Smazat tuto doručovací adresu?',
+      confirmDeleteInvoice: 'Smazat tento fakturační profil?',
+      confirmationLinkSent: 'Potvrzovací odkaz odeslán.',
+      passwordsMismatch: 'Hesla se neshodují',
+      passwordUpdateFailed: 'Nepodařilo se změnit heslo',
+      passwordUpdated: 'Heslo bylo úspěšně změněno',
+      errInvalidCredentials: 'Neplatný e-mail/telefon nebo heslo.',
+      errAccountInactive: 'Tento účet je neaktivní. Kontaktujte podporu.',
+      errEmailInUse: 'E-mail se již používá.',
+      errValidEmailRequired: 'Je vyžadován platný nový e-mail.',
+      errEmailMustDiffer: 'Nový e-mail se musí lišit od současného.',
+      errCurrentPasswordIncorrect: 'Současné heslo není správné.',
+      errNoPasswordSet: 'Uživatel nenalezen nebo heslo není nastaveno.',
+      errTooManyRequests: 'Příliš mnoho pokusů. Zkuste to prosím později.',
+    },
+    ru: {
+      pageTitle: 'Профиль – Сервис авторизации',
+      signInToView: 'Войдите, чтобы посмотреть профиль',
+      emailOrPhone: 'Email или телефон',
+      password: 'Пароль',
+      signIn: 'Войти',
+      myProfile: 'Мой профиль',
+      signOut: 'Выйти',
+      canonicalProfile: 'Основной профиль',
+      refresh: 'Обновить',
+      firstName: 'Имя',
+      lastName: 'Фамилия',
+      phone: 'Телефон',
+      profileImageUrl: 'URL изображения профиля',
+      street: 'Улица',
+      city: 'Город',
+      postalCode: 'Почтовый индекс',
+      country: 'Страна',
+      profileSettingsJson: 'Настройки профиля (JSON)',
+      saveProfile: 'Сохранить профиль',
+      deliveryAddresses: 'Адреса доставки',
+      newAddress: 'Новый адрес',
+      label: 'Название',
+      company: 'Компания',
+      street2: 'Улица 2',
+      region: 'Регион',
+      email: 'Email',
+      deliveryInstructions: 'Инструкции по доставке',
+      defaultDeliveryAddress: 'Адрес доставки по умолчанию',
+      saveAddress: 'Сохранить адрес',
+      clear: 'Очистить',
+      invoiceProfiles: 'Платёжные профили',
+      newInvoiceProfile: 'Новый платёжный профиль',
+      type: 'Тип',
+      typePerson: 'Физлицо',
+      typeCompany: 'Компания',
+      companyName: 'Название компании',
+      companyId: 'ID компании',
+      taxId: 'Налоговый ID',
+      vatId: 'VAT ID',
+      invoiceEmail: 'Email для счетов',
+      defaultInvoiceProfile: 'Платёжный профиль по умолчанию',
+      saveInvoiceProfile: 'Сохранить платёжный профиль',
+      accessToken: 'Токен доступа',
+      tokenHint: 'Ваш JWT-токен для API-вызовов в экосистеме. Храните его в безопасности.',
+      tokenPlaceholder: 'Нажмите «Показать», чтобы увидеть',
+      show: 'Показать',
+      hide: 'Скрыть',
+      copy: 'Копировать',
+      copiedToClipboard: 'Скопировано в буфер обмена!',
+      changeEmail: 'Смена email',
+      newEmail: 'Новый email',
+      currentPassword: 'Текущий пароль',
+      sendConfirmationLink: 'Отправить ссылку подтверждения',
+      changePassword: 'Смена пароля',
+      newPassword: 'Новый пароль',
+      confirmNewPassword: 'Подтвердите новый пароль',
+      updatePassword: 'Обновить пароль',
+      sessionExpired: 'Сессия истекла. Войдите снова.',
+      requestFailed: 'Запрос не выполнен',
+      loginFailed: 'Не удалось войти',
+      noTokenReturned: 'Сервер не вернул токен',
+      loadingProfile: 'Загрузка данных профиля...',
+      profileCurrent: 'Данные профиля актуальны.',
+      savingProfile: 'Сохранение профиля...',
+      profileSaved: 'Профиль сохранён.',
+      settingsMustBeJson: 'Настройки профиля должны быть корректным JSON.',
+      settingsMustBeObject: 'Настройки профиля должны быть JSON-объектом.',
+      deliveryAddressFallback: 'Адрес доставки',
+      invoiceProfileFallback: 'Платёжный профиль',
+      defaultBadge: 'По умолчанию',
+      edit: 'Изменить',
+      makeDefault: 'По умолчанию',
+      deleteAction: 'Удалить',
+      noDeliveryAddresses: 'Нет сохранённых адресов доставки.',
+      noInvoiceProfiles: 'Нет сохранённых платёжных профилей.',
+      updateAddress: 'Обновить адрес',
+      savingDeliveryAddress: 'Сохранение адреса доставки...',
+      updatingDeliveryAddress: 'Обновление адреса доставки...',
+      deliveryAddressSaved: 'Адрес доставки сохранён.',
+      updateInvoiceProfile: 'Обновить платёжный профиль',
+      savingInvoiceProfile: 'Сохранение платёжного профиля...',
+      updatingInvoiceProfile: 'Обновление платёжного профиля...',
+      invoiceProfileSaved: 'Платёжный профиль сохранён.',
+      confirmDeleteDelivery: 'Удалить этот адрес доставки?',
+      confirmDeleteInvoice: 'Удалить этот платёжный профиль?',
+      confirmationLinkSent: 'Ссылка подтверждения отправлена.',
+      passwordsMismatch: 'Пароли не совпадают',
+      passwordUpdateFailed: 'Не удалось обновить пароль',
+      passwordUpdated: 'Пароль успешно обновлён',
+      errInvalidCredentials: 'Неверный email/телефон или пароль.',
+      errAccountInactive: 'Этот аккаунт неактивен. Обратитесь в поддержку.',
+      errEmailInUse: 'Email уже используется.',
+      errValidEmailRequired: 'Требуется корректный новый email.',
+      errEmailMustDiffer: 'Новый email должен отличаться от текущего.',
+      errCurrentPasswordIncorrect: 'Текущий пароль неверен.',
+      errNoPasswordSet: 'Пользователь не найден или пароль не задан.',
+      errTooManyRequests: 'Слишком много попыток. Повторите позже.',
+    },
+  };
+
+  /* Exact-match map of known English backend messages to i18n keys.
+     Backend messages stay English on the wire; unknown ones display as-is. */
+  const SERVER_MESSAGES = {
+    'Invalid credentials': 'errInvalidCredentials',
+    'User account is inactive': 'errAccountInactive',
+    'Email is already in use': 'errEmailInUse',
+    'A valid new email is required': 'errValidEmailRequired',
+    'New email must be different from current email': 'errEmailMustDiffer',
+    'Current password is incorrect': 'errCurrentPasswordIncorrect',
+    'User not found or password not set': 'errNoPasswordSet',
+    'Invalid token': 'sessionExpired',
+    'Too many requests, please try again later.': 'errTooManyRequests',
+  };
+
+  function normalizeLang(raw) {
+    if (!raw) return '';
+    const primary = String(raw).trim().toLowerCase().split(/[-_]/)[0];
+    return SUPPORTED_LANGS.indexOf(primary) !== -1 ? primary : '';
+  }
+
+  function resolveLang() {
+    const params = new URLSearchParams(window.location.search);
+    return normalizeLang(params.get('lang'))
+      || normalizeLang(localStorage.getItem(LANG_STORAGE_KEY))
+      || normalizeLang(navigator.language || (navigator.languages && navigator.languages[0]))
+      || 'en';
+  }
+
+  let currentLang = resolveLang();
+
+  function t(key) {
+    const dict = I18N[currentLang] || I18N.en;
+    return dict[key] || I18N.en[key] || key;
+  }
+
+  function localizeServerMessage(message) {
+    if (!message) return message;
+    const key = SERVER_MESSAGES[String(message).trim()];
+    return key ? t(key) : message;
+  }
+
+  function applyI18n(lang) {
+    currentLang = normalizeLang(lang) || 'en';
+    localStorage.setItem(LANG_STORAGE_KEY, currentLang);
+    document.documentElement.lang = currentLang;
+    document.title = t('pageTitle');
+    document.querySelectorAll('.lang-btn').forEach(function (btn) {
+      btn.classList.toggle('lang-btn-active', btn.getAttribute('data-lang') === currentLang);
+    });
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      el.textContent = t(el.getAttribute('data-i18n'));
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+      el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+    });
+    const tokenDisplay = $('token-display');
+    if (tokenDisplay) {
+      setText('show-token-btn', tokenDisplay.type === 'text' ? t('hide') : t('show'));
+    }
+    const deliveryId = $('delivery-address-id');
+    setText('save-delivery-address-btn', deliveryId && deliveryId.value ? t('updateAddress') : t('saveAddress'));
+    const invoiceId = $('invoice-profile-id');
+    setText('save-invoice-profile-btn', invoiceId && invoiceId.value ? t('updateInvoiceProfile') : t('saveInvoiceProfile'));
+    renderDeliveryAddresses();
+    renderInvoiceProfiles();
+  }
+
+  function switchLang(lang) {
+    const next = normalizeLang(lang) || 'en';
+    if (next === currentLang) return;
+    const params = new URLSearchParams(window.location.search);
+    params.set('lang', next);
+    history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+    applyI18n(next);
+  }
 
   const DELIVERY_FIELDS = [
     'label',
@@ -98,8 +476,8 @@
 
   function formatErrorMessage(data, fallback) {
     if (!data) return fallback;
-    if (Array.isArray(data.message)) return data.message.join(', ');
-    return data.message || data.error || fallback;
+    if (Array.isArray(data.message)) return data.message.map(localizeServerMessage).join(', ');
+    return localizeServerMessage(data.message || data.error) || fallback;
   }
 
   async function fetchJson(path, options) {
@@ -127,11 +505,11 @@
     if (res.status === 401) {
       clearToken();
       showView(false);
-      throw new Error('Session expired. Sign in again.');
+      throw new Error(t('sessionExpired'));
     }
 
     if (!res.ok) {
-      throw new Error(formatErrorMessage(data, 'Request failed'));
+      throw new Error(formatErrorMessage(data, t('requestFailed')));
     }
 
     return data || {};
@@ -183,8 +561,8 @@
         body: JSON.stringify({ identifier, password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(formatErrorMessage(data, 'Login failed'));
-      if (!data.accessToken) throw new Error('No token returned');
+      if (!res.ok) throw new Error(formatErrorMessage(data, t('loginFailed')));
+      if (!data.accessToken) throw new Error(t('noTokenReturned'));
       setToken(data.accessToken, data.refreshToken);
       sessionStorage.setItem(STORAGE_EMAIL, identifier);
       showView(true);
@@ -198,7 +576,7 @@
   }
 
   async function loadWalletData() {
-    showStatus('Loading profile data...', '');
+    showStatus(t('loadingProfile'), '');
 
     try {
       const profile = await fetchJson('/auth/profile');
@@ -218,7 +596,7 @@
         setText('header-email', walletState.user.email);
       }
 
-      showStatus('Profile data is current.', 'success');
+      showStatus(t('profileCurrent'), 'success');
       window.setTimeout(function () {
         showStatus('', '');
       }, 1800);
@@ -284,10 +662,10 @@
       try {
         settings = JSON.parse(settingsText);
       } catch (_) {
-        throw new Error('Profile settings must be valid JSON.');
+        throw new Error(t('settingsMustBeJson'));
       }
       if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
-        throw new Error('Profile settings must be a JSON object.');
+        throw new Error(t('settingsMustBeObject'));
       }
     }
 
@@ -311,7 +689,7 @@
 
   async function saveCanonicalProfile(e) {
     e.preventDefault();
-    showStatus('Saving profile...', '');
+    showStatus(t('savingProfile'), '');
 
     try {
       await fetchJson('/auth/profile', {
@@ -319,7 +697,7 @@
         body: JSON.stringify(collectCanonicalProfile()),
       });
       await loadWalletData();
-      showStatus('Profile saved.', 'success');
+      showStatus(t('profileSaved'), 'success');
     } catch (err) {
       showStatus(err.message, 'error');
     }
@@ -349,21 +727,21 @@
 
     const titleWrap = document.createElement('div');
     const title = document.createElement('h3');
-    title.textContent = kind === 'delivery' ? entryTitle(item, 'Delivery address') : entryTitle(item, 'Invoice profile');
+    title.textContent = kind === 'delivery' ? entryTitle(item, t('deliveryAddressFallback')) : entryTitle(item, t('invoiceProfileFallback'));
     titleWrap.appendChild(title);
 
     if (item.isDefault) {
       const badge = document.createElement('span');
       badge.className = 'wallet-badge';
-      badge.textContent = 'Default';
+      badge.textContent = t('defaultBadge');
       titleWrap.appendChild(badge);
     }
 
     const actions = document.createElement('div');
     actions.className = 'wallet-entry-actions';
-    actions.appendChild(actionButton('Edit', kind, 'edit', item.id));
-    if (!item.isDefault) actions.appendChild(actionButton('Default', kind, 'default', item.id));
-    actions.appendChild(actionButton('Delete', kind, 'delete', item.id, 'danger'));
+    actions.appendChild(actionButton(t('edit'), kind, 'edit', item.id));
+    if (!item.isDefault) actions.appendChild(actionButton(t('makeDefault'), kind, 'default', item.id));
+    actions.appendChild(actionButton(t('deleteAction'), kind, 'delete', item.id, 'danger'));
 
     header.appendChild(titleWrap);
     header.appendChild(actions);
@@ -380,7 +758,7 @@
       addLine(details, [item.phone, item.email].filter(Boolean).join(' | '));
       addLine(details, item.deliveryInstructions);
     } else {
-      addLine(details, item.type === 'company' ? 'Company' : 'Person');
+      addLine(details, item.type === 'company' ? t('typeCompany') : t('typePerson'));
       addLine(details, item.companyName);
       addLine(details, [item.companyId, item.taxId, item.vatId].filter(Boolean).join(' | '));
       addLine(details, [item.street, item.street2].filter(Boolean).join(', '));
@@ -412,7 +790,7 @@
     if (!walletState.deliveryAddresses.length) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = 'No delivery addresses saved.';
+      empty.textContent = t('noDeliveryAddresses');
       list.appendChild(empty);
       return;
     }
@@ -430,7 +808,7 @@
     if (!walletState.invoiceProfiles.length) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = 'No invoice profiles saved.';
+      empty.textContent = t('noInvoiceProfiles');
       list.appendChild(empty);
       return;
     }
@@ -466,14 +844,14 @@
     if (form) form.reset();
     setValue('delivery-address-id', '');
     setChecked('delivery-is-default', false);
-    setText('save-delivery-address-btn', 'Save address');
+    setText('save-delivery-address-btn', t('saveAddress'));
   }
 
   function editDeliveryAddress(address) {
     setValue('delivery-address-id', address.id);
     setNamedFields('delivery', DELIVERY_FIELDS, address);
     setChecked('delivery-is-default', address.isDefault);
-    setText('save-delivery-address-btn', 'Update address');
+    setText('save-delivery-address-btn', t('updateAddress'));
     $('delivery-label').focus();
   }
 
@@ -482,7 +860,7 @@
     const id = $('delivery-address-id').value;
     const payload = collectNamedFields('delivery', DELIVERY_FIELDS);
     payload.isDefault = $('delivery-is-default').checked;
-    showStatus(id ? 'Updating delivery address...' : 'Saving delivery address...', '');
+    showStatus(id ? t('updatingDeliveryAddress') : t('savingDeliveryAddress'), '');
 
     try {
       await fetchJson(id ? '/auth/profile/delivery-addresses/' + encodeURIComponent(id) : '/auth/profile/delivery-addresses', {
@@ -491,7 +869,7 @@
       });
       resetDeliveryForm();
       await loadWalletData();
-      showStatus('Delivery address saved.', 'success');
+      showStatus(t('deliveryAddressSaved'), 'success');
     } catch (err) {
       showStatus(err.message, 'error');
     }
@@ -503,7 +881,7 @@
     setValue('invoice-profile-id', '');
     setValue('invoice-type', 'person');
     setChecked('invoice-is-default', false);
-    setText('save-invoice-profile-btn', 'Save invoice profile');
+    setText('save-invoice-profile-btn', t('saveInvoiceProfile'));
   }
 
   function editInvoiceProfile(profile) {
@@ -511,7 +889,7 @@
     setNamedFields('invoice', INVOICE_FIELDS, profile);
     setValue('invoice-type', profile.type || 'person');
     setChecked('invoice-is-default', profile.isDefault);
-    setText('save-invoice-profile-btn', 'Update invoice profile');
+    setText('save-invoice-profile-btn', t('updateInvoiceProfile'));
     $('invoice-label').focus();
   }
 
@@ -521,7 +899,7 @@
     const payload = collectNamedFields('invoice', INVOICE_FIELDS);
     payload.type = payload.type || 'person';
     payload.isDefault = $('invoice-is-default').checked;
-    showStatus(id ? 'Updating invoice profile...' : 'Saving invoice profile...', '');
+    showStatus(id ? t('updatingInvoiceProfile') : t('savingInvoiceProfile'), '');
 
     try {
       await fetchJson(id ? '/auth/profile/invoice-profiles/' + encodeURIComponent(id) : '/auth/profile/invoice-profiles', {
@@ -530,7 +908,7 @@
       });
       resetInvoiceForm();
       await loadWalletData();
-      showStatus('Invoice profile saved.', 'success');
+      showStatus(t('invoiceProfileSaved'), 'success');
     } catch (err) {
       showStatus(err.message, 'error');
     }
@@ -566,7 +944,7 @@
       return;
     }
 
-    if (action === 'delete' && !window.confirm('Delete this delivery address?')) return;
+    if (action === 'delete' && !window.confirm(t('confirmDeleteDelivery'))) return;
 
     try {
       if (action === 'default') {
@@ -590,7 +968,7 @@
       return;
     }
 
-    if (action === 'delete' && !window.confirm('Delete this invoice profile?')) return;
+    if (action === 'delete' && !window.confirm(t('confirmDeleteInvoice'))) return;
 
     try {
       if (action === 'default') {
@@ -620,11 +998,12 @@
           newEmail: $('new-email').value.trim(),
           currentPassword: $('email-change-current-password').value || undefined,
           return_url: window.location.origin + '/profile',
+          lang: currentLang,
         }),
       });
       const el = $('email-change-success');
       if (el) {
-        el.textContent = data.message || 'Confirmation link sent.';
+        el.textContent = data.message || t('confirmationLinkSent');
         el.classList.remove('hidden');
       }
       $('email-change-form').reset();
@@ -648,7 +1027,7 @@
     if (next !== confirm) {
       const el = $('password-error');
       if (el) {
-        el.textContent = 'Passwords do not match';
+        el.textContent = t('passwordsMismatch');
         el.classList.remove('hidden');
       }
       return;
@@ -661,10 +1040,10 @@
         body: JSON.stringify({ currentPassword: current, newPassword: next }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(formatErrorMessage(data, 'Failed to update password'));
+      if (!res.ok) throw new Error(formatErrorMessage(data, t('passwordUpdateFailed')));
       const el = $('password-success');
       if (el) {
-        el.textContent = 'Password updated successfully';
+        el.textContent = t('passwordUpdated');
         el.classList.remove('hidden');
       }
       $('password-form').reset();
@@ -684,7 +1063,7 @@
     if (!td) return;
     const hidden = td.type === 'password';
     td.type = hidden ? 'text' : 'password';
-    if (showBtn) showBtn.textContent = hidden ? 'Hide' : 'Show';
+    if (showBtn) showBtn.textContent = hidden ? t('hide') : t('show');
     if (copyBtn) copyBtn.classList.toggle('hidden', !hidden);
   }
 
@@ -707,6 +1086,7 @@
 
   function init() {
     tryHashLogin();
+    applyI18n(currentLang);
 
     if (isLoggedIn()) {
       showView(true);
@@ -727,6 +1107,11 @@
     bind('show-token-btn', 'click', toggleToken);
     bind('copy-token-btn', 'click', copyToken);
     document.addEventListener('click', handleWalletAction);
+    document.querySelectorAll('.lang-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        switchLang(btn.getAttribute('data-lang'));
+      });
+    });
 
     const logoutLink = $('logout-link');
     if (logoutLink) {

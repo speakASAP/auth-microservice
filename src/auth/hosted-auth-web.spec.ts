@@ -45,6 +45,41 @@ describe('hosted auth web contract', () => {
     expect(html).toContain("loginParams.set('lang', currentLang)");
   });
 
+  it('falls back to the browser language and persists the choice across sessions', () => {
+    expect(html).toContain('normalizeLang(navigator.language || (navigator.languages && navigator.languages[0]))');
+    expect(html).toContain('localStorage.getItem(LANG_STORAGE_KEY)');
+    expect(html).toContain('localStorage.setItem(LANG_STORAGE_KEY, currentLang)');
+    expect(html).not.toContain('sessionStorage.getItem(LANG_STORAGE_KEY)');
+    expect(profileJs).toContain('normalizeLang(navigator.language || (navigator.languages && navigator.languages[0]))');
+    expect(profileJs).toContain('localStorage.getItem(LANG_STORAGE_KEY)');
+    expect(profileJs).toContain("const LANG_STORAGE_KEY = 'auth_lang'");
+  });
+
+  it('localizes known backend error messages at display time without changing the wire format', () => {
+    expect(html).toContain('const SERVER_MESSAGES = {');
+    expect(html).toContain('function localizeServerMessage(message)');
+    expect(html).toContain("'Invalid credentials': 'errInvalidCredentials'");
+    expect(html).toContain("'Invalid or expired sign-in code': 'invalidCode'");
+    expect(html).toContain('const localized = localizeServerMessage(message)');
+    expect(profileJs).toContain('const SERVER_MESSAGES = {');
+    expect(profileJs).toContain('data.message.map(localizeServerMessage)');
+    expect(profileJs).toContain('localizeServerMessage(data.message || data.error)');
+  });
+
+  it('localizes the hosted profile page in en/cs/ru with a switcher', () => {
+    expect(profileHtml).toContain('class="lang-switcher"');
+    expect(profileHtml).toContain('data-lang="en"');
+    expect(profileHtml).toContain('data-lang="cs"');
+    expect(profileHtml).toContain('data-lang="ru"');
+    expect(profileHtml).toContain('data-i18n="signInToView"');
+    expect(profileHtml).toContain('data-i18n="canonicalProfile"');
+    expect(profileHtml).toContain('data-i18n-placeholder="tokenPlaceholder"');
+    expect(profileJs).toContain("const SUPPORTED_LANGS = ['en', 'cs', 'ru']");
+    expect(profileJs).toContain('function applyI18n(lang)');
+    expect(profileJs).toContain("document.querySelectorAll('[data-i18n]')");
+    expect(profileJs).toContain('lang: currentLang');
+  });
+
   it('serves emailed password reset links from the hosted Auth page', () => {
     expect(mainTs).toContain("['/login', '/register', '/reset-password']");
     expect(webServer).toContain("['/login', '/register', '/reset-password']");
@@ -120,6 +155,13 @@ describe('hosted auth web contract', () => {
     expect(profileJs).toContain('body: JSON.stringify({ identifier, password })');
     expect(profileJs).not.toContain('body: JSON.stringify({ email, password })');
     expect(profileJs).not.toContain("console.log");
-    expect(profileJs).not.toContain("localStorage");
+    // Tokens must never touch localStorage; only the UI language key may live there.
+    expect(profileJs).toContain("sessionStorage.getItem(STORAGE_ACCESS)");
+    expect(profileJs).toContain("sessionStorage.setItem(STORAGE_ACCESS, access)");
+    expect(profileJs).not.toContain("localStorage.setItem(STORAGE_ACCESS");
+    expect(profileJs).not.toContain("localStorage.setItem(STORAGE_REFRESH");
+    expect(profileJs).not.toContain("localStorage.getItem(STORAGE_ACCESS");
+    const localStorageUses = profileJs.match(/localStorage\.(?:getItem|setItem|removeItem)\(\s*([A-Z_]+)/g) || [];
+    expect(localStorageUses.every((use) => use.includes('LANG_STORAGE_KEY'))).toBe(true);
   });
 });

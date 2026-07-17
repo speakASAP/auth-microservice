@@ -11,18 +11,23 @@
   <!-- Not authenticated -->
   <div id="login-view" class="container hidden">
     <div class="login-box">
-      <h2>Sign in to view your profile</h2>
+      <div class="lang-switcher" role="group" aria-label="Language">
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+        <button type="button" class="lang-btn" data-lang="cs">CS</button>
+        <button type="button" class="lang-btn" data-lang="ru">RU</button>
+      </div>
+      <h2 data-i18n="signInToView">Sign in to view your profile</h2>
       <form id="login-form">
         <div class="form-group">
-          <label for="identifier">Email or phone</label>
+          <label for="identifier" data-i18n="emailOrPhone">Email or phone</label>
           <input type="text" id="identifier" name="identifier" required autocomplete="username">
         </div>
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password" data-i18n="password">Password</label>
           <input type="password" id="password" name="password" required autocomplete="current-password">
         </div>
         <div id="login-error" class="error hidden"></div>
-        <button type="submit" class="btn" style="width:100%;margin-top:0.5rem;">Sign in</button>
+        <button type="submit" class="btn" style="width:100%;margin-top:0.5rem;" data-i18n="signIn">Sign in</button>
       </form>
     </div>
   </div>
@@ -30,10 +35,15 @@
   <!-- Authenticated -->
   <div id="profile-view" class="container hidden">
     <div class="profile-header">
-      <h1>My Profile</h1>
+      <h1 data-i18n="myProfile">My Profile</h1>
       <div class="header-right">
+        <div class="lang-switcher" role="group" aria-label="Language" style="margin: 0;">
+          <button type="button" class="lang-btn" data-lang="en">EN</button>
+          <button type="button" class="lang-btn" data-lang="cs">CS</button>
+          <button type="button" class="lang-btn" data-lang="ru">RU</button>
+        </div>
         <span id="header-email"></span>
-        <a href="#" id="logout-link" class="logout">Sign out</a>
+        <a href="#" id="logout-link" class="logout" data-i18n="signOut">Sign out</a>
       </div>
     </div>
 
@@ -42,211 +52,211 @@
     <div class="profile-layout">
       <section class="profile-card profile-card-wide" id="canonical-profile-section">
         <div class="profile-card-header">
-          <h2>Canonical Profile</h2>
-          <button type="button" class="btn btn-secondary" id="refresh-wallet-btn">Refresh</button>
+          <h2 data-i18n="canonicalProfile">Canonical Profile</h2>
+          <button type="button" class="btn btn-secondary" id="refresh-wallet-btn" data-i18n="refresh">Refresh</button>
         </div>
         <form id="canonical-profile-form">
           <div class="profile-form-grid">
             <div class="form-group">
-              <label for="profile-first-name">First name</label>
+              <label for="profile-first-name" data-i18n="firstName">First name</label>
               <input type="text" id="profile-first-name" name="firstName" maxlength="100" autocomplete="given-name">
             </div>
             <div class="form-group">
-              <label for="profile-last-name">Last name</label>
+              <label for="profile-last-name" data-i18n="lastName">Last name</label>
               <input type="text" id="profile-last-name" name="lastName" maxlength="100" autocomplete="family-name">
             </div>
             <div class="form-group">
-              <label for="profile-phone">Phone</label>
+              <label for="profile-phone" data-i18n="phone">Phone</label>
               <input type="tel" id="profile-phone" name="phone" maxlength="40" autocomplete="tel">
             </div>
             <div class="form-group profile-span-2">
-              <label for="profile-avatar-url">Profile image URL</label>
+              <label for="profile-avatar-url" data-i18n="profileImageUrl">Profile image URL</label>
               <input type="url" id="profile-avatar-url" name="avatarUrl" maxlength="2048" autocomplete="photo">
             </div>
             <div class="form-group">
-              <label for="profile-address-street">Street</label>
+              <label for="profile-address-street" data-i18n="street">Street</label>
               <input type="text" id="profile-address-street" name="street" maxlength="255" autocomplete="street-address">
             </div>
             <div class="form-group">
-              <label for="profile-address-city">City</label>
+              <label for="profile-address-city" data-i18n="city">City</label>
               <input type="text" id="profile-address-city" name="city" maxlength="120" autocomplete="address-level2">
             </div>
             <div class="form-group">
-              <label for="profile-address-postal-code">Postal code</label>
+              <label for="profile-address-postal-code" data-i18n="postalCode">Postal code</label>
               <input type="text" id="profile-address-postal-code" name="postalCode" maxlength="20" autocomplete="postal-code">
             </div>
             <div class="form-group">
-              <label for="profile-address-country">Country</label>
+              <label for="profile-address-country" data-i18n="country">Country</label>
               <input type="text" id="profile-address-country" name="country" maxlength="120" autocomplete="country-name">
             </div>
             <div class="form-group profile-span-2">
-              <label for="profile-settings-json">Profile settings JSON</label>
+              <label for="profile-settings-json" data-i18n="profileSettingsJson">Profile settings JSON</label>
               <textarea id="profile-settings-json" name="settings" maxlength="4000" rows="4" spellcheck="false"></textarea>
             </div>
           </div>
           <div class="profile-actions">
-            <button type="submit" class="btn">Save profile</button>
+            <button type="submit" class="btn" data-i18n="saveProfile">Save profile</button>
           </div>
         </form>
       </section>
 
       <section class="profile-card profile-card-wide" id="delivery-addresses-section">
         <div class="profile-card-header">
-          <h2>Delivery Addresses</h2>
-          <button type="button" class="btn btn-secondary" id="new-delivery-address-btn">New address</button>
+          <h2 data-i18n="deliveryAddresses">Delivery Addresses</h2>
+          <button type="button" class="btn btn-secondary" id="new-delivery-address-btn" data-i18n="newAddress">New address</button>
         </div>
         <div id="delivery-address-list" class="wallet-list"></div>
         <form id="delivery-address-form" class="wallet-form">
           <input type="hidden" id="delivery-address-id" name="id">
           <div class="profile-form-grid">
             <div class="form-group">
-              <label for="delivery-label">Label</label>
+              <label for="delivery-label" data-i18n="label">Label</label>
               <input type="text" id="delivery-label" name="label" maxlength="120" autocomplete="off">
             </div>
             <div class="form-group">
-              <label for="delivery-first-name">First name</label>
+              <label for="delivery-first-name" data-i18n="firstName">First name</label>
               <input type="text" id="delivery-first-name" name="firstName" maxlength="100" autocomplete="shipping given-name">
             </div>
             <div class="form-group">
-              <label for="delivery-last-name">Last name</label>
+              <label for="delivery-last-name" data-i18n="lastName">Last name</label>
               <input type="text" id="delivery-last-name" name="lastName" maxlength="100" autocomplete="shipping family-name">
             </div>
             <div class="form-group">
-              <label for="delivery-company">Company</label>
+              <label for="delivery-company" data-i18n="company">Company</label>
               <input type="text" id="delivery-company" name="company" maxlength="160" autocomplete="shipping organization">
             </div>
             <div class="form-group profile-span-2">
-              <label for="delivery-street">Street</label>
+              <label for="delivery-street" data-i18n="street">Street</label>
               <input type="text" id="delivery-street" name="street" maxlength="255" autocomplete="shipping address-line1">
             </div>
             <div class="form-group">
-              <label for="delivery-street2">Street 2</label>
+              <label for="delivery-street2" data-i18n="street2">Street 2</label>
               <input type="text" id="delivery-street2" name="street2" maxlength="255" autocomplete="shipping address-line2">
             </div>
             <div class="form-group">
-              <label for="delivery-city">City</label>
+              <label for="delivery-city" data-i18n="city">City</label>
               <input type="text" id="delivery-city" name="city" maxlength="120" autocomplete="shipping address-level2">
             </div>
             <div class="form-group">
-              <label for="delivery-region">Region</label>
+              <label for="delivery-region" data-i18n="region">Region</label>
               <input type="text" id="delivery-region" name="region" maxlength="120" autocomplete="shipping address-level1">
             </div>
             <div class="form-group">
-              <label for="delivery-postal-code">Postal code</label>
+              <label for="delivery-postal-code" data-i18n="postalCode">Postal code</label>
               <input type="text" id="delivery-postal-code" name="postalCode" maxlength="20" autocomplete="shipping postal-code">
             </div>
             <div class="form-group">
-              <label for="delivery-country">Country</label>
+              <label for="delivery-country" data-i18n="country">Country</label>
               <input type="text" id="delivery-country" name="country" maxlength="120" autocomplete="shipping country-name">
             </div>
             <div class="form-group">
-              <label for="delivery-phone">Phone</label>
+              <label for="delivery-phone" data-i18n="phone">Phone</label>
               <input type="tel" id="delivery-phone" name="phone" maxlength="40" autocomplete="shipping tel">
             </div>
             <div class="form-group">
-              <label for="delivery-email">Email</label>
+              <label for="delivery-email" data-i18n="email">Email</label>
               <input type="email" id="delivery-email" name="email" maxlength="180" autocomplete="shipping email">
             </div>
             <div class="form-group profile-span-2">
-              <label for="delivery-delivery-instructions">Delivery instructions</label>
+              <label for="delivery-delivery-instructions" data-i18n="deliveryInstructions">Delivery instructions</label>
               <textarea id="delivery-delivery-instructions" name="deliveryInstructions" maxlength="1000" rows="3"></textarea>
             </div>
           </div>
           <label class="inline-check">
             <input type="checkbox" id="delivery-is-default" name="isDefault">
-            <span>Default delivery address</span>
+            <span data-i18n="defaultDeliveryAddress">Default delivery address</span>
           </label>
           <div class="profile-actions">
-            <button type="submit" class="btn" id="save-delivery-address-btn">Save address</button>
-            <button type="button" class="btn btn-secondary" id="cancel-delivery-edit-btn">Clear</button>
+            <button type="submit" class="btn" id="save-delivery-address-btn" data-i18n="saveAddress">Save address</button>
+            <button type="button" class="btn btn-secondary" id="cancel-delivery-edit-btn" data-i18n="clear">Clear</button>
           </div>
         </form>
       </section>
 
       <section class="profile-card profile-card-wide" id="invoice-profiles-section">
         <div class="profile-card-header">
-          <h2>Invoice Profiles</h2>
-          <button type="button" class="btn btn-secondary" id="new-invoice-profile-btn">New invoice profile</button>
+          <h2 data-i18n="invoiceProfiles">Invoice Profiles</h2>
+          <button type="button" class="btn btn-secondary" id="new-invoice-profile-btn" data-i18n="newInvoiceProfile">New invoice profile</button>
         </div>
         <div id="invoice-profile-list" class="wallet-list"></div>
         <form id="invoice-profile-form" class="wallet-form">
           <input type="hidden" id="invoice-profile-id" name="id">
           <div class="profile-form-grid">
             <div class="form-group">
-              <label for="invoice-label">Label</label>
+              <label for="invoice-label" data-i18n="label">Label</label>
               <input type="text" id="invoice-label" name="label" maxlength="120" autocomplete="off">
             </div>
             <div class="form-group">
-              <label for="invoice-type">Type</label>
+              <label for="invoice-type" data-i18n="type">Type</label>
               <select id="invoice-type" name="type">
-                <option value="person">Person</option>
-                <option value="company">Company</option>
+                <option value="person" data-i18n="typePerson">Person</option>
+                <option value="company" data-i18n="typeCompany">Company</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="invoice-first-name">First name</label>
+              <label for="invoice-first-name" data-i18n="firstName">First name</label>
               <input type="text" id="invoice-first-name" name="firstName" maxlength="100" autocomplete="billing given-name">
             </div>
             <div class="form-group">
-              <label for="invoice-last-name">Last name</label>
+              <label for="invoice-last-name" data-i18n="lastName">Last name</label>
               <input type="text" id="invoice-last-name" name="lastName" maxlength="100" autocomplete="billing family-name">
             </div>
             <div class="form-group">
-              <label for="invoice-company-name">Company name</label>
+              <label for="invoice-company-name" data-i18n="companyName">Company name</label>
               <input type="text" id="invoice-company-name" name="companyName" maxlength="180" autocomplete="billing organization">
             </div>
             <div class="form-group">
-              <label for="invoice-company-id">Company ID</label>
+              <label for="invoice-company-id" data-i18n="companyId">Company ID</label>
               <input type="text" id="invoice-company-id" name="companyId" maxlength="80" autocomplete="off">
             </div>
             <div class="form-group">
-              <label for="invoice-tax-id">Tax ID</label>
+              <label for="invoice-tax-id" data-i18n="taxId">Tax ID</label>
               <input type="text" id="invoice-tax-id" name="taxId" maxlength="80" autocomplete="off">
             </div>
             <div class="form-group">
-              <label for="invoice-vat-id">VAT ID</label>
+              <label for="invoice-vat-id" data-i18n="vatId">VAT ID</label>
               <input type="text" id="invoice-vat-id" name="vatId" maxlength="80" autocomplete="off">
             </div>
             <div class="form-group profile-span-2">
-              <label for="invoice-street">Street</label>
+              <label for="invoice-street" data-i18n="street">Street</label>
               <input type="text" id="invoice-street" name="street" maxlength="255" autocomplete="billing address-line1">
             </div>
             <div class="form-group">
-              <label for="invoice-street2">Street 2</label>
+              <label for="invoice-street2" data-i18n="street2">Street 2</label>
               <input type="text" id="invoice-street2" name="street2" maxlength="255" autocomplete="billing address-line2">
             </div>
             <div class="form-group">
-              <label for="invoice-city">City</label>
+              <label for="invoice-city" data-i18n="city">City</label>
               <input type="text" id="invoice-city" name="city" maxlength="120" autocomplete="billing address-level2">
             </div>
             <div class="form-group">
-              <label for="invoice-region">Region</label>
+              <label for="invoice-region" data-i18n="region">Region</label>
               <input type="text" id="invoice-region" name="region" maxlength="120" autocomplete="billing address-level1">
             </div>
             <div class="form-group">
-              <label for="invoice-postal-code">Postal code</label>
+              <label for="invoice-postal-code" data-i18n="postalCode">Postal code</label>
               <input type="text" id="invoice-postal-code" name="postalCode" maxlength="20" autocomplete="billing postal-code">
             </div>
             <div class="form-group">
-              <label for="invoice-country">Country</label>
+              <label for="invoice-country" data-i18n="country">Country</label>
               <input type="text" id="invoice-country" name="country" maxlength="120" autocomplete="billing country-name">
             </div>
             <div class="form-group">
-              <label for="invoice-phone">Phone</label>
+              <label for="invoice-phone" data-i18n="phone">Phone</label>
               <input type="tel" id="invoice-phone" name="phone" maxlength="40" autocomplete="billing tel">
             </div>
             <div class="form-group">
-              <label for="invoice-email">Invoice email</label>
+              <label for="invoice-email" data-i18n="invoiceEmail">Invoice email</label>
               <input type="email" id="invoice-email" name="email" maxlength="180" autocomplete="billing email">
             </div>
           </div>
           <label class="inline-check">
             <input type="checkbox" id="invoice-is-default" name="isDefault">
-            <span>Default invoice profile</span>
+            <span data-i18n="defaultInvoiceProfile">Default invoice profile</span>
           </label>
           <div class="profile-actions">
-            <button type="submit" class="btn" id="save-invoice-profile-btn">Save invoice profile</button>
-            <button type="button" class="btn btn-secondary" id="cancel-invoice-edit-btn">Clear</button>
+            <button type="submit" class="btn" id="save-invoice-profile-btn" data-i18n="saveInvoiceProfile">Save invoice profile</button>
+            <button type="button" class="btn btn-secondary" id="cancel-invoice-edit-btn" data-i18n="clear">Clear</button>
           </div>
         </form>
       </section>
@@ -254,55 +264,55 @@
 
     <!-- Access Token -->
     <div class="profile-card">
-      <h2>Access Token</h2>
-      <p style="color:var(--muted);font-size:0.875rem;margin:0 0 1rem 0;">Your JWT token for use in API calls across the ecosystem. Keep it secure.</p>
+      <h2 data-i18n="accessToken">Access Token</h2>
+      <p style="color:var(--muted);font-size:0.875rem;margin:0 0 1rem 0;" data-i18n="tokenHint">Your JWT token for use in API calls across the ecosystem. Keep it secure.</p>
       <div class="token-row">
-        <input type="password" id="token-display" readonly placeholder="Click 'Show' to reveal">
+        <input type="password" id="token-display" readonly placeholder="Click 'Show' to reveal" data-i18n-placeholder="tokenPlaceholder">
         <div class="token-actions">
-          <button type="button" class="btn" id="show-token-btn">Show</button>
-          <button type="button" class="btn btn-secondary hidden" id="copy-token-btn">Copy</button>
+          <button type="button" class="btn" id="show-token-btn" data-i18n="show">Show</button>
+          <button type="button" class="btn btn-secondary hidden" id="copy-token-btn" data-i18n="copy">Copy</button>
         </div>
       </div>
-      <div id="copy-success" class="success hidden">Copied to clipboard!</div>
+      <div id="copy-success" class="success hidden" data-i18n="copiedToClipboard">Copied to clipboard!</div>
     </div>
 
     <!-- Change Email -->
     <div class="profile-card">
-      <h2>Change Email</h2>
+      <h2 data-i18n="changeEmail">Change Email</h2>
       <form id="email-change-form">
         <div class="form-group">
-          <label for="new-email">New email</label>
+          <label for="new-email" data-i18n="newEmail">New email</label>
           <input type="email" id="new-email" name="newEmail" required autocomplete="email" maxlength="255">
         </div>
         <div class="form-group">
-          <label for="email-change-current-password">Current Password</label>
+          <label for="email-change-current-password" data-i18n="currentPassword">Current Password</label>
           <input type="password" id="email-change-current-password" name="currentPassword" autocomplete="current-password">
         </div>
         <div id="email-change-error" class="error hidden"></div>
         <div id="email-change-success" class="success hidden"></div>
-        <button type="submit" class="btn">Send confirmation link</button>
+        <button type="submit" class="btn" data-i18n="sendConfirmationLink">Send confirmation link</button>
       </form>
     </div>
 
     <!-- Change Password -->
     <div class="profile-card">
-      <h2>Change Password</h2>
+      <h2 data-i18n="changePassword">Change Password</h2>
       <form id="password-form">
         <div class="form-group">
-          <label for="current-password">Current Password</label>
+          <label for="current-password" data-i18n="currentPassword">Current Password</label>
           <input type="password" id="current-password" name="currentPassword" required autocomplete="current-password">
         </div>
         <div class="form-group">
-          <label for="new-password">New Password</label>
+          <label for="new-password" data-i18n="newPassword">New Password</label>
           <input type="password" id="new-password" name="newPassword" required autocomplete="new-password" minlength="8">
         </div>
         <div class="form-group">
-          <label for="confirm-password">Confirm New Password</label>
+          <label for="confirm-password" data-i18n="confirmNewPassword">Confirm New Password</label>
           <input type="password" id="confirm-password" name="confirmPassword" required autocomplete="new-password" minlength="8">
         </div>
         <div id="password-error" class="error hidden"></div>
         <div id="password-success" class="success hidden"></div>
-        <button type="submit" class="btn">Update Password</button>
+        <button type="submit" class="btn" data-i18n="updatePassword">Update Password</button>
       </form>
     </div>
   </div>

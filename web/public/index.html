@@ -143,6 +143,9 @@
         enterEmailToReset: 'Enter your account email to reset the password.',
         resetRequestFailed: 'Could not request password reset',
         resetRequested: 'Password reset instructions were requested for this email.',
+        errInvalidCredentials: 'Invalid email/phone or password.',
+        errAccountInactive: 'This account is inactive. Contact support.',
+        errTooManyRequests: 'Too many attempts. Please try again later.',
       },
       cs: {
         pageTitle: 'Auth služba',
@@ -199,6 +202,9 @@
         enterEmailToReset: 'Pro obnovení hesla zadejte e-mail účtu.',
         resetRequestFailed: 'Nepodařilo se požádat o obnovení hesla',
         resetRequested: 'Instrukce pro obnovení hesla byly odeslány na tento e-mail.',
+        errInvalidCredentials: 'Neplatný e-mail/telefon nebo heslo.',
+        errAccountInactive: 'Tento účet je neaktivní. Kontaktujte podporu.',
+        errTooManyRequests: 'Příliš mnoho pokusů. Zkuste to prosím později.',
       },
       ru: {
         pageTitle: 'Сервис авторизации',
@@ -255,6 +261,9 @@
         enterEmailToReset: 'Введите email аккаунта для сброса пароля.',
         resetRequestFailed: 'Не удалось запросить сброс пароля',
         resetRequested: 'Инструкции по сбросу пароля запрошены для этого email.',
+        errInvalidCredentials: 'Неверный email/телефон или пароль.',
+        errAccountInactive: 'Этот аккаунт неактивен. Обратитесь в поддержку.',
+        errTooManyRequests: 'Слишком много попыток. Повторите позже.',
       },
     };
 
@@ -267,13 +276,38 @@
     function resolveLang() {
       const params = new URLSearchParams(window.location.search);
       return normalizeLang(params.get('lang'))
-        || normalizeLang(sessionStorage.getItem(LANG_STORAGE_KEY))
+        || normalizeLang(localStorage.getItem(LANG_STORAGE_KEY))
+        || normalizeLang(navigator.language || (navigator.languages && navigator.languages[0]))
         || 'en';
     }
 
     function t(key) {
       const dict = I18N[currentLang] || I18N.en;
       return dict[key] || I18N.en[key] || key;
+    }
+
+    /* Exact-match map of known English backend messages to i18n keys.
+       Backend messages stay English on the wire; unknown ones display as-is. */
+    const SERVER_MESSAGES = {
+      'Invalid credentials': 'errInvalidCredentials',
+      'User account is inactive': 'errAccountInactive',
+      'User with this email already exists': 'accountExists',
+      'Email is already in use': 'accountExists',
+      'Invalid or expired reset token': 'invalidResetToken',
+      'Reset token has expired': 'invalidResetToken',
+      'Invalid or expired sign-in code': 'invalidCode',
+      'Invalid return_url': 'invalidReturnUrl',
+      'return_url must use HTTPS': 'invalidReturnUrl',
+      'return_url is not allowed': 'invalidReturnUrl',
+      'Too many requests, please try again later.': 'errTooManyRequests',
+      'Identifier is required': 'enterEmailOrPhone',
+      'Password must be at least 6 characters': 'passwordMinLength',
+    };
+
+    function localizeServerMessage(message) {
+      if (!message) return message;
+      const key = SERVER_MESSAGES[String(message).trim()];
+      return key ? t(key) : message;
     }
 
     function buildSearchParams(extra) {
@@ -296,7 +330,7 @@
     }
 
     let currentLang = resolveLang();
-    sessionStorage.setItem(LANG_STORAGE_KEY, currentLang);
+    localStorage.setItem(LANG_STORAGE_KEY, currentLang);
     if (!new URLSearchParams(window.location.search).get('lang')) {
       setLangInUrl(currentLang);
     }
@@ -348,7 +382,7 @@
 
     function applyI18n(lang) {
       currentLang = normalizeLang(lang) || 'en';
-      sessionStorage.setItem(LANG_STORAGE_KEY, currentLang);
+      localStorage.setItem(LANG_STORAGE_KEY, currentLang);
       document.documentElement.lang = currentLang;
       document.title = t('pageTitle');
       document.querySelectorAll('.lang-btn').forEach((btn) => {
@@ -408,8 +442,9 @@
     }
 
     function setError(message) {
-      submitError.style.display = message ? 'block' : 'none';
-      submitError.textContent = message || '';
+      const localized = localizeServerMessage(message);
+      submitError.style.display = localized ? 'block' : 'none';
+      submitError.textContent = localized || '';
     }
 
     function setSuccess(message) {
