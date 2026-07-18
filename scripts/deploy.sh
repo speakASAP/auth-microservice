@@ -44,7 +44,7 @@ compute_default_tag() {
   fi
 }
 
-DEFAULT_TAG="$(compute_default_tag)-$(date -u +%Y%m%d%H%M%S)"
+DEFAULT_TAG="$(compute_default_tag)"
 IMAGE_TAG="${1:-$DEFAULT_TAG}"
 IMAGE="${REGISTRY}/${SERVICE_NAME}:${IMAGE_TAG}"
 IMAGE_LATEST="${REGISTRY}/${SERVICE_NAME}:latest"
