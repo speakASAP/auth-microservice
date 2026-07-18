@@ -58,7 +58,6 @@ const APPLICATIONS = [
 
   // Infrastructure services
   { name: 'auth-microservice', displayName: 'Auth Microservice', type: ApplicationType.INFRASTRUCTURE },
-  { name: 'nginx-microservice', displayName: 'Nginx Microservice', type: ApplicationType.INFRASTRUCTURE },
   { name: 'database-server', displayName: 'Database Server', type: ApplicationType.INFRASTRUCTURE },
 ];
 
@@ -78,7 +77,7 @@ function toDisplayName(serviceName: string): string {
 }
 
 function inferType(serviceName: string): ApplicationType {
-  if (serviceName === 'auth-microservice' || serviceName === 'nginx-microservice' || serviceName === 'database-server') {
+  if (serviceName === 'auth-microservice' || serviceName === 'database-server') {
     return ApplicationType.INFRASTRUCTURE;
   }
   if (serviceName.endsWith('-microservice')) {
@@ -89,10 +88,7 @@ function inferType(serviceName: string): ApplicationType {
 
 function discoverApplicationsFromRegistry(): AppSeedRecord[] {
   const registryCandidates = [
-    process.env.NGINX_SERVICE_REGISTRY_DIR,
-    resolve(__dirname, '../../nginx-microservice/service-registry'),
-    '~/Documents/Github/nginx-microservice/service-registry',
-    '/home/alfares/nginx-microservice/service-registry',
+    process.env.SERVICE_REGISTRY_DIR,
   ].filter((candidate): candidate is string => Boolean(candidate));
 
   const registryDir = registryCandidates.find((candidate) => existsSync(candidate));
