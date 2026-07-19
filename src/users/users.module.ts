@@ -10,9 +10,10 @@ import { User } from './entities/user.entity';
 import { UserDeliveryAddress } from './entities/user-delivery-address.entity';
 import { UserInvoiceProfile } from './entities/user-invoice-profile.entity';
 import { LegacyIdentityMapping } from './entities/legacy-identity-mapping.entity';
+import { UserMarketingConsent } from './entities/user-marketing-consent.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, UserDeliveryAddress, UserInvoiceProfile, LegacyIdentityMapping])],
+  imports: [TypeOrmModule.forFeature([User, UserDeliveryAddress, UserInvoiceProfile, LegacyIdentityMapping, UserMarketingConsent])],
   controllers: [InternalUsersController],
   providers: [UsersService],
   exports: [UsersService],
