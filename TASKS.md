@@ -28,3 +28,19 @@
 ## Project Completion Marker
 
 - 2026-06-21: Project marked completed/frozen after remote inventory. There are no active goals, active plans, open tasks, blockers, or pending human/AI actions. Do not ask for a new goal during routine status checks unless the owner explicitly creates one.
+
+## TASK-AUTH-EVENTS — emit domain events (currently emits none)
+
+**Status:** open · **Raised:** 2026-07-19 by `growth` slice S5 · **Priority:** blocks growth MS-002
+
+Auth emits no domain events at all — verified, no RabbitMQ/amqp/publisher in `src/`. Registration produces only a log line.
+
+**Deliverable:** `auth.user.registered.v1` on successful registration, published to RabbitMQ using the outbox pattern already proven in `catalog`, `warehouse` and `orders`.
+
+**Hard constraint:** the event stays generic — `{ userId, registeredAt, applicationId?, correlationId }`. No consumer-specific fields. Auth serves the whole ecosystem; embedding one consumer's domain model into its events couples every future consumer to it.
+
+**Risk:** shared infrastructure. A regression breaks login for every application. Requires full regression evidence and should not be a cold agent's first task.
+
+**Blast radius limit:** changes confined to `src/auth/**` and a new `src/events/**`. Do not touch `src/{admin,roles,users,applications}/**`.
+
+See `growth/docs/21_execution_plans/EP-005-landing-and-ingestion.md` §W3.
