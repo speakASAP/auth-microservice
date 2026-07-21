@@ -29,18 +29,54 @@
 
 - 2026-06-21: Project marked completed/frozen after remote inventory. There are no active goals, active plans, open tasks, blockers, or pending human/AI actions. Do not ask for a new goal during routine status checks unless the owner explicitly creates one.
 
-## TASK-AUTH-EVENTS — emit domain events (currently emits none)
+## TASK-AUTH-EVENTS — emit domain events
 
-**Status:** open · **Raised:** 2026-07-19 by `growth` slice S5 · **Priority:** blocks growth MS-002
+**Status:** ✅ done 2026-07-21 · **Raised:** 2026-07-19 by `growth` slice S5
 
-Auth emits no domain events at all — verified, no RabbitMQ/amqp/publisher in `src/`. Registration produces only a log line.
+`auth.user.registered.v1` is published to the `auth.events` topic exchange (durable, routing key =
+event type). Verified on the live service: a registration returned 201 and the event arrived in
+`growth.auth-registrations` with the `correlationId` round-tripped from `state`.
 
-**Deliverable:** `auth.user.registered.v1` on successful registration, published to RabbitMQ using the outbox pattern already proven in `catalog`, `warehouse` and `orders`.
+**The event is generic and must stay that way.** No `gsid`, no `experimentId`, no `workspaceId` —
+growth resolves its own tenancy on consumption. `correlationId` is opaque: round-tripped through
+`state`, never interpreted, never stored. Guarded by `src/events/auth-event-publisher.spec.ts`,
+which asserts the exact set of emitted keys, and mirrored on the consumer side in growth-core.
 
-**Hard constraint:** the event stays generic — `{ userId, registeredAt, applicationId?, correlationId }`. No consumer-specific fields. Auth serves the whole ecosystem; embedding one consumer's domain model into its events couples every future consumer to it.
+**Emitted on proven identity, not on a user row appearing.** This service creates users in five
+places and three of them prove nothing:
 
-**Risk:** shared infrastructure. A regression breaks login for every application. Requires full regression evidence and should not be a cold agent's first task.
+| Path | Emits | Why |
+|---|---|---|
+| `POST /auth/register` | ✅ at creation | the person set a credential |
+| OAuth callback | ✅ new users only | the provider vouched; an existing user is a login |
+| Magic link | ✅ on **verification** | never on request — see below |
+| `POST /auth/register-contact` | ❌ | returns `authenticated: false`, `isVerified: false` — a contact form |
+| `createMagicLinkToken` | ❌ | internal helper; the verification path emits |
 
-**Blast radius limit:** changes confined to `src/auth/**` and a new `src/events/**`. Do not touch `src/{admin,roles,users,applications}/**`.
+`requestMagicLink` creates a user row for whatever address was typed, before anyone has shown they
+can read that inbox. Emitting there would let a typo — or anyone entering a stranger's address —
+count as a registration.
+
+`verifyMagicLink` runs on **every** magic-link login, so the event id is derived from the user id
+(uuidv5). Repeats collide with the consumer's primary key and are discarded as duplicates. This is
+why `isVerified` was left alone — admin listings filter on it.
+
+**Nothing here can break signing up.** The publisher swallows its own failures, and
+`emitRegistration()` catches again at the call site so the registration path never depends on that
+guarantee.
+
+### ⚠️ Known gap — no outbox
+
+A failed publish is **lost**, not retried. `catalog`/`warehouse`/`orders` use an outbox table; this
+service has no migration runner (`DB_SYNC=false`, no migrations directory), so adding one means
+solving that first. The failure is logged with the complete envelope so it can be replayed by hand,
+and RabbitMQ here is a single-replica StatefulSet, so a broker restart is a real window, not a
+theoretical one.
+
+Worth closing before registration volume matters. Until then: after any RabbitMQ downtime, grep the
+auth logs for `Failed to publish auth.user.registered.v1` and replay.
+
+**Evidence:** 71 tests before, 92 after, none of the baseline lost. The changed paths had no test
+coverage at all beforehand — `src/auth/registration-events.spec.ts` adds it.
 
 See `growth/docs/21_execution_plans/EP-005-landing-and-ingestion.md` §W3.
