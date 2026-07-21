@@ -26,6 +26,7 @@ import { Repository } from 'typeorm';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { MagicLinkToken } from './entities/magic-link-token.entity';
 import { EmailChangeToken } from './entities/email-change-token.entity';
+import { AuthEventPublisher } from '../events/auth-event-publisher.service';
 import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping.entity';
 import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
@@ -79,6 +80,7 @@ export class AuthService {
     private readonly emailChangeTokenRepository: Repository<EmailChangeToken>,
     @InjectRepository(LegacyIdentityMapping)
     private readonly legacyIdentityMappingRepository: Repository<LegacyIdentityMapping>,
+    private readonly authEvents: AuthEventPublisher,
   ) {
     this.notificationsServiceUrl = process.env.NOTIFICATION_SERVICE_URL || '';
     if (!this.notificationsServiceUrl) {
@@ -164,6 +166,17 @@ export class AuthService {
       user_id: user.id,
       auth_method: 'password',
       duration_ms: Date.now() - startedAt,
+    });
+
+    // Proven identity: the person set a credential. Never awaited into the failure path — the
+    // publisher swallows its own errors, and registration must not depend on a broker.
+    await this.emitRegistration({
+      userId: user.id,
+      registrationMethod: 'password',
+      email: user.email,
+      phone: user.phone,
+      correlationId: registerDto.state,
+      applicationContext: registerDto.client_id,
     });
 
     return {
@@ -537,6 +550,26 @@ export class AuthService {
     }
     const actual = crypto.pbkdf2Sync(password, salt, iterations, expected.length, 'sha256');
     return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+  }
+
+  /**
+   * Emits `auth.user.registered.v1` without ever letting the attempt reach the caller.
+   *
+   * `AuthEventPublisher` already swallows its own failures, so this looks redundant — it is not.
+   * It stops the registration path from *depending* on that guarantee: the day someone makes the
+   * publisher throw, the failure should be a missing analytics event, not every application in
+   * the ecosystem unable to sign anyone up. The blast radius of this service is the reason.
+   */
+  private async emitRegistration(input: Parameters<AuthEventPublisher['publishUserRegistered']>[0]) {
+    try {
+      await this.authEvents.publishUserRegistered(input);
+    } catch (err) {
+      this.logger.error(
+        `Registration event failed for user ${input.userId}: ${(err as Error).message}`,
+        (err as Error).stack,
+        'AuthService',
+      );
+    }
   }
 
   private async generateTokens(userId: string, authMethod: string, clientId?: string | null, returnUrl?: string | null) {
@@ -1731,6 +1764,22 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, 'magic_link', token.clientId, finalReturnUrl);
     const redirectUrl = this.buildTokenHandoffUrl(finalReturnUrl, tokens, 'magic_link', token.state || undefined);
 
+    // Here, not in requestMagicLink. Requesting a link creates a user row for whatever address
+    // was typed; only following the link proves the person can read that inbox. Emitting on
+    // request would let a typo — or anyone entering a stranger's address — count as a conversion.
+    //
+    // This runs on every magic-link login, not only the first. The event id is derived from the
+    // user id, so repeats collide with the consumer's primary key and are discarded as duplicates
+    // rather than inflating registrations (C-005 §2.2b).
+    await this.emitRegistration({
+      userId: user.id,
+      registrationMethod: 'magic_link',
+      email: user.email,
+      phone: user.phone,
+      correlationId: token.state,
+      applicationContext: token.clientId,
+    });
+
     const durationMs = Date.now() - startedAt;
     this.audit('info', 'magic_link_verify', 'success', {
       identifier: token.email,
@@ -1888,6 +1937,16 @@ export class AuthService {
         email: providerEmail,
         isActive: true,
         isVerified: true,
+      });
+
+      // Only inside this branch: an existing user signing in with the same provider again is a
+      // login, not a registration. Proven identity — the provider vouched for the address.
+      await this.emitRegistration({
+        userId: user.id,
+        registrationMethod: 'oauth',
+        email: user.email,
+        correlationId: stateEntry.appState,
+        applicationContext: stateEntry.clientId,
       });
     }
 

@@ -43,3 +43,7 @@ data:
   FACEBOOK_OAUTH_AUTH_URL: "${FACEBOOK_OAUTH_AUTH_URL}"
   FACEBOOK_OAUTH_TOKEN_URL: "${FACEBOOK_OAUTH_TOKEN_URL}"
   FACEBOOK_OAUTH_PROFILE_URL: "${FACEBOOK_OAUTH_PROFILE_URL}"
+  # EP-005 W3 — auth.user.registered.v1 is published to the `auth.events` topic exchange.
+  # Absent, registration still works and the event is logged instead of published: analytics
+  # must never be able to stop anyone signing up.
+  RABBITMQ_URL: "${RABBITMQ_URL}"
