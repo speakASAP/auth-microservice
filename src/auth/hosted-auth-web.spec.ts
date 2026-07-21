@@ -8,6 +8,26 @@ describe('hosted auth web contract', () => {
   const mainTs = readFileSync(join(process.cwd(), 'src/main.ts'), 'utf8');
   const webServer = readFileSync(join(process.cwd(), 'web/server.js'), 'utf8');
 
+  it('forwards the caller state on register, so a registration can be attributed', () => {
+    // The hosted page already has `state` in scope for the token handoff; the register payload
+    // did not include it. auth.user.registered.v1 takes its correlationId from RegisterDto.state,
+    // so without this line every password registration is unattributable — and the symptom
+    // appears downstream as a join that never matches, not as a missing form field (C-005 §2.2b).
+    const registerPayload = html.slice(
+      html.indexOf("mode === 'register'\n        ? { email: identifier"),
+      html.indexOf(': { identifier, password, client_id'),
+    );
+    expect(registerPayload).toContain('state: state || undefined');
+  });
+
+  it('does not send state on login — a login is not a registration', () => {
+    const loginPayload = html.slice(
+      html.indexOf(': { identifier, password, client_id'),
+      html.indexOf(': { identifier, password, client_id') + 200,
+    );
+    expect(loginPayload).not.toContain('state:');
+  });
+
   it('posts password login with the central identifier field and client id', () => {
     expect(html).toContain('id="identifier"');
     expect(html).toContain('{ identifier, password, client_id: clientId || undefined, return_url: validatedReturnUrl }');

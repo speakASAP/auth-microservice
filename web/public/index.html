@@ -586,8 +586,14 @@
       }
 
       const endpoint = mode === 'register' ? '/auth/register' : '/auth/login';
+      // `state` is forwarded on register so the caller's opaque handle reaches
+      // auth.user.registered.v1 and the registration can be tied back to the journey that
+      // produced it (C-005 §2.2b). The magic-link and contact-code flows already pass it; without
+      // it here, every password registration arrives with no correlationId and is unattributable
+      // — which would look like a join bug downstream rather than a missing form field.
+      // Not sent on login: a login is not a registration and emits no event.
       const payload = mode === 'register'
-        ? { email: identifier, password, firstName: firstName || undefined, lastName: lastName || undefined, phone: phone || undefined, client_id: clientId || undefined, return_url: validatedReturnUrl }
+        ? { email: identifier, password, firstName: firstName || undefined, lastName: lastName || undefined, phone: phone || undefined, client_id: clientId || undefined, return_url: validatedReturnUrl, state: state || undefined }
         : { identifier, password, client_id: clientId || undefined, return_url: validatedReturnUrl };
 
       try {
