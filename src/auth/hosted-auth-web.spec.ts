@@ -37,6 +37,23 @@ describe('hosted auth web contract', () => {
     it('says it can be withdrawn', () => {
       expect(html).toMatch(/kdykoli odvolat/i);
     });
+
+    it('asks only about marketing, and says operational email is sent regardless', () => {
+      // Email about someone's own account is performance of the contract, not marketing: it
+      // needs no consent. Bundling it into the tick would make the consent non-specific, and
+      // would also make refusing feel like losing something the person actually needs.
+      expect(html).toContain('id="marketing-consent-note"');
+      expect(html).toMatch(/Provozní e-maily[^<]*posíláme vždy/i);
+    });
+
+    it('is worded as a benefit rather than as a category of mail', () => {
+      const text = html.slice(
+        html.indexOf('id="marketing-consent-text"'),
+        html.indexOf('id="marketing-consent-note"'),
+      );
+      expect(text).toMatch(/tipy, jak prodávat rychleji/i);
+      expect(text).not.toMatch(/marketingová sdělení/i);
+    });
   });
 
   it('forwards the caller state on register, so a registration can be attributed', () => {

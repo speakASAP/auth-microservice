@@ -56,8 +56,16 @@
         <div id="marketing-consent-row" class="form-group" style="display: none;">
           <label for="marketing-consent" style="display:flex; gap:.6rem; align-items:flex-start; font-weight:400; cursor:pointer;">
             <input id="marketing-consent" name="marketing_consent" type="checkbox" style="margin-top:.25rem;">
-            <span id="marketing-consent-text">Chci dostávat novinky o službě a marketingová sdělení e-mailem. Souhlas můžu kdykoli odvolat.</span>
+            <span id="marketing-consent-text">Chci dostávat tipy, jak prodávat rychleji, a novinky ve službě.</span>
           </label>
+          <!-- Stated next to the box on purpose. Operational email about someone's own account is
+               performance of the contract, not marketing: it needs no consent and must not be
+               withheld by ticking or not ticking this. Saying so removes the fear that refusing
+               means missing something that matters. -->
+          <p id="marketing-consent-note" style="margin:.45rem 0 0 1.9rem; font-size:.85rem; opacity:.75;">
+            Provozní e-maily o vašem účtu a inzerátech posíláme vždy — jsou součástí služby.
+            Souhlas výše můžete kdykoli odvolat.
+          </p>
         </div>
 
         <div id="password-confirm-row" class="form-group" style="display: none;">
