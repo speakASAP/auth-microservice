@@ -77,7 +77,7 @@ describe('MarketingConsentService', () => {
   it('projects live consent keyed by product (appId), defaulting others to false', async () => {
     await service.grant('u1', 'speakasap', '2026-07-19');
     expect(userRepo.update).toHaveBeenLastCalledWith('u1', {
-      marketingConsents: { speakasap: true, marathon: false },
+      marketingConsents: { speakasap: true, marathon: false, bazos: false },
     });
   });
 
@@ -95,7 +95,7 @@ describe('MarketingConsentService', () => {
     await service.grant('u1', 'marathon', '2026-07-19');
     await service.revoke('u1', 'marathon');
     expect(userRepo.update).toHaveBeenLastCalledWith('u1', {
-      marketingConsents: { speakasap: true, marathon: false },
+      marketingConsents: { speakasap: true, marathon: false, bazos: false },
     });
   });
 });

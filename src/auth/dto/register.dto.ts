@@ -2,7 +2,7 @@
  * Register DTO
  */
 
-import { IsEmail, IsString, MinLength, IsOptional, IsUrl } from 'class-validator';
+import { IsBoolean, IsEmail, IsString, MinLength, IsOptional, IsUrl } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
@@ -41,5 +41,17 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   state?: string;
+
+  /**
+   * Consent to receive service news and marketing email.
+   *
+   * Optional and defaulting to absent, never to true. Under GDPR consent must be an active
+   * choice, so a pre-ticked box or a default of `true` is not consent at all — the record it
+   * produced would be evidence of nothing. Absent and `false` both mean the same thing here:
+   * do not send anything.
+   */
+  @IsBoolean()
+  @IsOptional()
+  marketing_consent?: boolean;
 }
 

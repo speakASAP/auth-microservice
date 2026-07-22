@@ -49,6 +49,17 @@
           <input id="password" name="password" type="password" minlength="6" required autocomplete="current-password">
         </div>
 
+        <!-- Marketing consent. Shown on register only, and DELIBERATELY NOT CHECKED: under GDPR
+             consent is an active choice, so a pre-ticked box records evidence of nothing. It is
+             also separate from accepting the terms — bundling the two would make the consent
+             non-specific and equally worthless. -->
+        <div id="marketing-consent-row" class="form-group" style="display: none;">
+          <label for="marketing-consent" style="display:flex; gap:.6rem; align-items:flex-start; font-weight:400; cursor:pointer;">
+            <input id="marketing-consent" name="marketing_consent" type="checkbox" style="margin-top:.25rem;">
+            <span id="marketing-consent-text">Chci dostávat novinky o službě a marketingová sdělení e-mailem. Souhlas můžu kdykoli odvolat.</span>
+          </label>
+        </div>
+
         <div id="password-confirm-row" class="form-group" style="display: none;">
           <label id="password-confirm-label" for="password-confirm">Confirm new password</label>
           <input id="password-confirm" name="password-confirm" type="password" minlength="6" autocomplete="new-password">
@@ -477,6 +488,10 @@
       authTabs.style.display = isReset ? 'none' : 'flex';
       nameRow.style.display = isRegister ? 'flex' : 'none';
       phoneRow.style.display = isRegister ? 'block' : 'none';
+      // Register only. Asking a returning user to consent again on every login would be nagging,
+      // not consent, and the evidence already exists for anyone who said yes.
+      var marketingRow = document.getElementById('marketing-consent-row');
+      if (marketingRow) marketingRow.style.display = isRegister ? 'block' : 'none';
       identifierRow.style.display = isReset ? 'none' : 'block';
       phoneInput.required = isRegister && marathonPhoneRequired;
       identifierInput.required = !isReset;
@@ -578,6 +593,12 @@
       const firstName = document.getElementById('firstName').value.trim();
       const lastName = document.getElementById('lastName').value.trim();
       const phone = phoneInput.value.trim();
+      // Read at submit time, never remembered across renders: the answer must be the one this
+      // person just gave.
+      function marketingConsentChecked() {
+        var box = document.getElementById('marketing-consent');
+        return Boolean(box && box.checked);
+      }
 
       if (mode === 'register' && marathonPhoneRequired && !phone) {
         setError(t('phoneRequiredMarathon'));
@@ -593,7 +614,7 @@
       // — which would look like a join bug downstream rather than a missing form field.
       // Not sent on login: a login is not a registration and emits no event.
       const payload = mode === 'register'
-        ? { email: identifier, password, firstName: firstName || undefined, lastName: lastName || undefined, phone: phone || undefined, client_id: clientId || undefined, return_url: validatedReturnUrl, state: state || undefined }
+        ? { email: identifier, password, firstName: firstName || undefined, lastName: lastName || undefined, phone: phone || undefined, client_id: clientId || undefined, return_url: validatedReturnUrl, state: state || undefined, marketing_consent: marketingConsentChecked() }
         : { identifier, password, client_id: clientId || undefined, return_url: validatedReturnUrl };
 
       try {

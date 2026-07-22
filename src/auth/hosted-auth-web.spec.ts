@@ -8,6 +8,37 @@ describe('hosted auth web contract', () => {
   const mainTs = readFileSync(join(process.cwd(), 'src/main.ts'), 'utf8');
   const webServer = readFileSync(join(process.cwd(), 'web/server.js'), 'utf8');
 
+  describe('marketing consent', () => {
+    it('offers the checkbox on the register form', () => {
+      expect(html).toContain('id="marketing-consent"');
+      expect(html).toContain('type="checkbox"');
+    });
+
+    it('never pre-ticks it', () => {
+      // Settled law, not a preference: consent must be an active choice, so a checked box records
+      // evidence of nothing. This is the single assertion most worth keeping in this file.
+      const box = html.slice(html.indexOf('id="marketing-consent"'), html.indexOf('id="marketing-consent"') + 200);
+      expect(box).not.toMatch(/\bchecked\b/);
+    });
+
+    it('keeps it separate from accepting the terms', () => {
+      // Bundling consent with terms makes it non-specific, and a non-specific consent is not one.
+      const row = html.slice(
+        html.indexOf('id="marketing-consent-row"'),
+        html.indexOf('id="password-confirm-row"'),
+      );
+      expect(row).not.toMatch(/podmínk|terms|souhlasím s podmínkami/i);
+    });
+
+    it('sends the answer the person actually gave', () => {
+      expect(html).toContain('marketing_consent: marketingConsentChecked()');
+    });
+
+    it('says it can be withdrawn', () => {
+      expect(html).toMatch(/kdykoli odvolat/i);
+    });
+  });
+
   it('forwards the caller state on register, so a registration can be attributed', () => {
     // The hosted page already has `state` in scope for the token handoff; the register payload
     // did not include it. auth.user.registered.v1 takes its correlationId from RegisterDto.state,

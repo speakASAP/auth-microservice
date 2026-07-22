@@ -15,7 +15,7 @@ import {
 } from './entities/user-marketing-consent.entity';
 import { User } from './entities/user.entity';
 
-export const MARKETING_PRODUCTS: readonly MarketingProduct[] = ['speakasap', 'marathon'];
+export const MARKETING_PRODUCTS: readonly MarketingProduct[] = ['speakasap', 'marathon', 'bazos'];
 
 @Injectable()
 export class MarketingConsentService {

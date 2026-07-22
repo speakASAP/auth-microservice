@@ -20,13 +20,15 @@ describe('MarketingConsentController', () => {
 
   it('returns live consent state and versions', async () => {
     const result = await controller.list({ user: { id: 'u1' } } as any);
-    expect(result.consents).toEqual({ speakasap: true, marathon: false });
+    expect(result.consents).toEqual({ speakasap: true, marathon: false, bazos: false });
     expect(result.versions.speakasap).toBe('2026-07-19');
   });
 
   it('rejects an unknown product on grant', async () => {
     await expect(
-      controller.grant({ user: { id: 'u1' } } as any, { product: 'bazos', documentVersion: 'v1' } as any),
+      // Was 'bazos' until bazos became a real product. The rule under test is "reject anything
+      // not in MARKETING_PRODUCTS", so the example has to be something genuinely absent from it.
+      controller.grant({ user: { id: 'u1' } } as any, { product: 'not-a-product', documentVersion: 'v1' } as any),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 

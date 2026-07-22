@@ -15,7 +15,7 @@ import {
   Index,
 } from 'typeorm';
 
-export type MarketingProduct = 'speakasap' | 'marathon';
+export type MarketingProduct = 'speakasap' | 'marathon' | 'bazos';
 
 @Entity('user_marketing_consents')
 @Index(['userId', 'product', 'revokedAt'])

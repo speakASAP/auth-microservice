@@ -31,8 +31,13 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  async register(@Body() registerDto: RegisterDto, @Request() req) {
+    // ip and user-agent are consent evidence, not telemetry: the marketing consent record has to
+    // show who agreed, to which text, from where and when.
+    return this.authService.register(registerDto, {
+      ip: req?.ip ?? req?.headers?.['x-forwarded-for'] ?? null,
+      userAgent: req?.headers?.['user-agent'] ?? null,
+    });
   }
 
   @Post('login')

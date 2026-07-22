@@ -35,6 +35,7 @@ function buildService(overrides: { findByEmail?: unknown } = {}) {
   };
   const jwtService = { sign: jest.fn(() => 'a.jwt.token') };
   const logger = { log: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
+  const marketingConsent = { grant: jest.fn(async () => ({ id: 'consent-1' })) };
   const repo = () => ({ findOne: jest.fn(), save: jest.fn(), create: jest.fn() });
 
   const service = new AuthService(
@@ -48,9 +49,10 @@ function buildService(overrides: { findByEmail?: unknown } = {}) {
     repo() as never,
     repo() as never,
     events as unknown as AuthEventPublisher,
+    marketingConsent as never,
   );
 
-  return { service, events, usersService };
+  return { service, events, usersService, marketingConsent };
 }
 
 describe('registration events (EP-005 W3)', () => {
@@ -132,5 +134,71 @@ describe('registration events (EP-005 W3)', () => {
 
       expect(events.publishUserRegistered).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('marketing consent at registration', () => {
+  it('records evidence only when the person actually ticked the box', async () => {
+    const { service, marketingConsent } = buildService();
+
+    await service.register(
+      { email: 'someone@example.com', password: 'correct horse battery staple', marketing_consent: true } as never,
+      { ip: '198.51.100.7', userAgent: 'Mozilla/5.0' },
+    );
+
+    expect(marketingConsent.grant).toHaveBeenCalledWith(
+      'user-1',
+      'bazos',
+      expect.stringContaining('bazos-marketing'),
+      '198.51.100.7',
+      'Mozilla/5.0',
+    );
+  });
+
+  it.each([
+    ['absent', undefined],
+    ['false', false],
+    ['a truthy string, which is not a tick', 'yes'],
+    ['1, which is not a tick either', 1],
+  ])('records nothing when consent is %s', async (_label, value) => {
+    // Anything short of an explicit true is a refusal. Consent has to be an active choice, so a
+    // value that merely looks affirmative must not be read as one.
+    const { service, marketingConsent } = buildService();
+
+    await service.register({
+      email: 'someone@example.com',
+      password: 'correct horse battery staple',
+      marketing_consent: value,
+    } as never);
+
+    expect(marketingConsent.grant).not.toHaveBeenCalled();
+  });
+
+  it('registers the person even if the consent record cannot be written', async () => {
+    // Refusing someone an account because a mailing-list row failed would be absurd. The consent
+    // is lost rather than assumed, which means we do not email them — the safe direction.
+    const { service, marketingConsent } = buildService();
+    marketingConsent.grant.mockRejectedValueOnce(new Error('database down'));
+
+    await expect(
+      service.register({
+        email: 'someone@example.com',
+        password: 'correct horse battery staple',
+        marketing_consent: true,
+      } as never),
+    ).resolves.toMatchObject({ user: expect.objectContaining({ id: 'user-1' }) });
+  });
+
+  it('stores the version of the text that was agreed to', async () => {
+    // The wording will change. Without a version the evidence says someone consented to whatever
+    // the page happens to say today, which is not evidence of anything.
+    const { service, marketingConsent } = buildService();
+
+    await service.register(
+      { email: 'someone@example.com', password: 'x'.repeat(12), marketing_consent: true } as never,
+    );
+
+    const version = marketingConsent.grant.mock.calls[0][2];
+    expect(version).toMatch(/^bazos-marketing-\d{4}-\d{2}-\d{2}$/);
   });
 });

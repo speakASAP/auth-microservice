@@ -27,6 +27,14 @@ import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { MagicLinkToken } from './entities/magic-link-token.entity';
 import { EmailChangeToken } from './entities/email-change-token.entity';
 import { AuthEventPublisher } from '../events/auth-event-publisher.service';
+import { MarketingConsentService } from '../users/marketing-consent.service';
+
+/**
+ * The version of the consent text shown beside the checkbox. Bump it whenever the wording
+ * changes: MarketingConsentService revokes the old evidence and records fresh evidence, so the
+ * history shows exactly which sentence each person agreed to.
+ */
+export const BAZOS_MARKETING_CONSENT_VERSION = 'bazos-marketing-2026-07-22';
 import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping.entity';
 import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
@@ -81,6 +89,7 @@ export class AuthService {
     @InjectRepository(LegacyIdentityMapping)
     private readonly legacyIdentityMappingRepository: Repository<LegacyIdentityMapping>,
     private readonly authEvents: AuthEventPublisher,
+    private readonly marketingConsent: MarketingConsentService,
   ) {
     this.notificationsServiceUrl = process.env.NOTIFICATION_SERVICE_URL || '';
     if (!this.notificationsServiceUrl) {
@@ -131,7 +140,7 @@ export class AuthService {
     }
   }
 
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto, context: { ip?: string | null; userAgent?: string | null } = {}) {
     const startedAt = Date.now();
     // Check if user already exists
     const existingUser = await this.usersService.findByEmail(registerDto.email);
@@ -167,6 +176,12 @@ export class AuthService {
       auth_method: 'password',
       duration_ms: Date.now() - startedAt,
     });
+
+    // Only on an explicit true. Absent and false both mean "do not send anything": consent must
+    // be an active choice, so anything short of one is a refusal rather than a default.
+    if (registerDto.marketing_consent === true) {
+      await this.recordMarketingConsent(user.id, context);
+    }
 
     // Proven identity: the person set a credential. Never awaited into the failure path — the
     // publisher swallows its own errors, and registration must not depend on a broker.
@@ -560,6 +575,34 @@ export class AuthService {
    * publisher throw, the failure should be a missing analytics event, not every application in
    * the ecosystem unable to sign anyone up. The blast radius of this service is the reason.
    */
+  /**
+   * Stores the marketing consent as evidence.
+   *
+   * Never allowed to fail a registration: someone who ticked a box and got an error would be
+   * refused an account over a mailing list. The consent is lost in that case, not silently
+   * assumed — losing it means we do not email them, which is the safe direction.
+   */
+  private async recordMarketingConsent(
+    userId: string,
+    context: { ip?: string | null; userAgent?: string | null },
+  ) {
+    try {
+      await this.marketingConsent.grant(
+        userId,
+        'bazos',
+        BAZOS_MARKETING_CONSENT_VERSION,
+        context.ip ?? null,
+        context.userAgent ?? null,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Marketing consent not recorded for user ${userId}: ${(err as Error).message}`,
+        (err as Error).stack,
+        'AuthService',
+      );
+    }
+  }
+
   private async emitRegistration(input: Parameters<AuthEventPublisher['publishUserRegistered']>[0]) {
     try {
       await this.authEvents.publishUserRegistered(input);
