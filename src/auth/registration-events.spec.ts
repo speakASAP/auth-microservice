@@ -35,7 +35,17 @@ function buildService(overrides: { findByEmail?: unknown } = {}) {
   };
   const jwtService = { sign: jest.fn(() => 'a.jwt.token') };
   const logger = { log: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
-  const marketingConsent = { grant: jest.fn(async () => ({ id: 'consent-1' })) };
+  const marketingConsent = {
+    grant: jest.fn(
+      async (
+        _userId: string,
+        _product: string,
+        _documentVersion: string,
+        _ip?: string | null,
+        _userAgent?: string | null,
+      ) => ({ id: 'consent-1' }),
+    ),
+  };
   const repo = () => ({ findOne: jest.fn(), save: jest.fn(), create: jest.fn() });
 
   const service = new AuthService(
