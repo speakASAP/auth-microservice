@@ -39,6 +39,7 @@ import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping
 import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
 import { ContactCodeRequestDto } from './dto/contact-code-request.dto';
+import { resolvePasswordRecoveryTtlMinutes } from './password-recovery-ttl';
 import { ContactCodeVerifyDto } from './dto/contact-code-verify.dto';
 import { UpdateUserMarketingPreferencesDto } from './dto/update-user-marketing-preferences.dto';
 import { CreateDeliveryAddressDto, UpdateDeliveryAddressDto } from './dto/delivery-address.dto';
@@ -54,6 +55,7 @@ export class AuthService {
   private readonly notificationsServiceUrl: string;
   private readonly notificationServiceToken: string;
   private readonly magicLinkTtlMinutes: number;
+  private readonly passwordRecoveryTtlMinutes: number;
   private readonly magicLinkRateLimitPerIp: number;
   private readonly magicLinkRateLimitPerEmail: number;
   private readonly oauthInitRateLimitPerIp: number;
@@ -101,6 +103,7 @@ export class AuthService {
     }
 
     this.magicLinkTtlMinutes = Number(process.env.AUTH_MAGIC_LINK_TTL_MINUTES || '15');
+    this.passwordRecoveryTtlMinutes = resolvePasswordRecoveryTtlMinutes();
     this.magicLinkRateLimitPerIp = Number(process.env.AUTH_MAGIC_LINK_RATE_LIMIT_PER_IP || '20');
     this.magicLinkRateLimitPerEmail = Number(process.env.AUTH_MAGIC_LINK_RATE_LIMIT_PER_EMAIL || '10');
     this.oauthInitRateLimitPerIp = Number(process.env.AUTH_OAUTH_INIT_RATE_LIMIT_PER_IP || '60');
