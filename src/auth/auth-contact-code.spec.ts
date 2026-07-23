@@ -32,6 +32,7 @@ describe('Auth contact code contract', () => {
     };
     service.logger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
     service.magicLinkTtlMinutes = 15;
+    service.passwordRecoveryTtlMinutes = 15;
     service.magicLinkRateLimitPerIp = 20;
     service.magicLinkRateLimitPerEmail = 10;
     service.rateLimitWindowMs = 15 * 60 * 1000;
@@ -79,7 +80,7 @@ describe('Auth contact code contract', () => {
       state: 'state-1',
       used: false,
     });
-    expect(result).toEqual({ success: true, delivery: 'sent' });
+    expect(result).toEqual({ success: true, delivery: 'sent', ttlMinutes: 15 });
     expect(result).not.toHaveProperty('accessToken');
   });
 
@@ -149,6 +150,75 @@ describe('Auth contact code contract', () => {
       }),
       { headers: { Authorization: 'Bearer service-token' } },
     );
+  });
+
+  it('stores a recovery code with its purpose and the recovery TTL', async () => {
+    const { service, savedTokens } = makeService();
+    (service as any).passwordRecoveryTtlMinutes = 9;
+
+    const before = Date.now();
+    const result = await service.requestContactCode(
+      {
+        identifier: 'person@example.test',
+        return_url: 'https://catalog.alfares.cz/orders',
+        purpose: 'recovery',
+      } as any,
+      '10.0.0.1',
+    );
+
+    expect(result).toEqual({ success: true, delivery: 'sent', ttlMinutes: 9 });
+    expect(savedTokens).toHaveLength(1);
+    expect(savedTokens[0].purpose).toBe('recovery');
+    const ttlMs = new Date(savedTokens[0].expiresAt).getTime() - before;
+    expect(ttlMs).toBeGreaterThan(8 * 60 * 1000);
+    expect(ttlMs).toBeLessThanOrEqual(9 * 60 * 1000 + 1000);
+  });
+
+  it('defaults to a login code and the magic-link TTL', async () => {
+    const { service, savedTokens } = makeService();
+    (service as any).passwordRecoveryTtlMinutes = 9;
+
+    await service.requestContactCode(
+      { identifier: 'person@example.test', return_url: 'https://catalog.alfares.cz/orders' } as any,
+      '10.0.0.1',
+    );
+
+    expect(savedTokens[0].purpose).toBe('login');
+    const ttlMs = new Date(savedTokens[0].expiresAt).getTime() - Date.now();
+    expect(ttlMs).toBeGreaterThan(14 * 60 * 1000);
+  });
+
+  it('hashes the two purposes apart so identical digits cannot collide on the unique token', () => {
+    const { service } = makeService();
+    const asLogin = (service as any).contactCodeHash('person@example.test', '123456', 'login');
+    const asRecovery = (service as any).contactCodeHash('person@example.test', '123456', 'recovery');
+    expect(asRecovery).not.toBe(asLogin);
+  });
+
+  it('keeps the legacy hash for login so codes already in flight survive the deploy', () => {
+    const { service } = makeService();
+    const legacy = require('crypto')
+      .createHash('sha256')
+      .update(`person@example.test:123456:${process.env.JWT_SECRET || 'default-secret'}`)
+      .digest('hex');
+    expect((service as any).contactCodeHash('person@example.test', '123456', 'login')).toBe(legacy);
+  });
+
+  it('gives nothing away about an unknown account', async () => {
+    const { service, savedTokens } = makeService();
+    (service as any).passwordRecoveryTtlMinutes = 9;
+
+    const result = await service.requestContactCode(
+      {
+        identifier: 'nobody@example.test',
+        return_url: 'https://catalog.alfares.cz/orders',
+        purpose: 'recovery',
+      } as any,
+      '10.0.0.1',
+    );
+
+    expect(result).toEqual({ success: true, delivery: 'accepted', ttlMinutes: 9 });
+    expect(savedTokens).toHaveLength(0);
   });
 
   it('uses a channel registry key for phone contact codes when configured', async () => {

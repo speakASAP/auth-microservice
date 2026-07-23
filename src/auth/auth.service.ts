@@ -1552,10 +1552,13 @@ export class AuthService {
     return { success: true };
   }
 
-  private contactCodeHash(identifier: string, code: string): string {
+  private contactCodeHash(identifier: string, code: string, purpose: 'login' | 'recovery' = 'login'): string {
+    // 'login' must keep producing the pre-recovery string so codes issued by the previous
+    // build still verify after deploy. Only 'recovery' adds a segment.
+    const scope = purpose === 'recovery' ? 'recovery:' : '';
     return crypto
       .createHash('sha256')
-      .update(`${identifier}:${code}:${process.env.JWT_SECRET || 'default-secret'}`)
+      .update(`${identifier}:${code}:${scope}${process.env.JWT_SECRET || 'default-secret'}`)
       .digest('hex');
   }
 
@@ -1580,6 +1583,8 @@ export class AuthService {
     code: string,
     appDomain?: string,
     langRaw?: string,
+    purpose: 'login' | 'recovery' = 'login',
+    ttlMinutes: number = this.magicLinkTtlMinutes,
   ): Promise<boolean> {
     if (!this.notificationsServiceUrl) {
       return false;
@@ -1589,7 +1594,13 @@ export class AuthService {
     const fromDomain = appDomain || process.env.DOMAIN || '';
     const channel = contactType === 'phone' ? this.contactCodePhoneChannel : 'email';
     const channelKey = contactType === 'phone' ? this.contactCodePhoneChannelKey : this.contactCodeEmailChannelKey;
-    const contactCopy = this.getPlainEmailCopy('contact_code', lang, this.magicLinkTtlMinutes, undefined, code);
+    const contactCopy = this.getPlainEmailCopy(
+      purpose === 'recovery' ? 'password_recovery' : 'contact_code',
+      lang,
+      ttlMinutes,
+      undefined,
+      code,
+    );
     const payload: Record<string, string | undefined> = {
       channel: channelKey ? undefined : channel,
       channelKey: channelKey || undefined,
@@ -1621,8 +1632,12 @@ export class AuthService {
       throw new BadRequestException('Identifier is required');
     }
 
-    this.checkRateLimit(`contact_code:ip:${ip}`, this.magicLinkRateLimitPerIp);
-    this.checkRateLimit(`contact_code:${contactType}:${identifier}`, this.magicLinkRateLimitPerEmail);
+    const purpose: 'login' | 'recovery' = dto.purpose === 'recovery' ? 'recovery' : 'login';
+    const ttlMinutes = purpose === 'recovery' ? this.passwordRecoveryTtlMinutes : this.magicLinkTtlMinutes;
+
+    // Purpose is part of the key so recovery attempts cannot drain the login budget.
+    this.checkRateLimit(`contact_code:${purpose}:ip:${ip}`, this.magicLinkRateLimitPerIp);
+    this.checkRateLimit(`contact_code:${purpose}:${contactType}:${identifier}`, this.magicLinkRateLimitPerEmail);
 
     const validReturnUrl = this.validateReturnUrl(dto.return_url);
     const user = contactType === 'email' ? await this.usersService.findByEmail(identifier) : await this.usersService.findByPhone(identifier);
@@ -1634,12 +1649,13 @@ export class AuthService {
         client_id: dto.client_id,
         duration_ms: Date.now() - startedAt,
       });
-      return { success: true, delivery: 'accepted' };
+      // ttlMinutes is a constant for all callers, so returning it here discloses nothing.
+      return { success: true, delivery: 'accepted' as const, ttlMinutes };
     }
 
     const code = this.generateContactCode();
-    const token = this.contactCodeHash(identifier, code);
-    const expiresAt = new Date(Date.now() + this.magicLinkTtlMinutes * 60 * 1000);
+    const token = this.contactCodeHash(identifier, code, purpose);
+    const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
     const magicToken = this.magicLinkTokenRepository.create({
       userId: user.id,
       email: identifier,
@@ -1649,12 +1665,13 @@ export class AuthService {
       state: dto.state || null,
       expiresAt,
       used: false,
+      purpose,
     });
     await this.magicLinkTokenRepository.save(magicToken);
 
     let delivered = false;
     try {
-      delivered = await this.sendContactCode(contactType, identifier, code, dto.app_domain, dto.lang);
+      delivered = await this.sendContactCode(contactType, identifier, code, dto.app_domain, dto.lang, purpose, ttlMinutes);
     } catch (error) {
       this.audit(
         'error',
@@ -1681,7 +1698,7 @@ export class AuthService {
       duration_ms: Date.now() - startedAt,
     });
 
-    return { success: true, delivery: delivered ? 'sent' : 'accepted' };
+    return { success: true, delivery: delivered ? ('sent' as const) : ('accepted' as const), ttlMinutes };
   }
 
   async verifyContactCode(dto: ContactCodeVerifyDto) {
@@ -2211,12 +2228,30 @@ export class AuthService {
   }
 
   private getPlainEmailCopy(
-    kind: 'contact_code' | 'email_change',
+    kind: 'contact_code' | 'email_change' | 'password_recovery',
     lang: 'en' | 'cs' | 'ru',
     ttlMinutes: number,
     verifyUrl?: string,
     code?: string,
   ): { subject: string; message: string } {
+    if (kind === 'password_recovery') {
+      const messages = {
+        en: {
+          subject: 'Alfares password recovery code',
+          message: `Your Alfares password recovery code is ${code}. It expires in ${ttlMinutes} minutes. Enter it to choose a new password. If you did not ask to reset your password, ignore this message — your password has not changed.`,
+        },
+        cs: {
+          subject: 'Kód pro obnovení hesla Alfares',
+          message: `Váš kód pro obnovení hesla Alfares je ${code}. Platí ${ttlMinutes} minut. Zadejte ho a zvolte si nové heslo. Pokud jste o obnovení hesla nežádali, zprávu ignorujte — vaše heslo se nezměnilo.`,
+        },
+        ru: {
+          subject: 'Код восстановления пароля Alfares',
+          message: `Ваш код восстановления пароля Alfares: ${code}. Он действует ${ttlMinutes} мин. Введите его, чтобы задать новый пароль. Если вы не запрашивали восстановление пароля, проигнорируйте это сообщение — ваш пароль не изменился.`,
+        },
+      } as const;
+      return messages[lang];
+    }
+
     if (kind === 'contact_code') {
       const messages = {
         en: {

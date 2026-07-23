@@ -5,6 +5,10 @@ export class ContactCodeRequestDto {
   @IsNotEmpty()
   identifier: string;
 
+  @IsOptional()
+  @IsIn(['login', 'recovery'])
+  purpose?: 'login' | 'recovery';
+
   @IsUrl({ require_tld: false })
   @IsNotEmpty()
   return_url: string;
