@@ -40,6 +40,47 @@ set.
 | Trigger | Recovery intent only | Deliberate passwordless code logins stay frictionless. Only a session that started as "I forgot my password" is forced through the password screen. |
 | Enforcement point | auth-microservice, before token handoff | Consuming applications need no changes, and no application token can leak into an un-recovered session. |
 | Entry point | "Forgot password?" sends a 6-digit code | Same-device recovery, no inbox round-trip. Existing `/reset-password?token=` links keep working. |
+| Lifetimes | One variable, 15 minutes, shown to the user | A single number is easy to reason about and to state honestly in every message. |
+
+## Configuration
+
+`AUTH_PASSWORD_RECOVERY_TTL_MINUTES`, default `15`, governs **every** lifetime in the
+recovery flow:
+
+- the recovery code delivered by email,
+- the grant minted when that code is verified,
+- the grant minted by the email-link path.
+
+No other variable participates. `AUTH_MAGIC_LINK_TTL_MINUTES` continues to govern ordinary
+passwordless sign-in codes and magic links, which are not part of recovery.
+
+The variable must be declared in `.env.example` and added to the `configmap_vars` list in
+`deploy.config.sh:61`. A variable missing from that list never reaches the pod, and the code
+would silently fall back to the default — a failure that passes every local test.
+
+The value is read once and surfaced to the user everywhere a lifetime is stated, rather
+than being duplicated as a literal in copy:
+
+| Message | Source |
+| --- | --- |
+| Recovery code email | `getPlainEmailCopy('password_recovery', …, ttlMinutes)` |
+| Password-reset link email | `getAuthEmailCopy('password_reset', …, ttlMinutes)` |
+| "Code sent" notice on the login page | `ttlMinutes` in the `contact-code/request` response |
+| Set-password screen | `ttlMinutes` in the recovery `contact-code/verify` response |
+
+The hosted page cannot read backend environment variables, so both endpoints return
+`ttlMinutes` and the `en`/`cs`/`ru` strings interpolate it. The number is never hardcoded in
+the frontend.
+
+**Each stage gets the full window.** A user has 15 minutes to enter the code and, after
+verifying, a fresh 15 minutes to choose a password — so recovery may span up to 30 minutes
+end to end. The alternative, one 15-minute budget for the whole flow, would expire people
+mid-typing on the password screen. Each message states the window that applies to the step
+in front of the user, so no message is misleading.
+
+**Behavior change:** the email-link reset drops from 60 minutes to 15. Grants issued before
+deployment keep the `expiresAt` already stored on their row; the TTL applies at mint time
+only.
 
 ## Core concept: the recovery grant
 
@@ -68,14 +109,14 @@ meaning.
 
 ```
 Forgot password?  →  POST /auth/contact-code/request  {purpose:'recovery'}
-                     └─ 6-digit code delivered by email
+                     ├─ 6-digit code delivered by email, valid ttlMinutes
+                     └─ { success: true, delivery, ttlMinutes }
 
 Enter code        →  POST /auth/contact-code/verify   {purpose:'recovery'}
                      ├─ does NOT call generateTokens
-                     ├─ mints a password_reset_tokens row (15 min TTL, single-use;
-                     │  the email-link path keeps its existing 1-hour TTL)
+                     ├─ mints a password_reset_tokens row (ttlMinutes, single-use)
                      │  carrying returnUrl / clientId / state from the magic-link row
-                     └─ { recovery: true,
+                     └─ { recovery: true, ttlMinutes,
                           redirectUrl: '<FRONTEND_URL>/set-password?token=…&lang=…' }
 
 Set password      →  POST /auth/password-reset-confirm
@@ -89,14 +130,17 @@ Set password      →  POST /auth/password-reset-confirm
 `purpose?: 'login' | 'recovery'`, defaulting to `'login'`.
 
 **`requestContactCode` (`src/auth/auth.service.ts:1611`)** — persist `purpose` on the
-`magic_link_tokens` row. For recovery, send the new `password_recovery` email copy rather
-than the `magic_link` copy. The response is unchanged and remains identical for unknown and
-inactive users.
+`magic_link_tokens` row. For recovery, expire the row after
+`AUTH_PASSWORD_RECOVERY_TTL_MINUTES` rather than `magicLinkTtlMinutes`, and send the new
+`password_recovery` email copy rather than the `magic_link` copy. The response gains
+`ttlMinutes` and otherwise remains identical for existing, unknown, and inactive users —
+`ttlMinutes` is a constant, so it discloses nothing about the account.
 
 **`verifyContactCode` (`src/auth/auth.service.ts:1684`)** — the stored row's `purpose` must
 equal the requested `purpose`; a mismatch is rejected exactly like an invalid code, in both
-directions. On a recovery match, skip `generateTokens`, mint the grant row, and return
-`{ recovery: true, redirectUrl }` with no tokens.
+directions. On a recovery match, skip `generateTokens`, mint the grant row with
+`AUTH_PASSWORD_RECOVERY_TTL_MINUTES`, and return `{ recovery: true, ttlMinutes, redirectUrl }`
+with no tokens.
 
 **`confirmPasswordReset` (`src/auth/auth.service.ts:762`)** — when the grant row carries a
 `returnUrl`, mint tokens with `auth_method: 'password_recovery'` and return
@@ -106,11 +150,15 @@ today's message-only shape, so existing callers are unaffected.
 **`requestPasswordReset` (`src/auth/auth.service.ts:657`)** — persist the validated
 `return_url`, `client_id`, and `state` on the token row instead of carrying them only in
 the email querystring. Server-side storage means the completion target cannot be tampered
-with between email and confirm.
+with between email and confirm. Replace the hardcoded `resetTtlMinutes = 60`
+(`src/auth/auth.service.ts:713`) and the `expiresAt.setHours(+1)` computation
+(`src/auth/auth.service.ts:673`) with the shared variable, so the stored expiry and the
+number printed in the email are the same value by construction and cannot drift.
 
-**Email copy** — a `password_recovery` entry in `getAuthEmailCopy`
-(`src/auth/auth.service.ts:2148`) for `en`, `cs`, and `ru`, distinct from `magic_link`, so
-the message states the code resets a password rather than signs the user in.
+**Email copy** — a `password_recovery` entry in `getPlainEmailCopy`
+(`src/auth/auth.service.ts:2210`) for `en`, `cs`, and `ru`, alongside `contact_code`, so the
+message states the code resets a password rather than signs the user in. It takes
+`ttlMinutes` like its neighbours.
 
 ## Hosted web changes
 
@@ -130,7 +178,12 @@ the message states the code resets a password rather than signs the user in.
 - The existing `reset-password` mode becomes an alias of `set-password`. Links already
   delivered by email keep working and now also complete into the application.
 - New i18n keys across `en`, `cs`, and `ru` for the recovery-code prompt, the set-password
-  screen, and the redirect confirmation.
+  screen, and the redirect confirmation. Keys that state a lifetime take a `{minutes}`
+  placeholder filled from the `ttlMinutes` field in the corresponding response — `t()` gains
+  an optional parameter map. No lifetime is written as a literal in the frontend, so the
+  page cannot contradict the backend.
+- Russian needs the correct plural form for the interpolated number (`минуту` / `минуты` /
+  `минут`). Use the abbreviated `мин.`, which is invariant, matching the existing email copy.
 
 ## Consumer impact
 
@@ -142,10 +195,9 @@ reads a new claim or handles a new status code.
 
 - Recovery codes are subject to the existing per-IP and per-identifier rate limits, with
   `purpose` included in the limiter key so recovery attempts cannot drain the login budget.
-- The grant is single-use. A code-derived grant expires 15 minutes after it is minted,
-  independently of the code's own TTL (`AUTH_MAGIC_LINK_TTL_MINUTES`, default 15). The
-  email-link path keeps its current 1-hour grant (`src/auth/auth.service.ts:673`); adding
-  columns to `password_reset_tokens` must not shorten it.
+- Every recovery artefact — code and grant, from either entry point — is single-use and
+  expires after `AUTH_PASSWORD_RECOVERY_TTL_MINUTES`. The email-link grant drops from 60
+  minutes to 15, narrowing the window in which a leaked inbox yields account access.
 - `return_url` is validated through `validateReturnUrl()` when the grant is minted and again
   before handoff.
 - The recovery request returns an identical response for existing, unknown, and inactive
@@ -164,6 +216,13 @@ both directions.
 tokens and a `redirectUrl` pointing at the original `return_url`; an expired grant is
 rejected; a replayed grant is rejected; a `return_url` outside the allowed origins is
 rejected.
+
+**TTL wiring** — with `AUTH_PASSWORD_RECOVERY_TTL_MINUTES` set to a non-default value, assert
+that the recovery code row, the code-derived grant, and the email-link grant all expire after
+that value, and that the same number appears in the recovery email, the reset-link email, and
+the `ttlMinutes` field of both responses. This is the test that would catch a lifetime being
+reintroduced as a literal, so it must fail if any one of those six places is hardcoded —
+verify that by temporarily pinning one back to a constant.
 
 **`src/auth/hosted-auth-web.spec.ts`** — `/set-password` serves `index.html`.
 
