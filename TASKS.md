@@ -31,10 +31,7 @@
 
 ## TASK-AUTH-RECOVERY — forced password recovery after code login
 
-**Status:** ⏸ merged to `main`, **awaiting deploy** 2026-07-23 · **Raised:** 2026-07-23 by owner
-
-Implementation is complete and merged (`00e847c`). It is **not unfinished work** — it is
-deliberately stopped at the deploy boundary, and it is **not deployable on its own**.
+**Status:** ✅ done 2026-07-23, deployed `967749c` and verified in production · **Raised:** 2026-07-23 by owner
 
 **The bug.** `auth.alfares.cz` offered two independent flows. "Send sign-in code" is a
 passwordless login: it issues a JWT and redirects to `return_url` without touching the
@@ -57,20 +54,33 @@ The value is shown to the user in all four places it applies. The hosted page ca
 backend env, so the endpoints return `ttlMinutes` and the en/cs/ru strings interpolate it;
 nothing states a lifetime as a literal.
 
-### Required before this works in production — in this order
+### Production rollout — done 2026-07-23
 
-1. **Apply `docs/sql/2026-07-23-password-recovery-columns.sql`** to the production `auth`
-   database. `DB_SYNC=false` and there is no migration runner, so this is manual. Additive and
-   backward-compatible, safe to apply while the old build is still serving. Verified idempotent
-   against a scratch database. **If the code deploys first, every recovery request fails on the
-   missing `purpose` column.**
-2. **Set `AUTH_PASSWORD_RECOVERY_TTL_MINUTES`** (default 15 applies if absent). Already listed
-   in `deploy.config.sh` `configmap_vars`, so it will reach the pod.
-3. **`./scripts/deploy.sh`** — takes the ecosystem deploy lock; not in parallel with any other
-   rollout.
-4. **Reproduce the original failure:** from `catalog.alfares.cz`, "Forgot password?" → code →
-   new password → land back on catalog authenticated, and confirm the new password works on a
-   subsequent normal login.
+1. `docs/sql/2026-07-23-password-recovery-columns.sql` applied to the production `auth`
+   database. 112 existing `magic_link_tokens` rows backfilled to `purpose='login'`; the 13
+   existing `password_reset_tokens` rows have `NULL returnUrl` and so take the message-only
+   path — nothing in flight broke.
+2. `AUTH_PASSWORD_RECOVERY_TTL_MINUTES=15` set and confirmed present in the pod.
+3. Deployed `967749c`; both `auth-microservice` and `auth-microservice-web` healthy.
+4. Verified end to end against a test account: recovery code → grant → set password →
+   handoff to `https://catalog.alfares.cz/orders` with `auth_method=password_recovery` and
+   `state` round-tripped. A login-purpose verify rejects a recovery code (401); a replayed
+   grant (400) and a reused code (401) both fail; the new password works on normal login.
+
+### Three traps found — two in implementation, one in production
+
+**`configmap_vars` is envsubst's allow-list, not the key list.** The variable was allow-listed
+in `deploy.config.sh` but absent from `k8s/configmap.yaml.template`, so it never reached the
+pod and silently fell back to the default. Caught by checking `printenv` in the pod rather
+than trusting the deploy's success message. Fixed in `08c7281`.
+
+**A failed handoff reported a failed reset.** The password write and the grant burn are
+committed before the handoff runs, so a throw there — reproduced with an unregistered
+`client_id` — left the user with a changed password, a consumed grant, and a message saying it
+failed. Setting the password is the goal and the auto-login is a convenience, so a handoff
+failure now degrades to the message-only response. The disallowed-origin test was retargeted
+to assert the actual security property (nothing is handed to that origin) rather than that the
+call throws, since throwing tells the same lie. Fixed in `967749c`.
 
 ### Two traps found during implementation
 
