@@ -8,6 +8,52 @@ describe('hosted auth web contract', () => {
   const mainTs = readFileSync(join(process.cwd(), 'src/main.ts'), 'utf8');
   const webServer = readFileSync(join(process.cwd(), 'web/server.js'), 'utf8');
 
+  describe('password recovery', () => {
+    it('serves the set-password path', () => {
+      expect(webServer).toContain("'/set-password'");
+    });
+
+    it('treats /set-password as the reset screen', () => {
+      const paths = html.slice(html.indexOf('const resetPaths'), html.indexOf('const initialMode'));
+      expect(paths).toContain("'/set-password'");
+      // The already-delivered email links must keep working alongside it.
+      expect(paths).toContain("'/reset-password'");
+      expect(html).toContain('resetPaths.includes(window.location.pathname)');
+    });
+
+    it('recovers with a code rather than a link', () => {
+      const fn = html.slice(html.indexOf('async function requestPasswordReset'), html.indexOf('async function requestPasswordReset') + 900);
+      expect(fn).toContain("purpose: 'recovery'");
+      expect(fn).toContain('/auth/contact-code/request');
+    });
+
+    it('follows the server to the set-password screen', () => {
+      expect(html).toContain('if (data.recovery)');
+    });
+
+    it('completes into the application after the password is set', () => {
+      const fn = html.slice(html.indexOf('/auth/password-reset-confirm'), html.indexOf('/auth/password-reset-confirm') + 900);
+      expect(fn).toContain('data.redirectUrl');
+    });
+
+    // The lifetime the page shows must come from the backend. A literal here can drift from
+    // the stored expiry and quietly start lying to people.
+    it('never hardcodes a lifetime', () => {
+      expect(html).toContain('{minutes}');
+      const i18nBlock = html.slice(html.indexOf('const I18N'), html.indexOf('function t('));
+      expect(i18nBlock).not.toMatch(/\b15 (minutes|minut|мин)/);
+    });
+
+    it('interpolates parameters into translations', () => {
+      expect(html).toContain('function t(key, params)');
+    });
+
+    it('offers the recovery copy in all three languages', () => {
+      const count = (html.match(/recoveryCodeSent:/g) || []).length;
+      expect(count).toBe(3);
+    });
+  });
+
   describe('marketing consent', () => {
     it('offers the checkbox on the register form', () => {
       expect(html).toContain('id="marketing-consent"');
@@ -97,7 +143,9 @@ describe('hosted auth web contract', () => {
   it('offers hosted recovery and contact-code actions', () => {
     expect(html).toContain('/auth/contact-code/request');
     expect(html).toContain('/auth/contact-code/verify');
-    expect(html).toContain('/auth/password-reset-request');
+    // Recovery no longer emails a link: "Forgot password?" requests a recovery code, and the
+    // page completes it against /auth/password-reset-confirm.
+    expect(html).toContain('/auth/password-reset-confirm');
     expect(html).toContain('Forgot password?');
   });
 
@@ -149,9 +197,11 @@ describe('hosted auth web contract', () => {
   });
 
   it('serves emailed password reset links from the hosted Auth page', () => {
-    expect(mainTs).toContain("['/login', '/register', '/reset-password']");
-    expect(webServer).toContain("['/login', '/register', '/reset-password']");
-    expect(html).toContain("window.location.pathname === '/reset-password'");
+    // Both processes serve these paths: web/server.js in compose, main.ts in Kubernetes.
+    // A path added to only one of them 404s in the other environment.
+    expect(mainTs).toContain("['/login', '/register', '/reset-password', '/set-password']");
+    expect(webServer).toContain("['/login', '/register', '/reset-password', '/set-password']");
+    expect(html).toContain("resetPaths.includes(window.location.pathname)");
     expect(html).toContain("const resetToken = params.get('token') || ''");
     expect(html).toContain('id="password-row"');
     expect(html).toContain('id="password-confirm"');

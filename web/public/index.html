@@ -154,6 +154,9 @@
         enterEmailOrPhone: 'Enter your email or phone first.',
         codeRequestFailed: 'Could not request sign-in code',
         codeSent: 'Sign-in code requested. Enter the 6-digit code here when it arrives.',
+        recoveryCodeSent: 'Recovery code sent. Enter the 6-digit code here. It expires in {minutes} min.',
+        setPasswordWindow: 'Choose a new password within {minutes} min.',
+        passwordUpdatedRedirecting: 'Password updated. Taking you back…',
         codeFlowFailed: 'Could not complete sign-in code flow',
         requestCodeFirst: 'Request a sign-in code first.',
         enterSixDigitCode: 'Enter the 6-digit sign-in code.',
@@ -213,6 +216,9 @@
         enterEmailOrPhone: 'Nejdříve zadejte e-mail nebo telefon.',
         codeRequestFailed: 'Nepodařilo se požádat o přihlašovací kód',
         codeSent: 'Přihlašovací kód byl odeslán. Zadejte 6místný kód, až dorazí.',
+        recoveryCodeSent: 'Kód pro obnovení byl odeslán. Zadejte 6místný kód. Platí {minutes} min.',
+        setPasswordWindow: 'Zvolte si nové heslo do {minutes} min.',
+        passwordUpdatedRedirecting: 'Heslo bylo změněno. Přesměrováváme vás zpět…',
         codeFlowFailed: 'Nepodařilo se dokončit přihlášení kódem',
         requestCodeFirst: 'Nejdříve si vyžádejte přihlašovací kód.',
         enterSixDigitCode: 'Zadejte 6místný přihlašovací kód.',
@@ -272,6 +278,9 @@
         enterEmailOrPhone: 'Сначала введите email или телефон.',
         codeRequestFailed: 'Не удалось запросить код для входа',
         codeSent: 'Код для входа запрошен. Введите 6-значный код, когда он придёт.',
+        recoveryCodeSent: 'Код для восстановления отправлен. Введите 6-значный код. Он действует {minutes} мин.',
+        setPasswordWindow: 'Задайте новый пароль в течение {minutes} мин.',
+        passwordUpdatedRedirecting: 'Пароль изменён. Возвращаем вас назад…',
         codeFlowFailed: 'Не удалось завершить вход по коду',
         requestCodeFirst: 'Сначала запросите код для входа.',
         enterSixDigitCode: 'Введите 6-значный код для входа.',
@@ -300,9 +309,15 @@
         || 'en';
     }
 
-    function t(key) {
+    function t(key, params) {
       const dict = I18N[currentLang] || I18N.en;
-      return dict[key] || I18N.en[key] || key;
+      let out = dict[key] || I18N.en[key] || key;
+      if (params) {
+        Object.keys(params).forEach(function (name) {
+          out = out.split('{' + name + '}').join(params[name]);
+        });
+      }
+      return out;
     }
 
     /* Exact-match map of known English backend messages to i18n keys.
@@ -355,10 +370,16 @@
     }
 
     const params = new URLSearchParams(window.location.search);
-    const initialMode = window.location.pathname === '/register' ? 'register' : (window.location.pathname === '/reset-password' ? 'reset' : 'login');
+    // /set-password is an alias of the reset screen: identifier hidden, password + confirm shown.
+    const resetPaths = ['/reset-password', '/set-password'];
+    const initialMode = window.location.pathname === '/register'
+      ? 'register'
+      : (resetPaths.includes(window.location.pathname) ? 'reset' : 'login');
     const returnUrlRaw = params.get('return_url') || '';
     const state = params.get('state') || '';
     const resetToken = params.get('token') || '';
+    // Display only, and backend-owned: the server puts the window it actually enforces here.
+    let recoveryTtlMinutes = params.get('ttl') || '';
     const clientId = params.get('client_id') || '';
     const prefillIdentifier = params.get('login_hint') || params.get('identifier') || params.get('email') || params.get('phone') || '';
     const prefillEmail = params.get('email') || (prefillIdentifier.includes('@') ? prefillIdentifier : '');
@@ -395,6 +416,7 @@
     const resetLoginLink = document.getElementById('reset-login-link');
     const returnUrlRow = document.getElementById('return-url-row');
     let contactCodeRequestedFor = '';
+    let recoveryRequested = false;
 
     let mode = initialMode;
     let validatedReturnUrl = '';
@@ -489,7 +511,7 @@
       const isReset = mode === 'reset';
       authTitle.textContent = isReset ? t('resetPassword') : (isRegister ? t('createAccount') : t('signIn'));
       authSubtitle.textContent = isReset
-        ? t('subtitleReset')
+        ? (recoveryTtlMinutes ? t('setPasswordWindow', { minutes: recoveryTtlMinutes }) : t('subtitleReset'))
         : (isRegister
           ? (marathonPhoneRequired ? t('subtitleRegisterMarathon') : t('subtitleRegister'))
           : t('subtitleLogin'));
@@ -678,8 +700,15 @@
           const body = await response.json().catch(() => ({ message: t('resetFailed') }));
           throw new Error(body.message || t('resetFailed'));
         }
+        const data = await response.json().catch(() => ({}));
         passwordInput.value = '';
         passwordConfirmInput.value = '';
+        // The whole point of recovery: finish on the page the user originally wanted.
+        if (data.redirectUrl) {
+          setSuccess(t('passwordUpdatedRedirecting'));
+          window.location.assign(data.redirectUrl);
+          return;
+        }
         passwordRow.style.display = 'none';
         passwordConfirmRow.style.display = 'none';
         submitBtn.style.display = 'none';
@@ -758,6 +787,8 @@
             code,
             return_url: validatedReturnUrl,
             client_id: clientId || undefined,
+            purpose: recoveryRequested ? 'recovery' : undefined,
+            lang: currentLang,
           }),
         });
         if (!verifyResponse.ok) {
@@ -765,6 +796,11 @@
           throw new Error(body.message || t('invalidCode'));
         }
         const data = await verifyResponse.json();
+        // Recovery hands back no tokens - only a one-time grant to set a password.
+        if (data.recovery) {
+          window.location.assign(data.redirectUrl);
+          return;
+        }
         window.location.assign(data.redirectUrl || buildTokenHandoffUrl(validatedReturnUrl, data, state));
       } catch (error) {
         setError(error.message || t('verifyFailed'));
@@ -777,30 +813,43 @@
       setError('');
       setSuccess('');
       const identifier = identifierInput.value.trim();
-      if (!identifier || !isEmail(identifier)) {
-        setError(t('enterEmailToReset'));
+      if (!validatedReturnUrl) {
+        setError(t('invalidReturnUrl'));
+        return;
+      }
+      if (!identifier) {
+        setError(t('enterEmailOrPhone'));
         return;
       }
       resetPasswordBtn.disabled = true;
       try {
-        const response = await fetch('/auth/password-reset-request', {
+        const response = await fetch('/auth/contact-code/request', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: identifier,
-            return_url: returnUrlRaw || undefined,
+            identifier,
+            return_url: validatedReturnUrl,
             client_id: clientId || undefined,
             state: state || undefined,
+            app_domain: window.location.hostname,
             lang: currentLang,
+            purpose: 'recovery',
           }),
         });
         if (!response.ok) {
-          const body = await response.json().catch(() => ({ message: t('resetRequestFailed') }));
-          throw new Error(body.message || t('resetRequestFailed'));
+          const body = await response.json().catch(() => ({ message: t('codeRequestFailed') }));
+          throw new Error(body.message || t('codeRequestFailed'));
         }
-        setSuccess(t('resetRequested'));
+        const data = await response.json();
+        recoveryTtlMinutes = data.ttlMinutes;
+        contactCodeRequestedFor = identifier;
+        recoveryRequested = true;
+        contactCodeInput.value = '';
+        contactCodeRow.style.display = 'block';
+        contactCodeInput.focus();
+        setSuccess(t('recoveryCodeSent', { minutes: data.ttlMinutes }));
       } catch (error) {
-        setError(error.message || t('resetRequestFailed'));
+        setError(error.message || t('codeFlowFailed'));
       } finally {
         resetPasswordBtn.disabled = false;
       }
