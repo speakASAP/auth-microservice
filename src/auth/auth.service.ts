@@ -801,7 +801,32 @@ export class AuthService {
       duration_ms: Date.now() - startedAt,
     });
 
-    return { message: 'Password reset successfully' };
+    if (!resetToken.returnUrl) {
+      return { message: 'Password reset successfully' };
+    }
+
+    // Re-validate at handoff, not only at mint: the allowlist may have changed since, and a
+    // grant row is long-lived relative to a config reload.
+    const finalReturnUrl = this.validateReturnUrl(resetToken.returnUrl);
+    const tokens = await this.generateTokens(
+      resetToken.userId,
+      'password_recovery',
+      resetToken.clientId,
+      finalReturnUrl,
+    );
+    const user = await this.usersService.findById(resetToken.userId);
+
+    return {
+      message: 'Password reset successfully',
+      user: this.sanitizeUser(user),
+      ...tokens,
+      redirectUrl: this.buildTokenHandoffUrl(
+        finalReturnUrl,
+        tokens,
+        'password_recovery',
+        resetToken.state || undefined,
+      ),
+    };
   }
 
   async changePassword(userId: string, passwordChangeDto: PasswordChangeDto) {
