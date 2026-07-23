@@ -804,28 +804,42 @@ export class AuthService {
       return { message: 'Password reset successfully' };
     }
 
-    // Re-validate at handoff, not only at mint: the allowlist may have changed since, and a
-    // grant row is long-lived relative to a config reload.
-    const finalReturnUrl = this.validateReturnUrl(resetToken.returnUrl);
-    const tokens = await this.generateTokens(
-      resetToken.userId,
-      'password_recovery',
-      resetToken.clientId,
-      finalReturnUrl,
-    );
-    const user = await this.usersService.findById(resetToken.userId);
-
-    return {
-      message: 'Password reset successfully',
-      user: this.sanitizeUser(user),
-      ...tokens,
-      redirectUrl: this.buildTokenHandoffUrl(
-        finalReturnUrl,
-        tokens,
+    // The password write and the grant burn are already committed. Signing the user straight
+    // into the app is a convenience on top of that, so a failure here must not be reported as
+    // a failed reset - the new password is live either way, and saying otherwise sends the
+    // user back to recover a password that already works.
+    try {
+      // Re-validate at handoff, not only at mint: the allowlist may have changed since, and a
+      // grant row is long-lived relative to a config reload.
+      const finalReturnUrl = this.validateReturnUrl(resetToken.returnUrl);
+      const tokens = await this.generateTokens(
+        resetToken.userId,
         'password_recovery',
-        resetToken.state || undefined,
-      ),
-    };
+        resetToken.clientId,
+        finalReturnUrl,
+      );
+      const user = await this.usersService.findById(resetToken.userId);
+
+      return {
+        message: 'Password reset successfully',
+        user: this.sanitizeUser(user),
+        ...tokens,
+        redirectUrl: this.buildTokenHandoffUrl(
+          finalReturnUrl,
+          tokens,
+          'password_recovery',
+          resetToken.state || undefined,
+        ),
+      };
+    } catch (error) {
+      this.audit('warn', 'password_reset_confirm', 'handoff_failed', {
+        user_id: resetToken.userId,
+        client_id: resetToken.clientId,
+        reason: (error as Error).message,
+        duration_ms: Date.now() - startedAt,
+      });
+      return { message: 'Password reset successfully' };
+    }
   }
 
   async changePassword(userId: string, passwordChangeDto: PasswordChangeDto) {

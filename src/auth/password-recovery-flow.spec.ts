@@ -89,6 +89,28 @@ describe('password recovery flow', () => {
     expect(result).toEqual({ message: 'Password reset successfully' });
   });
 
+  // The password write and the grant burn are already committed by the time the handoff runs.
+  // If minting throws there, telling the user it failed is a lie: their password IS the new one.
+  // Setting the password is the goal; the auto-login is a convenience, so it degrades instead.
+  it('still reports success when the handoff cannot be minted', async () => {
+    const { service, grants } = makeService();
+    addGrant(grants, { clientId: 'not-a-registered-app' });
+    (service as any).rolesService.assignDefaultApplicationAccess = jest.fn(async () => {
+      throw new BadRequestException('Unknown or inactive client_id');
+    });
+
+    const result: any = await service.confirmPasswordReset({
+      token: 'grant-token',
+      newPassword: 'a-new-password',
+    } as any);
+
+    expect(result.message).toBe('Password reset successfully');
+    expect(result.redirectUrl).toBeUndefined();
+    expect(result.accessToken).toBeUndefined();
+    // The password change must have happened - that is what the message promises.
+    expect((service as any).usersService.updatePassword).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects a replayed grant', async () => {
     const { service, grants } = makeService();
     addGrant(grants);
@@ -145,13 +167,22 @@ describe('password recovery flow', () => {
     expect(sent[0].message).not.toContain('60 minutes');
   });
 
-  it('refuses a return target outside the allowed origins', async () => {
+  it('hands no tokens to a return target outside the allowed origins', async () => {
     const { service, grants } = makeService();
     (service as any).allowedRedirectOrigins = ['https://catalog.alfares.cz'];
     addGrant(grants, { returnUrl: 'https://evil.example/steal' });
 
-    await expect(
-      service.confirmPasswordReset({ token: 'grant-token', newPassword: 'a-new-password' } as any),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    const result: any = await service.confirmPasswordReset({
+      token: 'grant-token',
+      newPassword: 'a-new-password',
+    } as any);
+
+    // The security property is that nothing is handed to a disallowed origin - not that the
+    // call throws. Throwing would claim the reset failed when the password is already changed.
+    expect(result.redirectUrl).toBeUndefined();
+    expect(result.accessToken).toBeUndefined();
+    expect(result.refreshToken).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain('evil.example');
+    expect(result).toEqual({ message: 'Password reset successfully' });
   });
 });
