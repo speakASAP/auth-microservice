@@ -39,6 +39,9 @@ export class MagicLinkToken {
   @Column({ type: 'text', nullable: true })
   state: string | null;
 
+  @Column({ type: 'varchar', length: 20, default: 'login' })
+  purpose: 'login' | 'recovery';
+
   @Column({ type: 'timestamp' })
   expiresAt: Date;
 

@@ -27,6 +27,15 @@ export class PasswordResetToken {
   @Column({ unique: true })
   token: string;
 
+  @Column({ type: 'text', nullable: true })
+  returnUrl: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  clientId: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  state: string | null;
+
   @Column({ type: 'timestamp' })
   expiresAt: Date;
 
