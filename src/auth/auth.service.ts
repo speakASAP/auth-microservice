@@ -671,19 +671,21 @@ export class AuthService {
       };
     }
 
-    // Generate reset token
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 1); // Token expires in 1 hour
+    let validatedReturnUrl: string | null = null;
+    if (passwordResetRequestDto.return_url) {
+      try {
+        validatedReturnUrl = this.validateReturnUrl(passwordResetRequestDto.return_url);
+      } catch {
+        // Ignore an invalid return_url - don't fail the reset request over it.
+      }
+    }
 
-    // Save reset token
-    const resetToken = this.passwordResetTokenRepository.create({
-      userId: user.id,
-      token,
-      expiresAt,
-      used: false,
+    // Both recovery entry points mint the same grant, so they cannot drift apart.
+    const token = await this.mintPasswordRecoveryGrant(user.id, {
+      returnUrl: validatedReturnUrl,
+      clientId: passwordResetRequestDto.client_id || null,
+      state: passwordResetRequestDto.state || null,
     });
-    await this.passwordResetTokenRepository.save(resetToken);
 
     // Send password reset email via notifications-microservice
     const frontendUrl = process.env.FRONTEND_URL;
@@ -697,12 +699,8 @@ export class AuthService {
       throw new BadRequestException('Frontend URL is not configured');
     }
     const resetUrlParams = new URLSearchParams({ token });
-    if (passwordResetRequestDto.return_url) {
-      try {
-        resetUrlParams.set('return_url', this.validateReturnUrl(passwordResetRequestDto.return_url));
-      } catch {
-        // Ignore invalid return_url - don't fail the reset request over it
-      }
+    if (validatedReturnUrl) {
+      resetUrlParams.set('return_url', validatedReturnUrl);
     }
     if (passwordResetRequestDto.client_id) {
       resetUrlParams.set('client_id', passwordResetRequestDto.client_id);
@@ -712,9 +710,10 @@ export class AuthService {
     }
     const lang = this.normalizeAuthLang(passwordResetRequestDto.lang);
     resetUrlParams.set('lang', lang);
+    resetUrlParams.set('ttl', String(this.passwordRecoveryTtlMinutes));
     const resetUrl = `${frontendUrl}/reset-password?${resetUrlParams.toString()}`;
     const fromDomain = process.env.DOMAIN || '';
-    const resetTtlMinutes = 60;
+    const resetTtlMinutes = this.passwordRecoveryTtlMinutes;
     const resetCopy = this.getAuthEmailCopy('password_reset', lang, resetTtlMinutes);
     try {
       await firstValueFrom(

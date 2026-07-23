@@ -108,6 +108,43 @@ describe('password recovery flow', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('stores the return target on the link grant and states one TTL everywhere', async () => {
+    const { service, grants } = makeService();
+    (service as any).passwordRecoveryTtlMinutes = 11;
+    (service as any).usersService.findByEmail = jest.fn(async () => user);
+    (service as any).notificationsServiceUrl = 'http://notifications';
+    (service as any).notificationServiceToken = 'service-token';
+    const sent: any[] = [];
+    (service as any).httpService = {
+      post: jest.fn((_url: string, payload: any) => {
+        sent.push(payload);
+        return { subscribe: (o: any) => o.next({ data: {} }) } as any;
+      }),
+    };
+    process.env.FRONTEND_URL = 'https://auth.alfares.cz';
+
+    const before = Date.now();
+    await service.requestPasswordReset({
+      email: 'person@example.test',
+      return_url: 'https://catalog.alfares.cz/orders',
+      client_id: 'catalog',
+      state: 'xyz',
+      lang: 'en',
+    } as any);
+
+    expect(grants).toHaveLength(1);
+    expect(grants[0].returnUrl).toBe('https://catalog.alfares.cz/orders');
+    expect(grants[0].clientId).toBe('catalog');
+    expect(grants[0].state).toBe('xyz');
+
+    // The stored expiry and the number printed in the email must be the same value.
+    const ttlMs = new Date(grants[0].expiresAt).getTime() - before;
+    expect(ttlMs).toBeGreaterThan(10 * 60 * 1000);
+    expect(ttlMs).toBeLessThanOrEqual(11 * 60 * 1000 + 1000);
+    expect(sent[0].message).toContain('11 minutes');
+    expect(sent[0].message).not.toContain('60 minutes');
+  });
+
   it('refuses a return target outside the allowed origins', async () => {
     const { service, grants } = makeService();
     (service as any).allowedRedirectOrigins = ['https://catalog.alfares.cz'];
