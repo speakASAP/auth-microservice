@@ -1701,24 +1701,61 @@ export class AuthService {
     return { success: true, delivery: delivered ? ('sent' as const) : ('accepted' as const), ttlMinutes };
   }
 
+  private async mintPasswordRecoveryGrant(
+    userId: string,
+    target: { returnUrl: string | null; clientId: string | null; state: string | null },
+  ): Promise<string> {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + this.passwordRecoveryTtlMinutes * 60 * 1000);
+    const grant = this.passwordResetTokenRepository.create({
+      userId,
+      token,
+      expiresAt,
+      used: false,
+      returnUrl: target.returnUrl || null,
+      clientId: target.clientId,
+      state: target.state,
+    });
+    await this.passwordResetTokenRepository.save(grant);
+    return token;
+  }
+
+  private buildSetPasswordUrl(token: string, lang: 'en' | 'cs' | 'ru'): string {
+    const frontendUrl = process.env.FRONTEND_URL;
+    if (!frontendUrl) {
+      throw new BadRequestException('Frontend URL is not configured');
+    }
+    // return_url, client_id and state are deliberately absent: they live on the grant row so
+    // the completion target cannot be rewritten by editing this URL. `ttl` is display only.
+    const params = new URLSearchParams({
+      token,
+      lang,
+      ttl: String(this.passwordRecoveryTtlMinutes),
+    });
+    return `${frontendUrl}/set-password?${params.toString()}`;
+  }
+
   async verifyContactCode(dto: ContactCodeVerifyDto) {
     const startedAt = Date.now();
     const rawIdentifier = this.normalizeIdentifier(dto.identifier);
     const contactType: 'email' | 'phone' = this.isEmailIdentifier(rawIdentifier) ? 'email' : 'phone';
     const identifier = contactType === 'email' ? this.normalizeEmail(rawIdentifier) : this.normalizePhone(rawIdentifier);
     const code = (dto.code || '').trim();
+    const purpose: 'login' | 'recovery' = dto.purpose === 'recovery' ? 'recovery' : 'login';
 
     if (!identifier || !/^\d{6}$/.test(code)) {
       throw new UnauthorizedException('Invalid or expired sign-in code');
     }
 
-    const tokenHash = this.contactCodeHash(identifier, code);
+    const tokenHash = this.contactCodeHash(identifier, code, purpose);
     const token = await this.magicLinkTokenRepository.findOne({
       where: { token: tokenHash, used: false },
       relations: ['user'],
     });
 
-    if (!token || token.email !== identifier || new Date() > token.expiresAt) {
+    // The purpose check is defence in depth: the hash already separates the two, and this
+    // keeps them separated if the hash ever changes.
+    if (!token || token.email !== identifier || (token.purpose || 'login') !== purpose || new Date() > token.expiresAt) {
       this.audit('warn', 'contact_code_verify', 'failure', {
         identifier,
         contact_type: contactType,
@@ -1741,6 +1778,29 @@ export class AuthService {
         duration_ms: Date.now() - startedAt,
       });
       throw new UnauthorizedException('Invalid or expired sign-in code');
+    }
+
+    if (purpose === 'recovery') {
+      const recoveryReturnUrl = this.validateReturnUrl(dto.return_url || token.returnUrl);
+      const grantToken = await this.mintPasswordRecoveryGrant(user.id, {
+        returnUrl: recoveryReturnUrl,
+        clientId: token.clientId || dto.client_id || null,
+        state: token.state || null,
+      });
+
+      this.audit('info', 'password_recovery_verify', 'success', {
+        identifier,
+        contact_type: contactType,
+        user_id: user.id,
+        client_id: token.clientId,
+        duration_ms: Date.now() - startedAt,
+      });
+
+      return {
+        recovery: true as const,
+        ttlMinutes: this.passwordRecoveryTtlMinutes,
+        redirectUrl: this.buildSetPasswordUrl(grantToken, this.normalizeAuthLang(dto.lang)),
+      };
     }
 
     const finalReturnUrl = this.validateReturnUrl(dto.return_url || token.returnUrl);

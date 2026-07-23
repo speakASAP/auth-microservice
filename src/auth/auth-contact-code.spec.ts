@@ -52,9 +52,18 @@ describe('Auth contact code contract', () => {
       }),
       findOne: jest.fn(async ({ where }: any) => savedTokens.find((token) => token.token === where.token && token.used === where.used) || null),
     };
+    const savedGrants: any[] = [];
+    service.passwordResetTokenRepository = {
+      create: jest.fn((payload: any) => ({ id: 'grant-1', ...payload })),
+      save: jest.fn(async (grant: any) => {
+        savedGrants.push(grant);
+        return grant;
+      }),
+      findOne: jest.fn(async ({ where }: any) => savedGrants.find((g) => g.token === where.token && g.used === where.used) || null),
+    };
     jest.spyOn(service, 'sendContactCode').mockResolvedValue(true);
     jest.spyOn(service, 'generateContactCode').mockReturnValue('123456');
-    return { service: service as AuthService, usersService, savedTokens, rolesService };
+    return { service: service as AuthService, usersService, savedTokens, savedGrants, rolesService };
   }
 
   afterEach(() => {
@@ -219,6 +228,78 @@ describe('Auth contact code contract', () => {
 
     expect(result).toEqual({ success: true, delivery: 'accepted', ttlMinutes: 9 });
     expect(savedTokens).toHaveLength(0);
+  });
+
+  it('exchanges a recovery code for a grant and issues no tokens', async () => {
+    const { service, savedGrants } = makeService();
+    (service as any).passwordRecoveryTtlMinutes = 9;
+    process.env.FRONTEND_URL = 'https://auth.alfares.cz';
+
+    await service.requestContactCode(
+      {
+        identifier: 'person@example.test',
+        return_url: 'https://catalog.alfares.cz/orders',
+        client_id: 'catalog',
+        state: 'xyz',
+        purpose: 'recovery',
+      } as any,
+      '10.0.0.1',
+    );
+
+    const result: any = await service.verifyContactCode({
+      identifier: 'person@example.test',
+      code: '123456',
+      purpose: 'recovery',
+      lang: 'cs',
+    } as any);
+
+    expect(result.recovery).toBe(true);
+    expect(result.ttlMinutes).toBe(9);
+    // Carry the language across the redirect, or a Czech user finishes recovery in English.
+    expect(result.redirectUrl).toContain('lang=cs');
+    expect(result.accessToken).toBeUndefined();
+    expect(result.refreshToken).toBeUndefined();
+    expect(result.redirectUrl).toContain('https://auth.alfares.cz/set-password?');
+    expect(result.redirectUrl).toContain('ttl=9');
+
+    // The completion target lives on the row, never in the URL the user can edit.
+    expect(savedGrants).toHaveLength(1);
+    expect(savedGrants[0].returnUrl).toBe('https://catalog.alfares.cz/orders');
+    expect(savedGrants[0].clientId).toBe('catalog');
+    expect(savedGrants[0].state).toBe('xyz');
+    expect(result.redirectUrl).not.toContain('catalog.alfares.cz');
+  });
+
+  it('refuses to sign in with a recovery code', async () => {
+    const { service } = makeService();
+    await service.requestContactCode(
+      {
+        identifier: 'person@example.test',
+        return_url: 'https://catalog.alfares.cz/orders',
+        purpose: 'recovery',
+      } as any,
+      '10.0.0.1',
+    );
+
+    await expect(
+      service.verifyContactCode({ identifier: 'person@example.test', code: '123456' } as any),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('refuses to recover with a login code', async () => {
+    const { service } = makeService();
+    await service.requestContactCode(
+      { identifier: 'person@example.test', return_url: 'https://catalog.alfares.cz/orders' } as any,
+      '10.0.0.1',
+    );
+
+    await expect(
+      service.verifyContactCode({
+        identifier: 'person@example.test',
+        code: '123456',
+        purpose: 'recovery',
+      } as any),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('uses a channel registry key for phone contact codes when configured', async () => {
