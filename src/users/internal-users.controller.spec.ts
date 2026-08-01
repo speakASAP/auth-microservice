@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { InternalUsersController } from './internal-users.controller';
 import { UsersService } from './users.service';
 
@@ -8,6 +8,7 @@ describe('InternalUsersController', () => {
   const usersService = {
     findLegacyMapping: jest.fn(),
     resolveOrProvisionLegacyUser: jest.fn(),
+    findLegacyIdByAuthUser: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -74,6 +75,50 @@ describe('InternalUsersController', () => {
           email: 'a@b.com',
         } as any),
       ).rejects.toThrow(/system/);
+    });
+  });
+
+  /**
+   * The reverse direction, added for education-service's drill runner: the JWT carries
+   * an auth UUID while `DrillAssignment.studentId` is the legacy Django integer, and
+   * neither route above returns that.
+   */
+  describe('byAuthUser', () => {
+    it('returns the legacy id for a mapped auth user', async () => {
+      usersService.findLegacyIdByAuthUser.mockResolvedValue({ legacyUserId: 310740 });
+
+      const result = await controller.byAuthUser('speakasap-portal', 'auth-1');
+
+      expect(usersService.findLegacyIdByAuthUser).toHaveBeenCalledWith('speakasap-portal', 'auth-1');
+      expect(result).toEqual({ legacyUserId: 310740 });
+    });
+
+    it('404s when the auth user has no legacy mapping', async () => {
+      usersService.findLegacyIdByAuthUser.mockResolvedValue(null);
+
+      await expect(controller.byAuthUser('speakasap-portal', 'auth-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('400s on a missing authUserId rather than scanning the whole system', async () => {
+      await expect(controller.byAuthUser('speakasap-portal', '')).rejects.toThrow(/authUserId/);
+      expect(usersService.findLegacyIdByAuthUser).not.toHaveBeenCalled();
+    });
+
+    it('400s on a missing system', async () => {
+      await expect(controller.byAuthUser('', 'auth-1')).rejects.toThrow(/system/);
+      expect(usersService.findLegacyIdByAuthUser).not.toHaveBeenCalled();
+    });
+
+    // Ambiguity surfaces to the caller as a 409 rather than being flattened into a 404.
+    // "No mapping" and "several conflicting mappings" need different human responses.
+    it('propagates the service conflict when the mapping is ambiguous', async () => {
+      usersService.findLegacyIdByAuthUser.mockRejectedValue(new ConflictException('Ambiguous'));
+
+      await expect(controller.byAuthUser('speakasap-portal', 'auth-1')).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 });

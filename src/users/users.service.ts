@@ -2,7 +2,7 @@
  * Users Service
  */
 
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, In, IsNull, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -59,6 +59,42 @@ export class UsersService {
     });
     if (!mapping) return null;
     return { authUserId: mapping.authUserId ?? null, normalizedEmail: mapping.normalizedEmail ?? null };
+  }
+
+  /**
+   * The reverse of `findLegacyMapping`: auth UUID -> legacy id.
+   *
+   * education-service's drill runner needs this direction because the JWT carries
+   * `AuthContextUser.id` (a UUID) while `DrillAssignment.studentId` is the legacy Django
+   * integer. The two routes shipped alongside this one both map legacy id -> auth UUID.
+   *
+   * Ambiguity is an error, never a guess. The unique key is
+   * `(legacySystem, legacyUserId)` and NOT `authUserId`, so two legacy rows pointing at
+   * one auth user is representable and does occur where a legacy account was duplicated
+   * before the merge. Returning either one would hand a student the other account's
+   * assignments and their answers — silently, and differently per call depending on row
+   * order. The caller is expected to fail closed on the error.
+   */
+  async findLegacyIdByAuthUser(
+    legacySystem: string,
+    authUserId: string,
+  ): Promise<{ legacyUserId: number } | null> {
+    const mappings = await this.legacyIdentityMappingRepository.find({
+      where: { legacySystem, authUserId },
+    });
+
+    const resolved = mappings.filter(
+      (m) => typeof m.legacyUserId === 'number' && Number.isInteger(m.legacyUserId),
+    );
+    if (resolved.length === 0) {
+      return null;
+    }
+    if (resolved.length > 1) {
+      throw new ConflictException(
+        `Ambiguous legacy identity: auth user maps to ${resolved.length} legacy ids in ${legacySystem}`,
+      );
+    }
+    return { legacyUserId: resolved[0].legacyUserId };
   }
 
   async resolveOrProvisionLegacyUser(input: {
