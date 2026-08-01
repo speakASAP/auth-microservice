@@ -7,6 +7,7 @@ describe('InternalUsersController', () => {
   let controller: InternalUsersController;
   const usersService = {
     findLegacyMapping: jest.fn(),
+    resolveOrProvisionLegacyUser: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -39,5 +40,40 @@ describe('InternalUsersController', () => {
   it('400s on non-numeric legacyUserId', async () => {
     await expect(controller.byLegacyId('speakasap-portal', 'abc')).rejects.toThrow();
     expect(usersService.findLegacyMapping).not.toHaveBeenCalled();
+  });
+
+  describe('resolveOrProvisionLegacy', () => {
+    it('delegates to the service and returns the mapping', async () => {
+      usersService.resolveOrProvisionLegacyUser.mockResolvedValue({
+        authUserId: 'u-1',
+        provisioned: false,
+      });
+      const res = await controller.resolveOrProvisionLegacy({
+        system: 'speakasap-portal',
+        legacyUserId: 310740,
+        email: 'a@b.com',
+      } as any);
+      expect(res).toEqual({ authUserId: 'u-1', provisioned: false });
+    });
+
+    it('rejects a non-numeric legacyUserId', async () => {
+      await expect(
+        controller.resolveOrProvisionLegacy({
+          system: 'speakasap-portal',
+          legacyUserId: 'abc' as any,
+          email: 'a@b.com',
+        } as any),
+      ).rejects.toThrow(/legacyUserId/);
+    });
+
+    it('rejects a missing system', async () => {
+      await expect(
+        controller.resolveOrProvisionLegacy({
+          system: '',
+          legacyUserId: 1,
+          email: 'a@b.com',
+        } as any),
+      ).rejects.toThrow(/system/);
+    });
   });
 });
