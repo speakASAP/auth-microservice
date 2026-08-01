@@ -2,13 +2,13 @@
  * Users Service
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, In, IsNull, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { UserDeliveryAddress } from './entities/user-delivery-address.entity';
 import { UserInvoiceProfile } from './entities/user-invoice-profile.entity';
-import { LegacyIdentityMapping } from './entities/legacy-identity-mapping.entity';
+import { LegacyIdentityMapping, LegacyIdentityMappingStatus } from './entities/legacy-identity-mapping.entity';
 import { MagicLinkToken } from '../auth/entities/magic-link-token.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
@@ -59,6 +59,58 @@ export class UsersService {
     });
     if (!mapping) return null;
     return { authUserId: mapping.authUserId ?? null, normalizedEmail: mapping.normalizedEmail ?? null };
+  }
+
+  async resolveOrProvisionLegacyUser(input: {
+    legacySystem: string;
+    legacyUserId: number;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+  }): Promise<{ authUserId: string; provisioned: boolean }> {
+    const existing = await this.legacyIdentityMappingRepository.findOne({
+      where: { legacySystem: input.legacySystem, legacyUserId: input.legacyUserId },
+    });
+    if (existing?.authUserId) {
+      return { authUserId: existing.authUserId, provisioned: false };
+    }
+
+    const normalizedEmail = this.normalizeEmail(input.email);
+    if (!normalizedEmail) {
+      throw new BadRequestException('A non-blank email is required to provision a legacy user');
+    }
+
+    const matched = await this.findByEmail(normalizedEmail);
+    let authUserId: string;
+    let status: LegacyIdentityMappingStatus;
+
+    if (matched) {
+      authUserId = matched.id;
+      status = LegacyIdentityMappingStatus.MAPPED;
+    } else {
+      const created = await this.userRepository.save(
+        this.userRepository.create({
+          email: normalizedEmail,
+          firstName: input.firstName ?? null,
+          lastName: input.lastName ?? null,
+        }),
+      );
+      authUserId = created.id;
+      status = LegacyIdentityMappingStatus.CREATED;
+    }
+
+    await this.legacyIdentityMappingRepository.save(
+      this.legacyIdentityMappingRepository.create({
+        legacySystem: input.legacySystem,
+        legacyUserId: input.legacyUserId,
+        authUserId,
+        normalizedEmail,
+        status,
+        reason: 'provisioned via drilling SSO handoff',
+      }),
+    );
+
+    return { authUserId, provisioned: true };
   }
 
   async findByEmail(email: string): Promise<User | null> {
