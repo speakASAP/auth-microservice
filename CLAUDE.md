@@ -48,8 +48,8 @@ kubectl -n statex-apps exec deployment/auth-microservice -- curl -s -X POST http
 
 ### Infrastructure refs
 
-- **Secrets**: [`../shared/docs/VAULT.md`](../shared/docs/VAULT.md) — path `secret/prod/auth-microservice`
-- **Kubernetes**: [`../shared/docs/KUBERNETES_SETUP_GUIDE.md`](../shared/docs/KUBERNETES_SETUP_GUIDE.md) — Phase A ✅
+- **Secrets**: `secret/prod/auth-microservice`
+- **Kubernetes**: [`../shared/docs/KUBERNETES_SETUP_GUIDE.md`](../shared/docs/KUBERNETES_SETUP_GUIDE.md)
 - **Deploy standard**: [`../shared/docs/DEPLOY_STANDARD.md`](../shared/docs/DEPLOY_STANDARD.md)
 
 **Ops**: `curl http://auth-microservice:3370/health` · `kubectl logs -n statex-apps -l app=auth-microservice -f` · `./scripts/deploy.sh`

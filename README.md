@@ -6,7 +6,6 @@ Centralized JWT authentication and user management for all Statex services.
 
 ## Quick Reference
 
-| | |
 |---|---|
 | Backend API | port 3370 · `http://auth-microservice:3370` |
 | Frontend | port 3372 · `https://auth.alfares.cz` |
@@ -39,7 +38,7 @@ Centralized JWT authentication and user management for all Statex services.
 
 - **K8s**: Running on k3s · namespace `statex-apps` · Phase A ✅
 - **Secrets**: Vault → ESO → K8s Secret `auth-microservice-secret` → pod env
-  See [`../shared/docs/VAULT.md`](../shared/docs/VAULT.md) · path `secret/prod/auth-microservice`
+  See `secret/prod/auth-microservice`
 - **Blue/green ports**: backend 3370/3371 · frontend 3372/3373
 - **Constraints**: → [`BUSINESS.md`](BUSINESS.md) · bcrypt only · never log JWT secrets · no direct DB writes by AI
 
