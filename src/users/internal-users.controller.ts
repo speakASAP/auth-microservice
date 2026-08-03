@@ -2,6 +2,13 @@ import { BadRequestException, Body, Controller, Get, NotFoundException, Post, Qu
 import { InternalServiceGuard } from '../auth/guards/internal-service.guard';
 import { UsersService } from './users.service';
 
+/**
+ * Ceiling on one names-by-legacy-ids batch. Comfortably above the largest real roster
+ * seen (teacher 10, 656 students) so a single page never needs splitting, and far below
+ * anything that would let one caller pull the user table through this route.
+ */
+const MAX_LEGACY_ID_BATCH = 1000;
+
 @Controller('internal/users')
 @UseGuards(InternalServiceGuard)
 export class InternalUsersController {
@@ -48,6 +55,38 @@ export class InternalUsersController {
       throw new NotFoundException('Legacy mapping not found');
     }
     return { legacyUserId: mapping.legacyUserId };
+  }
+
+  /**
+   * Batch legacy id -> name. POST because the id list is unbounded in principle and a
+   * few hundred ids do not belong in a query string.
+   *
+   * Added for education-service's teacher roster, which holds legacy `studentId`
+   * integers and no names, so every student rendered as "Student 58" in the assignment
+   * wizard. Unmapped ids are omitted rather than returned blank — see the service.
+   *
+   * The batch is capped: this is a lookup for a picker, not a bulk export of the user
+   * table, and an uncapped `IN (...)` is a cheap way for one caller to hurt everyone.
+   */
+  @Post('names-by-legacy-ids')
+  async namesByLegacyIds(@Body() body: { system: string; legacyUserIds: number[] }) {
+    if (!body?.system) {
+      throw new BadRequestException('system is required');
+    }
+    if (!Array.isArray(body?.legacyUserIds)) {
+      throw new BadRequestException('legacyUserIds must be an array');
+    }
+    if (body.legacyUserIds.length > MAX_LEGACY_ID_BATCH) {
+      throw new BadRequestException(
+        `legacyUserIds may not exceed ${MAX_LEGACY_ID_BATCH} entries per request`,
+      );
+    }
+
+    const ids = Array.from(
+      new Set(body.legacyUserIds.map(Number).filter((id) => Number.isInteger(id) && id > 0)),
+    );
+
+    return { users: await this.usersService.findNamesByLegacyIds(body.system, ids) };
   }
 
   /** Contract C9. Shape mirrors `ResolveLegacyUserRequest` in shared/contracts/drills.contracts.ts. */

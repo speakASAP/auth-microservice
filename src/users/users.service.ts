@@ -53,6 +53,54 @@ export class UsersService {
     private readonly legacyIdentityMappingRepository: Repository<LegacyIdentityMapping>,
   ) {}
 
+  /**
+   * Batch legacy id -> display name, for callers holding a list of legacy ids and no
+   * names at all.
+   *
+   * education-service is the first: it stores `studentId` integers and nothing about the
+   * person, so its teacher roster returned `name: ''` for every entry and the assignment
+   * wizard rendered "Student 58", "Student 111" for a teacher with 656 students.
+   *
+   * One query per batch, not one per id. The single-id `findLegacyMapping` called in a
+   * loop would be 656 round trips to build one picker.
+   *
+   * Ids with no mapping, or a mapping to no auth user, are simply absent from the result
+   * rather than returned with a blank name. The caller can then tell "this student has no
+   * auth account" apart from "this student's name is empty", which are different problems.
+   */
+  async findNamesByLegacyIds(
+    legacySystem: string,
+    legacyUserIds: number[],
+  ): Promise<Array<{ legacyUserId: number; name: string; email: string | null }>> {
+    if (legacyUserIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.legacyIdentityMappingRepository
+      .createQueryBuilder('mapping')
+      .innerJoin(User, 'user', 'user.id = mapping."authUserId"')
+      .select([
+        'mapping."legacyUserId" AS "legacyUserId"',
+        'user."firstName" AS "firstName"',
+        'user."lastName" AS "lastName"',
+        'user.email AS email',
+      ])
+      .where('mapping."legacySystem" = :legacySystem', { legacySystem })
+      .andWhere('mapping."legacyUserId" IN (:...legacyUserIds)', { legacyUserIds })
+      .getRawMany<{ legacyUserId: number; firstName: string | null; lastName: string | null; email: string | null }>();
+
+    return rows.map((row) => ({
+      legacyUserId: Number(row.legacyUserId),
+      // Falls back to the email local part, then to nothing. A teacher recognises an
+      // email far better than "Student 58"; an empty name is left empty rather than
+      // filled with a placeholder that reads like a real name.
+      name:
+        [row.firstName, row.lastName].filter(Boolean).join(' ').trim() ||
+        (row.email ? row.email.split('@')[0] : ''),
+      email: row.email ?? null,
+    }));
+  }
+
   async findLegacyMapping(legacySystem: string, legacyUserId: number): Promise<{ authUserId: string | null; normalizedEmail: string | null } | null> {
     const mapping = await this.legacyIdentityMappingRepository.findOne({
       where: { legacySystem, legacyUserId },
