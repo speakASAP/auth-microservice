@@ -79,14 +79,15 @@ export class UsersService {
     const rows = await this.legacyIdentityMappingRepository
       .createQueryBuilder('mapping')
       .innerJoin(User, 'user', 'user.id = mapping."authUserId"')
-      // `addSelect` with a single string takes raw SQL, so the AS aliases survive.
-      // The ARRAY form of `select()` does not: it treats each entry as a column
-      // identifier and escapes it, which turned these aliases into
-      // `syntax error at or near "."` on every call. The method had no test, so
-      // a query that could never execute shipped.
-      .select('mapping."legacyUserId"', 'legacyUserId')
-      .addSelect('user."firstName"', 'firstName')
-      .addSelect('user."lastName"', 'lastName')
+      // Columns are `alias.column` UNQUOTED. TypeORM quotes each part itself,
+      // so passing `mapping."legacyUserId"` yields
+      //   "mapping"."mapping"."legacyUserId"
+      // — a three-part name Postgres rejects with `syntax error at or near "."`.
+      // Reproduced against a scratch Postgres 16 before this fix; the entity's
+      // camelCase columns are quoted correctly by TypeORM without help.
+      .select('mapping.legacyUserId', 'legacyUserId')
+      .addSelect('user.firstName', 'firstName')
+      .addSelect('user.lastName', 'lastName')
       .addSelect('user.email', 'email')
       .where('mapping."legacySystem" = :legacySystem', { legacySystem })
       .andWhere('mapping."legacyUserId" IN (:...legacyUserIds)', { legacyUserIds })

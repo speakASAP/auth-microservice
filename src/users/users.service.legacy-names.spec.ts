@@ -83,6 +83,22 @@ describe('UsersService.findNamesByLegacyIds', () => {
     }
   });
 
+  // TypeORM quotes each part of `alias.column` itself. Passing an already-quoted
+  // identifier such as `mapping."legacyUserId"` produces
+  //   "mapping"."mapping"."legacyUserId"
+  // which Postgres rejects with `syntax error at or near "."`. Reproduced on a
+  // scratch Postgres 16; this is what actually broke the route in production,
+  // and the first fix for it was wrong in the same way.
+  it('passes unquoted alias.column, so TypeORM cannot double-prefix', async () => {
+    const { service, qb } = makeService();
+    await service.findNamesByLegacyIds('speakasap-portal', [58]);
+
+    for (const projection of projections(qb)) {
+      expect(projection).not.toContain('"');
+      expect(projection).toMatch(/^[a-zA-Z_]+\.[a-zA-Z_]+$/);
+    }
+  });
+
   it('projects every field the response needs', async () => {
     const { service, qb } = makeService();
     await service.findNamesByLegacyIds('speakasap-portal', [58]);
