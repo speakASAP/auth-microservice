@@ -79,12 +79,15 @@ export class UsersService {
     const rows = await this.legacyIdentityMappingRepository
       .createQueryBuilder('mapping')
       .innerJoin(User, 'user', 'user.id = mapping."authUserId"')
-      .select([
-        'mapping."legacyUserId" AS "legacyUserId"',
-        'user."firstName" AS "firstName"',
-        'user."lastName" AS "lastName"',
-        'user.email AS email',
-      ])
+      // `addSelect` with a single string takes raw SQL, so the AS aliases survive.
+      // The ARRAY form of `select()` does not: it treats each entry as a column
+      // identifier and escapes it, which turned these aliases into
+      // `syntax error at or near "."` on every call. The method had no test, so
+      // a query that could never execute shipped.
+      .select('mapping."legacyUserId"', 'legacyUserId')
+      .addSelect('user."firstName"', 'firstName')
+      .addSelect('user."lastName"', 'lastName')
+      .addSelect('user.email', 'email')
       .where('mapping."legacySystem" = :legacySystem', { legacySystem })
       .andWhere('mapping."legacyUserId" IN (:...legacyUserIds)', { legacyUserIds })
       .getRawMany<{ legacyUserId: number; firstName: string | null; lastName: string | null; email: string | null }>();
