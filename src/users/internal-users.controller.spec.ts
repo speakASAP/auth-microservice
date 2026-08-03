@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { AuthService } from '../auth/auth.service';
 import { InternalUsersController } from './internal-users.controller';
 import { UsersService } from './users.service';
 
@@ -10,12 +11,18 @@ describe('InternalUsersController', () => {
     resolveOrProvisionLegacyUser: jest.fn(),
     findLegacyIdByAuthUser: jest.fn(),
   };
+  const authService = {
+    createSessionForUser: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.resetAllMocks();
     const moduleRef = await Test.createTestingModule({
       controllers: [InternalUsersController],
-      providers: [{ provide: UsersService, useValue: usersService }],
+      providers: [
+        { provide: UsersService, useValue: usersService },
+        { provide: AuthService, useValue: authService },
+      ],
     }).compile();
     controller = moduleRef.get(InternalUsersController);
   });
@@ -119,6 +126,52 @@ describe('InternalUsersController', () => {
       await expect(controller.byAuthUser('speakasap-portal', 'auth-1')).rejects.toThrow(
         ConflictException,
       );
+    });
+  });
+
+  /**
+   * Session minting for an already-resolved user. Completes the speakasap portal SSO
+   * handoff: `resolve-or-provision-legacy` says who the student is, this issues the
+   * session, and the platform never has to fall back to guessing an identity.
+   */
+  describe('createSession', () => {
+    it('returns the minted session for a known user', async () => {
+      authService.createSessionForUser.mockResolvedValue({
+        accessToken: 'tok-1',
+        expiresIn: 43200,
+        userId: 'u-1',
+      });
+
+      const result = await controller.createSession('u-1');
+
+      expect(authService.createSessionForUser).toHaveBeenCalledWith('u-1');
+      expect(result).toEqual({ accessToken: 'tok-1', expiresIn: 43200, userId: 'u-1' });
+    });
+
+    it('400s on an empty userId rather than asking auth to look up nothing', async () => {
+      await expect(controller.createSession('')).rejects.toThrow(/userId/);
+      expect(authService.createSessionForUser).not.toHaveBeenCalled();
+    });
+
+    it('propagates a 404 for an unknown user', async () => {
+      authService.createSessionForUser.mockRejectedValue(new NotFoundException('User not found'));
+
+      await expect(controller.createSession('missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('never returns a refresh token, whatever the service hands back', async () => {
+      // Defence in depth: if createSessionForUser ever grows one, this route must not
+      // forward a long-lived credential into a browser handoff.
+      authService.createSessionForUser.mockResolvedValue({
+        accessToken: 'tok-1',
+        refreshToken: 'should-not-escape',
+        expiresIn: 43200,
+        userId: 'u-1',
+      });
+
+      const result = await controller.createSession('u-1');
+
+      expect(JSON.stringify(result)).not.toContain('should-not-escape');
     });
   });
 });

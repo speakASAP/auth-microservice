@@ -50,6 +50,16 @@ import { UserInvoiceProfile } from '../users/entities/user-invoice-profile.entit
 
 const AUTH_CHECKOUT_DATA_SCHEMA_VERSION = 'auth.customer-data-wallet.checkout-data.v1';
 
+/**
+ * Lifetime of a session minted by `createSessionForUser` (the internal SSO handoff).
+ *
+ * Deliberately far shorter than `JWT_EXPIRES_IN` (7d) and not configurable by
+ * environment: this session is established from a token in a URL rather than from the
+ * user authenticating to us, so its blast radius should not drift upward by config.
+ */
+const INTERNAL_SESSION_EXPIRES_IN = '12h';
+const INTERNAL_SESSION_SECONDS = 12 * 60 * 60;
+
 @Injectable()
 export class AuthService {
   private readonly notificationsServiceUrl: string;
@@ -655,6 +665,60 @@ export class AuthService {
       accessToken,
       refreshToken,
     };
+  }
+
+  /**
+   * Mint a session for a user whose identity has already been established out of band.
+   *
+   * Built for the speakasap portal SSO handoff: the portal signs a short-lived token,
+   * the platform verifies it and calls `resolve-or-provision-legacy` to learn *who* the
+   * student is, and this turns that answer into a session. Internal callers only — the
+   * route is behind `InternalServiceGuard`.
+   *
+   * Two deliberate differences from `generateTokens`, both narrowing:
+   *
+   * - **No refresh token.** The caller established this session from a link in a URL,
+   *   not from the user proving anything to us. Handing back a 30-day credential on that
+   *   basis widens a redirect into long-lived access.
+   * - **12 hours, not 7 days.** Long enough for a study session, short enough that a
+   *   leaked handoff does not become a standing login.
+   *
+   * `authMethod` lands in the token as `auth_method`, so these sessions are
+   * distinguishable from password logins in any later audit.
+   */
+  async createSessionForUser(
+    userId: string,
+    authMethod = 'portal_sso',
+  ): Promise<{ accessToken: string; expiresIn: number; userId: string }> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      // Never sign a token for a user we cannot read. A missing user here means the
+      // caller resolved an identity that no longer exists.
+      this.audit('warn', 'internal_create_session', 'unknown_user', { user_id: userId });
+      throw new NotFoundException('User not found');
+    }
+
+    const roles = await this.rolesService.getUserRoles(userId);
+
+    const payload: Record<string, unknown> = {
+      sub: userId,
+      email: user.email,
+      type: user.userType || 'end_user',
+      roles,
+      auth_method: authMethod,
+    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: INTERNAL_SESSION_EXPIRES_IN,
+    });
+
+    this.audit('info', 'internal_create_session', 'success', {
+      user_id: userId,
+      auth_method: authMethod,
+      expires_in: INTERNAL_SESSION_SECONDS,
+    });
+
+    return { accessToken, expiresIn: INTERNAL_SESSION_SECONDS, userId };
   }
 
   async requestPasswordReset(passwordResetRequestDto: PasswordResetRequestDto) {

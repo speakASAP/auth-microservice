@@ -2,8 +2,9 @@
  * Users Module
  */
 
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from '../auth/auth.module';
 import { UsersService } from './users.service';
 import { InternalUsersController } from './internal-users.controller';
 import { User } from './entities/user.entity';
@@ -16,7 +17,12 @@ import { UnsubscribeTokenService } from './unsubscribe-token.service';
 import { MarketingConsentController } from './marketing-consent.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, UserDeliveryAddress, UserInvoiceProfile, LegacyIdentityMapping, UserMarketingConsent])],
+  imports: [
+    TypeOrmModule.forFeature([User, UserDeliveryAddress, UserInvoiceProfile, LegacyIdentityMapping, UserMarketingConsent]),
+    // Circular by nature: AuthModule needs UsersService to look users up, and
+    // InternalUsersController needs AuthService to mint a session for one it resolved.
+    forwardRef(() => AuthModule),
+  ],
   controllers: [InternalUsersController, MarketingConsentController],
   providers: [UsersService, MarketingConsentService, UnsubscribeTokenService],
   exports: [UsersService, MarketingConsentService, UnsubscribeTokenService],

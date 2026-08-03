@@ -2,7 +2,7 @@
  * Auth Module
  */
 
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { HttpModule } from '@nestjs/axios';
@@ -24,7 +24,7 @@ import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping
 
 @Module({
   imports: [
-    UsersModule,
+    forwardRef(() => UsersModule),
     RolesModule,
     LoggerModule,
     AuthEventsModule,

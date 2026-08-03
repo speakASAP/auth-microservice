@@ -1,4 +1,5 @@
-import { BadRequestException, Body, Controller, Get, NotFoundException, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, forwardRef, Get, Inject, NotFoundException, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { AuthService } from '../auth/auth.service';
 import { InternalServiceGuard } from '../auth/guards/internal-service.guard';
 import { UsersService } from './users.service';
 
@@ -12,7 +13,12 @@ const MAX_LEGACY_ID_BATCH = 1000;
 @Controller('internal/users')
 @UseGuards(InternalServiceGuard)
 export class InternalUsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    // forwardRef mirrors the UsersModule <-> AuthModule cycle; without it Nest cannot
+    // resolve AuthService here and the app fails to boot rather than failing a test.
+    @Inject(forwardRef(() => AuthService)) private readonly authService: AuthService,
+  ) {}
 
   @Get('by-legacy-id')
   async byLegacyId(@Query('system') system: string, @Query('legacyUserId') legacyUserId: string) {
@@ -108,5 +114,33 @@ export class InternalUsersController {
       firstName: body.firstName,
       lastName: body.lastName,
     });
+  }
+
+  /**
+   * Mint a session for an already-resolved user. Completes the speakasap portal SSO
+   * handoff, whose steps are: portal signs a short-lived token → platform verifies it →
+   * `resolve-or-provision-legacy` answers *who* → this answers *how they get in*.
+   *
+   * Without this route the handoff can identify a student and then do nothing with the
+   * answer, which is what forced the platform to either fail or guess. It never guesses.
+   *
+   * Access token only, 12h, no refresh token — see `createSessionForUser`. The response
+   * is built field by field rather than spread, so a future refresh token added upstream
+   * cannot leak into a browser handoff by accident.
+   */
+  @Post(':userId/session')
+  async createSession(@Param('userId') userId: string) {
+    const trimmed = (userId || '').trim();
+    if (!trimmed) {
+      throw new BadRequestException('userId is required');
+    }
+
+    const session = await this.authService.createSessionForUser(trimmed);
+
+    return {
+      accessToken: session.accessToken,
+      expiresIn: session.expiresIn,
+      userId: session.userId,
+    };
   }
 }
