@@ -130,7 +130,7 @@ export class UsersService {
   async findLegacyIdByAuthUser(
     legacySystem: string,
     authUserId: string,
-  ): Promise<{ legacyUserId: number; legacyTeacherId: number | null } | null> {
+  ): Promise<{ legacyUserId: number } | null> {
     const mappings = await this.legacyIdentityMappingRepository.find({
       where: { legacySystem, authUserId },
     });
@@ -146,15 +146,7 @@ export class UsersService {
         `Ambiguous legacy identity: auth user maps to ${resolved.length} legacy ids in ${legacySystem}`,
       );
     }
-    // `legacyTeacherId` is the Teacher profile pk, which is NOT the user id — see the
-    // entity. Returned as an explicit null for a non-teacher so a caller can tell
-    // "resolved, not a teacher" from an auth that predates the column.
-    const teacherId = resolved[0].legacyTeacherId;
-    return {
-      legacyUserId: resolved[0].legacyUserId,
-      legacyTeacherId:
-        typeof teacherId === 'number' && Number.isInteger(teacherId) ? teacherId : null,
-    };
+    return { legacyUserId: resolved[0].legacyUserId };
   }
 
   async resolveOrProvisionLegacyUser(input: {

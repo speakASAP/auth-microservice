@@ -43,17 +43,6 @@ export class LegacyIdentityMapping {
   @Column({ type: 'int' })
   legacyUserId: number;
 
-  /**
-   * The legacy Teacher **profile** pk, when this user is a teacher.
-   *
-   * Distinct from `legacyUserId`: in the speakasap portal `Lesson.teacher_id` points at
-   * `employees_teacher.id` (e.g. 182), while the same person's `auth_user.id` is 3.
-   * Education-service used the user id to query lessons and so resolved a teacher to
-   * someone else's roster, or to none. Null for a user who is not a teacher.
-   */
-  @Column({ type: 'int', nullable: true })
-  legacyTeacherId: number | null;
-
   @Column({ type: 'uuid', nullable: true })
   authUserId: string | null;
 
