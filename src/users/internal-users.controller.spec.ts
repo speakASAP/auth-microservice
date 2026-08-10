@@ -10,6 +10,7 @@ describe('InternalUsersController', () => {
     findLegacyMapping: jest.fn(),
     resolveOrProvisionLegacyUser: jest.fn(),
     findLegacyIdByAuthUser: jest.fn(),
+    findNamesByLegacyIds: jest.fn(),
   };
   const authService = {
     createSessionForUser: jest.fn(),
@@ -126,6 +127,51 @@ describe('InternalUsersController', () => {
       await expect(controller.byAuthUser('speakasap-portal', 'auth-1')).rejects.toThrow(
         ConflictException,
       );
+    });
+  });
+
+  describe('namesByLegacyIds', () => {
+    it('deduplicates and filters ids before asking the service for display names', async () => {
+      usersService.findNamesByLegacyIds.mockResolvedValue([
+        { legacyUserId: 58, name: 'Anna Ivanova', email: 'anna@example.com' },
+      ]);
+
+      const result = await controller.namesByLegacyIds({
+        system: 'speakasap-portal',
+        legacyUserIds: [58, 58, '145' as any, 0, -1, 1.5, Number.NaN],
+      });
+
+      expect(usersService.findNamesByLegacyIds).toHaveBeenCalledWith('speakasap-portal', [
+        58,
+        145,
+      ]);
+      expect(result).toEqual({
+        users: [{ legacyUserId: 58, name: 'Anna Ivanova', email: 'anna@example.com' }],
+      });
+    });
+
+    it('400s when the legacy id list is missing instead of scanning all mappings', async () => {
+      await expect(
+        controller.namesByLegacyIds({ system: 'speakasap-portal' } as any),
+      ).rejects.toThrow(/legacyUserIds/);
+      expect(usersService.findNamesByLegacyIds).not.toHaveBeenCalled();
+    });
+
+    it('400s when the batch exceeds the safety cap', async () => {
+      await expect(
+        controller.namesByLegacyIds({
+          system: 'speakasap-portal',
+          legacyUserIds: Array.from({ length: 1001 }, (_, index) => index + 1),
+        }),
+      ).rejects.toThrow(/may not exceed 1000/);
+      expect(usersService.findNamesByLegacyIds).not.toHaveBeenCalled();
+    });
+
+    it('400s when the system is missing', async () => {
+      await expect(
+        controller.namesByLegacyIds({ system: '', legacyUserIds: [58] }),
+      ).rejects.toThrow(/system/);
+      expect(usersService.findNamesByLegacyIds).not.toHaveBeenCalled();
     });
   });
 
