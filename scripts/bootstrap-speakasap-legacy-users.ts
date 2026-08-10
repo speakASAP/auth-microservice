@@ -228,7 +228,14 @@ async function existingLegacyMappingIds(auth: any): Promise<Set<number>> {
 async function ensureMappingSchema(auth: any): Promise<void> {
   await auth.query(`
     CREATE TABLE IF NOT EXISTS legacy_identity_mappings (
-      id uuid PRIMARY KEY,
+      -- DEFAULT is required, not decorative: this script supplies its own ids, but the
+      -- application does not. TypeORM's @PrimaryGeneratedColumn('uuid') emits
+      -- INSERT ... VALUES (DEFAULT, ...) and relies on the database to fill it, so a
+      -- column without a default fails every app-level insert with
+      -- 'null value in column "id" violates not-null constraint'. That broke the SSO
+      -- handoff for every student who had no mapping yet (2026-08-10). Every other uuid
+      -- primary key in this database carries the same default.
+      id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
       "legacySystem" varchar NOT NULL,
       "legacyUserId" integer NOT NULL,
       "authUserId" uuid NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -241,6 +248,11 @@ async function ensureMappingSchema(auth: any): Promise<void> {
       "createdAt" timestamp NOT NULL DEFAULT now(),
       "updatedAt" timestamp NOT NULL DEFAULT now()
     )
+  `);
+  // Existing installs created the table before the default above existed.
+  await auth.query(`
+    ALTER TABLE legacy_identity_mappings
+    ALTER COLUMN id SET DEFAULT uuid_generate_v4()
   `);
   await auth.query(`
     ALTER TABLE legacy_identity_mappings
