@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { verifyAuthToken } from '../jwt-verifier';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { UsersService } from '../../users/users.service';
 import { RolesService } from '../../roles/roles.service';
@@ -48,9 +49,9 @@ export class RolesGuard implements CanActivate {
 
     try {
       // Verify JWT token
-      const payload = this.jwtService.verify(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      // TASK-KEY-F3 step 3: auth must verify what it signs. Without this, flipping to
+      // RS256 makes auth reject its own freshly minted tokens on every guarded route.
+      const payload = await verifyAuthToken(token);
 
       // Get user
       const user = await this.usersService.findById(payload.sub);

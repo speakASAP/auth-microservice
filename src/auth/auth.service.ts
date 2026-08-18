@@ -4,6 +4,7 @@
 
 import { Injectable, UnauthorizedException, ConflictException, BadRequestException, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { verifyAuthToken } from './jwt-verifier';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
@@ -310,9 +311,10 @@ export class AuthService {
   async validateToken(token: string) {
     const startedAt = Date.now();
     try {
-      const payload = this.jwtService.verify(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      // TASK-KEY-F3 step 3: accepts RS256 (this service's own key) and HS256 (tokens
+      // minted before the flip). 15 services delegate to POST /auth/validate rather than
+      // verifying locally, so this single call decides whether they can authenticate.
+      const payload = await verifyAuthToken(token);
 
       if (!this.isUuid(payload.sub)) {
         this.audit('warn', 'validate_token', 'failure', {
@@ -382,9 +384,9 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     const startedAt = Date.now();
     try {
-      const payload = this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_SECRET,
-      });
+      // Refresh tokens live 30 days, so HS256 ones stay in flight well past the RS256
+      // flip. Dual verification is what makes the migration non-breaking for them.
+      const payload = await verifyAuthToken(refreshToken);
 
       const user = await this.usersService.findById(payload.sub);
       if (!user || !user.isActive) {

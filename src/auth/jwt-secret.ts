@@ -79,5 +79,51 @@ export function getJwtKeyId(): string | null {
  * flipping this before then would invalidate every token in the ecosystem at once.
  */
 export function shouldSignRs256(): boolean {
-  return process.env.JWT_SIGN_ALGORITHM === 'RS256' && getJwtPrivateKey() !== null;
+  if (process.env.JWT_SIGN_ALGORITHM !== 'RS256') return false;
+
+  // Requested RS256 but the key is missing: previously this returned false, which
+  // silently downgraded to HS256 — the operator sets the flag, sees a healthy boot,
+  // and believes the migration happened while auth still mints symmetric tokens.
+  // Refuse to start instead.
+  const key = getJwtPrivateKey();
+  if (!key) {
+    throw new Error(
+      'JWT_SIGN_ALGORITHM=RS256 but JWT_PRIVATE_KEY is not set. auth-microservice will not ' +
+        'silently fall back to HS256. Set the PEM from Vault (secret/prod/auth-microservice) ' +
+        'or unset JWT_SIGN_ALGORITHM to stay on HS256.',
+    );
+  }
+
+  if (!getJwtKeyId()) {
+    throw new Error(
+      'JWT_SIGN_ALGORITHM=RS256 but JWT_KEY_ID is not set. Tokens would be signed without a ' +
+        'kid header and no verifier could select the right JWKS key.',
+    );
+  }
+
+  return true;
+}
+
+/**
+ * The signing configuration for JwtModule. Centralised so the algorithm decision is made
+ * in exactly one place and can be logged at boot.
+ */
+export function getSigningConfig(): {
+  algorithm: 'RS256' | 'HS256';
+  secret?: string;
+  privateKey?: string;
+  keyid?: string;
+} {
+  if (shouldSignRs256()) {
+    // `secret` is deliberately omitted: @nestjs/jwt prefers it over `privateKey` when both
+    // are present and would hand the HMAC string to RS256 ("secretOrPrivateKey must be an
+    // asymmetric key"). Verification of pre-flip HS256 tokens does not run through
+    // JwtService at all — every path uses verifyAuthToken(), which reads JWT_SECRET itself.
+    return {
+      algorithm: 'RS256',
+      privateKey: getJwtPrivateKey() as string,
+      keyid: getJwtKeyId() as string,
+    };
+  }
+  return { algorithm: 'HS256', secret: requireJwtSecret() };
 }

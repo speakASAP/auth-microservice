@@ -2,6 +2,12 @@ import { UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import * as bcryptjs from 'bcryptjs';
 import { AuthService } from './auth.service';
+import * as jwtLib from 'jsonwebtoken';
+
+// validateToken now uses the real dual-algorithm verifier, not a jwtService stub,
+// so these tests sign genuine HS256 tokens against a test secret.
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'contract-test-secret';
+
 
 describe('Auth identifier and contact contract', () => {
   const baseUser = {
@@ -533,7 +539,9 @@ describe('Auth identifier and contact contract', () => {
     const { service } = makeService(serviceUser);
     (service as any).rolesService.getUserRoles.mockResolvedValue(['internal:warehouse-microservice:admin']);
 
-    const result = await service.validateToken('service-token');
+    const result = await service.validateToken(
+      jwtLib.sign({ sub: serviceUser.id }, process.env.JWT_SECRET as string, { algorithm: 'HS256' }),
+    );
 
     expect(result).toMatchObject({
       id: '22222222-2222-4222-8222-222222222222',
@@ -549,11 +557,13 @@ describe('Auth identifier and contact contract', () => {
 
   it('rejects non-UUID JWT subjects before database lookup', async () => {
     const { service, usersService } = makeService();
-    (service as any).jwtService.verify.mockReturnValue({
-      sub: 'warehouse-reservation-expiry-cron',
-    });
+    const token = jwtLib.sign(
+      { sub: 'warehouse-reservation-expiry-cron' },
+      process.env.JWT_SECRET as string,
+      { algorithm: 'HS256' },
+    );
 
-    await expect(service.validateToken('service-token')).rejects.toThrow(UnauthorizedException);
+    await expect(service.validateToken(token)).rejects.toThrow(UnauthorizedException);
 
     expect(usersService.findById).not.toHaveBeenCalled();
     expect((service as any).logger.warn).toHaveBeenCalledWith(expect.stringContaining('reason=invalid_subject'), 'AuthAudit');
@@ -655,7 +665,9 @@ describe('Auth identifier and contact contract', () => {
       },
     } as any);
 
-    const result = await service.validateToken('user-token');
+    const result = await service.validateToken(
+      jwtLib.sign({ sub: baseUser.id }, process.env.JWT_SECRET as string, { algorithm: 'HS256' }),
+    );
 
     expect(result.userType).toBe('end_user');
     expect(result).not.toHaveProperty('serviceName');
