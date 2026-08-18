@@ -8,6 +8,21 @@ import * as jwtLib from 'jsonwebtoken';
 // so these tests sign genuine HS256 tokens against a test secret.
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'contract-test-secret';
 
+// TASK-KEY-F3 step 4: validateToken accepts RS256 only, so these tests sign with a real
+// RSA key and expose it via the env the verifier's local short-circuit reads.
+const contractKeyPair = require('crypto').generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+  privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  publicKeyEncoding: { type: 'spki', format: 'pem' },
+});
+process.env.JWT_PUBLIC_KEY = contractKeyPair.publicKey as string;
+process.env.JWT_KEY_ID = 'contract-test-kid';
+const signContractToken = (sub: string): string =>
+  jwtLib.sign({ sub }, contractKeyPair.privateKey as string, {
+    algorithm: 'RS256',
+    keyid: 'contract-test-kid',
+  });
+
 
 describe('Auth identifier and contact contract', () => {
   const baseUser = {
@@ -540,7 +555,7 @@ describe('Auth identifier and contact contract', () => {
     (service as any).rolesService.getUserRoles.mockResolvedValue(['internal:warehouse-microservice:admin']);
 
     const result = await service.validateToken(
-      jwtLib.sign({ sub: serviceUser.id }, process.env.JWT_SECRET as string, { algorithm: 'HS256' }),
+      signContractToken(serviceUser.id),
     );
 
     expect(result).toMatchObject({
@@ -557,11 +572,7 @@ describe('Auth identifier and contact contract', () => {
 
   it('rejects non-UUID JWT subjects before database lookup', async () => {
     const { service, usersService } = makeService();
-    const token = jwtLib.sign(
-      { sub: 'warehouse-reservation-expiry-cron' },
-      process.env.JWT_SECRET as string,
-      { algorithm: 'HS256' },
-    );
+    const token = signContractToken('warehouse-reservation-expiry-cron');
 
     await expect(service.validateToken(token)).rejects.toThrow(UnauthorizedException);
 
@@ -666,7 +677,7 @@ describe('Auth identifier and contact contract', () => {
     } as any);
 
     const result = await service.validateToken(
-      jwtLib.sign({ sub: baseUser.id }, process.env.JWT_SECRET as string, { algorithm: 'HS256' }),
+      signContractToken(baseUser.id),
     );
 
     expect(result.userType).toBe('end_user');

@@ -6,7 +6,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AuthService } from './auth.service';
-import { requireJwtSecret, getJwtPublicKey, getJwtKeyId } from './jwt-secret';
+import { getJwtPublicKey, getJwtKeyId } from './jwt-secret';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -35,12 +35,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             return done(null, pem);
           }
 
-          return done(null, requireJwtSecret());
+          // TASK-KEY-F3 step 4: HS256 retired. Nothing signs it any more, so a non-RS256
+          // token is a leftover or a forgery.
+          return done(new Error(`Unsupported token algorithm ${header.alg ?? 'none'}; RS256 required`));
         } catch (err) {
           return done(err instanceof Error ? err : new Error('Malformed JWT header'));
         }
       },
-      algorithms: ['RS256', 'HS256'],
+      algorithms: ['RS256'],
     });
   }
 

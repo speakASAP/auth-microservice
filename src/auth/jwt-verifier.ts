@@ -136,15 +136,8 @@ export async function verifyAuthToken(token: string): Promise<VerifiedPayload> {
     }
   }
 
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new UnauthorizedException('JWT_SECRET is not configured and the token is not RS256');
-  }
-  try {
-    // Pinned to HS256: without `algorithms` a token could claim alg:none or swap to
-    // RS256 with the public key as the HMAC secret — the classic confusion attack.
-    return jwt.verify(token, secret, { algorithms: ['HS256'] }) as VerifiedPayload;
-  } catch (err) {
-    throw new UnauthorizedException(err instanceof Error ? err.message : 'Invalid token');
-  }
+  // TASK-KEY-F3 step 4: HS256 is retired. auth signs RS256 only, so any non-RS256 token
+  // is either a pre-migration leftover or a forgery attempt. Accepting HS256 here would
+  // keep the shared secret forgery-capable, which is the whole point of the migration.
+  throw new UnauthorizedException(`Unsupported token algorithm ${alg ?? 'none'}; RS256 required`);
 }

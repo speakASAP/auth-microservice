@@ -125,5 +125,11 @@ export function getSigningConfig(): {
       keyid: getJwtKeyId() as string,
     };
   }
-  return { algorithm: 'HS256', secret: requireJwtSecret() };
+  // TASK-KEY-F3 step 4: HS256 signing is retired. Reaching here means the flag is unset
+  // or the key material vanished — booting on HS256 would mint tokens no verifier in the
+  // ecosystem still accepts, which looks like a healthy service issuing dead credentials.
+  throw new Error(
+    'auth-microservice signs RS256 only (TASK-KEY-F3 step 4). Set JWT_SIGN_ALGORITHM=RS256 ' +
+      'with JWT_PRIVATE_KEY and JWT_KEY_ID from Vault (secret/prod/auth-microservice).',
+  );
 }

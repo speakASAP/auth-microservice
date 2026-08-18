@@ -24,9 +24,11 @@ describe('signing algorithm selection (F3 step 3)', () => {
     process.env = originalEnv;
   });
 
-  it('defaults to HS256 when the flag is unset', () => {
+  it('refuses to sign HS256 now that it is retired (step 4)', () => {
+    // Booting on HS256 would mint tokens no verifier still accepts — a healthy-looking
+    // service issuing dead credentials. Fail at startup instead.
     expect(shouldSignRs256()).toBe(false);
-    expect(getSigningConfig()).toMatchObject({ algorithm: 'HS256', secret: 'a-real-secret' });
+    expect(() => getSigningConfig()).toThrow(/signs RS256 only/);
   });
 
   it('signs RS256 when the flag and key material are present', () => {

@@ -4,7 +4,7 @@ import { generateKeyPairSync, createPublicKey } from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import { verifyAuthToken } from './jwt-verifier';
 
-describe('verifyAuthToken (F3 dual-algorithm)', () => {
+describe('verifyAuthToken (F3 step 4: RS256-only)', () => {
   const originalEnv = process.env;
   const originalFetch = global.fetch;
   const KID = 'test-kid-1';
@@ -49,12 +49,12 @@ describe('verifyAuthToken (F3 dual-algorithm)', () => {
     await expect(verifyAuthToken(token)).resolves.toMatchObject({ sub: 'u1', roles: ['user'] });
   });
 
-  it('still accepts an HS256 token during the migration', async () => {
+  it('rejects an HS256 token now that HS256 is retired (step 4)', async () => {
     const token = jwt.sign({ sub: 'u2', roles: ['admin'] }, 'hs256-shared-secret', {
       algorithm: 'HS256',
     });
 
-    await expect(verifyAuthToken(token)).resolves.toMatchObject({ sub: 'u2' });
+    await expect(verifyAuthToken(token)).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   // The attack this migration must not introduce: an attacker takes the PUBLIC key
@@ -76,7 +76,7 @@ describe('verifyAuthToken (F3 dual-algorithm)', () => {
   // not intend. Asserted directly against jsonwebtoken, because verifyAuthToken's own
   // header routing would mask its absence — a test that passes with the pin removed
   // proves nothing about the pin.
-  it('pins the HS256 branch so a token claiming another alg cannot verify with JWT_SECRET', async () => {
+  it('rejects a token claiming another alg and HMAC-signed with JWT_SECRET', async () => {
     // The real confusion attack: the header claims an algorithm the verifier does not
     // expect, but the signature is a plain HMAC over JWT_SECRET. Without
     // `algorithms: ['HS256']`, jsonwebtoken honours the attacker-supplied header and
