@@ -9,6 +9,7 @@ import { PassportModule } from '@nestjs/passport';
 import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
+import { JwksController } from './jwks.controller';
 import { AdminUsersController } from './admin-users.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
@@ -39,7 +40,7 @@ import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping
       },
     }),
   ],
-  controllers: [AuthController, AdminUsersController],
+  controllers: [AuthController, AdminUsersController, JwksController],
   providers: [AuthService, JwtStrategy, RolesGuard, InternalServiceGuard],
   exports: [AuthService, RolesGuard, JwtModule],
 })

@@ -30,3 +30,54 @@ export function requireJwtSecret(): string {
 
   return secret;
 }
+
+/**
+ * RS256 signing material (TASK-KEY-F3).
+ *
+ * The HS256 secret above is symmetric: every service that *verifies* a token also
+ * holds everything needed to *mint* one. Ten services shared one such value, so any
+ * of them could forge a token — including `global:superadmin` — that all the others
+ * would accept. Splitting the shared secret per service would shrink the blast radius
+ * but keep that property; moving to RS256 removes it. Verifiers get only the public
+ * key and become structurally incapable of signing.
+ *
+ * Returns null when the keys are absent so the migration can be staged: during the
+ * transition auth still signs HS256, and verifiers accept both algorithms. Once every
+ * verifier accepts RS256, signing flips over and HS256 is retired.
+ */
+export function getJwtPrivateKey(): string | null {
+  const key = process.env.JWT_PRIVATE_KEY;
+  if (!key || key.trim() === '') return null;
+  if (!key.includes('BEGIN') || !key.includes('PRIVATE KEY')) {
+    throw new Error(
+      'JWT_PRIVATE_KEY is set but is not a PEM private key. It must be the full PEM ' +
+        'block from Vault (secret/prod/auth-microservice), newlines included.',
+    );
+  }
+  return key;
+}
+
+export function getJwtPublicKey(): string | null {
+  const key = process.env.JWT_PUBLIC_KEY;
+  if (!key || key.trim() === '') return null;
+  if (!key.includes('BEGIN') || !key.includes('PUBLIC KEY')) {
+    throw new Error(
+      'JWT_PUBLIC_KEY is set but is not a PEM public key. It must be the full PEM ' +
+        'block from Vault (secret/prod/auth-microservice), newlines included.',
+    );
+  }
+  return key;
+}
+
+export function getJwtKeyId(): string | null {
+  const kid = process.env.JWT_KEY_ID;
+  return kid && kid.trim() !== '' ? kid : null;
+}
+
+/**
+ * Whether to sign new tokens with RS256. Off until every verifier accepts RS256 —
+ * flipping this before then would invalidate every token in the ecosystem at once.
+ */
+export function shouldSignRs256(): boolean {
+  return process.env.JWT_SIGN_ALGORITHM === 'RS256' && getJwtPrivateKey() !== null;
+}
