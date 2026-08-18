@@ -4,6 +4,7 @@
 
 import { forwardRef, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { requireJwtSecret } from './jwt-secret';
 import { PassportModule } from '@nestjs/passport';
 import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -32,7 +33,7 @@ import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping
     HttpModule,
     TypeOrmModule.forFeature([PasswordResetToken, MagicLinkToken, EmailChangeToken, LegacyIdentityMapping]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'default-secret',
+      secret: requireJwtSecret(),
       signOptions: {
         expiresIn: process.env.JWT_EXPIRES_IN || '7d',
       },

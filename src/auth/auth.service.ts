@@ -47,6 +47,7 @@ import { CreateInvoiceProfileDto, UpdateInvoiceProfileDto } from './dto/invoice-
 import { Response } from 'express';
 import { UserDeliveryAddress } from '../users/entities/user-delivery-address.entity';
 import { UserInvoiceProfile } from '../users/entities/user-invoice-profile.entity';
+import { requireJwtSecret } from './jwt-secret';
 
 const AUTH_CHECKOUT_DATA_SCHEMA_VERSION = 'auth.customer-data-wallet.checkout-data.v1';
 
@@ -1660,7 +1661,7 @@ export class AuthService {
     const scope = purpose === 'recovery' ? 'recovery:' : '';
     return crypto
       .createHash('sha256')
-      .update(`${identifier}:${code}:${scope}${process.env.JWT_SECRET || 'default-secret'}`)
+      .update(`${identifier}:${code}:${scope}${requireJwtSecret()}`)
       .digest('hex');
   }
 

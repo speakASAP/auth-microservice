@@ -3,6 +3,20 @@ import { of } from 'rxjs';
 import { AuthService } from './auth.service';
 
 describe('Auth contact code contract', () => {
+  // requireJwtSecret() refuses to fall back to a placeholder, so the suite must
+  // supply a real value the way a deployed process gets one from Vault.
+  const TEST_JWT_SECRET = 'test-jwt-secret-contact-code-spec';
+  const previousJwtSecret = process.env.JWT_SECRET;
+
+  beforeAll(() => {
+    process.env.JWT_SECRET = TEST_JWT_SECRET;
+  });
+
+  afterAll(() => {
+    if (previousJwtSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = previousJwtSecret;
+  });
+
   const baseUser = {
     id: 'user-1',
     email: 'person@example.test',
@@ -208,7 +222,7 @@ describe('Auth contact code contract', () => {
     const { service } = makeService();
     const legacy = require('crypto')
       .createHash('sha256')
-      .update(`person@example.test:123456:${process.env.JWT_SECRET || 'default-secret'}`)
+      .update(`person@example.test:123456:${TEST_JWT_SECRET}`)
       .digest('hex');
     expect((service as any).contactCodeHash('person@example.test', '123456', 'login')).toBe(legacy);
   });
