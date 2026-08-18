@@ -13,6 +13,9 @@ import * as path from 'path';
 export class LoggerService implements NestLoggerService {
   private logDir: string;
   private loggingServiceUrl: string | undefined;
+  private loggingServiceToken: string | undefined;
+  /** Throttles the ingest-failure warning so a persistent 401 cannot flood stdout. */
+  private lastIngestFailureReportMs = 0;
   private readonly serviceName = 'auth-microservice';
   private readonly httpTimeout = 5000; // 5 seconds
 
@@ -25,6 +28,7 @@ export class LoggerService implements NestLoggerService {
       fs.mkdirSync(this.logDir, { recursive: true });
     }
     this.loggingServiceUrl = process.env.LOGGING_SERVICE_URL;
+    this.loggingServiceToken = process.env.LOGGING_SERVICE_TOKEN?.trim() || undefined;
   }
 
   private formatTimestamp(): string {
@@ -93,18 +97,18 @@ export class LoggerService implements NestLoggerService {
           timeout: this.httpTimeout,
           headers: {
             'Content-Type': 'application/json',
+            // Ingest requires a credential since 2026-07-06. Omit the header
+            // entirely when unset rather than sending "Bearer undefined".
+            ...(this.loggingServiceToken
+              ? { Authorization: `Bearer ${this.loggingServiceToken}` }
+              : {}),
           },
         }),
       ).catch((error) => {
-        // Silently fail - fallback to local logging will handle it
-        // Only log to console in development to avoid infinite loops
-        if (process.env.NODE_ENV === 'development') {
-          // eslint-disable-next-line no-console
-          console.error(`Failed to send log to logging service: ${error.message}`);
-        }
+        this.reportIngestFailure(error);
       });
     } catch (error) {
-      // Silently fail - fallback to local logging will handle it
+      this.reportIngestFailure(error);
       if (process.env.NODE_ENV === 'development') {
         // eslint-disable-next-line no-console
         console.error(`Error sending log to logging service: ${error}`);
@@ -209,5 +213,35 @@ export class LoggerService implements NestLoggerService {
 
   verbose(message: string, context?: string) {
     this.debug(message, context);
+  }
+
+  /**
+   * Report a failed log shipment. Never silent: a rejected ingest means this
+   * service is losing logs, which is exactly how the 2026-07-06 outage stayed
+   * invisible for six weeks. Throttled to once a minute so a persistent 401
+   * cannot flood stdout, and the credential value is never printed.
+   */
+  private reportIngestFailure(error: unknown): void {
+    const now = Date.now();
+    if (now - this.lastIngestFailureReportMs < 60_000) return;
+    this.lastIngestFailureReportMs = now;
+
+    const err = error as { message?: string; response?: { status?: number } };
+    const status = err?.response?.status;
+    const hint = status === 401 || status === 403
+      ? 'LOGGING_SERVICE_TOKEN is missing or not accepted — logs are being dropped.'
+      : 'Logging service unreachable — logs are being dropped.';
+
+    // eslint-disable-next-line no-console
+    console.error(JSON.stringify({
+      level: 'error',
+      event: 'log_ingest_failed',
+      service: this.serviceName,
+      status: status ?? null,
+      message: LoggerService.redactSensitive(String(err?.message ?? error)),
+      hint,
+      timestamp: new Date().toISOString(),
+      duration_ms: 0,
+    }));
   }
 }
