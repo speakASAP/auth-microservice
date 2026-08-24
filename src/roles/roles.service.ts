@@ -162,6 +162,61 @@ export class RolesService {
     return roleStrings;
   }
 
+  /**
+   * Resolve an application-scoped role by role name plus application name.
+   *
+   * `findByName` takes an application *id*, which callers outside Auth do not have and
+   * should not have to hardcode. Internal grant endpoints know only the stable pair
+   * ("teacher", "speakasap"), so they resolve through this instead.
+   *
+   * Returns null for "no such role" — a broken deployment the caller must report, not an
+   * error this lookup can meaningfully handle.
+   */
+  async findByNameForApplication(
+    roleName: string,
+    applicationName: string,
+  ): Promise<Role | null> {
+    const application = await this.applicationsRepository.findOne({
+      where: { name: applicationName },
+    });
+    if (!application) {
+      this.logger.warn(
+        `Application not found while resolving role: app=${applicationName} role=${roleName}`,
+        'RolesService',
+      );
+      return null;
+    }
+    return this.rolesRepository.findOne({
+      where: {
+        name: roleName,
+        scope: RoleScope.APPLICATION,
+        applicationId: application.id,
+      },
+    });
+  }
+
+  /**
+   * Whether a (user, role, application) grant already exists.
+   *
+   * Lets an idempotent caller check before assigning, rather than assigning and treating
+   * `assignRoleToUser`'s ConflictException as success — which would also swallow genuine
+   * conflicts.
+   */
+  async hasRoleAssignment(
+    userId: string,
+    roleId: string,
+    applicationId?: string,
+  ): Promise<boolean> {
+    const existing = await this.userRolesRepository.findOne({
+      where: {
+        userId,
+        roleId,
+        applicationId: applicationId || null,
+      },
+    });
+    return existing !== null;
+  }
+
   async assignRoleToUser(
     userId: string,
     roleId: string,
