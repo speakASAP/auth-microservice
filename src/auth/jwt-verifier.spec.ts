@@ -146,4 +146,46 @@ describe('verifyAuthToken (F3 step 4: RS256-only)', () => {
     await expect(verifyAuthToken(token)).resolves.toMatchObject({ sub: 'u-local' });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it('refetches JWKS immediately when a rotated RS256 kid is missing from the warm cache', async () => {
+    jest.resetModules();
+    process.env = { ...originalEnv, JWT_SECRET: 'hs256-shared-secret' };
+    delete process.env.JWT_PUBLIC_KEY;
+    delete process.env.JWT_KEY_ID;
+
+    const rotated = generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    });
+    const rotatedKid = 'rotated-kid-1';
+    const responseFor = (keys: object[]) => ({
+      ok: true,
+      json: async () => ({ keys }),
+    });
+    const initialJwk = createPublicKey(publicPem).export({ format: 'jwk' });
+    const rotatedJwk = createPublicKey(rotated.publicKey as string).export({ format: 'jwk' });
+    const fetchSpy = jest
+      .fn()
+      .mockResolvedValueOnce(
+        responseFor([{ ...initialJwk, kid: KID, alg: 'RS256', use: 'sig' }]),
+      )
+      .mockResolvedValueOnce(
+        responseFor([{ ...rotatedJwk, kid: rotatedKid, alg: 'RS256', use: 'sig' }]),
+      );
+    global.fetch = fetchSpy as unknown as typeof fetch;
+    const { verifyAuthToken: freshVerifyAuthToken } = await import('./jwt-verifier');
+    const initialToken = jwt.sign({ sub: 'u-initial' }, privatePem, {
+      algorithm: 'RS256',
+      keyid: KID,
+    });
+    const rotatedToken = jwt.sign({ sub: 'u-rotated' }, rotated.privateKey as string, {
+      algorithm: 'RS256',
+      keyid: rotatedKid,
+    });
+
+    await expect(freshVerifyAuthToken(initialToken)).resolves.toMatchObject({ sub: 'u-initial' });
+    await expect(freshVerifyAuthToken(rotatedToken)).resolves.toMatchObject({ sub: 'u-rotated' });
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
 });

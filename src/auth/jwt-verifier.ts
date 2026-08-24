@@ -25,6 +25,8 @@ import { createPublicKey, KeyObject } from 'crypto';
 import * as jwt from 'jsonwebtoken';
 
 const JWKS_TTL_MS = 5 * 60 * 1000;
+const UNKNOWN_KID_REFRESH_COOLDOWN_MS = 5000;
+const UNKNOWN_KID_REFRESH_RETENTION_MS = 60 * 1000;
 
 interface Jwk {
   kid: string;
@@ -36,6 +38,7 @@ interface Jwk {
 let cachedKeys = new Map<string, KeyObject>();
 let cachedAt = 0;
 let inFlight: Promise<void> | null = null;
+let lastUnknownKidRefreshAt = new Map<string, number>();
 
 function jwksUrl(): string {
   const base = process.env.AUTH_SERVICE_URL || 'http://auth-microservice:3370';
@@ -102,11 +105,29 @@ async function publicKeyFor(kid: string): Promise<KeyObject | null> {
   if (cachedKeys.size === 0 || stale) {
     await refreshJwks().catch(() => undefined);
   }
-  if (!cachedKeys.has(kid) && Date.now() - cachedAt > 5000) {
-    // Unknown kid with a warm cache means the key set probably rotated.
+  if (!cachedKeys.has(kid) && shouldRefreshForUnknownKid(kid)) {
+    // Unknown kid with a warm cache can mean the key set just rotated. Try once
+    // immediately for this kid, then throttle repeated misses for forged tokens.
     await refreshJwks().catch(() => undefined);
   }
   return cachedKeys.get(kid) ?? null;
+}
+
+function shouldRefreshForUnknownKid(kid: string): boolean {
+  const now = Date.now();
+  for (const [knownKid, refreshedAt] of lastUnknownKidRefreshAt) {
+    if (now - refreshedAt > UNKNOWN_KID_REFRESH_RETENTION_MS) {
+      lastUnknownKidRefreshAt.delete(knownKid);
+    }
+  }
+
+  const lastRefresh = lastUnknownKidRefreshAt.get(kid);
+  if (lastRefresh && now - lastRefresh <= UNKNOWN_KID_REFRESH_COOLDOWN_MS) {
+    return false;
+  }
+
+  lastUnknownKidRefreshAt.set(kid, now);
+  return true;
 }
 
 export interface VerifiedPayload {
