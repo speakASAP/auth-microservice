@@ -292,13 +292,25 @@ Four properties make it the model:
 against that service's application id. Warehouse already has `admin` (12 holders) and
 `action-admin` (1 holder); only `readonly` is missing.
 
+`roles` defaults `id` (`uuid_generate_v4()`), `isActive` (`true`), `createdAt` and
+`updatedAt` (`now()`), so the insert only needs four columns:
+
 ```sql
 -- warehouse-microservice applicationId: 72b8dcc1-6bd6-47f0-be43-83e74def56a5
+-- verified 2026-08-25; existing roles on this application: admin, action-admin
 -- Run through the postgres MCP. Show the SQL and confirm before writing.
-INSERT INTO roles (id, name, scope, "applicationId", description, "isActive", "createdAt", "updatedAt")
-VALUES (gen_random_uuid(), 'readonly', 'internal',
+INSERT INTO roles (name, scope, "applicationId", description)
+VALUES ('readonly', 'internal',
         '72b8dcc1-6bd6-47f0-be43-83e74def56a5',
-        'Read-only warehouse access for per-pair service JWTs', true, NOW(), NOW());
+        'Read-only warehouse access for per-pair service JWTs');
+```
+
+Verify before and after:
+
+```sql
+SELECT r.name, r.scope, r."isActive" FROM roles r
+JOIN applications a ON a.id = r."applicationId"
+WHERE a.name = 'warehouse-microservice' ORDER BY r.name;
 ```
 
 Then grant it to the catalog→warehouse principal `500affb4-1ddb-46ab-abd1-a191891104db`
