@@ -451,6 +451,58 @@ checks the decorator and separately asserts the constant carries the minimal rol
 verifying the contract rather than the spelling. Expect more of these when
 decorating the remaining services.
 
+#### logging, backups, monitoring — Phase 1a complete (deployed and verified)
+
+Three services, three different architectures. Only backups used the global
+`JwtRolesGuard` pattern; logging and monitoring gate per controller with
+`@UseGuards`, so counting missing `@Roles` overstated the exposure badly — 59
+"undecorated" routes were really 11 unguarded ones, most of them intentionally
+public (health, static admin HTML, signature-checked webhooks).
+
+**logging (`a50e9dd`, `9ffb9f0`) — a live unauthenticated data leak.**
+`GET /api/logs/marathon-events/summary` answered `200` with no credential while
+`query`, `coverage` and `services` in the same controller all required
+`AdminRoleGuard`. It returned marathon registration event codes, per-code counts,
+error totals and last-seen timestamps. Now `401`. Because it is a summary rather
+than raw log contents it gets a read tier (`LogReadRoleGuard`) accepting
+`internal:logging-microservice:readonly`; admin routes still refuse that role.
+
+Both callers had to be fixed in the same change or the guard would have broken
+them: monitoring's marathon panel sent no credential at all, and the logging MCP
+called it with `auth:false`. Monitoring now uses a per-pair RS256 principal,
+`svc-monitoring--logging@internal.alfares.cz`.
+
+**backups (`a0d1e9f`) — 24 undecorated routes and a superadmin bypass.** Every
+non-public route inherited the guard default, so read access implied delete
+access. Now three tiers with deletes and infrastructure discovery at ADMIN. The
+static `SERVICE_TOKEN` bypass returned `true` with `global:superadmin` before any
+role check; it is scoped to the operator tier, must satisfy the route policy, and
+logs a warning. Verified live: that token gets `200` on `GET /jobs`, `403` on
+`DELETE /jobs/:id` and `403` on `/discovery/kubernetes`.
+
+**monitoring (`39fbc3e`) — authentication without authorization.**
+`MonitoringAuthGuard` validated the token and returned `true` with no role check,
+so any valid ecosystem principal could list, create, rotate keys for and delete
+customer integrations. It now requires an admin or operator role. Verified live:
+a valid token carrying an unrelated role gets `403` where it previously got `200`.
+
+Auth rows created: `readonly` on logging; new `monitoring-microservice` and
+`backups-microservice` **application** rows (neither existed) with `admin`,
+`operator` and — for backups — `readonly`.
+
+**A guard's constructor is part of its contract.** Giving `AdminRoleGuard` a
+`ReadonlySet` constructor parameter made Nest unable to resolve it, and
+logging crash-looped on deploy (`Nest can't resolve dependencies of the
+AdminRoleGuard (?)`). The unit tests passed throughout because they construct
+guards directly and never touch the DI container. Narrow a role set with an
+overridable protected field, and resolve guards through
+`Test.createTestingModule` so a non-injectable constructor fails in tests.
+
+**A crash-looping pod blocks its own fix.** `deploy.sh` preflight refuses to
+deploy while the service has unhealthy pods, and the ReplicaSet keeps recreating
+the broken pod from the previous image. Delete the failed pods and scale the
+deployment to zero before redeploying.
+
 #### Remaining services, by exposure
 
 | Service | Routes | `@Roles` today | Priority |
@@ -686,7 +738,7 @@ treated as a floor.
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
 - [x] Phase 0b — standard revised, scripts consolidated
 - [x] Phase 1 — catalog → warehouse pilot **(complete 2026-08-25, monitor 11/11 green)**
-- [~] Phase 1a — role model: warehouse (`a8f76d0`+`c4f5427`), payments/notifications/suppliers (`4e0dd54`), orders (`8093657`) all deployed and verified. Remaining: logging, backups, monitoring
+- [x] Phase 1a — role model **complete across all services**: warehouse (`a8f76d0`+`c4f5427`), payments/notifications/suppliers (`4e0dd54`), orders (`8093657`), logging (`a50e9dd`+`9ffb9f0`), backups (`a0d1e9f`), monitoring (`39fbc3e`) — all deployed and verified live
 - [ ] Phase 2 — split `369e4f3c…`
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C
