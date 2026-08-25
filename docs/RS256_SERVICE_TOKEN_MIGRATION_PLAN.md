@@ -85,6 +85,48 @@ mechanism is visible in the repository:
 Each fix addressed a symptom. The durable corrections are: one script, a standard that
 states the required shape, acceptance-based rotation, and rejection logging.
 
+## 2c. Independent validation, 2026-08-25 — what changed in this plan
+
+A read-only validation session re-derived the findings below against the live cluster and
+the auth database. Three results changed the plan and are folded into the phases:
+
+**The role claim did not constrain anything (now fixed for warehouse).** Every service
+except `orders-microservice` fell through to a blanket guard default:
+
+```ts
+return [`global:superadmin`, `internal:${name}:admin`];
+```
+
+Warehouse had 3 `@Roles` decorators across 45 routes. `POST /api/stock/set`, `increment`,
+`decrement`, `reserve` and `unreserve` therefore required the *same* role as the read-only
+`POST /api/stock/availability/batch` that catalog actually calls. A leaked catalog→warehouse
+token could rewrite inventory. Per-pair issuance bounds *revocation*; it does not bound
+*authority* until the receiver can tell read from write. **Phase 1a below closes this and
+must land before Phase 2.**
+
+**The inventory covers about a third of the surface.** The 46-token count was derived by
+walking named `env[]` entries. 64 of 82 running pods mount secrets in bulk via
+`envFrom.secretRef`, whose keys never appear as named env vars — catalog's own
+`WAREHOUSE_SERVICE_TOKEN` among them. Enumerating keys across bulk-mounted secrets gives
+**157 distinct `(secret, key)` token materials**, 19 shared by more than one pod. Phase 6's
+manifest must be rebuilt against that number.
+
+**Agent-to-agent is not covered by this plan.** `docs-rag-microservice` runs a separate
+credential system: `HS256` via `createHmac`, a shared symmetric secret, `serviceId` instead
+of `sub`, no roles, and a 365-day default expiry (`src/service-identity/jwt.util.ts`).
+Symmetric signing means every verifier can also mint — the property RS256 was chosen to
+eliminate. Phase 5 currently treats these as misplaced variables; they are an unmigrated
+auth system and need their own phase.
+
+### Findings outside this plan's scope, ranked
+
+| # | Finding | Why it outranks the migration |
+| --- | --- | --- |
+| 1 | `speakasap-financial-config` is a **ConfigMap** (unencrypted) holding four token keys that are byte-identical to one another — one shared static secret across four service paths | Plaintext, shared, and the exact failure mode this plan exists to remove |
+| 2 | `suppliers-microservice` maps `CATALOG_SERVICE_TOKEN` **and** `WAREHOUSE_SERVICE_TOKEN` to the same key `stock-traceability-runtime-token#JWT_TOKEN`, which has **no ExternalSecret** | Hand-created, outside Vault/ESO, so no manifest-driven rotation will ever reach it. No matching principal exists in the auth DB, so it cannot be revoked |
+| 3 | `test@example.com` holds `global:superadmin` and is active in production | Verification gate 4 checks service tokens only and would not catch it |
+| 4 | Warehouse's `resolveStaticServiceActor` granted full admin on a shared static string, mounted by two pods | Auth-side revocation cannot close it. **Downgraded to read-only in Phase 1a** |
+
 ## 3. Inventory (measured 2026-08-25, all 81 running pods)
 
 46 JWT-shaped env tokens: **41 HS256 (dead), 5 RS256** (`AI_SERVICE_TOKEN` only —
@@ -208,6 +250,107 @@ Rollback: previous token value stays in Vault history; `vault kv rollback` + res
 no authenticated call — it reported `passed` throughout the outage. Treat it as a
 necessary-not-sufficient gate and add a probe.
 
+### Phase 1a — role model, using the `orders-microservice` pattern (blocks Phase 2)
+
+Per-pair tokens do not bound authority until receivers distinguish read from write. This
+phase makes that true service by service. **Warehouse is done and is the worked example;
+every other service follows the same six steps.**
+
+#### The reference pattern
+
+`orders-microservice` is the only service that already had this right — 19 `@Roles`
+decorators over 13 distinct role sets, defined as named constants rather than inline
+strings. Copy that shape, not its guard verbatim (orders still keeps the unsafe default
+fallback described in §2c).
+
+Four properties make it the model:
+
+1. **A role vocabulary below `admin`** — `:readonly` and `:action-admin` alongside `:admin`.
+2. **Named constants per capability**, e.g. `@Roles(...ADMIN_READ_ROLES)` — greppable,
+   reviewable, one edit point per capability.
+3. **Per-caller identity maps to a per-caller role**, not a blanket admin grant.
+4. **Deny by default** — mutations require an explicitly different role from reads.
+
+#### Steps, per service
+
+1. Create `src/auth/roles.constants.ts` with `<SERVICE>_READ_ROLES`,
+   `<SERVICE>_WRITE_ROLES`, `<SERVICE>_ADMIN_ROLES`. Include `global:superadmin` and the
+   existing `:admin` in every tier so nothing in flight breaks.
+2. Decorate **every** route with exactly one constant. Classify by effect, not HTTP verb —
+   `POST /stock/availability/batch` is a read.
+3. Replace the guard's `getDefaultRoles()` fallback with a deny that logs the offending
+   `Controller.handler` at error level. An undecorated route must fail loudly, not inherit
+   admin.
+4. Downgrade any static-token bypass to `:readonly` and log a warning on use.
+5. Seed the missing role rows in the auth DB (see below) before minting tokens against them.
+6. Prove it with tests: a readonly principal is **accepted** on a read route and
+   **refused** on a write route; an undecorated route is refused.
+
+#### Roles are per-application rows — seed before minting
+
+`roles` rows are scoped by `applicationId`, so `internal:<service>:readonly` must be created
+against that service's application id. Warehouse already has `admin` (12 holders) and
+`action-admin` (1 holder); only `readonly` is missing.
+
+```sql
+-- warehouse-microservice applicationId: 72b8dcc1-6bd6-47f0-be43-83e74def56a5
+-- Run through the postgres MCP. Show the SQL and confirm before writing.
+INSERT INTO roles (id, name, scope, "applicationId", description, "isActive", "createdAt", "updatedAt")
+VALUES (gen_random_uuid(), 'readonly', 'internal',
+        '72b8dcc1-6bd6-47f0-be43-83e74def56a5',
+        'Read-only warehouse access for per-pair service JWTs', true, NOW(), NOW());
+```
+
+Then grant it to the catalog→warehouse principal `500affb4-1ddb-46ab-abd1-a191891104db`
+**in place of** its current `internal:warehouse-microservice:admin` grant, and re-mint.
+
+#### Warehouse: completed in this session (code only, not deployed)
+
+- `src/auth/roles.constants.ts` — new; three tiers plus `ALLEGRO_FULFILLMENT_ROLES` and
+  `FULFILLMENT_WRITE_ROLES` so the marketplace and orders lanes cannot reach general
+  warehouse mutations.
+- `src/auth/jwt-roles.guard.ts` — `getDefaultRoles()` removed; undecorated routes now raise
+  `ForbiddenException` and log at error level. Static cliplot token downgraded from
+  `:admin` to `:readonly` and logs a warning on use.
+- All **45 routes** decorated: 42 `@Roles` + 3 `@Public` (health/readiness). The 3
+  pre-existing inline decorators were migrated onto the shared constants.
+- Tests: 127/127 pass, `tsc --noEmit` clean. Four new cases cover deny-by-default, the
+  readonly/write split, and the downgraded static token.
+
+Endpoint classification, derived from actual callers (only `catalog-microservice` calls
+warehouse externally, and only these two paths):
+
+| Route | Tier | Caller |
+| --- | --- | --- |
+| `POST /api/stock/availability/batch` | READ | catalog-microservice |
+| `POST /api/warehouses/logistics/batch` | READ | catalog-microservice |
+| `GET  /api/stock/*`, `/movements/*`, `/reservations` (GET) | READ | internal |
+| `POST /api/stock/{set,increment,decrement,reserve,unreserve}` | WRITE | **no external caller** |
+| `POST /api/reservations/{reserve,release,fulfill,cancel,expire,expire-due,return}` | WRITE | internal |
+| `POST/PUT/DELETE /api/warehouses`, `PATCH /supplier-reconciliations/:id/review` | ADMIN | internal |
+
+No external caller touches any stock mutation, so catalog's token can be minted
+`:readonly` with no loss of function.
+
+#### Remaining services, by exposure
+
+| Service | Routes | `@Roles` today | Priority |
+| --- | --- | --- | --- |
+| `warehouse-microservice` | 45 | **42 + 3 public** | **done** |
+| `orders-microservice` | — | 19 / 13 distinct | reference; only needs the deny-by-default fix |
+| `payments-microservice` | 11 controllers | 1 | high — money |
+| `notifications-microservice` | 8 controllers | 0 | high — grants `global:superadmin` per the boundary review |
+| `suppliers-microservice` | 5 controllers | 0 | high — holds finding #2 |
+| `logging-microservice` | 6 controllers | 0 | medium |
+| `backups-microservice` | 9 controllers | 0 | medium |
+| `monitoring-microservice` | 10 controllers | 0 | medium |
+
+#### Gate
+
+Phase 2 does not start until: warehouse is deployed and verified, the `readonly` role row
+exists, principal `500affb4` is re-minted `:readonly`, and `catalog-contract-monitor`
+succeeds.
+
 ### Phase 2 — split the shared `369e4f3c…` identity (category B)
 
 Five new per-pair principals, one per holder. Reissue, roll out one service at a time,
@@ -303,6 +446,7 @@ scratchpad/inv.sh   # inventory across all running pods
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
 - [x] Phase 0b — standard revised, scripts consolidated
 - [ ] Phase 1 — catalog → warehouse pilot
+- [~] Phase 1a — role model (warehouse code complete, undeployed; other services not started)
 - [ ] Phase 2 — split `369e4f3c…`
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C

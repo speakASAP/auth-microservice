@@ -30,6 +30,28 @@ Revised 2026-08-25 after an ecosystem-wide credential outage. The previous revis
 
 Per-application *signing keys* were considered and rejected: they replace one key-distribution problem with N, and do not bound the only remaining ecosystem-wide risk (auth's private key). That risk is bounded instead by 90-day lifetimes and `kid`-based rotation, which JWKS already supports without redeploy.
 
+### Receivers must enforce the role, not just carry it
+
+Added 2026-08-25 after validation. A per-pair token bounds *revocation* to one principal.
+It bounds *authority* only if the receiving service can tell a read route from a write one.
+Issuing `internal:<target>:readonly` is meaningless where every route resolves to the same
+role.
+
+Every service accepting service JWTs must therefore:
+
+- decorate **every** route with an explicit role set, classified by effect rather than HTTP
+  verb — `POST /stock/availability/batch` is a read;
+- define those sets as named constants (`<SERVICE>_READ_ROLES`, `_WRITE_ROLES`,
+  `_ADMIN_ROLES`) in `src/auth/roles.constants.ts`, never as inline strings;
+- **deny an undecorated route** and log it at error level. A guard that falls back to
+  `[global:superadmin, internal:<self>:admin]` silently grants mutation rights to read-only
+  callers;
+- scope any remaining static-token bypass to `:readonly`, and log a warning when it is used.
+
+`orders-microservice` is the reference implementation; `warehouse-microservice` is the
+worked migration. Rollout and per-service status: `docs/RS256_SERVICE_TOKEN_MIGRATION_PLAN.md`
+§ Phase 1a.
+
 ### Status of the static header contract
 
 `x-internal-service-token` + `x-service-name` is **legacy**. Existing paths keep working and must stay classified as machine auth, not Auth RBAC. No new path may adopt it. `INTERNAL_SERVICE_TOKEN` is scheduled for removal once existing consumers migrate; track in `docs/RS256_SERVICE_TOKEN_MIGRATION_PLAN.md`.
@@ -92,7 +114,8 @@ Consumers must not:
 - mint service tokens with any script other than `scripts/provision-service-token.js`, or with any algorithm other than RS256;
 - share one principal across multiple caller services, or reuse a token issued for one `(caller → target)` pair on a different pair;
 - issue a service token whose `sub` is an invented string with no principal row — such a credential cannot be revoked;
-- grant `global:superadmin` to a service token. Use the narrowest `internal:<target>:<role>` the call path needs.
+- grant `global:superadmin` to a service token. Use the narrowest `internal:<target>:<role>` the call path needs;
+- leave a route undecorated and rely on a guard's default role set, or store credential material in a ConfigMap rather than a Secret.
 
 ## Rotation
 
