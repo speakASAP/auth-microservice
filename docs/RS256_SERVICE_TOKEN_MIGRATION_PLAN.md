@@ -425,6 +425,32 @@ warehouse externally, and only these two paths):
 No external caller touches any stock mutation, so catalog's token can be minted
 `:readonly` with no loss of function.
 
+#### orders-microservice: the reference had the same gap (`8093657`, deployed 19:01Z)
+
+The service held up as the pattern still carried the fallback it demonstrates
+against. 12 routes across `items`, `pricing`, `shipments` and `GET /orders` were
+undecorated and inherited `[global:superadmin, internal:orders-microservice:admin]`.
+
+All 12 decorated using the constants that already existed (`ADMIN_READ_ROLES`,
+`ADMIN_ACTION_ROLES`, `PRICING_ADMIN_ROLES`); `getDefaultRoles()` removed. Verified
+live: deny-by-default present in the shipped image, `getDefaultRoles` absent,
+`/health` 200, and all four route groups return 401 unauthenticated. Zero
+`missing an authorization policy` entries and zero permission denials since rollout,
+with every orders consumer healthy.
+
+**Counting `@Roles` with a line-based grep undercounts.** Both warehouse and orders
+place some `@Roles` *after* the route decorator, so a naive "previous line" check
+reports them as undecorated — it claimed 23 for orders where only 12 were real. Scan
+the whole decorator block above and below the route.
+
+**Cross-repo assertions break on refactors.**
+`orders-microservice/scripts/verify-shipment-runtime-readiness.js` asserted on the
+literal string `@Roles('internal:allegro-service:service')` inside *warehouse's*
+controller, so migrating that to a shared constant failed an orders test. It now
+checks the decorator and separately asserts the constant carries the minimal role —
+verifying the contract rather than the spelling. Expect more of these when
+decorating the remaining services.
+
 #### Remaining services, by exposure
 
 | Service | Routes | `@Roles` today | Priority |
@@ -608,7 +634,7 @@ deny-by-default fix.
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
 - [x] Phase 0b — standard revised, scripts consolidated
 - [x] Phase 1 — catalog → warehouse pilot **(complete 2026-08-25, monitor 11/11 green)**
-- [~] Phase 1a — role model (warehouse **deployed and verified** `a8f76d0` + `c4f5427`; readonly role row not yet seeded; other services not started)
+- [~] Phase 1a — role model: warehouse (`a8f76d0`+`c4f5427`), payments/notifications/suppliers (`4e0dd54`), orders (`8093657`) all deployed and verified. Remaining: logging, backups, monitoring
 - [ ] Phase 2 — split `369e4f3c…`
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C
