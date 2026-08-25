@@ -476,11 +476,51 @@ scratchpad/inv.sh   # inventory across all running pods
 | Rotation job fails silently | Raise + Telegram alert; rotate at 30d remaining, not at expiry |
 | A category-D var is load-bearing in a way grep missed | Trace the call path before deleting; prefer issuing a correct token when unsure |
 
+## 6b. Phase 1 + 1a completion record, 2026-08-25
+
+**Out-of-scope findings closed first** (both were live and outranked the migration):
+
+- Finding 3 — `test@example.com` (`e2a6fdd4`) held `global:superadmin` plus ten
+  `internal:*:admin` roles with a live bcrypt password, active since 2026-05-05.
+  Set `isActive=false`; auth enforces this on login, `/auth/validate` and refresh.
+  Deactivated rather than deleted so it stays auditable and reversible.
+- Finding 1 — `speakasap-financial-config` held four byte-identical plaintext copies
+  of the internal-hop token, committed to git. Moved to ESO from
+  `secret/prod/speakasap/financial`; ConfigMap now has zero token keys
+  (`speakasap 31053de`). **The shared value itself is unresolved**: the same secret
+  exists in 11 locations across 8 services (7 Secrets + those 4 keys), so rotating it
+  means coordinating every holder at once. Plaintext exposure removed; sharing tracked.
+
+**Phase 1a — warehouse role model** (`warehouse a8f76d0`, deployed, pod `6d69c557c4`):
+45 routes decorated (42 `@Roles` + 3 `@Public`), guard denies undecorated routes and
+logs at error level, static cliplot token downgraded to `:readonly`. 127/127 tests,
+`tsc` clean.
+
+**Phase 1 — catalog → warehouse**: `readonly` role seeded against warehouse's
+application id, granted to `500affb4`, `:admin` grant removed, token re-minted RS256.
+
+The proof, one token, two routes:
+
+```
+READ  POST /api/stock/availability/batch -> 201  {"success":true,...}
+WRITE POST /api/stock/increment          -> 403  {"message":"Insufficient permissions"}
+```
+
+That is the difference between per-pair issuance and per-pair *authority*. Before
+`a8f76d0` both returned 201.
+
+Propagation verified by fingerprint at all three hops (minted = Vault = mounted
+K8s Secret = `da08f19e`), not by ESO sync status — the trap that produced a false
+green on the first attempt. Vault key count 23 before and after the `patch`.
+
+`catalog-contract-monitor`: **passed 11, failed 0**. The two contracts that opened
+this incident are green.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
 - [x] Phase 0b — standard revised, scripts consolidated
-- [ ] Phase 1 — catalog → warehouse pilot
+- [x] Phase 1 — catalog → warehouse pilot **(complete 2026-08-25, monitor 11/11 green)**
 - [~] Phase 1a — role model (warehouse **deployed and verified** `a8f76d0`; readonly role row not yet seeded; other services not started)
 - [ ] Phase 2 — split `369e4f3c…`
 - [ ] Phase 3 — category A remainder
