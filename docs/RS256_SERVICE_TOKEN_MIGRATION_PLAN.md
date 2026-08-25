@@ -339,6 +339,41 @@ absent from the compiled guard) rather than trusting the deploy banner.
 catalog's dead HS256 token. Phase 1 has not been wired yet, so this is unchanged — not a
 regression from this commit.
 
+#### Regression found and fixed: trace internal callers, not just external ones
+
+Restricting the cliplot static token to read-only broke `warehouse-reservation-expiry`,
+which called `POST /api/reservations/expire-due` with that credential and began failing
+`403` every minute. Commit `c4f5427` fixes it.
+
+The endpoint classification was derived from *cross-service* callers, which correctly
+showed that no external service mutates warehouse stock. It missed that warehouse's **own
+CronJob** was borrowing `CLIPLOT_WAREHOUSE_SERVICE_TOKEN` — cliplot's external credential,
+sourced from `secret/prod/cliplot` and also mounted by heureka-service — to perform a
+write. Restricting a shared external token therefore disabled internal maintenance.
+
+Re-granting write to that token would have restored the job by reopening the exposure. The
+fix instead gives maintenance a dedicated identity: `WAREHOUSE_MAINTENANCE_TOKEN` carrying
+only `internal:warehouse-microservice:maintenance`, required by `expire-due` alone, so the
+maintenance credential cannot perform general writes either.
+
+**Apply this to every remaining service.** Before restricting any credential, enumerate
+*all* of its consumers — CronJobs, Jobs, init containers and sidecars included, not just
+service-to-service HTTP calls:
+
+```bash
+# every workload mounting a given secret key
+kubectl get cronjob,deploy,job -n statex-apps -o json \\
+  | grep -l '<SECRET_KEY_NAME>'
+```
+
+Two further traps this surfaced:
+
+- **`JWT_TOKEN` in `secret/prod/warehouse-microservice` is not a warehouse credential.** It
+  holds a docs-rag HS256 token (`serviceId: alfares-agent-rag`) — a category-D credential
+  in a misleading variable name. Decode before reusing any token by its name alone.
+- **A new Vault key never reaches pods until `external-secret.yaml` names it**, and ESO
+  reports `Synced` regardless. The key was added to the manifest in the same commit.
+
 #### Warehouse: change detail
 
 - `src/auth/roles.constants.ts` — new; three tiers plus `ALLEGRO_FULFILLMENT_ROLES` and
