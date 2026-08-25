@@ -374,6 +374,29 @@ Two further traps this surfaced:
 - **A new Vault key never reaches pods until `external-secret.yaml` names it**, and ESO
   reports `Synced` regardless. The key was added to the manifest in the same commit.
 
+#### Verified live after `c4f5427` (deployed 16:30Z)
+
+All four role boundaries probed against the running pod:
+
+| Probe | Expected | Actual |
+| --- | --- | --- |
+| maintenance token → `POST /api/reservations/expire-due` | 2xx | `201` |
+| maintenance token → `POST /api/stock/set` | 403 | `403` |
+| cliplot token → `POST /api/reservations/expire-due` | 403 | `403` |
+| cliplot token → `POST /api/stock/availability/batch` | 2xx | `201` |
+
+The CronJob was then unsuspended and confirmed on a real scheduled run
+(`warehouse-reservation-expiry-29794593`, `succeeded=1`, body
+`{"status":201,"success":true,...}`) rather than a manual probe. Zero
+`missing an authorization policy` and zero `Insufficient permissions` entries in
+warehouse logs since the rollout; heureka-service, the other holder of the cliplot
+token, is healthy.
+
+**Deploy note.** The first attempt at `c4f5427` failed after 1s in preflight:
+`deploy.sh` refuses to deploy while the service has unhealthy pods, and the failing
+CronJob pods from the regression were themselves blocking the fix that repairs them.
+Delete the failed jobs first (`kubectl delete job <name> -n statex-apps`), then deploy.
+
 #### Warehouse: change detail
 
 - `src/auth/roles.constants.ts` — new; three tiers plus `ALLEGRO_FULFILLMENT_ROLES` and
@@ -585,7 +608,7 @@ deny-by-default fix.
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
 - [x] Phase 0b — standard revised, scripts consolidated
 - [x] Phase 1 — catalog → warehouse pilot **(complete 2026-08-25, monitor 11/11 green)**
-- [~] Phase 1a — role model (warehouse **deployed and verified** `a8f76d0`; readonly role row not yet seeded; other services not started)
+- [~] Phase 1a — role model (warehouse **deployed and verified** `a8f76d0` + `c4f5427`; readonly role row not yet seeded; other services not started)
 - [ ] Phase 2 — split `369e4f3c…`
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C
