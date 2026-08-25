@@ -316,7 +316,30 @@ WHERE a.name = 'warehouse-microservice' ORDER BY r.name;
 Then grant it to the catalog→warehouse principal `500affb4-1ddb-46ab-abd1-a191891104db`
 **in place of** its current `internal:warehouse-microservice:admin` grant, and re-mint.
 
-#### Warehouse: completed in this session (code only, not deployed)
+#### Warehouse: deployed and verified in production 2026-08-25
+
+Commit `a8f76d0`, rolled out at 13:35Z. Verified against the live pod, by pod age against
+commit time rather than log-window matching:
+
+| Probe | Result |
+| --- | --- |
+| `GET /api/health` (a `@Public()` route) | `200` |
+| `POST /api/stock/availability/batch`, no credential | `401` |
+| `POST /api/stock/availability/batch`, cliplot static token | `201` |
+| `POST /api/stock/set`, cliplot static token | **`403`** — was `200` before this commit |
+| `"missing an authorization policy"` in logs since rollout | none — all 45 routes are decorated |
+
+The write probe is the finding closed: the same credential that could rewrite inventory an
+hour earlier is now refused on mutations and still serves reads. Confirmed the shipped image
+actually contains the change (`dist/src/auth/roles.constants.js` present, `getDefaultRoles`
+absent from the compiled guard) rather than trusting the deploy banner.
+
+`catalog-contract-monitor` still reports the same two pre-existing 503s,
+`authorized-warehouse-availability` and `authorized-flipflop-projection`, caused by
+catalog's dead HS256 token. Phase 1 has not been wired yet, so this is unchanged — not a
+regression from this commit.
+
+#### Warehouse: change detail
 
 - `src/auth/roles.constants.ts` — new; three tiers plus `ALLEGRO_FULFILLMENT_ROLES` and
   `FULFILLMENT_WRITE_ROLES` so the marketplace and orders lanes cannot reach general
@@ -458,7 +481,7 @@ scratchpad/inv.sh   # inventory across all running pods
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
 - [x] Phase 0b — standard revised, scripts consolidated
 - [ ] Phase 1 — catalog → warehouse pilot
-- [~] Phase 1a — role model (warehouse code complete, undeployed; other services not started)
+- [~] Phase 1a — role model (warehouse **deployed and verified** `a8f76d0`; readonly role row not yet seeded; other services not started)
 - [ ] Phase 2 — split `369e4f3c…`
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C
