@@ -2,14 +2,27 @@
 /**
  * Approval-gated RS256 service-token provisioning, runnable inside the auth pod.
  *
- * Why this exists alongside provision-catalog-warehouse-service-token.ts:
- * that helper is TypeScript and imports from `src/`, so it only runs from a dev
- * checkout with a database reachable from the workstation. Reaching production
- * that way means a port-forward and a Vault-read DB password, both forbidden by
- * the postgres MCP agent guide. This script runs where the credentials already
- * live — inside the pod, against the compiled `dist/` — so nothing leaves the
- * cluster. It is otherwise a faithful port, with the same confirmation gates,
- * plus an algorithm assertion the original could not make (see below).
+ * THE single provisioning script. It replaced three predecessors on 2026-08-25,
+ * all of which minted credentials that auth no longer accepts:
+ *
+ *   - provision-internal-service-token.ts     signed with `new JwtService({ secret:
+ *                                             process.env.JWT_SECRET })` — HS256
+ *   - provision-catalog-warehouse-service-token.ts  same, via the app's JwtService
+ *   - provision-goal24-actor-token.js         hand-rolled `crypto.createHmac('sha256')`
+ *
+ * Since auth retired HS256 (9269a86, 2026-08-18) every one of those emits a token
+ * that looks healthy — correct roles, far-future exp — and is refused by every
+ * verifier in the ecosystem. Four scripts also meant each incident spawned a
+ * fourth rather than fixing the third. There is now one, and it asserts RS256 on
+ * the token it just signed rather than trusting configuration.
+ *
+ * It runs inside the pod, against the compiled `dist/`: reaching the auth DB from
+ * a workstation would need a port-forward and a Vault-read DB password, both
+ * forbidden by the postgres MCP agent guide. The credentials never leave the
+ * cluster. `--check-db-only` is carried over from the generic predecessor.
+ *
+ * Unlike that predecessor, principal creation goes through UsersService rather
+ * than raw `INSERT INTO users`, so entity defaults, hooks, and validation apply.
  *
  * Context (TASK-KEY-F3): auth retired HS256 on 2026-08-18 and verifies RS256
  * only. Fifteen services were still holding HS256 service tokens, several with
@@ -75,6 +88,7 @@ async function main() {
   const serviceName = argValue('--service-name');
   const roleString = argValue('--role');
   const expiresIn = argValue('--expires-in') || process.env.SERVICE_JWT_EXPIRES_IN || '30d';
+  const checkDbOnly = hasFlag('--check-db-only');
   const dryRun = hasFlag('--dry-run');
   const apply = hasFlag('--apply');
   const createIfMissing = hasFlag('--create-if-missing');
@@ -83,7 +97,8 @@ async function main() {
   if (!email) throw new Error('--email is required');
   if (!serviceName) throw new Error('--service-name is required');
   if (!roleString) throw new Error('--role is required');
-  if (dryRun === apply) throw new Error('Use exactly one of --dry-run or --apply');
+  const modeCount = [checkDbOnly, dryRun, apply].filter(Boolean).length;
+  if (modeCount !== 1) throw new Error('Use exactly one of --check-db-only, --dry-run, or --apply');
   if (apply && argValue('--confirm-db-mutation') !== DB_CONFIRMATION) {
     throw new Error(`--confirm-db-mutation=${DB_CONFIRMATION} is required for --apply`);
   }
@@ -127,6 +142,31 @@ async function main() {
     // service that already has a principal.
     let user = await usersService.findByEmail(email);
     const wouldCreateUser = !user && createIfMissing;
+
+    // Read-only inspection: report what exists without asserting anything about
+    // intent. Safe to run against production at any time.
+    if (checkDbOnly) {
+      const existingRoles = user ? await rolesService.getUserRoles(user.id) : [];
+      console.log(JSON.stringify({
+        contract: CONTRACT,
+        mode: 'check-db-only',
+        mutatesDatabase: false,
+        emitsToken: false,
+        serviceName,
+        role: roleString,
+        applicationFound: true,
+        roleFound: true,
+        principal: user
+          ? { id: user.id, email: user.email, userType: user.userType, isActive: user.isActive }
+          : null,
+        principalExists: Boolean(user),
+        hasRequiredRole: existingRoles.includes(roleString),
+        currentRoles: existingRoles,
+        signAlgorithm: process.env.JWT_SIGN_ALGORITHM || 'UNSET',
+        status: 'ok',
+      }, null, 2));
+      return;
+    }
 
     if (!user && !createIfMissing) {
       throw new Error(`Service principal ${email} does not exist. Re-run with --create-if-missing after owner approval.`);
