@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { UnauthorizedException } from '@nestjs/common';
+import { Logger, UnauthorizedException } from '@nestjs/common';
 import { generateKeyPairSync, createPublicKey } from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import { verifyAuthToken } from './jwt-verifier';
@@ -60,6 +60,59 @@ describe('verifyAuthToken (F3 step 4: RS256-only)', () => {
   // The attack this migration must not introduce: an attacker takes the PUBLIC key
   // (published at /.well-known/jwks.json) and uses it as an HMAC secret, signing
   // HS256. A verifier that does not pin algorithms would accept it as authentic.
+  // A rejected token must leave a trace. Before this, every rejection path threw a
+  // bare UnauthorizedException and logged nothing, so an ecosystem-wide credential
+  // outage (HS256 retirement, 2026-08-18) ran silently for six days: the only symptom
+  // was a downstream 503 that named neither auth nor the algorithm.
+  describe('rejection logging', () => {
+    let errorSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      errorSpy = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      errorSpy.mockRestore();
+    });
+
+    it('logs the rejected algorithm when a non-RS256 token is refused', async () => {
+      const token = jwt.sign({ sub: 'svc-catalog', roles: ['internal:x:admin'] }, 'hs256-shared-secret', {
+        algorithm: 'HS256',
+      });
+
+      await expect(verifyAuthToken(token)).rejects.toBeInstanceOf(UnauthorizedException);
+
+      expect(errorSpy).toHaveBeenCalled();
+      const logged = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(logged).toContain('HS256');
+      expect(logged).toContain('svc-catalog');
+    });
+
+    it('logs when an RS256 token has no matching JWKS key', async () => {
+      const token = jwt.sign({ sub: 'svc-orders' }, privatePem, {
+        algorithm: 'RS256',
+        keyid: 'kid-that-does-not-exist',
+      });
+
+      await expect(verifyAuthToken(token)).rejects.toBeInstanceOf(UnauthorizedException);
+
+      const logged = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(logged).toContain('kid-that-does-not-exist');
+    });
+
+    it('never logs the token itself', async () => {
+      const token = jwt.sign({ sub: 'svc-secret' }, 'hs256-shared-secret', { algorithm: 'HS256' });
+
+      await expect(verifyAuthToken(token)).rejects.toBeInstanceOf(UnauthorizedException);
+
+      const logged = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(logged).not.toContain(token);
+      expect(logged).not.toContain(token.split('.')[2]);
+    });
+  });
+
   it('rejects an algorithm-confusion token signed HS256 with the public key', async () => {
     // Two defences must both hold. The routing check (header alg drives which path
     // runs) means this token is handed to the HS256 branch, where it must fail

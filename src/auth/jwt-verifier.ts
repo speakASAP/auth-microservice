@@ -20,7 +20,7 @@
  * unknown `kid` refetches once so key rotation does not need a redeploy.
  */
 
-import { UnauthorizedException } from '@nestjs/common';
+import { Logger, UnauthorizedException } from '@nestjs/common';
 import { createPublicKey, KeyObject } from 'crypto';
 import * as jwt from 'jsonwebtoken';
 
@@ -116,28 +116,56 @@ export interface VerifiedPayload {
   [key: string]: unknown;
 }
 
+const logger = new Logger('JwtVerifier');
+
 /**
- * Verify an auth-issued token, preferring RS256 and falling back to HS256 while the
- * migration is in progress. Throws UnauthorizedException if neither path accepts it.
+ * Reject a token, at error level, with enough context to identify the caller.
+ *
+ * Every rejection path used to throw a bare UnauthorizedException and log nothing.
+ * When HS256 was retired (2026-08-18) that turned an ecosystem-wide credential
+ * outage into silence: fifteen services held now-dead HS256 tokens, and the only
+ * visible symptom was a downstream 503 naming neither auth nor the algorithm. It
+ * went unnoticed for six days.
+ *
+ * `sub` and `alg` are safe to log and are what makes a failure actionable — they
+ * name which principal presented what. The token itself is never logged: it is a
+ * live bearer credential, and a rejection here does not mean it is worthless
+ * elsewhere.
+ */
+function rejectToken(reason: string, context: { alg?: string; kid?: string; sub?: unknown }): never {
+  const parts = [
+    `alg=${context.alg ?? 'none'}`,
+    context.kid ? `kid=${context.kid}` : null,
+    `sub=${typeof context.sub === 'string' && context.sub ? context.sub : 'unknown'}`,
+  ].filter(Boolean);
+
+  logger.error(`Token rejected: ${reason} (${parts.join(' ')})`);
+  throw new UnauthorizedException(reason);
+}
+
+/**
+ * Verify an auth-issued token. RS256 only; HS256 was retired in F3 step 4.
+ * Throws UnauthorizedException if the token is not accepted.
  */
 export async function verifyAuthToken(token: string): Promise<VerifiedPayload> {
   const decoded = jwt.decode(token, { complete: true });
   const alg = decoded?.header?.alg;
+  const sub = (decoded?.payload as { sub?: unknown } | undefined)?.sub;
 
   if (alg === 'RS256') {
     const kid = decoded?.header?.kid;
-    if (!kid) throw new UnauthorizedException('RS256 token has no kid');
+    if (!kid) rejectToken('RS256 token has no kid', { alg, sub });
     const key = await publicKeyFor(kid);
-    if (!key) throw new UnauthorizedException(`No JWKS key for kid ${kid}`);
+    if (!key) rejectToken(`No JWKS key for kid ${kid}`, { alg, kid, sub });
     try {
       return jwt.verify(token, key, { algorithms: ['RS256'] }) as VerifiedPayload;
     } catch (err) {
-      throw new UnauthorizedException(err instanceof Error ? err.message : 'Invalid token');
+      rejectToken(err instanceof Error ? err.message : 'Invalid token', { alg, kid, sub });
     }
   }
 
   // TASK-KEY-F3 step 4: HS256 is retired. auth signs RS256 only, so any non-RS256 token
   // is either a pre-migration leftover or a forgery attempt. Accepting HS256 here would
   // keep the shared secret forgery-capable, which is the whole point of the migration.
-  throw new UnauthorizedException(`Unsupported token algorithm ${alg ?? 'none'}; RS256 required`);
+  rejectToken(`Unsupported token algorithm ${alg ?? 'none'}; RS256 required`, { alg, sub });
 }

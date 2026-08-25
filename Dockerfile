@@ -30,6 +30,13 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/web ./web
 
+# Operational scripts (service-token provisioning). Needed in the image because
+# credential operations must run inside the pod: reaching the auth DB from a
+# workstation would require a port-forward and a Vault-read DB password, both
+# forbidden by the postgres MCP agent guide. These are exec'd deliberately by an
+# operator, never on the container's start path.
+COPY --from=builder /app/scripts ./scripts
+
 # Expose port (default: 3370, configured via PORT env var)
 EXPOSE ${PORT:-3370}
 
