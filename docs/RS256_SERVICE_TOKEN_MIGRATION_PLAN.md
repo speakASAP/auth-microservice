@@ -406,11 +406,11 @@ No external caller touches any stock mutation, so catalog's token can be minted
 
 | Service | Routes | `@Roles` today | Priority |
 | --- | --- | --- | --- |
-| `warehouse-microservice` | 45 | **42 + 3 public** | **done** |
+| `warehouse-microservice` | 45 | **42 + 3 public** | **done** (`a8f76d0`) |
 | `orders-microservice` | — | 19 / 13 distinct | reference; only needs the deny-by-default fix |
-| `payments-microservice` | 11 controllers | 1 | high — money |
-| `notifications-microservice` | 8 controllers | 0 | high — grants `global:superadmin` per the boundary review |
-| `suppliers-microservice` | 5 controllers | 0 | high — holds finding #2 |
+| `payments-microservice` | 46 | **done** (`7ab8bd1`) | already covered; deny-by-default added |
+| `notifications-microservice` | 36 | **done** (`e7a5cac`) | 29 decorated; superadmin removed |
+| `suppliers-microservice` | 11 | **done** (`6674357`) | 9 decorated; `authenticated` default removed |
 | `logging-microservice` | 6 controllers | 0 | medium |
 | `backups-microservice` | 9 controllers | 0 | medium |
 | `monitoring-microservice` | 10 controllers | 0 | medium |
@@ -550,6 +550,35 @@ green on the first attempt. Vault key count 23 before and after the `patch`.
 
 `catalog-contract-monitor`: **passed 11, failed 0**. The two contracts that opened
 this incident are green.
+
+## 6c. Phase 1a sweep, 2026-08-25 — payments, notifications, suppliers
+
+Deployed and health-verified. Each service had a different shape of the same hole.
+
+**`payments-microservice`** (`7ab8bd1`) — no undecorated routes existed: admin carries
+`PAYMENTS_ADMIN_ROLES`, everything else is `@Public` behind `ApiKeyGuard` with per-route
+`@ApiKeyScopes`, which is the documented Payments-owned API-key boundary. Only the dead
+`getDefaultRoles()` trap was removed. **Ordering mattered**: the deny check must run
+*after* the API-key branch — placing it first rejected live provider and checkout traffic,
+caught by an existing test before deploy.
+
+**`notifications-microservice`** (`e7a5cac`) — the worst of the three. 29 of 36 routes
+undecorated; a static token `return true`d before any role check; and `SERVICE_TOKEN`
+granted `global:superadmin`. All three fixed: routes classified SEND/READ/INBOUND/ADMIN,
+static actors now subject to the route policy and logged on use, and the shared token
+reduced to `internal:notifications-microservice:admin`. Closes follow-up 2 of
+`INTERNAL_SERVICE_AUTH_BOUNDARY_REVIEW.md`.
+
+**`suppliers-microservice`** (`6674357`) — weakest boundary found. The default included
+the literal role `'authenticated'`, which matches *any valid token in the ecosystem*, so
+supplier creation, supplier update, mapping creation and import runs were reachable by any
+caller holding any credential. All 9 classified READ/WRITE. This repo has **no test
+script and no jest installed**; verified by build, typecheck and route audit only. That
+gap is worth closing on its own.
+
+Remaining for Phase 1a: `logging-microservice`, `backups-microservice`,
+`monitoring-microservice` (medium), and `orders-microservice` needs only the
+deny-by-default fix.
 
 ## 7. Progress
 
