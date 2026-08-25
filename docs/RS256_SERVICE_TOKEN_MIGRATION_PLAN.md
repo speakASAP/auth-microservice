@@ -456,7 +456,7 @@ decorating the remaining services.
 | Service | Routes | `@Roles` today | Priority |
 | --- | --- | --- | --- |
 | `warehouse-microservice` | 45 | **42 + 3 public** | **done** (`a8f76d0`) |
-| `orders-microservice` | — | 19 / 13 distinct | reference; only needs the deny-by-default fix |
+| `orders-microservice` | 35 | **done** (pre-existing) | already deny-by-default; audit false positive |
 | `payments-microservice` | 46 | **done** (`7ab8bd1`) | already covered; deny-by-default added |
 | `notifications-microservice` | 36 | **done** (`e7a5cac`) | 29 decorated; superadmin removed |
 | `suppliers-microservice` | 11 | **done** (`6674357`) | 9 decorated; `authenticated` default removed |
@@ -628,6 +628,58 @@ gap is worth closing on its own.
 Remaining for Phase 1a: `logging-microservice`, `backups-microservice`,
 `monitoring-microservice` (medium), and `orders-microservice` needs only the
 deny-by-default fix.
+
+## 6d. Blocking finding, 2026-08-25 — allegro verifies HS256 locally and can forge
+
+Found while auditing receivers ahead of Phase 2. **This outranks Phase 2 and Phase 2 must
+not start until it is resolved.**
+
+`allegro/shared/auth/jwt-auth.guard.ts:54` verifies tokens locally with a mounted
+symmetric secret:
+
+```ts
+this.jwtSecret = process.env.JWT_SECRET || this.throwConfigError('JWT_SECRET');
+decoded = jwt.verify(token, this.jwtSecret);
+```
+
+It never calls `/auth/validate`. Because HS256 is symmetric, holding the verification
+secret is holding the *signing* secret. Demonstrated inside the running
+`allegro-service` pod:
+
+```
+ALLEGRO LOCAL VERIFY ACCEPTS forged HS256; roles=["global:superadmin"]
+```
+
+auth itself correctly refuses the same forged token
+(`401 Unsupported token algorithm HS256; RS256 required`), so `9269a86` closed this at
+auth — but not at any service that verifies locally.
+
+### 24 pods still mount a symmetric JWT_SECRET, in two clusters
+
+| Fingerprint | Holders | Services |
+| --- | --- | --- |
+| `278bf2fc` | 11 | allegro-api-gateway, allegro-imports, allegro-service, allegro-settings, **auth-microservice**, backups, heureka-api-gateway, heureka-service, notifications, orders, suppliers |
+| `366a1388` | 11 | ai, aukro, bazos, crypto-ai-agent, cv-tuning, docs-rag, runlayer, speakasap, speakasap-api-gateway, speakasap-certification, statex |
+| `b794bf08` | 1 | monitoring |
+| `4ecb98f5` | 1 | domain-research |
+
+Any holder of a cluster's secret can mint a token every local verifier in that cluster
+accepts, with any roles it likes. Per-pair RS256 tokens do nothing about this while a
+receiver verifies locally with a shared symmetric key.
+
+**Required before Phase 2**, per receiver that verifies locally: switch to
+`/auth/validate` or the RS256 local verifier (`jwt-verifier.ts`), decorate routes, then
+unmount `JWT_SECRET`. Auth's own mount should be reviewed too — it signs RS256 and its
+verifier rejects HS256, so the variable may simply be removable.
+
+## 6e. Audit-script correction
+
+`scratchpad/audit.py` matched `@Roles` only when it preceded the HTTP verb decorator. It
+therefore reported 12 undecorated routes in `orders-microservice` that are in fact fully
+decorated (`@Get()` then `@Roles(...ADMIN_READ_ROLES)`), and orders already has
+deny-by-default. Orders needs no work. Decorator order is not significant to NestJS; both
+placements are valid. Counts from that script for services not hand-verified should be
+treated as a floor.
 
 ## 7. Progress
 
