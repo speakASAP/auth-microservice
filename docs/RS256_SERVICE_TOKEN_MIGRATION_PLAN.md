@@ -1964,6 +1964,137 @@ aukro's and bazos's inbound replay guards moved to per-pair principals; `MARKETI
 given its own credential; logging's accepted-bearer set narrowed to `LOG_INGEST_BEARER_TOKENS`;
 then the three unused keys deleted and the value rotated.
 
+## 6x. Sessions A and B completed, 2026-08-27
+
+Executed with subagent-driven development: four tasks, each dispatched to a fresh subagent,
+each reviewed before completion. Ledger and per-task reports in the session workspace.
+
+### A third stock outage, same shape as the first two
+
+`bazos -> warehouse` was returning **401** in production. Cause:
+`secret/prod/bazos-service#WAREHOUSE_SERVICE_TOKEN` held an **HS256** token
+(`sub=bazos-service`, `roles=[internal:warehouse-microservice:admin]`, exp 2026-12-26) —
+unexpired, but structurally obsolete since warehouse stopped accepting HS256 (blocker 6d/6f).
+`warehouse-client.service.ts` masked it: `getTotalAvailable` returned `0`,
+`getStockByProduct` returned `[]`, both behind a `logger.warn`, so every product read as
+out-of-stock and nothing surfaced the failure.
+
+Replaced with `svc-bazos-service--warehouse-microservice`
+(`3bae81d8-0ac0-4ed6-a28d-efe03a20f103`, RS256, 90d, fp `2e3c7ec0`), role
+`internal:warehouse-microservice:readonly` — a **privilege reduction** from `admin`: only
+`getStockByProduct` and `getTotalAvailable` have callers; `reserveStock`, `unreserveStock`
+and `decrementStock` have none. Verified live from the deployed pod: **401 -> 200**.
+
+That is three outages now with one shape — flipflop (26 days), aukro (26 days), bazos.
+**The common tell is an empty collection or a zero returned from inside a `catch` around an
+HTTP call.** It is worth grepping for that pattern periodically rather than waiting for the
+next one.
+
+### The silent-failure sweep (commits `833494f`, `6e680fb`, `ec5518e`)
+
+16 candidate sites across `bazos/shared/clients` and `heureka/shared/clients` were traced to
+their callers. **8 fixed, 8 deliberately left** — the judgement matters as much as the fix:
+
+- **Fixed** where an auth/transport failure was indistinguishable from a legitimately empty
+  result *and a caller acts on the answer*: stock, pricing, catalog search, order lookup.
+  Only a 404 now returns empty; everything else logs at error level with full context
+  (subject, httpStatus, error) and throws.
+- **Left** where the lookup is genuinely optional enrichment whose absence is expected and
+  already handled — product media, quality-review (which has its own `unavailable` flag),
+  dashboard labels. **Making those throw would itself be a defect.**
+
+Every fixed site's callers were traced: `feed.service.ts` and `offers.service.ts` wrap them
+in per-product `try/catch` that logs and continues; controller-level callers surface the
+throw as an HTTP error, which is the intended behaviour. No caller was left unable to cope.
+
+bazos: 164 tests green, confirmed to fail on revert (6 failures — 401/500 resolving instead
+of rejecting). heureka has no test runner, so its four fixes carry caller-trace verification
+instead of automated tests — recorded as a known gap, not an oversight.
+
+### Untracked drift eliminated: `flipflop-warehouse-token`
+
+`flipflop-product-service` carried a named `env[]` override pointing `WAREHOUSE_SERVICE_TOKEN`
+at a hand-created Secret with no ExternalSecret, no owner references, and no manifest in the
+repo. A Vault rotation reached its four siblings and missed this pod; deploying from the repo
+did not clear it, because a deploy patches images and does not replace the pod spec.
+
+Removed in the correct order, each step verified before the next:
+
+1. fingerprints compared first — override `59415e97` == ESO `59415e97`, neither empty, so the
+   removal was behaviourally neutral (the override was *redundant*, not stale, at that moment)
+2. `env[2]` removed from the live Deployment; rollout converged
+3. the new pod's `WAREHOUSE_SERVICE_TOKEN` fingerprinted **inside the pod** as `59415e97` via
+   `envFrom` — verified by fingerprint, not by assuming
+4. `flipflop -> warehouse` probed **200** from inside that pod
+5. only then, with 0 workloads still referencing it, the orphan Secret was deleted
+
+All six flipflop deployments 1/1 afterwards. ESO is now the single source for that key.
+
+### `suppliers-microservice` is NOT the same cleanup — do not remove its override
+
+Session B's prompt asks whether suppliers has the same pattern. It has the same *shape*
+(`CATALOG_SERVICE_TOKEN` and `WAREHOUSE_SERVICE_TOKEN` both pointing at a hand-created
+`stock-traceability-runtime-token`) but the opposite *risk profile*:
+
+**There is no ESO or Vault source for either key.** `suppliers-microservice-secret` carries
+only `DB_PASSWORD`, `JWT_SECRET` and the three `PAYMENT_*` keys, and
+`secret/prod/suppliers-microservice` has no such property (both verified directly). Nothing
+in the ecosystem fingerprint-matches `c5817dbb`.
+
+So removing the override would leave both variables **unset**, and the service throws
+`ServiceUnavailableException` with no fallback — it would *cause* an outage rather than fix
+drift. Closing it properly means minting two per-pair principals and adding ES entries first.
+That is a provisioning task, deliberately not done here.
+
+### `a2880693`: three more sources retired
+
+| Path | Evidence it was dead |
+| --- | --- |
+| `secret/prod/nginx-microservice#JWT_TOKEN` | service is **retired** (`nginx-microservice.retired-20260617.tar.gz`), no workload in `statex-apps` at all |
+| `secret/prod/database-server#JWT_TOKEN` | Secret is mounted by aukro, bazos and orders — but **only for `DB_PASSWORD`**; no code reads a `JWT_TOKEN` from it |
+| `secret/prod/runlayer#JWT_TOKEN` | no reference anywhere in `runlayer/src` or `runlayer/scripts` (commit `9b599c0`) |
+
+Vault sources of the shared value: **10 -> 7**.
+
+**A mechanism worth knowing: ESO does not prune.** Deleting only the Vault property leaves
+the key sitting in the K8s Secret — external-secrets adds and updates keys but never removes
+one whose source disappeared. Removing the ExternalSecret's `data` entry *does* prune it
+(confirmed on runlayer: the key vanished from `runlayer-secret` after the entry was removed).
+This is why the two dormant copies still show `JWT_TOKEN` in their Secrets even though their
+Vault properties are now gone — and why they cannot be finished without first bringing those
+two in-cluster-only ExternalSecrets under `k8s-manifests`.
+
+### `invoices-microservice` and `cliplot` seeded in the auth DB
+
+Both were referenced by `orders-microservice`'s legacy static-header path but had **no
+`applications` row**, so their roles could never be issued as real principals. Seeded one
+application + one `internal:<app>:service` role each, matching the `marketing-microservice`
+row shape, in a single transaction. Both `domain` values were verified against live Ingress
+hosts before the write rather than taken from convention.
+
+`cliplot-service` was deliberately **not** seeded: the live pod sends
+`x-service-name: cliplot`, and the alias was removed from the guard in 6u, so the row would
+be a dangling unreachable principal.
+
+`provision-service-token --check-db-only` now returns `applicationFound: true,
+roleFound: true` for both. Their lanes can move to Bearer whenever someone picks that up.
+
+### Operational note: an etcd stall halted all secret syncing mid-session
+
+For ~30 minutes, `kubectl get --raw /readyz` reported `[-]etcd failed`, every ExternalSecret
+stopped reconciling (`refreshTime` frozen), Deployments showed empty `readyReplicas` despite
+ready pods, and new pods sat `Pending` with `FailedScheduling: Bind plugin timeout`.
+
+**It was not a Kubernetes fault.** `sda` was at 97.9% utilisation with ~848 reads/sec and
+35-41 processes in uninterruptible sleep; the blocked processes were GNOME's
+`tracker-extract-3` (indexing `/home/ssf`) and `whoopsie-upload-all`. etcd could not fsync,
+so the API server went unhealthy and starved every controller. Load peaked at 48.
+
+It cleared on its own once those desktop jobs finished, and ESO resumed with no intervention.
+**Nothing was force-deleted and nothing was restarted** — the right move here was to wait,
+not to escalate. Worth remembering that a "broken cluster" on this single-node host can be a
+desktop indexer competing with etcd for the root disk.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
@@ -1975,9 +2106,9 @@ then the three unused keys deleted and the value rotated.
 - [x] flipflop → ai-microservice lane repaired (`ae924f0`, 2026-08-26) — **401 → 200 verified in both live pods**; five AI features restored, one shared `AiClientService` holds the credential — see 6p
 - [x] Silent-failure cleanup: notifications orchestrator client (`fa591b5`), allegro (`e814c43`) and heureka (`09497a6`) warehouse clients — 404 is the only "no rows"; every other status logs and re-throws — see 6p
 - [x] runlayer stopped mounting the shared `a2880693` (`6fd27fa`, 2026-08-26); operator scripts mark the fallback deprecated — see 6p
-- [ ] `flipflop-warehouse-token` override removal — **analysed and safe (all three fingerprints `59415e97`), blocked on a permission denial**; exact command in 6p
-- [ ] `suppliers-microservice` `stock-traceability-runtime-token` — orphan confirmed, but **load-bearing** (neither key is in the ESO secret); needs Vault + ESO work first — see 6p
-- [ ] `aukro` / `bazos` warehouse clients — identical silent-failure defect, left for Session A; exact lines in 6p
+- [x] `flipflop-warehouse-token` override removal — **DONE and verified live 2026-08-27 (6x)**: env[2] removed, new pod resolves the key via `envFrom` at fp `59415e97`, flipflop -> warehouse probed 200 from inside that pod, orphan Secret deleted, all 6 flipflop deployments 1/1
+- [ ] `suppliers-microservice` `stock-traceability-runtime-token` — **DO NOT remove the override.** Re-confirmed 2026-08-27 (6x): neither key exists in the ESO secret *or* in `secret/prod/suppliers-microservice`, so removal leaves both unset and the service throws with no fallback. Needs two per-pair principals + ES entries provisioned FIRST. Top follow-up.
+- [x] `aukro` / `bazos` warehouse clients — **DONE.** aukro fixed 2026-08-26; bazos fixed 2026-08-27 (`833494f`) after finding its lane 401 on an obsolete HS256 token — replaced with a per-pair RS256 `readonly` principal, **401 -> 200 verified live**. Catalog/order clients in bazos + heureka swept too (`6e680fb`, `ec5518e`): 8 sites fixed, 8 left benign with reasons — see 6x
 - [x] **allegro + allegro-imports -> warehouse repaired** (2026-08-26) — per-pair RS256 principal, `401 -> 200` verified through the deployed client in both pods; closes the `allegro-imports` 401 carried under Phase 2 — see 6r
 - [ ] docs-rag-microservice — needs `JWT_PUBLIC_KEY` before its flag can close
 - [~] Phase 2 — split `369e4f3c…` — re-scoped (6h). **allegro->orders live (6i)**, **marketing->orders staged (6j)**, **`369e4f3c…` deactivated (6k)**; remaining: allegro-imports->warehouse (401 in prod, pre-existing) and marketing->allegro replay lane
@@ -1987,7 +2118,14 @@ then the three unused keys deleted and the value rotated.
   value now returns 401 for every `x-service-name`, and the guard denies any credential
   configured for more than one caller. Seven lanes on per-pair RS256 (6q): aukro, bazos, heureka,
   warehouse, payments migrated to per-pair RS256; marketing already live from 6j. The value
-  itself is NOT yet retired — still mounted in `MARKETING_API_TOKEN`, `logging JWT_TOKEN`,
-  the marketing aukro/bazos replay tokens, runlayer, and 2 dormant keys. **3 of the 4
-  "unused" mounts in the brief were verified load-bearing — do not delete them.**
+  itself is NOT yet retired. Vault sources 10 -> 7 on 2026-08-27 (6x): nginx-microservice
+  (retired service), database-server (only DB_PASSWORD is consumed) and runlayer (`9b599c0`,
+  no code reads it) removed. The remaining 7 are all load-bearing: the aukro/bazos replay
+  receivers, `MARKETING_API_TOKEN` (~12 mutating routes), `logging JWT_TOKEN` (ingest), and
+  the outbound orders lanes. **3 of the 4 "unused" mounts in the brief were verified
+  load-bearing — do not delete them.** Note ESO does not prune: removing a Vault property
+  leaves the key in the K8s Secret; the ExternalSecret `data` entry must go too (6x).
+- [x] `invoices-microservice` and `cliplot` seeded in the auth DB (2026-08-27, 6x) — both
+  lacked an `applications` row, so the roles orders grants them could never be issued.
+  `cliplot-service` deliberately not seeded. Both now pass `--check-db-only`.
 - [ ] Phase 6 — rotation CronJob
