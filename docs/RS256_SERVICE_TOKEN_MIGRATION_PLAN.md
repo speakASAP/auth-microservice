@@ -795,13 +795,49 @@ this change the known remaining local verifiers are:
 Phase 2 is unblocked for the services fixed here, but items 1 and 2 above are the same
 class of defect and are cheap to close.
 
+## 6g. ai-microservice HS256 window closed, 2026-08-26
+
+`ALLOW_HS256_FALLBACK` moved `true` -> `false` in `secret/prod/ai-microservice`
+(Vault v24, key count 16 before and after the `patch`), force-synced, pod restarted.
+No code change: the RS256 path and the flag already existed.
+
+**Checked before flipping, because the flag hard-fails every HS256 caller.** All
+**12** live `AI_SERVICE_TOKEN` holders were already RS256 — runlayer, shop-assistant,
+notifications, crypto-ai-agent, domain-research, agentic-email, statex, and the five
+flipflop services (which share one token). Zero HS256 callers, so the fallback was
+dead weight. A real production caller token was verified against the pod's
+`JWT_PUBLIC_KEY` through `verifyRS256` *before* the change.
+
+End-to-end against the guarded route `POST /ai/complete`:
+
+```
+forged HS256 -> 401 {"message":"Unexpected token algorithm"}
+garbage      -> 401 {"message":"Malformed token"}
+real RS256   -> 400 Contract violation (passed the guard; body validation only)
+```
+
+The 400 is the point: authentication succeeded and only the request body was rejected.
+Before the flip the forged token returned 200. Pod has 0 restarts and no auth errors.
+
+> **Trap for the next person.** `POST /api/email-triage/classify` returns 200 for a
+> garbage token — it is `@Public()`. Testing a fallback flag there "proves" nothing.
+> Verify on a route the guard actually covers; `/ai/complete` is one.
+
+The `ECONNREFUSED` RabbitMQ errors in that pod's boot log are unrelated and
+pre-existing: no RabbitMQ pod is deployed in `statex-apps` at all.
+
+**`docs-rag-microservice` is now the last known local HS256 verifier** (`JWT_PUBLIC_KEY`
+UNSET, so its flag cannot be flipped until the key is issued and its callers re-minted).
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
 - [x] Phase 0b — standard revised, scripts consolidated
 - [x] Phase 1 — catalog → warehouse pilot **(complete 2026-08-25, monitor 11/11 green)**
 - [x] Phase 1a — role model **complete across all services**: warehouse (`a8f76d0`+`c4f5427`), payments/notifications/suppliers (`4e0dd54`), orders (`8093657`), logging (`a50e9dd`+`9ffb9f0`), backups (`a0d1e9f`), monitoring (`39fbc3e`) — all deployed and verified live
-- [x] Blocker 6d — local HS256 verification removed from allegro/heureka/aukro **(2026-08-26, forgery rejected in live pods)**
+- [x] Blocker 6d — local HS256 verification removed from allegro/heureka/aukro **(2026-08-26, forgery rejected in all 7 live pods)**
+- [x] ai-microservice HS256 window closed (`ALLOW_HS256_FALLBACK=false`, 2026-08-26) — see 6g
+- [ ] docs-rag-microservice — needs `JWT_PUBLIC_KEY` before its flag can close
 - [ ] Phase 2 — split `369e4f3c…` *(unblocked; see 6f for the two remaining local verifiers)*
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C
