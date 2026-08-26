@@ -1227,6 +1227,41 @@ flipflop -> catalog currently buys `internal:catalog-microservice:admin` + `cata
 from a static string. Migrating that lane to a per-pair Bearer principal is a privilege
 **reduction**, not just a credential swap.
 
+## 6o. Four fixes deployed and verified live, 2026-08-26
+
+All verified against the running pods, not the deploy banner.
+
+| Fix | Before | After |
+| --- | --- | --- |
+| runlayer bypass (`48d3e9d`) | shared token -> **200 + live project data** | shared token -> **401**; notifications token -> 200 |
+| flipflop -> warehouse (`d61c368`) | **401**, expired 2026-07-31, 26 days dead | **200 + live data**, RS256 90d, `action-admin` |
+| heureka -> orders (`af0a02b`) | **401**, order forwarding dead | **400 channel is required** (authenticated) |
+| marketing -> orders (`a2529b1`) | 200 via shared roleless string | **200 via RS256 per-pair role check** |
+
+allegro -> orders still 404 with zero static-fallback warnings. All nine deployments
+1/1, zero restarts.
+
+### Two operational traps worth remembering
+
+**1. A "FAILED" deploy that actually succeeded.** flipflop was reported
+`FAILED flipflop (exit 1) after 963s`, but all five services converged on `d61c368` at
+1/1. The rollout simply exceeded the script's 600s timeout while containerd worked through
+six images serially — the same sandbox contention as the allegro rollout earlier today.
+**A deploy-queue failure is not proof the deploy failed; check pod image and readiness
+before re-running anything.** Re-deploying on this signal would have restarted the
+contention for no reason.
+
+**2. A deploy does not clear an untracked env override.** `flipflop-product-service` had a
+named `env[]` entry pointing `WAREHOUSE_SERVICE_TOKEN` at a hand-created Secret
+(`flipflop-warehouse-token`, no ExternalSecret, no owner references, absent from the repo).
+Deploying from the repo did **not** remove it — the prediction that it would was wrong —
+so product-service kept mounting the expired `863daa51` while its four siblings picked up
+the new token. Fixed by writing the new value into that Secret and restarting.
+
+The Secret is still untracked drift: nothing in Vault or the repo governs it, so the next
+rotation will miss it again unless the override is deleted from the live Deployment. Same
+class as the `suppliers-microservice` hand-created secret in section 2c finding 2.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
