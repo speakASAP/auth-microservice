@@ -959,6 +959,274 @@ of this migration. Worth deciding deliberately: widen the role, or remove the ca
 sending an unauthenticated request instead of failing — a silent degradation worth fixing
 when that lane is migrated.
 
+## 6j. Phase 2 — marketing-microservice -> orders-microservice (staged, not yet committed)
+
+**Principal:** `svc-marketing-microservice--orders-microservice@internal.alfares.cz`
+(`a268c24b-03d2-4a56-9e71-76b51013fea0`), RS256, 90d, one role
+`internal:marketing-microservice:service`.
+
+The role did not exist and had to be seeded first — only `allegro-service` had a
+`service` role. Added to the `marketing-microservice` application
+(`38098e1d-20da-46ab-aceb-87c66ac492e7`), role id `0609bc20-a540-45fd-8a9e-1f7f68f7b29e`,
+`scope=internal`, matching the shape of the existing rows.
+
+Probed before storing: the Bearer token returns **200** on
+`GET /api/orders/internal/order-affinity/replay-candidates`, through the real
+`@Roles(...ORDER_AFFINITY_REPLAY_READ_ROLES)` check rather than a string match.
+Fingerprints match at all three hops (`81e787cb`), Vault key count 7 -> 8.
+
+### What `ORDERS_SERVICE_TOKEN` actually held
+
+Not the shared `369e4f3c…` value, and not an orders credential at all:
+
+```
+ORDERS_SERVICE_TOKEN   fp=a2880693  alg=HS256  sub=alfares-agent-rag  roles=null  exp=2027-08-01
+```
+
+A **category-D docs-rag token with no roles**, mapped into marketing from its own
+`JWT_TOKEN` Vault property. It returned 200 anyway, because orders' guard compares it
+byte-for-byte against `MARKETING_INTERNAL_SERVICE_TOKEN` (same fingerprint `a2880693` on
+the orders side) and then synthesises `internal:marketing-microservice:service` itself.
+The payload was never read. A token that "could never have worked" per section 3 works
+fine as a shared password — which is exactly why category D went unnoticed.
+
+### The ES remap trap, again
+
+`ORDERS_SERVICE_TOKEN` was mapped to `property: JWT_TOKEN`, so writing
+`secret/prod/marketing-microservice#ORDERS_SERVICE_TOKEN` would have been inert — the same
+trap Phase 1 hit with catalog. Worse, marketing's `JWT_TOKEN` feeds **six** env vars, so
+overwriting the property would have silently changed five unrelated credentials. The fix
+was a new Vault property plus repointing only this one `remoteRef`.
+
+### marketing's other lane is not orders
+
+`orderAffinityMarketplaceReplayHeadersForSource` targets **allegro**
+(`/internal/allegro/order-affinity/replay-candidates`), not orders, and carries
+`ORDER_AFFINITY_MARKETPLACE_REPLAY_TOKEN` = the shared `369e4f3c…` value with
+`roles: ["internal:warehouse-microservice:admin"]` — warehouse admin on an allegro-bound
+call. That lane is untouched here and still needs its own principal before `369e4f3c…`
+can be deactivated.
+
+Tests: 121/121 pass, and confirmed to fail (120/1) when the Bearer header is reverted to
+the static one.
+
+## 6k. `369e4f3c…` deactivated, 2026-08-26
+
+`service.allegro@internal.alfares.cz` set `isActive=false` (deactivated, not deleted, so it
+stays auditable and reversible — same treatment as `test@example.com`).
+
+**Checked first whether deactivation could break the three lanes still holding the value.
+It cannot, and the reason matters:**
+
+```
+POST /auth/validate  (shared token aa7ae49e)
+  -> 401 Unsupported token algorithm HS256; RS256 required
+```
+
+auth has refused this token since 2026-08-18. Every lane still carrying it either never
+consults auth (static string comparison) or is **already failing**. The DB principal was
+therefore decorative for all of them — deactivating it changes nothing at runtime, which
+is precisely why the plan's gate "deactivate only after all five are confirmed" turned out
+to be satisfiable early.
+
+Verified immediately after, both unaffected:
+
+```
+allegro -> orders   (per-pair Bearer)  -> 404 Order not found
+marketing -> orders (static, old code) -> 200 success
+```
+
+### What the remaining two holders actually are
+
+Neither is a working orders lane, and one is already dead:
+
+| Holder | Var | Reality |
+| --- | --- | --- |
+| allegro-service | `JWT_TOKEN` | **never sent.** The warehouse client prefers `WAREHOUSE_INTERNAL_SERVICE_TOKEN` (`3f3235bd`), and `JWT_TOKEN` is only its third fallback. Dead weight in this pod. |
+| allegro-imports | `JWT_TOKEN` | **already broken in production.** It *is* the token the warehouse client sends here, and `POST /api/stock/availability/batch` returns `401 Invalid token`. Dead since the 2026-08-18 HS256 retirement. |
+| marketing | `ORDER_AFFINITY_MARKETPLACE_REPLAY_TOKEN` | targets **allegro**, not orders; carries `internal:warehouse-microservice:admin`. |
+
+So the outstanding work is not "finish Phase 2 before deactivating" — it is repairing an
+allegro-imports → warehouse lane that has been returning 401 for over two months, and
+removing a `JWT_TOKEN` from allegro-service that nothing reads.
+
+## 6l. What can run in parallel (measured 2026-08-26)
+
+Live inventory after the pilot: **12 RS256 / 43 HS256** (pod, var) pairs, of which 21 are
+category-D docs-rag tokens and the rest reference a `sub`.
+
+The migration parallelises cleanly because the unit of work is a **lane**
+`(caller, target, env var)`, and lanes touch disjoint repos. Sequencing is only forced
+where two lanes share a *receiver contract* or a *deploy*.
+
+**Safe to run in parallel** — independent repos, independent Vault paths, no shared receiver:
+
+1. **flipflop** — 26 pairs across five services (`cart`, `order`, `product`, `user`,
+   `service`) that all share one token value. One principal per lane, one repo.
+2. **aukro / bazos / heureka** — 3 pairs each, same shape as the allegro pilot, and their
+   guards are already RS256 after 6d.
+3. **Category D (21 pairs)** — needs *tracing*, not minting: each is a docs-rag token in a
+   var named for another service. Read-only investigation, parallel-safe, and it is the
+   prerequisite for Phase 5.
+
+**Must stay serialised:**
+
+- Anything touching **orders-microservice** (9 pairs). It is the receiver for allegro,
+  aukro, bazos, heureka, flipflop, cliplot, catalog, warehouse, payments, invoices and
+  marketing. Two agents editing `jwt-roles.guard.ts` collide.
+- **Deploys**, always — one node, one containerd. The 2026-08-26 allegro rollout hit the
+  sandbox deadlock (`name is reserved`) with 9 pods Pending at 87% disk util, caused by its
+  own five images. Subagents must stop at the deploy boundary.
+- **Vault writes to the same path.** `kv patch` is read-modify-write, so two concurrent
+  patches to one service silently drop a key.
+
+**Ordering constraint worth stating explicitly:** a per-pair principal needs its
+`internal:<app>:service` role to exist first. Only `allegro-service` had one before today;
+`marketing-microservice` had to be seeded (6j). Seeding roles for every target app is a
+small, serialisable prerequisite that unblocks all the parallel work.
+
+## 6m. Production outage found while mapping marketplace lanes, 2026-08-26
+
+**`heureka-service` cannot create orders. `POST /api/orders` returns 401 in production.**
+
+Found by fingerprinting both sides of each marketplace -> orders lane rather than trusting
+the env-var names:
+
+| Caller | caller-side fp | orders expects | live result |
+| --- | --- | --- | --- |
+| aukro-service | `a2880693` | `a2880693` | 400 `channel is required` (**authenticated**) |
+| bazos-service | `a2880693` | `a2880693` | 400 `channel is required` (**authenticated**) |
+| heureka-service | `5f420714` | `a2880693` | **401 Missing or invalid Authorization header** |
+
+Root cause is a wiring error in `heureka/k8s/deployment.yaml`, not a token problem:
+
+```yaml
+- name: HEUREKA_INTERNAL_SERVICE_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: catalog-microservice-secret        # <- catalog's secret
+      key: CATALOG_INTERNAL_SERVICE_TOKEN      # <- catalog's token
+```
+
+orders resolves its side from `secret/prod/heureka-service#JWT_TOKEN`, so the two values
+could never match. The heureka pod already mounts the correct value under a *different*
+env var (`JWT_TOKEN`, fp `a2880693`), which is why the fix is one line and needs no new
+secret:
+
+```
+POST /api/orders with the pod's own JWT_TOKEN -> 400 channel is required
+```
+
+400 instead of 401 — proven from inside the running pod **before** changing the manifest.
+
+### Why this was invisible
+
+The same three failure-hiding mechanisms as the rest of this incident: the guard's 401 names
+no service and no algorithm; the caller treats a failed order lookup as "not found"; and
+`x-internal-service-token` is a string comparison, so nothing ever decodes the token to
+notice it belongs to catalog.
+
+### One string is four services' credential
+
+`a2880693` is the **same roleless docs-rag token** already found in marketing (6j). orders
+holds it as `AUKRO_INTERNAL_SERVICE_TOKEN`, `BAZOS_INTERNAL_SERVICE_TOKEN`,
+`HEUREKA_INTERNAL_SERVICE_TOKEN` and `MARKETING_INTERNAL_SERVICE_TOKEN` — four distinct
+"identities" that are one shared password with no revocable principal behind it. Repointing
+heureka at `JWT_TOKEN` fixes the outage but does **not** fix that; these four lanes still
+need per-pair principals.
+
+Also confirmed: `GET /api/orders` returns 403 for aukro/bazos exactly as it does for allegro
+(`ADMIN_READ_ROLES`), but none of the three marketplace clients call it — they call
+`POST /api/orders` plus a per-order read. The 403 is on an unused route.
+
+## 6n. Parallel investigation results, 2026-08-26 — category D and flipflop
+
+Two read-only agents mapped the remaining surface. The headline findings below were
+**re-verified directly** before being recorded here; the rest is their reporting.
+
+### Category D is not 22 tokens. It is one password mounted 21 times.
+
+Every category-D occurrence across 9 running pods is byte-identical: fp **`a2880693`**,
+`HS256`, `{"serviceId":"alfares-agent-rag","iss":"docs-rag-microservice"}`, no `sub`, no
+`roles`, exp 2027-08-01 — plus 2 dormant copies in `database-credentials#JWT_TOKEN` and
+`nginx-microservice-secret#JWT_TOKEN`. Classification: **16 live, 1 dead, 6 unused.**
+
+**The critical property: orders derives identity from the header, not the token.** The
+same `a2880693` value, presented with six different `x-service-name` values, authenticates
+as six different principals — `warehouse-microservice`, `payments-microservice`,
+`marketing-microservice`, `aukro-service`, `bazos-service`, `heureka-service`. A wrong
+token gives 401. **Any holder of `a2880693` chooses which service it is.** That is
+strictly worse than `369e4f3c…` (5 holders, one identity), and revoking it means editing
+15 env-var names across 8 Vault paths at once.
+
+**`runlayer` is fully bypassable — verified directly, not taken on report:**
+
+```
+GET /api/projects  Bearer a2880693  -> 200, 1810 bytes of live project data
+GET /api/projects  Bearer wrong     -> 401
+```
+
+`runlayer/src/common/auth/jwt.guard.ts:32-40` short-circuits before `/auth/validate`,
+sets `request.userId = 'notifications-microservice'` and returns true for any of three
+env values — two of which (`ORCHESTRATOR_SERVICE_TOKEN`, `ORCHESTRATOR_USER_JWT`) hold
+`a2880693`. The intended caller, notifications, holds a *different* value (`58453383`),
+so this allowlist grants nine unrelated pods full access for no reason. **Highest-priority
+item found today.**
+
+### flipflop: 8 real token values over ~40 mount points, and three dead lanes
+
+All five services share one `envFrom`, so every pod mounts all 8 tokens regardless of use.
+Only 5 outbound lanes are real. flipflop has **no local HS256 verification**, so it does
+not carry the 6d forgery defect.
+
+**Broken in production right now:**
+
+| Lane | Status | Cause |
+| --- | --- | --- |
+| flipflop ×5 -> warehouse | **401** | `WAREHOUSE_SERVICE_TOKEN` **expired 2026-07-31** (verified: `expired=true`, `401 Invalid token`) |
+| order-service -> orders admin action | **401** | `ORDERS_STATUS_SERVICE_TOKEN` expired 2026-08-05 |
+| flipflop ×5 -> ai-microservice | **401** | `AI_SERVICE_TOKEN` is valid RS256 and works when attached — **no call site attaches it** |
+| product-service -> suppliers | **404** | `GET /allegro/warehouse` route does not exist; no auth sent either |
+
+Every stock read and every reserve/decrement from flipflop has been failing for 26 days.
+It was invisible for the reason this whole incident keeps repeating —
+`warehouse-client.service.ts:45-49` turns the 401 into `return []` behind a `logger.warn`,
+so **an auth failure is indistinguishable from genuinely zero stock**. That is the
+speakasap frozen-lesson-table failure mode exactly.
+
+### Two defects worth fixing independently of the migration
+
+**Fail-open guard** (`flipflop/services/order-service/src/orders/orders.service.ts:280`):
+
+```ts
+assertInternalServiceKey(internalKey: string | undefined): void {
+  const expected = this.configService.get<string>('FLIPFLOP_INTERNAL_SERVICE_SECRET');
+  if (expected && internalKey !== expected) {      // <- unset env == no auth at all
+    throw new UnauthorizedException('Invalid internal service key');
+  }
+}
+```
+
+If the variable is ever unset, `POST /internal/orders/payment-result` and
+`POST /internal/marketing/campaigns` become fully unauthenticated. `assertAffinityReplayAccess`
+eight lines below is the correct fail-closed form (`if (!expected || ...)`), so the fix is
+to match it.
+
+**ES remap trap, live in flipflop:** `FLIPFLOP_INTERNAL_SERVICE_SECRET` and `JWT_TOKEN`
+both map to Vault property `JWT_TOKEN` (`flipflop/k8s/external-secret.yaml:76-83`).
+Writing that property changes both, and the first is the shared key for the intra-flipflop
+payment-result webhook *and* marketing's affinity replay — overwriting it breaks both at
+once. Same class as the marketing `JWT_TOKEN`-feeds-six-vars trap in 6j.
+
+`CATALOG_INTERNAL_SERVICE_TOKEN` is likewise sourced from `secret/prod/auth-microservice`,
+not flipflop's own path.
+
+### Privilege observation
+
+flipflop -> catalog currently buys `internal:catalog-microservice:admin` + `catalog:write`
+from a static string. Migrating that lane to a per-pair Bearer principal is a privilege
+**reduction**, not just a credential swap.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
@@ -968,7 +1236,7 @@ when that lane is migrated.
 - [x] Blocker 6d — local HS256 verification removed from allegro/heureka/aukro **(2026-08-26, forgery rejected in all 7 live pods)**
 - [x] ai-microservice HS256 window closed (`ALLOW_HS256_FALLBACK=false`, 2026-08-26) — see 6g
 - [ ] docs-rag-microservice — needs `JWT_PUBLIC_KEY` before its flag can close
-- [~] Phase 2 — split `369e4f3c…` — re-scoped (6h). **allegro->orders migrated to a per-pair Bearer principal (6i)**; remaining: marketing->orders (static header) and the allegro/allegro-imports->warehouse `JWT_TOKEN` lane, then deactivate `369e4f3c…`
+- [~] Phase 2 — split `369e4f3c…` — re-scoped (6h). **allegro->orders live (6i)**, **marketing->orders staged (6j)**, **`369e4f3c…` deactivated (6k)**; remaining: allegro-imports->warehouse (401 in prod, pre-existing) and marketing->allegro replay lane
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C
 - [ ] Phase 5 — category D
