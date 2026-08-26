@@ -733,13 +733,76 @@ deny-by-default. Orders needs no work. Decorator order is not significant to Nes
 placements are valid. Counts from that script for services not hand-verified should be
 treated as a floor.
 
+## 6f. Blocker 6d resolved, 2026-08-26 — local HS256 verification removed
+
+The forgery in 6d was reproduced in the running `allegro-service` pod before any change:
+
+```
+LOCAL VERIFY ACCEPTS forged HS256; roles=["global:superadmin"]
+```
+
+`allegro`, `heureka` and `aukro` each carried the same `shared/auth/jwt-auth.guard.ts`
+doing `jwt.verify(token, process.env.JWT_SECRET)`. Each now has an
+`shared/auth/jwt-verifier.ts` that fetches auth's public key from JWKS and accepts
+**RS256 only**; the guard no longer reads `JWT_SECRET` at all, so it cannot mint a token
+it would itself accept. Rejections log at error level with `alg`/`kid`/`sub`; token values
+are never logged.
+
+| Repo | Commit | Live proof |
+| --- | --- | --- |
+| heureka | `13c33ac` (+`c0a8584`) | pod rejects a token forged with its own mounted secret; 0 restarts, 0 auth errors |
+| aukro | `bf94ea7` (+`7dff067`) | same, verified on pod `5b764cddcd` |
+| allegro | `7c9efbf` | 4 deployments (service, api-gateway, imports, settings) |
+
+Verified before deploy, against the real JWKS: forged HS256 **rejected**, `alg=none`
+**rejected**, RS256 signed by a different key but carrying the real `kid` **rejected**
+(`invalid signature`), and a genuine RS256 token **accepted**. Typechecks clean in all
+three repos, and confirmed to fail on a deliberately broken type first.
+
+The claim-mapping code was left untouched — it is signature-agnostic, so this is a change
+of *who can sign*, not of what a valid token means.
+
+### Still open, and now the top of the list
+
+**`JWT_SECRET` is still mounted** by all three (and by 21 other pods) so nothing was
+disrupted at rollout. Unmounting is a separate, safe follow-up now that no code reads it;
+it should happen before the shared value is rotated.
+
+**Two live symmetric clusters remain** (fingerprints as of 2026-08-26, current values):
+
+| Fingerprint | Pods | Notable holders |
+| --- | --- | --- |
+| `ac9e7664` | 17 | ai, docs-rag, speakasap ×3, statex, flipflop ×5, bazos, cv-tuning, crypto-ai-agent, runlayer, aukro |
+| `9b96c5ad` | 11 | allegro ×4, heureka ×2, **auth**, backups, notifications, orders, suppliers |
+
+Mounting the secret is only exploitable where a service *verifies locally with it*. After
+this change the known remaining local verifiers are:
+
+1. **`ai-microservice`** — `JwtUtil` already has an RS256 path with algorithm-confusion
+   protection and `JWT_PUBLIC_KEY` is set, but `ALLOW_HS256_FALLBACK=true`, so a forged
+   HS256 token is still accepted. **One env flip from closed.**
+2. **`docs-rag-microservice`** — same `JwtUtil`, but `JWT_PUBLIC_KEY` is UNSET and the
+   fallback flag is unset (defaults to allowed). Needs the key before the flag.
+   Default expiry is 365 days and the payload uses `serviceId`, not `sub`.
+3. **`speakasap`** — `certification-service/view-token.service.ts` and
+   `frontend/lib/drills/sso/resolve.ts`. These are self-issued tokens, a different trust
+   model from auth-issued ones; they need review, not necessarily this same fix.
+4. **`domain-research`** — `internal-service.guard.ts` verifies HS256 with `JWT_SECRET`
+   and swallows the cause (`catch {}`). Its secret (`d00f3c29`) is its own, held by one
+   pod, so it is not in either cluster above. Left untouched deliberately: it is a
+   low-priority experiment and out of scope for ecosystem-wide sweeps.
+
+Phase 2 is unblocked for the services fixed here, but items 1 and 2 above are the same
+class of defect and are cheap to close.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
 - [x] Phase 0b — standard revised, scripts consolidated
 - [x] Phase 1 — catalog → warehouse pilot **(complete 2026-08-25, monitor 11/11 green)**
 - [x] Phase 1a — role model **complete across all services**: warehouse (`a8f76d0`+`c4f5427`), payments/notifications/suppliers (`4e0dd54`), orders (`8093657`), logging (`a50e9dd`+`9ffb9f0`), backups (`a0d1e9f`), monitoring (`39fbc3e`) — all deployed and verified live
-- [ ] Phase 2 — split `369e4f3c…`
+- [x] Blocker 6d — local HS256 verification removed from allegro/heureka/aukro **(2026-08-26, forgery rejected in live pods)**
+- [ ] Phase 2 — split `369e4f3c…` *(unblocked; see 6f for the two remaining local verifiers)*
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C
 - [ ] Phase 5 — category D
