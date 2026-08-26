@@ -1655,10 +1655,40 @@ Fixed in `6d31d65`: new per-pair principal
 exist on the client but no caller invokes them. Both stock reads return 200 with the new
 token. The lookup failures now log at error level and throw; only a 404 returns empty.
 
-**aukro -> catalog is still 401** and is not fixed here: `CATALOG_SERVICE_TOKEN` is unset,
-so the chain reached `a2880693`, which catalog correctly rejects. That lane needs its own
-principal. `JWT_TOKEN` has been removed from aukro's warehouse chain so it can no longer
+**aukro -> catalog, fixed in `673273f`.** `CATALOG_SERVICE_TOKEN` was unset, so the chain
+reached `a2880693`, which catalog correctly rejects. New principal
+`svc-aukro-service--catalog-microservice@internal.alfares.cz`
+(`f5d46205-91c2-4cfe-b057-4c23acc2d112`, fp `8443b848`, 90d), role
+`internal:catalog-microservice:service`.
+
+**This lane is a large privilege reduction.** Every route on catalog's products controller
+carries `@RequireCatalogRoles('catalog:authenticated')`, and `CatalogAuthGuard` treats that
+as satisfied by *any* validated non-marathon principal — so the per-pair token needs no
+catalog-specific role at all. The static-header path it replaces was far broader:
+`resolveInternalServiceActor()` synthesises
+`roles: ['internal:catalog-microservice:admin', 'catalog:write']` for anyone presenting
+`CATALOG_INTERNAL_SERVICE_TOKEN`, with the identity again taken from `x-service-name`.
+
+**Five call sites never attached the service token at all**, so they were failing regardless
+of which credential was configured: `searchProducts` (passed `undefined` on the service
+path), `getProductBySku`, `createProduct`, `getProductPricing`, `getProductMedia`. All now
+authenticate. This is the same class as the two unauthenticated aukro order-client calls
+above — worth grepping other clients for `httpService.get(\`...\`)` with no options argument.
+
+Two more silent failures fixed in the same file: `searchProducts` returned
+`{items: [], total: 0}` on any error (a 401 was indistinguishable from a catalog with no
+matches) and `getProductBySku` returned `null` for every error. Only a 404 now means
+not-found.
+
+`JWT_TOKEN` has been removed from aukro's warehouse *and* catalog chains so it can no longer
 convert a missing token into a confusing 401.
+
+**A pre-existing typecheck failure surfaced here.** `npm run typecheck` in aukro had four
+`TS2451`/`TS2393` errors: `shared/clients/order-client.service.spec.ts` is a non-module
+script, so its top-level `const assert`/`const of` collided in the shared tsconfig's global
+scope. The chained npm script still exited 0, which is why it read as passing. Fixed with
+`export {}`; the check now passes clean and was verified to fail on an introduced type
+error.
 
 **This is the third instance of the same pattern in two days** (speakasap lessons, flipflop
 stock, aukro stock). The common shape is a client that returns an empty collection or a zero
@@ -1667,7 +1697,8 @@ on a caught HTTP error. Grepping for `return []`, `return 0`, and `return null` 
 
 ### Still open
 
-- **`a2880693` itself is not yet retired.** Six orders lanes are migrated, but the value is
+- **`a2880693` itself is not yet retired.** Seven lanes are migrated (six to orders, plus
+  aukro -> catalog), but the value is
   still mounted in the remaining category-D slots (`MARKETING_API_TOKEN`,
   `logging JWT_TOKEN`, the marketing aukro/bazos replay tokens, `runlayer`, the two dormant
   keys). It cannot be rotated until those are resolved individually.
