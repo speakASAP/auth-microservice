@@ -1498,7 +1498,23 @@ to be seeded.
 
 404/400 rather than 401/403 is the acceptance proof: authorization passed and only business
 validation or a missing row rejected the call. Every probe used a non-existent order id, so
-no production data was touched. Fingerprints match minted = Vault on all five new keys.
+no production data was touched.
+
+**All five deployed and re-verified from the running pods** (not the deploy banner), each
+against the endpoint that lane actually calls:
+
+| Pod | mounted fp | live result |
+| --- | --- | --- |
+| aukro-service | `16573df3` | `GET /api/orders/<id>` 404, `POST /api/orders` 400 |
+| bazos-service | `f08f27a0` | `GET /api/orders/<id>` 404, `POST /api/orders` 400 |
+| heureka-service | `ccbe4046` | `GET /api/orders/<id>` 404, `POST /api/orders` 400 |
+| payments-microservice | `633a4184` | `PUT /:id/payment-status` 404 |
+| warehouse-microservice | `46477b50` | `PUT /:id/warehouse-fulfillment-status` 404 |
+| marketing-microservice | `81e787cb` | replay-candidates 200 (from 6j, still healthy) |
+
+Six distinct fingerprints: the shared value is gone from every orders lane. Fingerprints
+match at all four hops — minted = Vault = K8s Secret = pod. Vault version diffs confirm each
+write touched exactly one key and changed nothing else.
 
 Commits: `f25a764` (aukro), `0687048` (bazos), `2b73894` (heureka), `39cf960` (payments),
 `5dc336f` (warehouse), plus `ee6a590`/`a662b09` (deployment env mapping, see below) and
