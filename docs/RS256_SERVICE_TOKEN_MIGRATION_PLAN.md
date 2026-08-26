@@ -829,6 +829,72 @@ pre-existing: no RabbitMQ pod is deployed in `statex-apps` at all.
 **`docs-rag-microservice` is now the last known local HS256 verifier** (`JWT_PUBLIC_KEY`
 UNSET, so its flag cannot be flipped until the key is issued and its callers re-minted).
 
+## 6h. Phase 2 re-scoped, 2026-08-26 — `369e4f3c…` is not used as a JWT
+
+Phase 2 says "five new per-pair principals, one per holder ... reissue". Tracing the five
+holders first shows that framing does not fit: **none of these call paths parse the token
+as a JWT.** All five hold the same value (`aa7ae49e`), and every consumer compares it as
+an opaque string.
+
+Live holders, all HS256, all one value:
+
+| Pod | Env var |
+| --- | --- |
+| allegro-service | `ALLEGRO_INTERNAL_SERVICE_TOKEN`, `JWT_TOKEN` |
+| allegro-imports | `JWT_TOKEN` |
+| orders-microservice | `ALLEGRO_INTERNAL_SERVICE_TOKEN` |
+| marketing-microservice | `ORDER_AFFINITY_MARKETPLACE_REPLAY_TOKEN` |
+
+The wire contract is the **legacy static header**, not `Authorization: Bearer`:
+
+- `allegro/shared/clients/order-client.service.ts:80` sends
+  `x-internal-service-token` + `x-service-name`.
+- `orders-microservice/src/auth/jwt-roles.guard.ts:206` resolves the env var and
+  `timingSafeEqual`s the raw string, then synthesises
+  `{sub: "service:allegro-service", roles: ["internal:allegro-service:service"]}`. The
+  token is never decoded.
+- `marketing-microservice/src/order-affinity-backfill.ts:492` strips any `Bearer ` prefix
+  and sends the value as a header.
+
+Verified live from the allegro-service pod against orders:
+
+```
+valid token + x-service-name -> 403 Insufficient permissions   (authenticated, role too weak)
+wrong token                  -> 401 Missing or invalid Authorization header
+no credentials               -> 401
+```
+
+**403 not 401 on the valid token is the proof**: the static credential is accepted today
+and is load-bearing. Its HS256 header is decorative — that is why these five survived the
+2026-08-18 HS256 retirement while category A died.
+
+### What this means
+
+Re-minting these as RS256 JWTs accomplishes nothing on its own: the receivers would still
+`timingSafeEqual` an opaque string. Phase 2 is therefore **not** a token reissue but a
+contract migration, which is a larger change than the plan assumed:
+
+1. Move each lane from `x-internal-service-token` to `Authorization: Bearer` with a real
+   per-pair principal, and have receivers verify via `/auth/validate` or the RS256
+   verifier instead of string-comparing.
+2. Only then does per-pair issuance bound anything, and only then can a leak be revoked
+   in the auth DB rather than by editing env vars in four repos at once.
+
+The DB principal `369e4f3c-5af8-41df-9cd2-09861d403bd6` (`service.allegro`) is active and
+holds exactly one role: **`admin` on warehouse-microservice** — an app it is not used to
+call. That is the same authority over-grant Phase 1a fixed for catalog, and it is
+independently worth removing.
+
+### Two defects found while tracing
+
+- `allegro/services/allegro-service/src/allegro/orders/orders.controller.ts:104` compares
+  the shared secret with `supplied !== expected` — **not** constant-time, unlike orders'
+  `timingSafeEqual`.
+- The same secret is reachable through a long `||` fallback chain
+  (`ALLEGRO_INTERNAL_SERVICE_TOKEN || ORDERS_INTERNAL_SERVICE_TOKEN ||
+  ORDER_SERVICE_INTERNAL_TOKEN || INTERNAL_SERVICE_TOKEN`), so rotating one variable can
+  silently fall through to another holder of the old value instead of failing loudly.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
@@ -838,7 +904,7 @@ UNSET, so its flag cannot be flipped until the key is issued and its callers re-
 - [x] Blocker 6d — local HS256 verification removed from allegro/heureka/aukro **(2026-08-26, forgery rejected in all 7 live pods)**
 - [x] ai-microservice HS256 window closed (`ALLOW_HS256_FALLBACK=false`, 2026-08-26) — see 6g
 - [ ] docs-rag-microservice — needs `JWT_PUBLIC_KEY` before its flag can close
-- [ ] Phase 2 — split `369e4f3c…` *(unblocked; see 6f for the two remaining local verifiers)*
+- [ ] Phase 2 — split `369e4f3c…` — **re-scoped, see 6h**: these are static header secrets, not JWTs; needs a contract migration, not a reissue. Awaiting owner decision.
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C
 - [ ] Phase 5 — category D
