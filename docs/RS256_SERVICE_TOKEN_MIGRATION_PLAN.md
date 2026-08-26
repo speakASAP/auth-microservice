@@ -1262,6 +1262,162 @@ The Secret is still untracked drift: nothing in Vault or the repo governs it, so
 rotation will miss it again unless the override is deleted from the live Deployment. Same
 class as the `suppliers-microservice` hand-created secret in section 2c finding 2.
 
+## 6p. Session B — broken lanes and silent-failure cleanup, 2026-08-26
+
+Every item below was re-verified against the running pods before being changed. One
+prediction in 6n did not survive contact (see item 2); the rest matched.
+
+| Item | Before | After |
+| --- | --- | --- |
+| flipflop ×5 -> ai-microservice | **401 Missing service token** | **200** (`ae924f0`) |
+| `flipflop-warehouse-token` override | untracked drift, no ESO, no owner refs | **not removed — blocked, see below** |
+| notifications -> orchestrator | `catch {}` -> `[]`, outage renders as "No recent tasks found." | 404 -> `[]`; everything else logged + re-thrown (`fa591b5`) |
+| allegro/heureka warehouse clients | 401 -> `[]` / `0` behind `logger.warn` | only 404 means "no rows" (`e814c43`, `09497a6`) |
+| runlayer inert token mounts | `ORCHESTRATOR_USER_JWT` + `_SERVICE_TOKEN` synced into pod | mounts removed (`6fd27fa`) |
+
+### 1. flipflop -> ai-microservice: every AI feature was dead
+
+Reproduced from inside `flipflop-order-service` before changing anything, using the
+token the pod already mounts (fp `f97255cc`):
+
+```
+POST /ai/complete  no auth      -> 401 {"message":"Missing service token"}
+POST /ai/complete  Bearer token -> 200 {"schemaVersion":"1.0","text":...}
+```
+
+So the credential was valid and mounted in all five services; nothing attached it.
+`grep -rn AI_SERVICE_TOKEN flipflop --include="*.ts"` returned nothing outside build
+artifacts, confirming 6n.
+
+**Fix (`ae924f0`)**: added `shared/clients/ai-client.service.ts` as the single source of
+the credential — one helper, not five copies of the header — and routed all five call
+sites through it (`pricing.service.ts`; `orders.service.ts` competitor-analysis,
+dead-stock and repeat-buyer; `email-campaign.service.ts`; `abandoned-cart.service.ts`).
+
+The helper fails closed when no credential is configured and logs the upstream status
+before re-throwing, so an AI outage can never quietly become a default result.
+
+Two things surfaced while doing it, both folded into the same commit:
+
+- Three call sites defaulted to `http://e-commerce-ai-service:3007`, a hostname that no
+  longer exists. Even once authenticated they would not have reached ai-microservice.
+- The two admin endpoints (dead stock, repeat buyers) forwarded **the admin user's own
+  JWT** to ai-microservice. `ServiceAuthGuard` only verifies the RS256 signature, so
+  that happened to pass for a logged-in admin and fail for every scheduled/background
+  call. A service-to-service hop should present the service credential; they now do.
+
+### 2. `flipflop-warehouse-token` — analysed, NOT removed (blocked)
+
+Re-verified the drift is still exactly as 6o describes:
+
+```
+flipflop-product-service env[]:  WAREHOUSE_SERVICE_TOKEN=flipflop-warehouse-token
+ExternalSecret for it:           none
+ownerReferences:                 none
+referenced by:                   flipflop-product-service only
+repo manifest env[]:             PORT, SERVICE_NAME only  (override is not in the repo)
+```
+
+**The removal is safe and was ready to apply**, because the two values are identical:
+
+```
+mounted now (override)            fp 59415e97
+flipflop-service-secret via ESO   fp 59415e97   <- what envFrom would supply
+flipflop-warehouse-token (orphan) fp 59415e97
+```
+
+Dropping the `env[]` entry therefore changes no running value; the pod keeps the same
+token, sourced from ESO instead of the orphan.
+
+**It was not applied: the `kubectl patch` was refused by this session's permission
+classifier.** The exact command, to be run under the deploy lock:
+
+```bash
+shared/scripts/with-deploy-lock.sh kubectl patch deploy flipflop-product-service \
+  -n statex-apps --type=json \
+  -p '[{"op":"remove","path":"/spec/template/spec/containers/0/env/2"}]'
+```
+
+Then verify by fingerprint inside the new pod (expect `59415e97` still, now via
+`envFrom`) and that warehouse returns 200, and only then delete the orphan Secret —
+nothing else references it.
+
+**Do not also remove `LOGGING_SERVICE_TOKEN`** from that `env[]`. It looks like the same
+drift but is not: it is absent from `flipflop-service-secret`, so the named override is
+the only thing supplying it, and `flipflop-order-service` carries the same mapping
+deliberately. Removing it would break logging ingest.
+
+**`suppliers-microservice` has the same shape but is NOT safe to fix the same way.**
+`CATALOG_SERVICE_TOKEN` and `WAREHOUSE_SERVICE_TOKEN` both point at the hand-created
+`stock-traceability-runtime-token` (no ExternalSecret, no owner refs — confirmed), but
+**neither key exists in `suppliers-microservice-secret`**. Unlike flipflop, the override
+is load-bearing: removing it drops both credentials. Fixing it means writing both values
+into Vault and adding them to the ESO manifest first. Left for a follow-up.
+
+### 3. Silent failures
+
+`notifications-microservice/src/telegram-bot/orchestrator.client.ts` (`fa591b5`) — the
+bare `catch {}` returned `[]`, so `/status` printed "No recent tasks found." for a 401 or
+a 5xx. Now only a real 404 returns `[]`; anything else is logged at error level with the
+upstream status and re-thrown, and the bot tells the user the orchestrator is
+unreachable. Added `status-failure.spec.ts`, **confirmed to fail when the fix is
+reverted** (asserts the user never sees the empty-list message on a 401).
+
+`allegro` (`e814c43`) and `heureka` (`09497a6`) `shared/clients/warehouse-client.service.ts`
+carried the flipflop defect verbatim:
+
+- `requestOptions()` returned `{}` when no credential was found — an unauthenticated
+  request instead of a failure. Now logs at error level and throws.
+- `getStockByProduct` / `getTotalAvailable` — only 404 means "no rows"; every other
+  status is logged with context and re-thrown, so a 401 can no longer read as zero stock.
+- allegro `getWarehouses` / `getDefaultWarehouseId` — a failed lookup no longer becomes
+  an empty list / `null`.
+- heureka `getAvailabilityBatch` — the worst of them: `feed.service.ts` builds its stock
+  lookup from this call, so a 401 silently published a **product feed with unknown stock
+  for every product**. It now fails loudly.
+
+The mutating methods (reserve/unreserve/set/decrement) already threw correctly and were
+left alone.
+
+**`aukro` and `bazos` carry the identical defect and were NOT touched** — Session A owns
+those repos. Both need the same three edits:
+
+```
+<repo>/shared/clients/warehouse-client.service.ts:30  return {};        (no-credential)
+<repo>/shared/clients/warehouse-client.service.ts:51  logger.warn -> return []   (getStockByProduct)
+<repo>/shared/clients/warehouse-client.service.ts:67  logger.warn -> return 0    (getTotalAvailable)
+```
+
+### 4. runlayer follow-ups
+
+`k8s/external-secret.yaml` (`6fd27fa`) — `ORCHESTRATOR_USER_JWT` and
+`ORCHESTRATOR_SERVICE_TOKEN` both synced Vault property `JWT_TOKEN` (the shared roleless
+`a2880693`) into the pod. Confirmed inert first: no runlayer source reads either name any
+more — the only hits are the 48d3e9d comment and the regression tests. Mounts removed,
+with a comment recording why so they are not re-added. **Retiring the `a2880693` value
+itself is Session A's and was not touched.** No sequencing needed for this change: it
+only stops runlayer mounting the value.
+
+`scripts/` — `_orch-common.sh`, `e2e-smoke-test.sh`, `goal-journey-smoke-test.sh` and
+`orch-final-validation.sh` all already preferred `TOKEN`/login, with
+`ORCHESTRATOR_USER_JWT` as fallback. The fallback is kept (a local `.env` may hold a real
+user JWT under that name) but now announces that it is deprecated and expects 401, and
+the failure text points at `TOKEN`. All four pass `bash -n`; all 17 jwt.guard/admin.guard
+tests pass.
+
+### Verification notes
+
+- `allegro` and `heureka` have **no wired test runner** — no jest config, no `test`
+  script, and `ts-jest` is not installed, so their `*.spec.ts` / `*.self-test.ts` files
+  cannot currently run. Typecheck is the only available gate there and passes for both.
+  Worth wiring up separately; it is why these clients drifted unnoticed.
+- The flipflop typecheck was confirmed to actually run by injecting a deliberate type
+  error and watching it fail, then restoring — a green check that never ran is worse
+  than a red one.
+- `shared/dist` is gitignored and was stale locally (June); the Docker build runs
+  `npm run build` in `shared/` before each service, so the image is unaffected. Rebuilt
+  locally only so the typecheck reflected the image.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
@@ -1270,6 +1426,12 @@ class as the `suppliers-microservice` hand-created secret in section 2c finding 
 - [x] Phase 1a — role model **complete across all services**: warehouse (`a8f76d0`+`c4f5427`), payments/notifications/suppliers (`4e0dd54`), orders (`8093657`), logging (`a50e9dd`+`9ffb9f0`), backups (`a0d1e9f`), monitoring (`39fbc3e`) — all deployed and verified live
 - [x] Blocker 6d — local HS256 verification removed from allegro/heureka/aukro **(2026-08-26, forgery rejected in all 7 live pods)**
 - [x] ai-microservice HS256 window closed (`ALLOW_HS256_FALLBACK=false`, 2026-08-26) — see 6g
+- [x] flipflop → ai-microservice lane repaired (`ae924f0`, 2026-08-26) — **401 → 200 verified in both live pods**; five AI features restored, one shared `AiClientService` holds the credential — see 6p
+- [x] Silent-failure cleanup: notifications orchestrator client (`fa591b5`), allegro (`e814c43`) and heureka (`09497a6`) warehouse clients — 404 is the only "no rows"; every other status logs and re-throws — see 6p
+- [x] runlayer stopped mounting the shared `a2880693` (`6fd27fa`, 2026-08-26); operator scripts mark the fallback deprecated — see 6p
+- [ ] `flipflop-warehouse-token` override removal — **analysed and safe (all three fingerprints `59415e97`), blocked on a permission denial**; exact command in 6p
+- [ ] `suppliers-microservice` `stock-traceability-runtime-token` — orphan confirmed, but **load-bearing** (neither key is in the ESO secret); needs Vault + ESO work first — see 6p
+- [ ] `aukro` / `bazos` warehouse clients — identical silent-failure defect, left for Session A; exact lines in 6p
 - [ ] docs-rag-microservice — needs `JWT_PUBLIC_KEY` before its flag can close
 - [~] Phase 2 — split `369e4f3c…` — re-scoped (6h). **allegro->orders live (6i)**, **marketing->orders staged (6j)**, **`369e4f3c…` deactivated (6k)**; remaining: allegro-imports->warehouse (401 in prod, pre-existing) and marketing->allegro replay lane
 - [ ] Phase 3 — category A remainder
