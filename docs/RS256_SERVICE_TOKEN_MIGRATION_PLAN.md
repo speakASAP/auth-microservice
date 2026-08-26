@@ -1271,9 +1271,13 @@ prediction in 6n did not survive contact (see item 2); the rest matched.
 | --- | --- | --- |
 | flipflop ×5 -> ai-microservice | **401 Missing service token** | **200** (`ae924f0`) |
 | `flipflop-warehouse-token` override | untracked drift, no ESO, no owner refs | **not removed — blocked, see below** |
-| notifications -> orchestrator | `catch {}` -> `[]`, outage renders as "No recent tasks found." | 404 -> `[]`; everything else logged + re-thrown (`fa591b5`) |
-| allegro/heureka warehouse clients | 401 -> `[]` / `0` behind `logger.warn` | only 404 means "no rows" (`e814c43`, `09497a6`) |
-| runlayer inert token mounts | `ORCHESTRATOR_USER_JWT` + `_SERVICE_TOKEN` synced into pod | mounts removed (`6fd27fa`) |
+| notifications -> orchestrator | `catch {}` -> `[]`, outage renders as "No recent tasks found." | **404 -> `[]`, 401 -> throws** — verified in the live pod (`fa591b5`) |
+| allegro/heureka warehouse clients | 401 -> `[]` / `0` behind `logger.warn` | only 404 means "no rows" (`e814c43`, `09497a6`); **immediately exposed a real 401 in allegro** |
+| runlayer inert token mounts | `ORCHESTRATOR_USER_JWT` + `_SERVICE_TOKEN` synced into pod | **both absent from the new pod**; notifications -> runlayer still 200 (`6fd27fa`) |
+
+All five deploys are live and were verified in the running pods, not from a deploy
+banner: flipflop `ae924f0`, allegro `e814c43`, heureka `09497a6` (in `2b73894`),
+notifications `fa591b5`, runlayer `6fd27fa`.
 
 ### 1. flipflop -> ai-microservice: every AI feature was dead
 
@@ -1379,6 +1383,30 @@ carried the flipflop defect verbatim:
 The mutating methods (reserve/unreserve/set/decrement) already threw correctly and were
 left alone.
 
+**What the allegro fix immediately un-hid: allegro -> warehouse is 401 in production.**
+Exercising the deployed client in the live pod now surfaces what it previously swallowed:
+
+```
+allegro-service (e814c43), getWarehouses() -> ERROR "Warehouse list lookup failed
+                                              (status 401)" and throws
+```
+
+Confirmed **pre-existing and not caused by this change** — a raw `fetch` from the same
+pod, with no client code involved, returns the same 401:
+
+```
+WAREHOUSE_SERVICE_TOKEN            unset
+WAREHOUSE_INTERNAL_SERVICE_TOKEN   fp 3f3235bd -> 401   <- the only credential it has
+INTERNAL_SERVICE_TOKEN             unset
+```
+
+This is the `allegro-imports -> warehouse` 401 already recorded as pre-existing under
+Phase 2, now shown to affect `allegro-service` itself. Before this commit every one of
+those calls returned `[]`/`0`, i.e. "no stock", which is why it stayed invisible.
+The service is healthy (`/health` 200, 0 restarts) — the throw surfaces per request
+rather than destabilising the pod. **Fixing the credential is a separate task and is
+not done here**; the lane is broken either way, but it is now loud instead of silent.
+
 **`aukro` and `bazos` carry the identical defect and were NOT touched** — Session A owns
 those repos. Both need the same three edits:
 
@@ -1417,6 +1445,194 @@ tests pass.
 - `shared/dist` is gitignored and was stale locally (June); the Docker build runs
   `npm run build` in `shared/` before each service, so the image is unaffected. Rebuilt
   locally only so the typecheck reflected the image.
+- **The 6o "FAILED deploy that actually succeeded" trap recurred twice**, exactly as
+  documented: `FAILED flipflop (exit 1) after 963s` and `FAILED allegro (exit 1) after
+  844s` were both rollout timeouts under containerd sandbox contention
+  (`FailedCreatePodSandBox ... name is reserved`, 12 pods Pending cluster-wide while two
+  sessions deployed concurrently). Both converged on their own with 0 restarts and were
+  verified live. Nothing was re-run, and nothing needed to be. Check pod image and
+  readiness before reacting to a FAILED line.
+
+## 6q. Session A, 2026-08-26 — `a2880693` retired on all six orders lanes
+
+The shared docs-rag token `a2880693` was mounted in 9 pods across 22 env vars. Six of those
+entries were orders' per-caller slots, and they are the reason the value is dangerous.
+
+### The defect, re-verified live before any change
+
+`orders-microservice/src/auth/jwt-roles.guard.ts:188` `resolveInternalServiceActor()`
+compares `x-internal-service-token` byte-for-byte against a per-caller env var and then
+**synthesises the role from the `x-service-name` header** — it never decodes the token.
+Because all six orders entries held the same value, one string authenticated as six
+different principals. Measured from the aukro pod against
+`GET /api/orders/internal/order-affinity/replay-candidates`:
+
+```
+x-service-name: marketing-microservice  -> 200 + live replay data
+x-service-name: warehouse-microservice  -> 403 (authenticated, role-limited)
+x-service-name: payments-microservice   -> 403
+x-service-name: aukro-service           -> 403
+x-service-name: bazos-service           -> 403
+x-service-name: heureka-service         -> 403
+x-service-name: catalog/flipflop/allegro-> 401 (already migrated off the value)
+wrong token, any name                   -> 401
+```
+
+403-not-401 is the proof the credential was accepted; the 401s on catalog/flipflop/allegro
+show what the end state looks like.
+
+### Six per-pair principals, all probed before Vault was touched
+
+Each got exactly one least-privilege role — `internal:<caller>:service`, which is what the
+`@Roles` sets on the routes each caller actually calls. All roles already existed; none had
+to be seeded.
+
+| Lane | Principal id | fp | Probe result |
+| --- | --- | --- | --- |
+| aukro -> orders | `9e1da7c7-556b-46a5-8215-10e079a329ff` | `16573df3` | validate 201; 404/404/400 |
+| bazos -> orders | `79fc3c1d-e035-4ce7-a79d-0eace04c1926` | `f08f27a0` | validate 201; 404/404/400 |
+| heureka -> orders | `bff285ba-34a7-4d4d-8eaf-1467f06bd72c` | `ccbe4046` | validate 201; 404/404/400 |
+| warehouse -> orders | `b8407087-a02f-4ba3-a9ef-8175bd1401e0` | `46477b50` | validate 201; PUT fulfillment-status 404 |
+| payments -> orders | `468b2d2b-ed2e-4211-bb21-1bbecebf94e0` | `633a4184` | validate 201; PUT payment-status 404 |
+| marketing -> orders | `a268c24b-03d2-4a56-9e71-76b51013fea0` | `81e787cb` | already live from 6j |
+
+404/400 rather than 401/403 is the acceptance proof: authorization passed and only business
+validation or a missing row rejected the call. Every probe used a non-existent order id, so
+no production data was touched. Fingerprints match minted = Vault on all five new keys.
+
+Commits: `f25a764` (aukro), `0687048` (bazos), `2b73894` (heureka), `39cf960` (payments),
+`5dc336f` (warehouse).
+
+### Two premises in the task brief were wrong, and both mattered
+
+**1. `PAYMENTS_ORDERS_SERVICE_TOKEN` was not a dormant trap — it was the live credential.**
+The brief described it as "currently shadowed by a set primary". Measured in the pod:
+
+```
+ORDERS_SERVICE_TOKEN           = <unset>
+PAYMENTS_ORDERS_SERVICE_TOKEN  fp=a2880693
+```
+
+`resolveServiceToken()` is `ORDERS_SERVICE_TOKEN || PAYMENTS_ORDERS_SERVICE_TOKEN`, so with
+the primary unset the shared password was what payments actually sent. The `||` chain had
+already silently fallen through; there was nothing left to pre-empt.
+
+**2. heureka's orders lane was still on the shared token despite 6o reporting it fixed.**
+The Bearer code (`order-client.service.ts:242`) and the `external-secret.yaml` mapping both
+shipped in `af0a02b`, but `secret/prod/heureka-service#ORDERS_SERVICE_TOKEN` **never
+existed**, so `ORDERS_SERVICE_TOKEN` was unset in the pod and the static fallback carried
+every request. ESO reported `SecretSynced` throughout — a mapping to a non-existent Vault
+property syncs happily and silently omits the key.
+
+This is the inverse of the 6i/6j trap. There the Vault key existed and the mapping was
+missing; here the mapping existed and the key was missing. **Both fail silently, and neither
+is visible from ESO status — only from the pod's own environment.** Verify the value in the
+pod, never the manifest and never the sync status.
+
+### The `||` chains are the real hazard, not the individual variables
+
+Every one of these lanes reaches the shared value through a fallback chain, so "rotate the
+variable" does not retire the credential — it just moves which alias supplies it. Each
+migrated caller now **logs at error level whenever it falls back** to the static header, so
+a lane that quietly reverts announces itself instead of degrading. That is the only reason
+the heureka gap above would have been caught.
+
+### Corrections to the category-D "unused" list — do not delete these
+
+The brief listed four mounts as unused and safe to delete. Re-verified individually; **three
+of the four are load-bearing**, and deleting them would have caused outages:
+
+| Mount | Claim | Measured | Verdict |
+| --- | --- | --- | --- |
+| `marketing MARKETING_API_TOKEN` | unused | real token -> **400**, wrong -> 401, absent -> **503** | **LIVE.** Guards ~12 mutating routes (`/campaigns`, `/campaigns/:id/approve`, `/journeys`, `/segments`). Deleting it makes `requireServiceAuth` return 503 on all of them. |
+| `logging JWT_TOKEN` | unused | `POST /api/logs` with it -> **201**, wrong -> 401 | **LIVE.** `log-ingest.guard.ts:95` adds it to the accepted bearer set. Deleting it breaks ingestion for every caller still presenting it. |
+| `aukro JWT_TOKEN` | unused, Bearer-only, already 401 | read by `catalog-client.service.ts:93` and `warehouse-client.service.ts:24` | **REACHABLE** as the 2nd fallback behind `CATALOG_SERVICE_TOKEN` / `WAREHOUSE_SERVICE_TOKEN`. Not dead code; needs those primaries confirmed set before removal. |
+| `payments JWT_TOKEN` | unused | no reference in `payments-microservice/src` | **Unused as claimed** — the only one of the four that is. |
+
+The lesson from 6n repeats: **"unused" from a grep is a hypothesis.** Three of four failed
+verification, and the two live ones were one `vault kv delete` away from a production outage.
+
+**Dormant copies, partially corrected.** `database-credentials` and
+`nginx-microservice-secret` do both still carry a `JWT_TOKEN` key that nothing consumes, but
+`database-credentials` is **not** "mounted by nothing" — `aukro-service` and
+`orders-microservice` both mount it for `DB_PASSWORD`. The unused thing is the key, not the
+Secret; deleting the Secret would break two services' database access.
+
+### Defects fixed in passing
+
+- **`warehouse fulfillment-orders.service.ts:305`** was `catch {}` plus a context-free
+  `logger.warn`, so a 401 on the orders sync was indistinguishable from a transport blip.
+  Now logs orderId, fulfillmentOrderId, status, HTTP status and the error. This is the same
+  failure mode that hid the 26-day flipflop -> warehouse outage in 6n.
+- **`aukro order-client.service.ts`** sent **no credentials at all** on
+  `updateOrderStatus` (`PUT /:id/status`) and `findByExternalId` (`GET /api/orders`). Both
+  have been failing in production independently of this migration; both now authenticate.
+  Note `PUT /:id/status` requires `internal:orders-microservice:action-admin`, which
+  `internal:aukro-service:service` does not hold — so it will now return 403 rather than
+  401. Widening the role or removing the call is a deliberate decision, not made here.
+- **`aukro findByExternalId`** returned `null` for every error, so an auth failure read as
+  "no such order". Only a 404 returns null now; everything else logs and throws.
+
+### A second 26-day outage found while verifying the "unused" `aukro JWT_TOKEN`
+
+Checking whether `JWT_TOKEN` was actually reachable in aukro's fallback chains meant
+fingerprinting the primaries. That surfaced an unrelated live outage:
+
+```
+CATALOG_SERVICE_TOKEN    = <unset>          -> chain falls through to JWT_TOKEN (a2880693)
+WAREHOUSE_SERVICE_TOKEN  fp=ca99c9bc  role=internal:warehouse-microservice:admin
+                                       exp=2026-07-31  (EXPIRED, 26 days)
+```
+
+Probed from the aukro pod:
+
+```
+aukro -> catalog    Bearer a2880693  -> 401 Token validation failed
+aukro -> warehouse  Bearer ca99c9bc  -> 401 Invalid token
+```
+
+`warehouse-client.service.ts` turned both into empty results — `getTotalAvailable` returned
+`0`, `getStockByProduct` returned `[]`, each behind a `logger.warn`. So **every aukro offer
+has read as zero stock since 2026-07-31**, and
+`offer-availability-reconciliation.service.ts:124` was disabling sellable offers with reason
+`warehouse_stock_unavailable` on that false zero. Identical expiry date to the flipflop ->
+warehouse outage in 6n, so almost certainly the same missed rotation.
+
+Fixed in `6d31d65`: new per-pair principal
+`svc-aukro-service--warehouse-microservice@internal.alfares.cz`
+(`a8f8d68f-0e16-4002-8eb7-0a8be50f6dc3`, fp `ab965b86`, 90d) with role
+`internal:warehouse-microservice:readonly` — a **privilege reduction** from the expired
+`admin`, since aukro only calls the two read methods. `reserve`/`unreserve`/`decrement`
+exist on the client but no caller invokes them. Both stock reads return 200 with the new
+token. The lookup failures now log at error level and throw; only a 404 returns empty.
+
+**aukro -> catalog is still 401** and is not fixed here: `CATALOG_SERVICE_TOKEN` is unset,
+so the chain reached `a2880693`, which catalog correctly rejects. That lane needs its own
+principal. `JWT_TOKEN` has been removed from aukro's warehouse chain so it can no longer
+convert a missing token into a confusing 401.
+
+**This is the third instance of the same pattern in two days** (speakasap lessons, flipflop
+stock, aukro stock). The common shape is a client that returns an empty collection or a zero
+on a caught HTTP error. Grepping for `return []`, `return 0`, and `return null` inside a
+`catch` around an HTTP call would likely find more.
+
+### Still open
+
+- **`a2880693` itself is not yet retired.** Six orders lanes are migrated, but the value is
+  still mounted in the remaining category-D slots (`MARKETING_API_TOKEN`,
+  `logging JWT_TOKEN`, the marketing aukro/bazos replay tokens, `runlayer`, the two dormant
+  keys). It cannot be rotated until those are resolved individually.
+- **`ORDER_AFFINITY_AUKRO_REPLAY_TOKEN` / `ORDER_AFFINITY_BAZOS_REPLAY_TOKEN`** still hold
+  `a2880693`. They target **allegro**, not orders, and are unaffected by this work.
+- **`orders' guard still trusts `x-service-name`.** The static path is intact for the
+  remaining callers, so the spoofing property persists until every caller is on Bearer and
+  the `configuredServices` map is deleted. That deletion is the actual fix; this session
+  removed six of its inputs.
+- **`invoices-microservice`, `cliplot`, `cliplot-service`** have no `applications` row, so
+  the roles orders references for them can never exist. Their entries are dead config.
+- **`aukro offers.service.spec.ts` is flaky** (~1 run in 5, verified over 5 runs; fails in
+  the chained `npm test`, passes standalone). Pre-existing — the baseline suite reproduces
+  it with this session's changes stashed. Not investigated further.
 
 ## 7. Progress
 
@@ -1432,9 +1648,14 @@ tests pass.
 - [ ] `flipflop-warehouse-token` override removal — **analysed and safe (all three fingerprints `59415e97`), blocked on a permission denial**; exact command in 6p
 - [ ] `suppliers-microservice` `stock-traceability-runtime-token` — orphan confirmed, but **load-bearing** (neither key is in the ESO secret); needs Vault + ESO work first — see 6p
 - [ ] `aukro` / `bazos` warehouse clients — identical silent-failure defect, left for Session A; exact lines in 6p
+- [ ] **allegro-service -> warehouse is 401** — un-hidden by `e814c43`, confirmed pre-existing by raw fetch (only credential is `WAREHOUSE_INTERNAL_SERVICE_TOKEN` fp `3f3235bd`); same lane as the `allegro-imports` 401 under Phase 2 — see 6p
 - [ ] docs-rag-microservice — needs `JWT_PUBLIC_KEY` before its flag can close
 - [~] Phase 2 — split `369e4f3c…` — re-scoped (6h). **allegro->orders live (6i)**, **marketing->orders staged (6j)**, **`369e4f3c…` deactivated (6k)**; remaining: allegro-imports->warehouse (401 in prod, pre-existing) and marketing->allegro replay lane
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C
-- [ ] Phase 5 — category D
+- [~] Phase 5 — category D — **six orders lanes off `a2880693` (6q)**: aukro, bazos, heureka,
+  warehouse, payments migrated to per-pair RS256; marketing already live from 6j. The value
+  itself is NOT yet retired — still mounted in `MARKETING_API_TOKEN`, `logging JWT_TOKEN`,
+  the marketing aukro/bazos replay tokens, runlayer, and 2 dormant keys. **3 of the 4
+  "unused" mounts in the brief were verified load-bearing — do not delete them.**
 - [ ] Phase 6 — rotation CronJob
