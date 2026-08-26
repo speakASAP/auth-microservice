@@ -1683,6 +1683,114 @@ on a caught HTTP error. Grepping for `return []`, `return 0`, and `return null` 
   the chained `npm test`, passes standalone). Pre-existing — the baseline suite reproduces
   it with this session's changes stashed. Not investigated further.
 
+## 6r. allegro + allegro-imports -> warehouse credential repaired, 2026-08-26
+
+Closes the 401 that 6p un-hid, and the `allegro-imports -> warehouse` 401 that Phase 2
+had been carrying as "pre-existing". Both lanes were broken for different reasons.
+
+### Root cause: two separate faults, neither visible
+
+**allegro-service** held `WAREHOUSE_INTERNAL_SERVICE_TOKEN` (fp `3f3235bd`) — decoded
+in-pod, claims only:
+
+```
+alg=HS256   exp=2026-08-02  expired=true   (24 days dead)
+roles=["internal:allegro-service:service"]
+```
+
+Two independent problems in one token: **HS256** (warehouse validates via auth, which
+retired HS256 on 2026-08-18) and **expired**. And even unexpired it would still have
+failed — `internal:allegro-service:service` is not in `WAREHOUSE_READ_ROLES`, so the
+role was wrong from the start. Its fallback, `JWT_TOKEN` (fp `aa7ae49e`), is the
+deactivated shared `369e4f3c` identity — also rejected.
+
+**allegro-imports** was worse: **no warehouse credential at all.** Its only token was
+the shared `JWT_TOKEN`. `k8s/imports-deployment.yaml` never mapped
+`WAREHOUSE_INTERNAL_SERVICE_TOKEN`, though `import.service.ts:104` calls `setStock`.
+Its ES already published the key — the Deployment simply never consumed it. That is
+the third variant of the "key never reaches the pod" trap: not a Vault gap, not an ES
+mapping gap, but a **Deployment env gap**, and ESO reports `SecretSynced` throughout.
+
+### Why the WRITE tier
+
+allegro is not a read-only consumer of warehouse. Live call sites:
+
+```
+read    getTotalAvailable        x3   (availability-reconciliation, offers, catalog-sell-action)
+read    getDefaultWarehouseId    x1   (offers)
+WRITE   setStock                 x3   (inventory, offers, imports/import.service.ts:104)
+```
+
+So the lane needs `internal:warehouse-microservice:action-admin` (WRITE), not
+`readonly`. It still cannot create/delete warehouses — that stays `WAREHOUSE_ADMIN_ROLES`.
+Owner approved the tier and the imports scope before anything was minted.
+
+### What was done
+
+Followed the Phase 1 runbook (probe before storing; never print a token).
+
+1. **Principal.** Reused the existing per-pair convention Session A established for the
+   orders lane (`svc-<caller>--<callee>@internal.alfares.cz`):
+   `svc-allegro-service--warehouse-microservice@internal.alfares.cz`
+   (`a0fbbad6-a546-4856-a79f-bcd1c6d8fca3`), RS256, 90d, role
+   `internal:warehouse-microservice:action-admin`.
+
+   Note the pre-existing principal `allegro-service@internal.alfares`
+   (`b4907676…`, the `sub` of the dead token) was **left alone** — it carries only
+   `internal:allegro-service:service`, which the Allegro fulfillment callbacks use. It
+   is a different lane and adding warehouse rights to it would have widened it.
+
+2. **Probed before storing.** `/auth/validate` -> `valid=true`, roles as minted, `sub`
+   matching the new principal; then the real endpoints `GET /api/warehouses` -> 200 and
+   `POST /api/stock/availability/batch` -> 201. Only then did anything reach Vault.
+
+3. **Vault** `secret/prod/allegro-service#WAREHOUSE_INTERNAL_SERVICE_TOKEN` patched in
+   place (piped, never through stdout), so the existing ES mapping and env key needed no
+   change for allegro-service. Fingerprint-compared Vault vs minted vs mounted at every
+   step.
+
+4. **imports Deployment** (`798253a`) — added the missing
+   `WAREHOUSE_INTERNAL_SERVICE_TOKEN` mapping from the same `allegro-service-secret`, so
+   both deployments present the one per-pair principal.
+
+5. Force-synced the ES, restarted both under the deploy lock.
+
+### Verified live, through the deployed client
+
+```
+                              before                     after
+allegro-service getWarehouses()   THREW 401          -> 200, 5 rows
+allegro-service getDefaultWarehouseId()  THREW 401   -> c0de0000-…-000000000013
+allegro-service getTotalAvailable()      THREW 401   -> 0 (clean miss, no throw)
+allegro-service POST /api/stock/set      401         -> 400 reasonCode required (authorized)
+allegro-imports GET /api/warehouses      401         -> 200, 5 rows
+allegro-imports POST /api/stock/set      401         -> 201 (authorized, write works)
+```
+
+Both pods mount fp `d53ea213`, len 881. Both 1/1, 0 restarts, zero warehouse auth errors
+in the logs. Warehouse's own log now shows allegro issuing **real authenticated
+`/api/stock/{id}/total` reads in production traffic** — the strongest evidence that the
+lane is genuinely restored rather than only responding to probes. The `stock_movements`
+audit row for the write probe recorded `createdBy=service:allegro-service`, confirming
+warehouse resolves the new principal to the right identity.
+
+**Probe rows were removed** (`stock` and `stock_movements`, both matched on the probe's
+own id + zero quantity) and the token file was deleted from the auth pod.
+
+### Two traps worth recording
+
+**1. `kubectl exec … cat` adds a trailing newline to a Vault secret.** The first write
+stored the token with `\n`, so the mounted value fingerprinted `a2794069` instead of
+`d53ea213`. Warehouse accepted it anyway (both 200) and the clients `.trim()`, so
+nothing would have failed — but any future byte-comparison against the minted token
+would have looked like a mismatch and sent someone hunting a non-existent rotation bug.
+Rewritten via `tr -d '\n'`. **Pipe through `tr -d '\n'` when storing a token this way.**
+
+**2. A fingerprint read during a rollout is not the pod's value.** Reading the env of a
+pod that was mid-replacement returned the old `3f3235bd`, then the newline variant, then
+the correct value — three different answers in a minute. Resolve the pod name *after*
+`wait-for-rollout.sh` reports converged, then fingerprint.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
@@ -1697,7 +1805,7 @@ on a caught HTTP error. Grepping for `return []`, `return 0`, and `return null` 
 - [ ] `flipflop-warehouse-token` override removal — **analysed and safe (all three fingerprints `59415e97`), blocked on a permission denial**; exact command in 6p
 - [ ] `suppliers-microservice` `stock-traceability-runtime-token` — orphan confirmed, but **load-bearing** (neither key is in the ESO secret); needs Vault + ESO work first — see 6p
 - [ ] `aukro` / `bazos` warehouse clients — identical silent-failure defect, left for Session A; exact lines in 6p
-- [ ] **allegro-service -> warehouse is 401** — un-hidden by `e814c43`, confirmed pre-existing by raw fetch (only credential is `WAREHOUSE_INTERNAL_SERVICE_TOKEN` fp `3f3235bd`); same lane as the `allegro-imports` 401 under Phase 2 — see 6p
+- [x] **allegro + allegro-imports -> warehouse repaired** (2026-08-26) — per-pair RS256 principal, `401 -> 200` verified through the deployed client in both pods; closes the `allegro-imports` 401 carried under Phase 2 — see 6r
 - [ ] docs-rag-microservice — needs `JWT_PUBLIC_KEY` before its flag can close
 - [~] Phase 2 — split `369e4f3c…` — re-scoped (6h). **allegro->orders live (6i)**, **marketing->orders staged (6j)**, **`369e4f3c…` deactivated (6k)**; remaining: allegro-imports->warehouse (401 in prod, pre-existing) and marketing->allegro replay lane
 - [ ] Phase 3 — category A remainder
