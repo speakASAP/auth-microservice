@@ -895,6 +895,70 @@ independently worth removing.
   ORDER_SERVICE_INTERNAL_TOKEN || INTERNAL_SERVICE_TOKEN`), so rotating one variable can
   silently fall through to another holder of the old value instead of failing loudly.
 
+## 6i. Phase 2 pilot — allegro-service -> orders-microservice on a per-pair principal
+
+**Principal:** `svc-allegro-service--orders-microservice@internal.alfares.cz`
+(`5de494ad-ba1a-494a-b4d3-9fd0a17d449c`), RS256, `kid=a975635403084850`, 90d,
+exactly one role: `internal:allegro-service:service`. Note the expiry is
+2026-11-24, not the 2027 dates category A carries.
+
+**No receiver change was needed.** `JwtRolesGuard` line 71 is already
+`internalUser || await this.validateTokenWithAuth(...)`, so the Bearer path
+existed; the lane simply never used it. Phase 2 for this pair was a *caller*
+change plus a principal, not a guard rewrite.
+
+Probed before Vault was touched:
+
+```
+/auth/validate                     -> 201 valid:true
+Bearer GET /api/orders/<uuid>/lifecycle -> 404 Order not found      (authorized)
+Bearer POST /api/orders                 -> 400 channel is required  (authorized)
+```
+
+404/400 rather than 401/403 is the acceptance proof: authorization passed and only
+business validation rejected the calls.
+
+Propagation verified by fingerprint at all three hops — minted = Vault = mounted K8s
+Secret = `03c9f99c` — not by ESO sync status. Vault key count 12 -> 13 (patch, not put).
+Both copies of the token file (pod `/tmp` and local scratchpad) were deleted after the
+write.
+
+`ORDERS_SERVICE_TOKEN` had to be added to `k8s/external-secret.yaml` as well as Vault:
+an unmapped key never reaches the pod while ESO still reports `SecretSynced`.
+
+The caller prefers the Bearer token and keeps the static header only as a cutover
+fallback, which now **logs a warning when used** instead of degrading silently.
+
+### The five holders are two lanes, not one
+
+Traced while migrating. `369e4f3c…`'s value is reused across two unrelated contracts:
+
+| Holder | Var | Contract |
+| --- | --- | --- |
+| allegro-service | `ALLEGRO_INTERNAL_SERVICE_TOKEN` | static header -> orders (**migrated here**) |
+| orders | `ALLEGRO_INTERNAL_SERVICE_TOKEN` | receiver side of the above |
+| marketing | `ORDER_AFFINITY_MARKETPLACE_REPLAY_TOKEN` | static header -> orders |
+| allegro-service | `JWT_TOKEN` | **Bearer** -> warehouse (`shared/clients/warehouse-client.service.ts:30`) |
+| allegro-imports | `JWT_TOKEN` | same warehouse client |
+
+Only `allegro-service` uses the order client, so allegro-imports is not part of the
+orders lane at all. The warehouse lane is a genuine Bearer JWT path where `JWT_TOKEN` is
+the *third* fallback behind `WAREHOUSE_SERVICE_TOKEN` and
+`WAREHOUSE_INTERNAL_SERVICE_TOKEN` — so whether it is even reached depends on those being
+unset. That lane needs its own principal and must not be assumed equivalent to this one.
+
+### Pre-existing 403s, not caused by this change
+
+`GET /api/orders` requires `ADMIN_READ_ROLES` and `PUT /:id/status` requires
+`internal:orders-microservice:action-admin`. `internal:allegro-service:service` is in
+neither, so both return 403 on the old *and* new credential. Two of the four routes
+`order-client.service.ts` calls have therefore been failing in production independently
+of this migration. Worth deciding deliberately: widen the role, or remove the calls.
+
+`shared/clients/warehouse-client.service.ts:33` returns `{}` when no token is found,
+sending an unauthenticated request instead of failing — a silent degradation worth fixing
+when that lane is migrated.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
@@ -904,7 +968,7 @@ independently worth removing.
 - [x] Blocker 6d — local HS256 verification removed from allegro/heureka/aukro **(2026-08-26, forgery rejected in all 7 live pods)**
 - [x] ai-microservice HS256 window closed (`ALLOW_HS256_FALLBACK=false`, 2026-08-26) — see 6g
 - [ ] docs-rag-microservice — needs `JWT_PUBLIC_KEY` before its flag can close
-- [ ] Phase 2 — split `369e4f3c…` — **re-scoped, see 6h**: these are static header secrets, not JWTs; needs a contract migration, not a reissue. Awaiting owner decision.
+- [~] Phase 2 — split `369e4f3c…` — re-scoped (6h). **allegro->orders migrated to a per-pair Bearer principal (6i)**; remaining: marketing->orders (static header) and the allegro/allegro-imports->warehouse `JWT_TOKEN` lane, then deactivate `369e4f3c…`
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C
 - [ ] Phase 5 — category D
