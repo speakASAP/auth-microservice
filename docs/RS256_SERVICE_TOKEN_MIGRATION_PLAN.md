@@ -1544,7 +1544,19 @@ Three independent ways for a key to not reach a pod, all reporting `SecretSynced
 | 2 | **missing** | exists | n/a | 6q (heureka) |
 | 3 | exists | exists | **missing** | 6q (heureka, aukro) |
 
-**None of the three is visible from ESO status, the manifest, or the deploy banner — only
+**A fourth, operational variant: the in-cluster ExternalSecret can be stale relative to
+git.** Committing a new `remoteRef` does *not* update the ES resource — the deploy queue
+builds and rolls images, it does not `kubectl apply` manifests. All five ES resources in this
+session reported `configured` (not `unchanged`) when applied by hand *after* their commits
+had landed, and `ORDERS_SERVICE_TOKEN` was missing from `payments-microservice-secret` and
+`warehouse-microservice-secret` until then — the sha256 of the absent key reads as
+`e3b0c442`, the hash of empty input, which is a useful tell.
+
+So the full sequence after writing a Vault key is: `kubectl apply -f k8s/external-secret.yaml`
+→ annotate `force-sync=$(date +%s)` → confirm the key's fingerprint in the K8s Secret →
+confirm it again inside a pod created after that point.
+
+**None of the four is visible from ESO status, the manifest, or the deploy banner — only
 from the pod's own environment.** The only reliable check is to read the variable inside a
 pod created *after* the change, and compare its fingerprint against Vault. A converged
 rollout is not evidence: the heureka pod that came up on the new image still had the
