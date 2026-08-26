@@ -1501,7 +1501,8 @@ validation or a missing row rejected the call. Every probe used a non-existent o
 no production data was touched. Fingerprints match minted = Vault on all five new keys.
 
 Commits: `f25a764` (aukro), `0687048` (bazos), `2b73894` (heureka), `39cf960` (payments),
-`5dc336f` (warehouse).
+`5dc336f` (warehouse), plus `ee6a590`/`a662b09` (deployment env mapping, see below) and
+`6d31d65` (aukro -> warehouse outage, see below).
 
 ### Two premises in the task brief were wrong, and both mattered
 
@@ -1525,9 +1526,29 @@ every request. ESO reported `SecretSynced` throughout — a mapping to a non-exi
 property syncs happily and silently omits the key.
 
 This is the inverse of the 6i/6j trap. There the Vault key existed and the mapping was
-missing; here the mapping existed and the key was missing. **Both fail silently, and neither
-is visible from ESO status — only from the pod's own environment.** Verify the value in the
-pod, never the manifest and never the sync status.
+missing; here the mapping existed and the key was missing.
+
+**And then a third variant appeared in the same lane.** After creating the Vault key and
+force-syncing, `ORDERS_SERVICE_TOKEN` was present in `heureka-service-secret` — and *still*
+unset in a freshly created pod. Cause: `heureka/k8s/deployment.yaml` has **no `envFrom:
+secretRef`**, so every secret value must be named explicitly with a `secretKeyRef`, and this
+one never was. `aukro` has the same shape; `bazos`, `payments` and `warehouse` pull their
+whole secret via `secretRef` and needed no entry. Fixed in `ee6a590` (heureka) and `a662b09`
+(aukro).
+
+Three independent ways for a key to not reach a pod, all reporting `SecretSynced`:
+
+| Variant | Vault key | ES mapping | Deployment env | Seen in |
+| --- | --- | --- | --- | --- |
+| 1 | exists | **missing** | n/a | 6i, 6j (catalog, marketing) |
+| 2 | **missing** | exists | n/a | 6q (heureka) |
+| 3 | exists | exists | **missing** | 6q (heureka, aukro) |
+
+**None of the three is visible from ESO status, the manifest, or the deploy banner — only
+from the pod's own environment.** The only reliable check is to read the variable inside a
+pod created *after* the change, and compare its fingerprint against Vault. A converged
+rollout is not evidence: the heureka pod that came up on the new image still had the
+variable unset, because the image was never the problem.
 
 ### The `||` chains are the real hazard, not the individual variables
 
