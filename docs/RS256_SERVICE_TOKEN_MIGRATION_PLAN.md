@@ -1822,6 +1822,148 @@ pod that was mid-replacement returned the old `3f3235bd`, then the newline varia
 the correct value — three different answers in a minute. Resolve the pod name *after*
 `wait-for-rollout.sh` reports converged, then fingerprint.
 
+## 6u. Header-chosen identity closed on orders, 2026-08-26
+
+The defect described in 6q is fixed in production (`2964d50`). `a2880693` can no longer
+authenticate as anything against orders.
+
+### Before and after, measured from the aukro pod
+
+Same value, ten different `x-service-name` values, against
+`GET /api/orders/internal/order-affinity/replay-candidates`:
+
+| `x-service-name` | before | after |
+| --- | --- | --- |
+| `marketing-microservice` | **200 + live order data** | **401** |
+| `warehouse-microservice` | 403 (authenticated) | **401** |
+| `payments-microservice` | 403 (authenticated) | **401** |
+| `aukro-service` | 403 (authenticated) | **401** |
+| `bazos-service` | 403 (authenticated) | **401** |
+| `heureka-service` | 403 (authenticated) | **401** |
+| catalog / flipflop / allegro / cliplot | 401 | **401** |
+
+403-not-401 was the proof the credential was accepted; every row is now 401.
+
+### What changed
+
+1. **Six entries removed from `configuredServices`** — aukro, bazos, heureka, marketing,
+   payments, warehouse. All six reach orders on per-pair RS256 principals (6q), verified
+   live with six distinct fingerprints and **zero static-fallback warnings in production**
+   over the preceding two hours. The loud fallback added in 6q is what made that assertion
+   checkable rather than assumed.
+
+2. **A runtime ambiguity check.** Removing the six entries fixes today's instance; it does
+   not stop the next one. The guard now refuses any value configured for more than one
+   caller instead of choosing between them:
+
+   ```
+   const namesSharingToken = Object.entries(configuredServices)
+     .filter(([, c]) => c.token && this.safeEqual(providedToken, c.token))
+     .map(([name]) => name);
+   if (namesSharingToken.length > 1) { /* log names only, deny */ }
+   ```
+
+   Deny, not pick — an ambiguous credential must never authenticate. It logs caller names
+   only, never any part of the presented value.
+
+3. **`cliplot-service` alias dropped.** It resolved the same env vars as `cliplot`, so the
+   pair shared a value and the new check would deny both. The live pod sends
+   `x-service-name: cliplot`.
+
+4. **Four inbound-only ExternalSecret entries removed from orders** (aukro, bazos, heureka,
+   marketing), each of which mapped `secret/prod/<svc>#JWT_TOKEN` — the shared value.
+   `PAYMENTS_` and `WAREHOUSE_INTERNAL_SERVICE_TOKEN` were **kept**: both are also read
+   outbound by `warehouse-reservation.client.ts:275`, so removing them would have broken an
+   unrelated lane.
+
+### Verification, and confirming it fails when it should
+
+New `scripts/verify-internal-service-identity.js` (wired into `npm test`) asserts:
+the six migrated callers are absent from the static map; a value shared by two callers
+authenticates as **neither**; a value unique to one caller still works; and that value
+cannot claim another caller's name. **Confirmed to fail** when the ambiguity check is
+disabled (`Missing expected rejection: a value shared by two callers must not authenticate
+as catalog-microservice`).
+
+Two existing contract scripts asserted the *old* static path and would have failed silently
+into a "fix the test" reflex: `verify-create-order-contract.js` required aukro/bazos/heureka
+to be present in the guard, and `verify-order-affinity-replay-contract.js` required
+`guard.includes('MARKETING_INTERNAL_SERVICE_TOKEN')`. Both now assert the opposite — that
+those callers are **absent** from the static map and that the ambiguity check exists.
+
+### Still on the static path — and a blocker
+
+`catalog-microservice`, `flipflop-service`, `allegro-service`, `invoices-microservice` and
+`cliplot` still authenticate by string comparison, each with a **distinct** value
+(`5f420714`, `321c86c8`, `aa7ae49e`, `34e68a52`, `f5a28e51`). The ambiguity check makes that
+safe, but it is not per-pair identity.
+
+**`invoices-microservice` and `cliplot` have no `applications` row in the auth DB**, so the
+roles the guard grants them cannot be issued as real principals. Those applications must be
+seeded before either lane can move to Bearer.
+
+## 6v. Correction: the aukro/bazos replay lanes are live, not dead
+
+Recorded because the reasoning error is more useful than the fix.
+
+I removed `ORDER_AFFINITY_AUKRO_REPLAY_TOKEN` and `ORDER_AFFINITY_BAZOS_REPLAY_TOKEN` from
+marketing's ExternalSecret (`95ed557`), on the evidence that both hold `a2880693` and both
+returned **401** when probed. That probe was wrong: it pointed at **allegro's**
+`/internal/allegro/order-affinity/replay-candidates`, because 6j had described this family
+of vars as an allegro-bound lane. But `orderAffinityMarketplaceReplayHeadersForSource`
+dispatches on `sourceOwner`, and the aukro and bazos sources target **their own** services:
+
+```
+aukro  -> aukro-service:3700/internal/aukro/order-affinity/replay-candidates  -> 200
+bazos  -> bazos-service:3900/internal/bazos/order-affinity/replay-candidates  -> 200
+```
+
+Both were live and working on the shared value. Reverted in `a58d4d7` before the change
+reached a pod in a way that stuck; both lanes re-verified at **200** afterwards.
+
+The generalisable mistake: **a 401 only means "this credential is wrong for the endpoint you
+asked", and I had asked the wrong endpoint.** A dead-lane claim needs the caller's own
+resolved target, not a target inherited from a neighbouring var's documentation. The same
+error would have been caught earlier by reading the dispatch function before the probe
+rather than after.
+
+Note the asymmetry this leaves: `aukro-service` and `bazos-service` each *receive* on
+`a2880693` (`assertMarketingService` compares against `AUKRO_/BAZOS_INTERNAL_SERVICE_TOKEN`)
+while *sending* to orders on a per-pair RS256 principal. Retiring the value therefore
+requires migrating these two inbound guards too — they are the reason the four
+`*_INTERNAL_SERVICE_TOKEN` mounts in aukro/bazos cannot simply be deleted.
+
+## 6w. `a2880693` census after this session
+
+17 live mount points remain (orders lost 4; nothing else was safely removable):
+
+| Holder | Status |
+| --- | --- |
+| `aukro-service#AUKRO_INTERNAL_SERVICE_TOKEN` | **live inbound** — marketing replay receiver |
+| `bazos-service#BAZOS_INTERNAL_SERVICE_TOKEN` | **live inbound** — marketing replay receiver |
+| `marketing#ORDER_AFFINITY_AUKRO_REPLAY_TOKEN` | **live outbound** — 200 to aukro |
+| `marketing#ORDER_AFFINITY_BAZOS_REPLAY_TOKEN` | **live outbound** — 200 to bazos |
+| `marketing#MARKETING_API_TOKEN` | **live** — guards ~12 mutating routes (6q) |
+| `logging-microservice#JWT_TOKEN` | **live** — accepted bearer for log ingest (6q) |
+| `orders#PAYMENTS_INTERNAL_SERVICE_TOKEN` | **live outbound** — orders -> payments |
+| `orders#WAREHOUSE_INTERNAL_SERVICE_TOKEN` | **live outbound** — warehouse reservation client |
+| `payments#PAYMENTS_ORDERS_SERVICE_TOKEN` | now unreachable (orders rejects it); kept as the caller's cutover fallback |
+| `aukro#JWT_TOKEN`, `bazos#JWT_TOKEN`, `heureka#JWT_TOKEN`, `payments#JWT_TOKEN`, `warehouse#JWT_TOKEN` | source property behind several of the above |
+| `runlayer-secret#JWT_TOKEN` | **unused** — no reference in `runlayer/src`; Session B's repo, not touched |
+| `database-credentials#JWT_TOKEN` | **unused** — the Secret is mounted by three services, but only for `DB_PASSWORD` |
+| `nginx-microservice-secret#JWT_TOKEN` | **unused** — whole Secret mounted by nothing |
+
+**The two dormant ExternalSecrets have no manifest in any repo** — they exist only in the
+cluster. Editing them in place would create exactly the untracked drift recorded in 6o and
+2c, so they were left alone. They should be brought under `k8s-manifests` (deny-listed,
+manual) before their `JWT_TOKEN` keys are deleted.
+
+**The value cannot be rotated yet.** It is still a working shared password on the four
+replay mount points, marketing's API, and logging ingest. Retiring it needs, in order:
+aukro's and bazos's inbound replay guards moved to per-pair principals; `MARKETING_API_TOKEN`
+given its own credential; logging's accepted-bearer set narrowed to `LOG_INGEST_BEARER_TOKENS`;
+then the three unused keys deleted and the value rotated.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
@@ -1841,7 +1983,9 @@ the correct value — three different answers in a minute. Resolve the pod name 
 - [~] Phase 2 — split `369e4f3c…` — re-scoped (6h). **allegro->orders live (6i)**, **marketing->orders staged (6j)**, **`369e4f3c…` deactivated (6k)**; remaining: allegro-imports->warehouse (401 in prod, pre-existing) and marketing->allegro replay lane
 - [ ] Phase 3 — category A remainder
 - [ ] Phase 4 — category C
-- [~] Phase 5 — category D — **six orders lanes off `a2880693` (6q)**: aukro, bazos, heureka,
+- [~] Phase 5 — category D — **header-chosen identity CLOSED on orders (6u)**: the shared
+  value now returns 401 for every `x-service-name`, and the guard denies any credential
+  configured for more than one caller. Seven lanes on per-pair RS256 (6q): aukro, bazos, heureka,
   warehouse, payments migrated to per-pair RS256; marketing already live from 6j. The value
   itself is NOT yet retired — still mounted in `MARKETING_API_TOKEN`, `logging JWT_TOKEN`,
   the marketing aukro/bazos replay tokens, runlayer, and 2 dormant keys. **3 of the 4
