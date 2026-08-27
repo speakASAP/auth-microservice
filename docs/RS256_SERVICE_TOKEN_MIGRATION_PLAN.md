@@ -2095,6 +2095,101 @@ It cleared on its own once those desktop jobs finished, and ESO resumed with no 
 not to escalate. Worth remembering that a "broken cluster" on this single-node host can be a
 desktop indexer competing with etcd for the root disk.
 
+## 6y. Outages four and five, found by auditing beyond the prompts' scope
+
+Sessions A and B were scoped to specific lanes. After completing both, a full sweep of every
+JWT-shaped key in `statex-apps` found **two more live 401s neither prompt covered**. Both are
+now fixed and verified from the deployed pods.
+
+The sweep itself is the reusable part:
+
+```
+total JWT-shaped keys: 55     RS256: 22     HS256: 33     expired: 6
+distinct HS256 values: 13 across 33 mount points
+```
+
+**The migration is roughly 40% done, not finished.** Sessions C-G (prompts in
+`auth-microservice/docs/SESSION_[C-G]_PROMPT.md`) partition the remainder by repo ownership.
+
+### Outage 4: orders -> warehouse, dead 27 days
+
+```
+orders pod effective WAREHOUSE_SERVICE_TOKEN  fp=222d57a5  HS256  exp 2026-07-31
+GET warehouse-microservice:3201/api/stock/<id>/total  ->  401 Invalid token
+```
+
+Both expired *and* structurally obsolete — HS256, which warehouse stopped accepting in 6d/6f.
+Consumers are `warehouse-reservation.client.ts:275` and
+`order-fulfillment-handoff.client.ts:257`, both resolving
+`WAREHOUSE_SERVICE_TOKEN || WAREHOUSE_INTERNAL_SERVICE_TOKEN` — and **the fallback holds
+`a2880693`**, so clearing the primary would not have failed loudly either. Two dead
+credentials in one chain.
+
+Fixed with `svc-orders-microservice--warehouse-microservice`
+(`28687a0d-2e86-450c-bbb7-03307a9b228a`, RS256, 90d, fp `d2b2828d`).
+
+**Role choice — `action-admin`, and why not less.** Orders both reads and writes here:
+`GET /api/reservations/order/:id`, `POST /api/reservations/reserve`,
+`POST /api/fulfillment-orders`. `FULFILLMENT_WRITE_ROLES` accepts
+`internal:orders-microservice:service`, but `WAREHOUSE_WRITE_ROLES` (which guards
+`/reservations/reserve`) does **not** — it requires `admin` or `action-admin`. So a single
+principal covering both routes needs `action-admin`. Still a reduction from the `admin` the
+old token carried, but not the `readonly` that fitted aukro and bazos: **read the routes,
+don't reuse the previous lane's answer.**
+
+Probed before Vault: `/auth/validate` 201, read 200, and both writes **400** on an empty body
+— DTO validation rejecting after authorization passed, so nothing mutated.
+
+### Outage 5: flipflop -> orders admin status action, dead 22 days
+
+```
+ORDERS_STATUS_SERVICE_TOKEN  fp=1dc28737  HS256  exp 2026-08-05
+POST orders:3203/api/admin/operations/actions/order-status  ->  401 Invalid token
+```
+
+Recorded as broken in 6n and never fixed. The client was already correct —
+`getStatusActionHeaders()` sends `Authorization: Bearer` and throws when the var is missing —
+only the credential was dead.
+
+Fixed with `svc-flipflop-service--orders-microservice-status`
+(`52533169-9314-46b6-ab4f-bef04e19ba27`, RS256, 90d, fp `44a44139`), role
+`internal:orders-microservice:action-admin`.
+
+**A trap worth naming: the obvious route was the wrong one.** `ORDERS_STATUS_SERVICE_TOKEN`
+sounds like `PUT /api/orders/:id/status`, and probing that route would have produced a
+misleading result. The call site (`order-client.service.ts:197`) actually targets
+`POST /api/admin/operations/actions/order-status`, guarded by `ADMIN_ACTION_ROLES` =
+`[global:superadmin, internal:orders-microservice:action-admin]`. Reading the call site, not
+the variable name, is what set the role correctly — the old token carried **both** `admin`
+and `action-admin`, and only the latter is needed, so this is a privilege reduction too.
+
+### Both verified end to end
+
+| Lane | Before | After | fp at all four hops |
+| --- | --- | --- | --- |
+| orders -> warehouse | 401 Invalid token | **200** | `d2b2828d` |
+| flipflop -> orders status | 401 Invalid token | **400** (authorized) | `44a44139` |
+
+Fingerprints matched minted = Vault = K8s Secret = pod, each confirmed in a pod created
+*after* the change.
+
+### What the sweep found that is still open
+
+- **6 expired tokens.** Two were these outages. `heureka#WAREHOUSE_SERVICE_TOKEN`
+  (`82466f79`, exp 2026-07-29) sits in the Secret but the pod mounts a *working* value
+  (`beab1836`) — **expiry in a Secret is not proof of breakage; only the pod's effective
+  token counts.** The remaining three are the two monitoring smoke tokens (empty `roles`) and
+  `stock-traceability-runtime-token`.
+- **`stock-traceability-runtime-token` carries `global:superadmin`**, expired 2026-06-24,
+  hand-created, no ExternalSecret, and is mounted by suppliers for *two* consumer names. It is
+  the widest-privilege credential in the inventory. Session G.
+- **One `JWT_SECRET` across 13 pods** (4 distinct values over 21 mounts). No service still
+  verifies HS256 locally, so it is not currently forgeable against them — but it is the
+  substrate the whole migration exists to remove. Session G.
+- **`aa7ae49e` is over-shared but NOT spoofable**: presented at orders under four different
+  `x-service-name` values it authenticates only as `allegro-service` (400; the rest 401). The
+  6u ambiguity check holds. Session E.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
@@ -2128,4 +2223,13 @@ desktop indexer competing with etcd for the root disk.
 - [x] `invoices-microservice` and `cliplot` seeded in the auth DB (2026-08-27, 6x) — both
   lacked an `applications` row, so the roles orders grants them could never be issued.
   `cliplot-service` deliberately not seeded. Both now pass `--check-db-only`.
-- [ ] Phase 6 — rotation CronJob
+- [x] **Outages 4 and 5 fixed 2026-08-27 (6y)** — orders -> warehouse (401, 27 days) and
+  flipflop -> orders admin status (401, 22 days), both found by a full sweep AFTER Sessions
+  A/B completed. Both on per-pair RS256 with reduced privilege; verified 200/400 from the
+  deployed pods.
+- [ ] **Sessions C-G cover the remaining ~60%** — see `SESSION_[C-G]_PROMPT.md`. Measured
+  baseline 2026-08-27: 55 JWT-shaped keys, 22 RS256 / 33 HS256, 13 distinct HS256 values over
+  33 mounts, 4 still shared across services, 6 expired, one JWT_SECRET across 13 pods.
+- [ ] Phase 6 — rotation CronJob **(Session G)** — five credentials have now expired unnoticed
+  and caused outages; every fix so far has been manual. Build the alerting that would have
+  caught all five.
