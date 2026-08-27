@@ -2227,6 +2227,15 @@ Fingerprints matched minted = Vault = K8s Secret = pod, each confirmed in a pod 
   flipflop -> orders admin status (401, 22 days), both found by a full sweep AFTER Sessions
   A/B completed. Both on per-pair RS256 with reduced privilege; verified 200/400 from the
   deployed pods.
+- [x] **Session F complete 2026-08-27 (6z)** — all 19 `a2880693` mounts in
+  `marketing`, `logging`, `aukro`, `heureka`, `payments` retired; Vault sources 7 -> 2.
+  Census was 3 short: deployment `env` aliases and a second `secretKey` on the same
+  property are mounts too. Replay lanes moved atomically (sender and receiver read one
+  shared Vault property) with no code change. Found a 7th outage (`heureka -> catalog`
+  401, pre-existing, **Session E** to mint) and an 8th unrelated one (ingest dropping
+  every `speakasap` + `prompts-microservice` log line, 25k rejects/48h). **The value
+  still cannot be rotated: 3 mounts remain — 2 in `orders` (Session C) and 1 in
+  `warehouse` (Session G).**
 - [ ] **Sessions C-G cover the remaining ~60%** — see `SESSION_[C-G]_PROMPT.md`. Measured
   baseline 2026-08-27: 55 JWT-shaped keys, 22 RS256 / 33 HS256, 13 distinct HS256 values over
   33 mounts, 4 still shared across services, 6 expired, one JWT_SECRET across 13 pods.
@@ -2769,3 +2778,169 @@ compiled client** in the pod (`MarathonMonitoringService.getEventSummary`), retu
   has the same property.
 - `/tmp/cat-bazos.token` is left over inside the auth pod from another session (Session E's
   repo). Not deleted — not mine.
+
+## 6z. Session F, 2026-08-27 — 16 of 19 `a2880693` mounts retired
+
+Session F owned `marketing-microservice/`, `logging-microservice/`, `aukro/`, `heureka/`,
+`payments-microservice/`. **Every mount in those repos is gone.** Vault sources 7 -> 2;
+the two survivors (`payments#JWT_TOKEN`, `warehouse#JWT_TOKEN`) are held open by *other
+sessions'* repos, not by anything in scope here.
+
+### The census was two mounts short
+
+The brief listed 16 mount points. Measured in the pods, there were **19**:
+
+| Missed mount | Why the census missed it |
+| --- | --- |
+| `heureka#HEUREKA_INTERNAL_SERVICE_TOKEN` | a **second `deployment.yaml` alias** of the same `JWT_TOKEN` secret key — one Vault property, two pod-visible env vars |
+| `aukro#JWT_TOKEN` (deployment alias) | named explicitly in `deployment.yaml` as well as the ES, so pruning the ES alone left the pod spec referencing a key that no longer existed |
+| `payments#PAYMENTS_ORDERS_SERVICE_TOKEN` | mapped to `property: JWT_TOKEN` — same property, second `secretKey` |
+
+**Counting ExternalSecret entries undercounts the blast radius.** A mount is
+(Vault property) x (ES `secretKey`) x (deployment `env` alias), and each layer can fan out.
+
+### Lane-by-lane results, all probed from the deployed pods
+
+| Lane | Before | After (new cred) | After (`a2880693`) | fp |
+| --- | --- | --- | --- | --- |
+| marketing -> aukro replay | 200 | **200** | **401** | `f9609e86` |
+| marketing -> bazos replay | 200 | **200** | **401** | `50685561` |
+| marketing API (17 routes) | 400 authorized | **400** authorized | **401** | `d8a1d3f4` |
+| logging ingest | 201 | **201** (`LOG_INGEST_BEARER_TOKENS`) | **401** | unchanged |
+| payments -> orders | 404 authorized | **404** authorized | n/a | `633a4184` |
+
+Every fingerprint matched at all four hops — minted = Vault = K8s Secret = pod created
+after the change.
+
+### The replay lanes needed no code change and no deploy window
+
+The decisive structural fact: marketing's `ORDER_AFFINITY_<SVC>_REPLAY_TOKEN` and the
+receiver's `<SVC>_INTERNAL_SERVICE_TOKEN` **already mapped to the same Vault property**.
+So pointing both at a new `MARKETING_REPLAY_TOKEN` property moves sender and receiver
+*atomically on one write* — there is no ordering problem and no window where one side has
+rotated and the other has not.
+
+That is why these lanes got **opaque per-lane secrets rather than RS256 principals**. The
+receivers are plain byte-comparison controllers; giving them real principals means teaching
+each to verify JWKS, which is a code change on two services in two repos (one of them
+Session E's) for a lane that has exactly one caller. `aukro/shared/auth/jwt-verifier.ts`
+already exists and would make that cheap — recorded as the better end state, deliberately
+not taken here.
+
+`MARKETING_API_TOKEN` got an opaque secret for a different reason: **there is no caller to
+own a principal.** No ecosystem service sends `x-service-token` to marketing (grep across
+every repo), so it is an operator credential. A per-pair principal would have been a
+90-day-expiring credential with no owning service and no rotation job — a sixth expiry
+outage waiting to happen.
+
+Note it guards **17** routes, not the ~12 the brief estimated: `/segments` (3),
+`/campaigns` (5), `/journeys` (7), `/scheduler/run-due`, `/campaigns/:id/execute`.
+
+### `logging#JWT_TOKEN` was safe to remove, but not for the stated reason
+
+The brief warned that "several speakasap services fall back to `JWT_TOKEN`". They do, in
+source: eleven `remote-logger.ts` files read `LOGGING_SERVICE_TOKEN || JWT_TOKEN`.
+**Measured in all ten running pods, every one resolves the primary** (`b6e283e5`), so the
+fallback is unreachable. And the three pods that *would* fall through (aukro, bazos,
+heureka) have loggers that reference no token at all — they post to ingest unauthenticated.
+
+So the accepted set was `{LOG_INGEST_BEARER_TOKENS[0], a2880693}` with **zero senders on
+the second**. Confirmed by probing the new pod: `a2880693` -> 401, legitimate token -> 201.
+
+Two regression tests pin this, both confirmed to fail when the `JWT_TOKEN` branch is
+restored.
+
+### Three inverted tests, not three deleted tests
+
+Each removal had a test asserting the *old* behaviour. Deleting them would have been the
+"fix the test" reflex 6u warns about; each was inverted to assert the rejection instead,
+and **each was confirmed to fail when the fix is reverted**:
+
+- `bazos orders.service.spec.ts` — "accepts the deployed JWT_TOKEN alias" -> "rejects" it
+- `bazos order-client.service.spec.ts` — "falls back to the runtime JWT_TOKEN" -> "throws
+  rather than falling back"; three sibling tests set `SERVICE_TOKEN`/`BAZOS_INTERNAL_*`
+  and were repointed at `ORDERS_SERVICE_TOKEN`, since the credential they used is gone
+- `payments-orders-status-bridge.spec.ts` — "falls back to the shared static header" ->
+  "does not fall back", asserting **no request is sent at all**, plus a new test pinning
+  the Bearer path
+
+bazos: 166 + 18 tests green. payments: 116 green. logging: 35 green. heureka has no test
+runner, so its four chain edits carry a typecheck that was **verified to fail** on an
+introduced type error rather than trusted to pass.
+
+### A seventh outage, found while removing a fallback
+
+`heureka -> catalog` is **401 in production and was already broken** before this session:
+
+```
+CATALOG_INTERNAL_SERVICE_TOKEN  <unset>   -> chain fell through to a2880693
+GET catalog-microservice:3200/api/products/sku/<sku>
+  -> 401 "Missing or invalid Authorization header"
+```
+
+catalog wants a **Bearer** token; the static `x-internal-service-token` header it was being
+handed cannot authenticate there at all. This is the same shape as the aukro -> catalog
+outage in 6q, on the same lane, one service over.
+
+Removing the dead sources does **not** fix it — it stops the chain reporting a
+configured-looking credential for a path that can never authenticate, so the missing
+credential surfaces as itself. The client already re-throws (6x), so it is loud, and
+`CatalogClientService` has no feature callers in `heureka/src` yet, so blast radius is
+currently nil. **Minting the per-pair principal is Session E's** (catalog lane).
+
+### An eighth finding, out of scope: ingest is dropping two services' logs entirely
+
+The `log_ingest_rejected` counter is **25,039 over 48h**, every one `missing_credential`:
+
+```
+16122  speakasap              LOGGING_SERVICE_TOKEN and JWT_TOKEN both <unset>
+ 8072  prompts-microservice   has a token; it is not in the accepted set
+  822  kube-state-metrics     (scrape noise, not a service logger)
+```
+
+Unrelated to `a2880693` — neither holds it — so it was **not fixed here**, but both
+services have been silently losing every log line they emit. The guard is doing its job
+loudly; nobody is reading it. Worth its own task.
+
+### Deploy ordering used
+
+1. Vault write of the three new secrets **first** (sender and receiver read the same
+   property, so this is the atomic moment for the replay lanes)
+2. `kubectl apply` all three ExternalSecrets + force-sync — the deploy queue builds images,
+   it does not apply manifests
+3. Verify fp at Secret hop, **then** restart marketing + aukro + bazos **together**
+4. Verify fp at pod hop, probe both lanes and the marketing API old-vs-new
+5. Only then commit -> auto-deploy (5 services, `0 failed`)
+6. Prune ES entries + deployment aliases -> apply -> confirm keys pruned -> delete Vault
+   properties -> restart -> re-probe every lane
+
+### Two traps worth recording
+
+**ESO prunes, `kubectl` does not un-reference.** After deleting `aukro#JWT_TOKEN` and
+`heureka#JWT_TOKEN` from Vault, both pods entered `CreateContainerConfigError`:
+`couldn't find key JWT_TOKEN in Secret`. The ES prune worked; the **running Deployment spec
+still named the key** via `secretKeyRef`, and those services deploy from images built
+before the manifest fix landed. Kubernetes refused to start the pod — correctly. Fixed by
+patching the env list on the live Deployments (not `kubectl apply`, which would have swapped
+the running image for `:latest`). **Order matters: remove the deployment `env` alias and let
+it roll BEFORE deleting the Vault property.**
+
+**`vault kv patch -remove` does not exist in 1.15.6, and `KEY=null` writes the literal
+string `"null"`.** That silently replaced a credential with a 4-byte string
+(fp `74234e98`). It reached no pod because no ES entry mapped it, but on a live key it
+would have been an outage with a healthy-looking `SecretSynced`. Correct method: read the
+map, drop the key in-process, `vault kv put` the remainder — verified key-count before and
+after each write.
+
+### `a2880693` still cannot be rotated. Exactly what holds it:
+
+| Holder | Owner |
+| --- | --- |
+| `orders#PAYMENTS_INTERNAL_SERVICE_TOKEN` (K8s Secret + pod) | **Session C** |
+| `orders#WAREHOUSE_INTERNAL_SERVICE_TOKEN` (K8s Secret + pod; also read outbound by `warehouse-reservation.client.ts:275`) | **Session C** |
+| `secret/prod/payments-microservice#JWT_TOKEN` (Vault) | source of the orders mount above — deletable only once Session C removes it |
+| `secret/prod/warehouse-microservice#JWT_TOKEN` + `warehouse-microservice-secret#JWT_TOKEN` | **Session G** |
+
+Nothing in `marketing`, `logging`, `aukro`, `heureka` or `payments` holds it any more.
+**Three mounts remain across two sessions.** When those land, the value can be rotated —
+and since no DB principal stands behind it, rotation is the only revocation available.
