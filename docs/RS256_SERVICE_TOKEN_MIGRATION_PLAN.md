@@ -2451,3 +2451,191 @@ pod, which is better practice anyway.
 Nothing was left half-applied: the ES manifest edit was reverted, the repo is deployable,
 and every lane is either fixed and verified (item 1) or in exactly the state it was found
 (items 2, 3, 4).
+
+## 6aa. Session G — the superadmin token, ownerless ExternalSecrets, and Phase 6, 2026-08-27
+
+Infrastructure, not application code. Items 1 and 2 are done and verified live; items 3
+and 4 are a working tool plus a staged plan, which is what the prompt asked for rather
+than a half-executed rotation.
+
+### 1. `stock-traceability-runtime-token` — closed
+
+**The widest-privilege credential in the inventory is gone.** One hand-created Secret (no
+ExternalSecret, no ownerReferences, absent from Vault) held a single HS256 token with
+`roles=[global:superadmin, internal:warehouse-mi…]`, expired **2026-06-24**, mounted by
+`suppliers-microservice` as *both* `CATALOG_SERVICE_TOKEN` and `WAREHOUSE_SERVICE_TOKEN`.
+
+**Both lanes had been dead for 64 days.** Probed from inside the pod before changing
+anything:
+
+| Lane | Before | After |
+| --- | --- | --- |
+| suppliers -> catalog `GET /api/products/:id` | **401** `Token validation failed` | **404** `Product … not found` (authenticated; genuine "no rows") |
+| suppliers -> warehouse `POST /api/supplier-reconciliations` | **401** `Invalid token` | **400** body validation (authenticated) |
+
+This is a **seventh outage** of the same family, but unlike the first six it was *not*
+silently masked: `imports.service.ts:378-388` throws `ServiceUnavailableException` and
+distinguishes 404 from 401/403 correctly. The lane failed loudly and was still missed for
+64 days, which is the argument for item 4 in one sentence.
+
+**Least privilege, chosen per target rather than by convention:**
+
+| Lane | Role | Why not narrower, why not wider |
+| --- | --- | --- |
+| catalog | `internal:catalog-microservice:service` | `GET /api/products/:id` is decorated `@RequireCatalogRoles('catalog:authenticated')` — *any* valid non-marathon principal passes. It needs no catalog role at all, so `:admin` would have been pure over-grant. |
+| warehouse | `internal:warehouse-microservice:admin` | `POST /api/supplier-reconciliations` is decorated `@Roles(...WAREHOUSE_ADMIN_ROLES)`, which is `{global:superadmin, internal:warehouse-microservice:admin}` only. **`:readonly` cannot pass it** — the obvious "reduce to readonly" move would have re-broken the lane. |
+
+Both minted RS256, 90d, via `provision-service-token.js --create-if-missing`:
+
+- `svc-suppliers-microservice--catalog-microservice@alfares.cz` (`b08f2287-…`, fp `a664b2d5`)
+- `svc-suppliers-microservice--warehouse-microservice@alfares.cz` (`5a556c66-…`, fp `cc2952a9`)
+
+Executed in the prompt's order, each step verified before the next:
+
+1. lanes probed from the pod — both 401, confirming the outage rather than assuming it
+2. principals minted, claims decoded inside the auth pod: `alg=RS256`, correct roles, exp 2026-11-25
+3. both probed against the **real endpoints** while still in the auth pod — 404 / 400, i.e. authorized
+4. written to `secret/prod/suppliers-microservice`, ES `data` entries added, applied, force-synced
+5. ESO delivery fingerprinted in the K8s Secret: `a664b2d5` / `cc2952a9` — matching Vault exactly
+6. only then the two `env[]` overrides removed from the repo manifest and applied
+7. **fingerprinted inside the pod created after the change** — `a664b2d5` / `cc2952a9` via `envFrom`
+8. both lanes re-probed from that new pod: 404 / 400
+9. only then, with **zero** workloads and zero repo references remaining, the orphan Secret deleted
+
+Commit `f96bb6d`. Vault sources for suppliers went from "none" to two per-pair principals,
+so the next rotation reaches them.
+
+**A trap worth recording.** Step 7 nearly produced a false green: `kubectl get pod -l
+app=suppliers-microservice -o jsonpath='{.items[0]…}'` returned the **old** pod
+(`5f9b9f4bb-mrn8x`, still fingerprinting `c5817dbb`) while the new one was already ready.
+Sorting by name is not sorting by age. This is the same class as the "verify by pod age,
+not log lines" lesson — `.items[0]` is not "the current pod".
+
+### 2. The two ownerless ExternalSecrets — closed, and one premise corrected
+
+**`database-credentials` was not untracked.** The prompt states neither ExternalSecret
+exists in any repo; that is right for nginx, wrong for this one. It lives at
+`k8s-manifests/secrets/database-credentials-external-secret.yaml` and — importantly — the
+tracked file **never had** a `JWT_TOKEN` entry. The *live object* had drifted ahead of it.
+
+So the fix was not to reconstruct a manifest but to re-assert the one already in the repo:
+`kubectl apply` of the tracked file removed the `data` entry, and ESO pruned the key.
+
+- before: `DB_HOST, DB_PASSWORD, DB_PORT, DB_USER, JWT_TOKEN` (fp `a2880693`)
+- after: `DB_HOST, DB_PASSWORD, DB_PORT, DB_USER`
+- the three consumers (aukro, bazos, orders) mount it by **named `secretKeyRef` on
+  `DB_PASSWORD` only**, never `envFrom`, so the removal was provably inert for them —
+  all three verified `DB_PASSWORD` fp `f78291d9` in-pod afterwards.
+
+**`nginx-microservice-secret` was deleted entirely**, not just its key. The service is
+retired (`nginx-microservice.retired-20260617.tar.gz`), with no workload, no cluster
+reference and no repo reference anywhere. Its Secret was `creationPolicy: Owner` and was
+garbage-collected with the ExternalSecret. Nothing was brought under `k8s-manifests/` for
+it, because tracking a manifest for a service that no longer exists is drift of a
+different kind. Commit `197abfc`.
+
+Note for whoever touches `k8s-manifests/secrets/` next: the directory is in `.gitignore`,
+but the three files in it are already tracked, so edits commit normally — a new file there
+would need `-f`, and probably should not be added at all.
+
+### 3. `JWT_SECRET` across 13 pods — analysis, and a live finding that changes the framing
+
+The prompt says this is "not currently exploitable for forgery" because catalog, orders,
+warehouse and payments no longer verify HS256 locally. That is true of those four. **It is
+not true of the ecosystem**: three services still verify HS256 locally on an inbound
+request path.
+
+| Service | Where | Assessment |
+| --- | --- | --- |
+| `docs-rag-microservice` | `src/service-identity/service-auth.guard.ts:29-33` | **HS256-only, no RS256 branch.** Any holder of `366a1388` can mint a `serviceId` of its choosing. Verified by reading the guard. |
+| `ai-microservice` | `src/service-identity/service-auth.guard.ts:46-74` | RS256 preferred, **HS256 fallback defaults to open**: `hs256FallbackEnabled()` returns `process.env.ALLOW_HS256_FALLBACK !== 'false'`. **Mitigated in production** — the live pod has `ALLOW_HS256_FALLBACK=false` (verified in-pod). The code default remains open, so a fresh deployment without that env var reopens it. |
+| `domain-research` | `src/service-identity/internal-service.guard.ts:13` | `jwt.verify(token, secret)` with **no `algorithms` option at all**. Its value (`4ecb98f5`) is not the shared one, which bounds blast radius, but an unpinned verifier is independently a bug. |
+
+`366a1388` is mounted 13 times, and two of its holders (`cv-tuning`, `runlayer`) actively
+**sign** HS256 tokens with it to call `ai-microservice` and `docs-rag` respectively. So the
+shared secret is not merely legacy residue — it is load-bearing for two live lanes.
+
+**Two values must never be rotated as credentials, because they are not credentials:**
+
+- `crypto-ai-agent` uses `settings.jwt_secret` as the **PBKDF2 master key** for Fernet
+  encryption of stored user exchange API credentials
+  (`backend/app/utils/encryption.py:28`). Rotating it makes every stored credential
+  **permanently undecryptable**. It needs a re-encrypt migration, not a rotation.
+- `auth-microservice` derives the **contact-code hash** for login/recovery OTP codes from
+  it (`src/auth/auth.service.ts:1666`). Rotating invalidates every outstanding code, and
+  `requireJwtSecret()` throws at module load, so the pod will not boot without it.
+
+**Staged plan — deliberately not executed. This is the deliverable for item 3.**
+
+- **Stage 0 (no rotation, pure risk reduction).** Pin `algorithms: ['RS256']` in
+  `domain-research`'s guard; flip `ai-microservice`'s fallback default to closed so the
+  safe state does not depend on an env var being present. Neither changes a secret value.
+- **Stage 1.** Migrate the two signing lanes to per-pair RS256 principals —
+  `cv-tuning -> ai-microservice`, `runlayer -> docs-rag-microservice` — the same shape
+  used seven times already in this migration. Then `docs-rag`'s guard can drop HS256.
+- **Stage 2.** Give the two non-JWT consumers their **own** keys:
+  `CRYPTO_ENCRYPTION_MASTER_KEY` and `AUTH_CONTACT_CODE_SECRET`, initialised to the
+  current value so nothing re-encrypts on day one. This is a *rename*, not a rotation, and
+  it is what makes a later rotation survivable.
+- **Stage 3.** Drop `JWT_SECRET` from the services that never read it. `flipflop`'s five
+  deployments need `env-validator.ts:312` relaxed first — it marks the var `required: true`,
+  so removing the key crashes boot even though nothing reads it for JWT.
+- **Stage 4.** Only now rotate what remains, per service, with the OTP grace window.
+
+Do not compress these. Stage 4 before Stage 2 destroys user data.
+
+### 4. Phase 6 — `shared/scripts/token-health/` (commit `9ab01f1`)
+
+Built, tested against production, **not yet installed** — `install.sh` needs an interactive
+sudo for the unit files, which this session could not supply. One command finishes it.
+
+`token-health.sh` enumerates every credential-shaped env var **actually mounted by a
+running pod**, decodes each JWT, and reports algorithm, days to expiry, value sharing and
+privilege. `token-health-guard.sh` runs it daily and alerts to the Monitoring Daily Digest
+through the existing deploy-queue notifier, so no credential is duplicated to make it work.
+
+**Why it enumerates pods and not Vault.** `secret-census.sh` already answers "is this value
+shared", reading Vault, and that question stays there. But it never decodes a JWT, so it
+cannot see an algorithm or an expiry — and because it reads Vault, a credential with **no
+Vault source at all** is invisible to it by construction. `stock-traceability-runtime-token`
+is precisely that case: 64 days expired, `global:superadmin`, and absent from every census
+run ever performed. Starting from what pods mount is the only view in which an untracked
+`env[]` override, an ESO-delivered key and a hand-created Secret all look the same.
+
+**It found a live outage on its first run.** `flipflop-service`
+`ORDERS_STATUS_SERVICE_TOKEN`, HS256, **expired 22 days ago**, and read by live code at
+`flipflop/shared/clients/order-client.service.ts:430`. Also two expired monitoring smoke
+tokens (`-65d`, `-42d`) and four mounts **14-15 days from expiry** — the alert-before-expiry
+case working as designed. flipflop belongs to Session D, so it is reported here, not fixed.
+
+Current census: **188 mounts — 38 critical (all HS256), 38 ok, 1 error.**
+
+Design decisions worth keeping:
+
+- **Alerts on transitions, not standing state.** 38 HS256 mounts exist today; re-sending
+  them daily would bury the channel, and a muted channel is worse than none. The exception
+  is a 7-day deadline, which re-alerts every run — a token 3 days out that was 4 days out
+  yesterday is not "no news".
+- **Keyed on `app|var`, not fingerprint**, so a healthy rotation is not reported as a new
+  finding.
+- **The baseline only advances after successful delivery.** If Telegram is down the guard
+  exits 2 and re-reports next run rather than swallowing the finding.
+- **An unreadable pod is an `ERROR` row, never a skip.** `kube-state-metrics` is distroless
+  and reports one permanent error; that is left visible on purpose, because an allowlist is
+  how a pod stops being audited quietly.
+- Values never touch argv or disk — fingerprints (`sha256[0:8]`) and non-secret claims only,
+  piped on stdin. `e3b0c442` is treated as **MISSING**, never as a value.
+
+**Verified by making it fail.** A synthetic regression was injected into the baseline
+(one CRITICAL row flipped to OK); the guard reported it as `was: OK -> CRITICAL`, then went
+quiet on the following run once the baseline caught up, while continuing to re-alert the
+three genuinely expired tokens. The container-name bug found during that testing — `-c app`
+hardcoded, which silently turned 21 pods into unreadable ERROR rows — is fixed by resolving
+the container per pod; flipflop and the infra pods do not use `app`.
+
+### Left for others
+
+- `flipflop-service ORDERS_STATUS_SERVICE_TOKEN`, expired 22 days — **Session D**
+- `monitoring-microservice` smoke tokens, expired 65 and 42 days — **Session C**
+- `catalog-microservice JWT_TOKEN` / `BAZOS_SERVICE_TOKEN`, 14 days to expiry — **Session E**
+- `install.sh` for token-health: needs one interactive sudo
