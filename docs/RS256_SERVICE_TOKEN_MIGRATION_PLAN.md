@@ -2230,6 +2230,24 @@ Fingerprints matched minted = Vault = K8s Secret = pod, each confirmed in a pod 
 - [ ] **Sessions C-G cover the remaining ~60%** — see `SESSION_[C-G]_PROMPT.md`. Measured
   baseline 2026-08-27: 55 JWT-shaped keys, 22 RS256 / 33 HS256, 13 distinct HS256 values over
   33 mounts, 4 still shared across services, 6 expired, one JWT_SECRET across 13 pods.
+- [x] **Session C complete 2026-08-27 (6aa)** — orders/monitoring. Item 1 (orders -> warehouse)
+  was already fixed in 6y; re-verified live (200, fp `d2b2828d`) rather than redone. Rotated
+  `monitoring#LOGGING_READ_SERVICE_TOKEN` onto a per-pair RS256 principal (fp `267cfd5b`,
+  exp 2026-09-24 -> 2026-11-25) and found it was already failing on a trailing newline that
+  axios rejects before sending — call site now trims. Removed both `MONITORING_SMOKE_*` tokens
+  (ES entries + Vault properties, keys confirmed pruned from the Secret): their payloads carry
+  `type:end_user` and the `task004-auth-mqf81ns9-d5c5db` run id, so they were smoke-run
+  artifacts, not principals. Fixed the masking behind outage 4 — four bare `catch {` in the
+  orders warehouse clients now log at error level with orderId/url/httpStatus (`32cc0aa`),
+  proven to fail on revert.
+- [ ] **`warehouseHandoff.failureCode` is written but never read** (found in 6aa) — orders
+  persists `status:'failed'` on the order and no caller branches on it, so an order still
+  proceeds to paid/fulfilled with a failed warehouse handoff. Logging now surfaces it; making
+  the system act on it is a product decision.
+- [ ] **Deploy-queue worker can stall silently** (found in 6aa) — after an unrelated failed
+  deploy the unit hit `start-limit-hit`, and `queuectl.sh status` listed queued services while
+  the worker logged "queue empty". Cleared with `systemctl reset-failed` + `start`, no
+  reinstall. A stalled queue means a commit does not deploy and nothing says so.
 - [ ] Phase 6 — rotation CronJob **(Session G)** — five credentials have now expired unnoticed
   and caused outages; every fix so far has been manual. Build the alerting that would have
   caught all five.
@@ -2639,3 +2657,115 @@ the container per pod; flipflop and the infra pods do not use `app`.
 - `monitoring-microservice` smoke tokens, expired 65 and 42 days — **Session C**
 - `catalog-microservice JWT_TOKEN` / `BAZOS_SERVICE_TOKEN`, 14 days to expiry — **Session E**
 - `install.sh` for token-health: needs one interactive sudo
+
+## 6aa. Session C — orders/monitoring, 2026-08-27
+
+Scope was three items. **Item 1 was already fixed before this session started** (6y, same
+day) — verified rather than redone. Items 2 and 3 are new work.
+
+### 1. orders -> warehouse — already repaired in 6y, re-verified live
+
+The prompt was written before the 6y sweep landed. Confirmed from the deployed pod
+(`orders-microservice-57784668b7-6x6h2`), not from the plan text:
+
+```
+effective WAREHOUSE_SERVICE_TOKEN  fp=d2b2828d  RS256
+roles=[internal:warehouse-microservice:action-admin]  exp 2026-11-25
+GET /api/stock/<nonexistent>/total          -> 200
+GET /api/reservations/order/<nonexistent>   -> 200
+```
+
+No credential work was needed. **The masking half of item 1 was still open**, and is fixed
+below.
+
+### 2. `monitoring-microservice` smoke tokens — genuinely unused, removed
+
+The prompt warns that "unused" from a grep is a hypothesis. Four independent checks, and one
+piece of evidence that settled it:
+
+| Check | Result |
+| --- | --- |
+| all 50 ecosystem repos (per-repo bounded grep) | only the ES mapping + the VAL-TASK-004 doc |
+| every CronJob in `statex-apps` | no reference |
+| `monitoring-microservice` Deployment `env[]` | only `LOGGING_READ_SERVICE_TOKEN` is named |
+| repo `src/`, `scripts/`, `web/` | no reference |
+
+**The decisive evidence was in the payloads, not the grep.** Both decode to
+`type:end_user`, `roles:[]`, `email=monitoring-smoke+task004-auth-mqf81ns9-d5c5db@example.invalid`
+— the synthetic run id recorded in `VAL-TASK-004`. They are leftover artifacts of a one-off
+smoke run that minted its own credentials at runtime, never service principals. That is why
+nothing reads them, and it is a stronger answer than "grep found nothing".
+
+Removed in the order 6x prescribes, each step verified:
+
+1. ES `data` entries deleted, `kubectl apply -f k8s/external-secret.yaml` (the deploy queue
+   builds images, it does not apply manifests), then `force-sync`
+2. K8s Secret went 8 keys -> 6; **both smoke keys pruned** — confirming 6x: the ES entry is
+   what prunes, the Vault property alone would not have
+3. only then the Vault properties removed (`vault kv patch -remove-data=` — note this Vault
+   1.15.6 rejects `-remove`, the flag is `-remove-data`)
+4. `smoke_auth_present=false / smoke_refresh_present=false` inside the **new** pod
+
+### 3. `LOGGING_READ_SERVICE_TOKEN` rotated — and it was already half-broken
+
+Rotated onto `svc-monitoring-microservice--logging-microservice`
+(`539cf37b-06cb-4317-b469-795b97f226d9`, RS256, 90d, fp `267cfd5b`), **exp 2026-09-24 ->
+2026-11-25**. Role unchanged at `internal:logging-microservice:readonly`: the only call site
+(`marathon-monitoring.service.ts:12`) does one GET, so `readonly` was already least privilege.
+
+**A latent bug found while probing, worth more than the rotation.** The stored value carries a
+trailing newline. `axios` rejects that header with `ERR_INVALID_CHAR` *before sending any
+request* — the call site did not `.trim()`, unlike the orders clients. The fail-soft catch then
+reported `unavailable: logging summary unavailable`, indistinguishable from a logging outage.
+Fixed with `.trim()` at the call site, which is robust regardless of what is stored.
+
+Fail-soft was **kept** here deliberately: the method already exposes an explicit `unavailable`
+flag, which is the exact carve-out CLAUDE.md allows. What it lacked was any log at all — now
+`logger.error` with url, params and httpStatus.
+
+### The masking behind outage 4, fixed (orders, `32cc0aa`)
+
+Four bare `catch {` blocks — three in `warehouse-reservation.client.ts` (125, 235, 265), one in
+`order-fulfillment-handoff.client.ts` (152) — **discarded the error object entirely** and
+logged a fixed string at `warn`. During the 27-day 401 the only evidence produced was
+`Warehouse reservation handoff failed`: no status, no URL, no message.
+
+These are **not** the `return []` / `return 0` shape from 6x, and the returned value was left
+alone: each already returns `status:'failed'` + `failureCode:'warehouse_request_failed'`, so
+the outcome is distinguishable to the caller. Only the logging was wrong. Now error-level with
+`orderId`, target URL, item counts, `httpStatus` and a truncated body.
+
+Verified by injecting a 401 into the compiled client: one error log carrying
+`orderId=ord-test-1` and `httpStatus=401`; **reverting the catch drops it to zero** — the check
+fails when the fix is removed. `verify:sensitive-logging` still passes, so the added body
+excerpt does not leak protected fields.
+
+### Four-hop evidence
+
+| Lane | Before | After | fp minted = Vault = Secret = pod |
+| --- | --- | --- | --- |
+| monitoring -> logging | 200, exp in 28d | **200**, exp in 90d | `267cfd5b` |
+| orders -> warehouse | 200 (fixed in 6y) | **200** | `d2b2828d` |
+
+Both confirmed in pods created *after* the change (`monitoring-...-b4nfr` 11:34,
+`orders-...-6x6h2` 11:39). The monitoring lane was additionally exercised through the **real
+compiled client** in the pod (`MarathonMonitoringService.getEventSummary`), returning
+`unavailable: false` — not just a raw curl.
+
+### Found, not fixed — deliberately out of scope
+
+- **`warehouseHandoff.failureCode` is written but never read.** No caller branches on it
+  (`orders.service.ts:319/580/741/754` only persist the summary), so an order proceeds to paid
+  and fulfilled with a failed warehouse handoff recorded and nothing acting on it. **The
+  logging fix makes the failure visible; it does not make the system react.** That is a
+  behavioural change needing a product decision.
+- **The deploy-queue worker stalls.** After the unrelated `cv-tuning` failure the unit hit
+  `start-limit-hit`; `queuectl.sh status` then listed queued services while the worker logged
+  "queue empty" and never drained them. Cleared with `systemctl reset-failed` +
+  `start` (no reinstall). Worth a look — a stalled queue means a commit silently does not
+  deploy, which is the same class of invisible failure this whole migration is about.
+- **Vault stores the rotated token with a trailing newline**, because `kv patch KEY=@file`
+  preserves it. Cosmetic now that the client trims, but every `@file` write in this migration
+  has the same property.
+- `/tmp/cat-bazos.token` is left over inside the auth pod from another session (Session E's
+  repo). Not deleted — not mine.
