@@ -117,6 +117,32 @@ export class InternalUsersController {
   }
 
   /**
+   * Offboarding reconciliation for cv-tuning: "is this userId still a real account?"
+   * and nothing else. Answers with `{ exists: true, userId }` for a hit and a bare 404
+   * for a confirmed miss -- never email, profile fields, or any other row data, and
+   * never a 200 with `exists: false` (a stale userId here is treated as not-found, not
+   * as a fact worth a 200).
+   */
+  @Get(':userId/existence')
+  async checkExistence(@Param('userId') userId: string) {
+    const trimmed = (userId || '').trim();
+    if (!this.isUuid(trimmed)) {
+      throw new BadRequestException('userId must be a valid UUID');
+    }
+
+    const exists = await this.usersService.existsById(trimmed);
+    if (!exists) {
+      throw new NotFoundException('User not found');
+    }
+
+    return { exists: true, userId: trimmed };
+  }
+
+  private isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  }
+
+  /**
    * Mint a session for an already-resolved user. Completes the speakasap portal SSO
    * handoff, whose steps are: portal signs a short-lived token → platform verifies it →
    * `resolve-or-provision-legacy` answers *who* → this answers *how they get in*.

@@ -10,6 +10,7 @@ describe('InternalUsersController', () => {
     findLegacyMapping: jest.fn(),
     resolveOrProvisionLegacyUser: jest.fn(),
     findLegacyIdByAuthUser: jest.fn(),
+    existsById: jest.fn(),
   };
   const authService = {
     createSessionForUser: jest.fn(),
@@ -172,6 +173,47 @@ describe('InternalUsersController', () => {
       const result = await controller.createSession('u-1');
 
       expect(JSON.stringify(result)).not.toContain('should-not-escape');
+    });
+  });
+
+  /**
+   * Offboarding reconciliation for cv-tuning: confirm a userId still resolves to an
+   * account without leaking anything beyond that yes/no answer.
+   */
+  describe('checkExistence', () => {
+    const validUserId = 'e9c0e180-c837-404e-a954-a37b56241a80';
+
+    it('returns a minimal exists payload for a known user', async () => {
+      usersService.existsById.mockResolvedValue(true);
+
+      const result = await controller.checkExistence(validUserId);
+
+      expect(usersService.existsById).toHaveBeenCalledWith(validUserId);
+      expect(result).toEqual({ exists: true, userId: validUserId });
+    });
+
+    it('never leaks email or profile fields, whatever the service is asked', async () => {
+      usersService.existsById.mockResolvedValue(true);
+
+      const result = await controller.checkExistence(validUserId);
+
+      expect(Object.keys(result).sort()).toEqual(['exists', 'userId']);
+    });
+
+    it('404s for a confirmed missing user', async () => {
+      usersService.existsById.mockResolvedValue(false);
+
+      await expect(controller.checkExistence(validUserId)).rejects.toThrow(NotFoundException);
+    });
+
+    it('400s on a non-UUID userId rather than querying the database', async () => {
+      await expect(controller.checkExistence('not-a-uuid')).rejects.toThrow(/UUID/);
+      expect(usersService.existsById).not.toHaveBeenCalled();
+    });
+
+    it('400s on an empty userId', async () => {
+      await expect(controller.checkExistence('')).rejects.toThrow(/UUID/);
+      expect(usersService.existsById).not.toHaveBeenCalled();
     });
   });
 });

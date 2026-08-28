@@ -362,6 +362,18 @@ Registered-user communication preferences are Auth-owned and exposed only throug
 
 Marketing may read/update registered-user preferences only through these APIs. Leads remain responsible for non-registered contact records. Notifications remains responsible for outbound sending.
 
+Offboarding reconciliation (e.g. cv-tuning confirming a stored `userId` still resolves to
+an Auth account before archiving it) uses a narrower, existence-only route:
+
+| Method | Path                                 | Purpose                                                                       |
+| ------ | ------------------------------------- | ------------------------------------------------------------------------------ |
+| `GET`  | `/internal/users/:userId/existence`  | Confirm a `userId` still exists. `404` if not — never `email`/profile fields. |
+
+`userId` must be a UUID or the route 400s before touching the database. A hit returns
+`{ exists: true, userId }`; there is no `exists: false` body — a stale or unknown
+`userId` is a 404, matching `:userId/session`'s not-found behavior rather than
+`check-email`'s boolean-in-a-200 shape.
+
 ## Client Responsibilities
 
 Applications integrating with Auth must:

@@ -258,6 +258,16 @@ export class UsersService {
     return this.userRepository.findOne({ where: { id } });
   }
 
+  /**
+   * Existence-only check for reconciliation callers (e.g. cv-tuning offboarding) that
+   * need to know whether a userId still resolves to an account, without pulling back
+   * email or profile fields they have no reason to see. `existsBy` runs as a bare
+   * `EXISTS` query rather than a `findOne`, so no row data leaves the database at all.
+   */
+  async existsById(id: string): Promise<boolean> {
+    return this.userRepository.existsBy({ id });
+  }
+
   async create(userData: Partial<User>): Promise<User> {
     const user = this.userRepository.create(userData);
     return this.userRepository.save(user);
