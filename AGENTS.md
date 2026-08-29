@@ -133,33 +133,17 @@ Before coding, perform the Auth intent-preservation pre-coding gate:
 
 Record verification evidence in `docs/orchestrator/STATUS.md` and compressed continuation state in `docs/IMPLEMENTATION_STATE.md` after each completed chunk. If a task needs ecosystem architecture context, query docs-rag-microservice first and summarize the retrieved source headings before editing.
 
-## Knowledge Retrieval (query before reading files)
-Query the RAG service first — saves 2000-5000 tokens per query:
-- URL: `http://docs-rag-microservice.statex-apps.svc.cluster.local:3397`
-- Endpoint: `POST /retrieval/agent-context` with `{"query": "...", "maxTokens": 3000}`
-- Auth: `Authorization: Bearer <JWT_TOKEN>`
+## Knowledge Retrieval
 
-Remote SSH shells are not expected to export `JWT_TOKEN`. Use the running Auth pod, where
-`JWT_TOKEN` is projected from `auth-microservice-secret`, for authenticated DocsRAG queries.
-Do not print the token value.
+Use `docs-rag-microservice` for bounded discovery when it is healthy, then
+verify deployment, security, database, integration and public-contract facts
+against the cited Git source. Git remains authoritative.
 
-```bash
-kubectl -n statex-apps exec deployment/auth-microservice -- node -e '
-const token = process.env.JWT_TOKEN;
-if (!token) { console.error("JWT_TOKEN_ENV_MISSING"); process.exit(2); }
-fetch("http://docs-rag-microservice:3397/retrieval/agent-context", {
-  method: "POST",
-  headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-  body: JSON.stringify({ query: "your question here", maxTokens: 3000 })
-}).then(async (res) => {
-  console.log("HTTP " + res.status);
-  console.log(await res.text());
-  process.exit(res.ok ? 0 : 1);
-}).catch((err) => { console.error(err.message); process.exit(1); });
-'
-```
+Authority and fallback rules:
+`/home/ssf/Documents/Github/shared/docs/DOCUMENTATION_AUTHORITY.md`.
 
-N/A — infrastructure service. No AI agent coordination.
+Do not generate tokens in documentation or assume an unconfident/failed RAG
+response means that source documentation does not exist.
 
 ## Active Agents
 <!-- Coordinator-maintained -->

@@ -228,8 +228,7 @@ ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && ./scripts/deploy
 Post-deploy 401 smoke:
 
 ```bash
-ssh alfares 'kubectl rollout status deploy/auth-microservice -n statex-apps'
-ssh alfares 'kubectl rollout status deploy/auth-microservice-web -n statex-apps'
+ssh alfares '/home/ssf/Documents/Github/shared/scripts/wait-for-rollout.sh -n statex-apps -t 180 auth-microservice auth-microservice-web'
 ssh alfares 'cd /home/ssf/Documents/Github/auth-microservice && npm run check:customer-data-wallet-runtime -- --expect=deployed'
 ```
 
