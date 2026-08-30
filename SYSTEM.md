@@ -5,7 +5,8 @@
 NestJS backend (port 3370) + Express frontend (port 3372). JWT + bcrypt.
 **Deployed on k3s** (namespace `statex-apps`, Phase A ✅). Secrets: Vault → ESO → K8s Secret `auth-microservice-secret`.
 
-- Endpoints: `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/validate`
+- Public endpoints: `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/validate`
+- Internal endpoints include `GET /internal/users/:userId/existence`, guarded by the internal service capability and returning only `200 { exists: true, userId }` or `404`; cv-tuning uses it for fail-safe offboarding reconciliation.
 - RBAC: role-based access control for admin panels
 
 ## Integrations
