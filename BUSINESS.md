@@ -1,23 +1,29 @@
 # Business: auth-microservice
 
-> ⚠️ IMMUTABLE BY AI.
+status: approved
+completeness_level: complete
 
-## Goal
+## Problem
+Ecosystem applications need one trusted identity and access boundary instead of duplicated registration and token logic.
 
-Centralized JWT authentication and user management for all Statex services.
+## Target Users and Stakeholders
+End users, application teams, and internal services consume the authentication authority.
 
-## Constraints
+## Value Proposition
+Centralized JWT authentication and user management for Statex services.
 
-- AI must never expose or log JWT secrets
-- Password hashing: bcrypt only
-- No direct DB writes to user table by AI agents
+## Goals
+Maintain trusted login, JWT, refresh token, RBAC, OAuth, magic-link, preference, and service-authentication behavior.
 
-## Consumers
+## Non-Goals
+Auth does not own commerce domains, notification delivery, logging storage, database infrastructure, or gateway behavior.
 
-All applications and most microservices.
+## Success Metrics
+Consumers use the documented contract and backend health remains available on port 3370.
 
-## SLA
+## Business Constraints
+Use bcrypt only; never expose or log JWT secrets; agents do not directly write user-table data.
 
-- Backend port: 3370 ([http://auth-microservice:3370](http://auth-microservice:3370))
-- Frontend port: 3372
-- Production: [https://auth.alfares.cz](https://auth.alfares.cz)
+## Approval
+Approved by: project owner
+Approval evidence: owner-confirmation: auth-microservice-onboarding-approved

@@ -1,150 +1,20 @@
-# Repository Agent Instructions
-
-Shared rules live here:
-
-- Codex profile: `/home/ssf/.codex/AGENTS.md`
-- Cross-agent standard: `/home/ssf/.ai-agent-standards/CROSS_AGENT_AUTOMATION_STANDARD.md`
-- Repository operations: `AGENT_OPERATIONS.md`
-
-Read those first, then follow the repository-specific notes below and the current planning/status files.
-
-
-## Repository-Specific Notes
-
 # Agents: auth-microservice
 
-## One-Command Continuation
-
-When the user says:
-
-```text
-AUTH ORCHESTRATOR: continue implementation
-```
-
-or:
-
-```text
-Continue implementation of this project.
-```
-
-act as the Auth implementation orchestrator.
-
-Do not ask the user which goal is next. Determine the next action from:
-
-```text
-docs/IMPLEMENTATION_STATE.md
-docs/IMPLEMENTATION_ORCHESTRATOR.md
-implementation-goals/README.md
-docs/orchestrator/GOALS.md
-```
-
-Then continue from the latest checkpoint.
 
 ## Required Reading
+Read AGENTS.md, TASKS.md, STATE.json, BUSINESS.md, SYSTEM.md, docs/UNIFIED_AUTH_CONTRACT.md, and applicable orchestrator material.
 
-Before implementation, branch orchestration, or launching workers, read:
+## Authority
+Repository source and approved business documents are authoritative; Git is authoritative when retrieval is unavailable.
 
-```text
-AGENTS.md
-TASKS.md
-STATE.json
-docs/IMPLEMENTATION_STATE.md
-docs/IMPLEMENTATION_ORCHESTRATOR.md
-docs/UNIFIED_AUTH_CONTRACT.md
-docs/ENV_CORS_AND_AUTH_CHECK.md
-docs/UNIFIED_AUTH_VERIFICATION.md
-docs/orchestrator/MASTER_PROMPT.md
-docs/orchestrator/INTENT.md
-docs/orchestrator/GOALS.md
-docs/orchestrator/PLAN.md
-docs/orchestrator/STATUS.md
-docs/orchestrator/PROMPTS.md
-docs/orchestrator/PROJECT_INVARIANTS.md
-docs/orchestrator/PRE_CODING_GATE.md
-docs/orchestrator/CONTEXT_PACKAGE.md
-docs/orchestrator/EXECUTION_PLAN.md
-docs/orchestrator/READINESS_GATES.md
-implementation-goals/README.md
-```
+## Intent Preservation System
+Preserve Vision through Goal Impact, System, Feature, Task, Execution Plan, Coding Prompt, Code, and Validation.
 
-If a selected goal has a file under `implementation-goals/`, read that file too.
+## Safety and Operations
+Work remotely in the repository and never print secrets, tokens, passwords, or private user data.
 
-## Core Intent
+## Project-Specific Rules
+Keep Auth within identity and access; do not add consumer-specific concepts to a future registration event.
 
-```text
-Auth is the Statex ecosystem identity and access authority.
-Preserve one trusted identity, login, JWT, refresh token, RBAC, OAuth, magic-link, registered-user preference, and service-authentication boundary.
-The orchestrator coordinates goals, plans, execution chunks, validation, status updates, and worker handoffs from repository state.
-Ask the owner only for true blockers, scope decisions, production deployment approval, or cross-service ownership decisions.
-No catalog, warehouse, orders, payment, leads, marketing sending, notification sending, logging storage, database infrastructure, or gateway ownership moves into Auth.
-No secrets, credentials, JWTs, OAuth tokens, magic-link tokens, reset tokens, or passwords in docs, logs, prompts, reports, URLs, frontend bundles, or git.
-```
-
-## Remote Work Rule
-
-All implementation and commit work for Auth happens on the remote server only:
-
-```text
-ssh alfares
-cd /home/ssf/Documents/Github/auth-microservice
-```
-
-Do not treat the local `/Users/Sergej.Stasok/Documents/auth` snapshot as the source of truth for future code changes. Use it only as temporary context if needed. Make code and documentation changes in `/home/ssf/Documents/Github/auth-microservice` on `alfares`, and commit completed work there.
-
-## Orchestrator Duties
-
-1. Read `docs/IMPLEMENTATION_STATE.md`.
-2. Identify the active goal, next ready goal, blocked checkpoint, or owner-selected goal.
-3. Use `implementation-goals/README.md` and `docs/orchestrator/GOALS.md` as the goal roadmap.
-4. Create or update an execution plan from `implementation-goals/templates/EXECUTION_PLAN.md` before coding.
-5. Use context packages and coding prompts for implementation work that may be delegated.
-6. Keep write ownership disjoint when using workers or subagents.
-7. Update `docs/IMPLEMENTATION_STATE.md` and `docs/orchestrator/STATUS.md` after every implementation session.
-8. Require an Intent Compliance Report before marking a goal complete.
-9. Run or document validation before moving to the next goal.
-10. Preserve Auth ownership boundaries and secret-handling rules.
-
-## Intent Preservation Workflow (mandatory)
-
-Before implementation work, read the Auth orchestrator pack:
-
-- `docs/orchestrator/MASTER_PROMPT.md`
-- `docs/orchestrator/INTENT.md`
-- `docs/orchestrator/GOALS.md`
-- `docs/orchestrator/PLAN.md`
-- `docs/orchestrator/STATUS.md`
-- `docs/orchestrator/PROMPTS.md`
-- `docs/orchestrator/PROJECT_INVARIANTS.md`
-- `docs/orchestrator/PRE_CODING_GATE.md`
-- `docs/orchestrator/CONTEXT_PACKAGE.md`
-- `docs/orchestrator/EXECUTION_PLAN.md`
-- `docs/orchestrator/READINESS_GATES.md`
-
-Work on the earliest active or pending goal unless `docs/IMPLEMENTATION_STATE.md` names an active checkpoint or the owner explicitly selects another goal. Preserve Auth ownership: identity, login, JWT, refresh tokens, RBAC, OAuth, magic links, registered-user communication preferences, and service authentication boundaries. Do not move catalog, warehouse, orders, payment, lead, marketing, notification sending, logging, database, or gateway ownership into Auth.
-
-Before coding, perform the Auth intent-preservation pre-coding gate:
-
-1. Confirm the selected goal and chunk in `docs/orchestrator/GOALS.md` or `implementation-goals/`.
-2. Build or refresh the bounded context package in `docs/orchestrator/CONTEXT_PACKAGE.md`.
-3. Confirm applicable invariants in `docs/orchestrator/PROJECT_INVARIANTS.md`.
-4. Fill the task execution plan in `docs/orchestrator/EXECUTION_PLAN.md` or the selected `implementation-goals/` execution plan.
-5. Run the checks named by `docs/orchestrator/PRE_CODING_GATE.md`.
-6. Code only after the gate decision is `pass` or after the owner explicitly accepts a documented exception.
-
-Record verification evidence in `docs/orchestrator/STATUS.md` and compressed continuation state in `docs/IMPLEMENTATION_STATE.md` after each completed chunk. If a task needs ecosystem architecture context, query docs-rag-microservice first and summarize the retrieved source headings before editing.
-
-## Knowledge Retrieval
-
-Use `docs-rag-microservice` for bounded discovery when it is healthy, then
-verify deployment, security, database, integration and public-contract facts
-against the cited Git source. Git remains authoritative.
-
-Authority and fallback rules:
-`/home/ssf/Documents/Github/shared/docs/DOCUMENTATION_AUTHORITY.md`.
-
-Do not generate tokens in documentation or assume an unconfident/failed RAG
-response means that source documentation does not exist.
-
-## Active Agents
-<!-- Coordinator-maintained -->
-None.
+## Required Final Report
+Report files, validation evidence, debt, blockers, deviations, and next action.
