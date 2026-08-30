@@ -175,6 +175,22 @@ describe('Auth contact code contract', () => {
     );
   });
 
+  it('sends email contact codes as HTML with the code on its own oversized line', async () => {
+    const { service } = makeService();
+    jest.restoreAllMocks();
+    (service as any).httpService = { post: jest.fn(() => of({ data: { id: 'notification-2' } })) };
+
+    await (service as any).sendContactCode('email', 'person@example.test', '123456', 'marathon.alfares.cz');
+
+    const payload = (service as any).httpService.post.mock.calls[0][1];
+    expect(payload.contentType).toBe('text/html');
+    expect(payload.subject).toBe('Alfares sign-in code');
+    const codeBlock = payload.message.match(/<p[^>]*>123456<\/p>/);
+    expect(codeBlock).not.toBeNull();
+    expect(codeBlock[0]).toContain('font-size:44px');
+    expect(codeBlock[0]).toContain('font-weight:bold');
+  });
+
   it('stores a recovery code with its purpose and the recovery TTL', async () => {
     const { service, savedTokens } = makeService();
     (service as any).passwordRecoveryTtlMinutes = 9;

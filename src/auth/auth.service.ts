@@ -1706,14 +1706,23 @@ export class AuthService {
       undefined,
       code,
     );
+    const isEmail = contactType === 'email';
+    const codeEmailHtml = isEmail
+      ? this.buildContactCodeEmailHtml(
+          code,
+          fromDomain,
+          this.getContactCodeEmailCopy(purpose === 'recovery' ? 'password_recovery' : 'contact_code', lang, ttlMinutes),
+          lang,
+        )
+      : undefined;
     const payload: Record<string, string | undefined> = {
       channel: channelKey ? undefined : channel,
       channelKey: channelKey || undefined,
       type: 'custom',
       recipient: identifier,
-      subject: contactType === 'email' ? contactCopy.subject : undefined,
-      message: contactCopy.message,
-      contentType: contactType === 'email' ? 'text/plain' : undefined,
+      subject: isEmail ? contactCopy.subject : undefined,
+      message: codeEmailHtml || contactCopy.message,
+      contentType: isEmail ? 'text/html' : undefined,
       fromName: fromDomain,
       service: 'auth-microservice',
       purpose: 'transactional',
@@ -2450,6 +2459,113 @@ export class AuthService {
       },
     } as const;
     return messages[lang];
+  }
+
+  private getContactCodeEmailCopy(
+    kind: 'contact_code' | 'password_recovery',
+    lang: 'en' | 'cs' | 'ru',
+    ttlMinutes: number,
+  ): { subject: string; title: string; intro: string; label: string; expiry: string; ignore: string } {
+    const copies = {
+      contact_code: {
+        en: {
+          subject: 'Alfares sign-in code',
+          title: 'Your sign-in code',
+          intro: 'Enter this code to sign in to your account.',
+          label: 'Sign-in code',
+          expiry: `This code expires in <strong>${ttlMinutes} minutes</strong>.`,
+          ignore: 'If you did not request this code, you can safely ignore this email.',
+        },
+        cs: {
+          subject: 'Přihlašovací kód Alfares',
+          title: 'Váš přihlašovací kód',
+          intro: 'Zadejte tento kód pro přihlášení k účtu.',
+          label: 'Přihlašovací kód',
+          expiry: `Kód je platný <strong>${ttlMinutes} minut</strong>.`,
+          ignore: 'Pokud jste o kód nežádali, můžete tento e-mail ignorovat.',
+        },
+        ru: {
+          subject: 'Код входа Alfares',
+          title: 'Ваш код входа',
+          intro: 'Введите этот код, чтобы войти в аккаунт.',
+          label: 'Код входа',
+          expiry: `Код действует <strong>${ttlMinutes} мин.</strong>`,
+          ignore: 'Если вы не запрашивали код, просто проигнорируйте это письмо.',
+        },
+      },
+      password_recovery: {
+        en: {
+          subject: 'Alfares password recovery code',
+          title: 'Your password recovery code',
+          intro: 'Enter this code to choose a new password.',
+          label: 'Recovery code',
+          expiry: `This code expires in <strong>${ttlMinutes} minutes</strong>.`,
+          ignore: 'If you did not ask to reset your password, ignore this message — your password has not changed.',
+        },
+        cs: {
+          subject: 'Kód pro obnovení hesla Alfares',
+          title: 'Váš kód pro obnovení hesla',
+          intro: 'Zadejte tento kód a zvolte si nové heslo.',
+          label: 'Kód pro obnovení',
+          expiry: `Kód je platný <strong>${ttlMinutes} minut</strong>.`,
+          ignore: 'Pokud jste o obnovení hesla nežádali, zprávu ignorujte — vaše heslo se nezměnilo.',
+        },
+        ru: {
+          subject: 'Код восстановления пароля Alfares',
+          title: 'Ваш код восстановления пароля',
+          intro: 'Введите этот код, чтобы задать новый пароль.',
+          label: 'Код восстановления',
+          expiry: `Код действует <strong>${ttlMinutes} мин.</strong>`,
+          ignore: 'Если вы не запрашивали восстановление пароля, проигнорируйте это письмо — ваш пароль не изменился.',
+        },
+      },
+    } as const;
+    return copies[kind][lang];
+  }
+
+  private buildContactCodeEmailHtml(
+    code: string,
+    domainRaw: string,
+    copy: { subject: string; title: string; intro: string; label: string; expiry: string; ignore: string },
+    lang: 'en' | 'cs' | 'ru',
+  ): string {
+    const BG_URL = 'https://speakasap.com/static/big_brother/assets/bg.png';
+    const BLUE = '#1E88E5';
+    const LIGHT_BLUE = '#BBDEFB';
+    const CARD_BG = '#F5F5F5';
+    const domain = domainRaw || 'alfares.cz';
+    const safeCode = String(code).replace(/[^0-9A-Za-z-]/g, '');
+
+    return `<!DOCTYPE html>
+<html lang="${lang}">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${copy.subject}</title></head>
+<body style="margin:0;padding:0;background-color:${LIGHT_BLUE};background-image:url('${BG_URL}');background-size:cover;background-position:center;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td align="center" style="padding:40px 16px;">
+    <table width="100%" style="max-width:640px;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.12);" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="background:${BLUE};padding:24px 32px;">
+        <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:20px;font-weight:bold;">${domain}</a>
+      </td></tr>
+      <tr><td style="background:${CARD_BG};padding:32px;">
+        <h2 style="margin:0 0 16px;color:#212121;font-size:22px;">${copy.title}</h2>
+        <p style="margin:0 0 24px;color:#424242;font-size:15px;">${copy.intro}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
+          <tr><td align="center" style="background:#FFFFFF;border:2px solid ${BLUE};border-radius:8px;padding:24px 16px;">
+            <p style="margin:0 0 8px;color:#757575;font-size:12px;letter-spacing:2px;text-transform:uppercase;">${copy.label}</p>
+            <p style="margin:0;color:#0D47A1;font-family:'Courier New',Courier,monospace;font-size:44px;line-height:1.2;font-weight:bold;letter-spacing:10px;white-space:nowrap;">${safeCode}</p>
+          </td></tr>
+        </table>
+        <p style="margin:0 0 16px;color:#1565C0;font-size:14px;text-align:center;">${copy.expiry}</p>
+        <p style="color:#9E9E9E;font-size:12px;margin:16px 0 0;">${copy.ignore}</p>
+      </td></tr>
+      <tr><td style="background:${BLUE};padding:16px 32px;text-align:center;">
+        <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:13px;">${domain}</a>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
   }
 
   private buildAuthEmailHtml(
