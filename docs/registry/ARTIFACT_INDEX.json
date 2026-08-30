@@ -4,13 +4,14 @@
   "generated_at": "2026-08-30T21:00:32Z",
   "artifacts": [
     {
-      "id": "TASK-001",
-      "type": "task",
+      "id": "EP-TASK-001",
+      "type": "execution_plan",
       "status": "done",
-      "title": "Bootstrap Service",
-      "path": "docs/11_tasks/TASK-001-bootstrap-service.md",
-      "parent_ids": [],
-      "runlayer_task_id": null,
+      "title": "Execution Plan for TASK-001",
+      "path": "docs/21_execution_plans/EP-TASK-001-bootstrap-service.md",
+      "parent_ids": [
+        "TASK-001"
+      ],
       "updated_at": "2026-08-30T21:00:32Z"
     },
     {
@@ -26,11 +27,21 @@
       "updated_at": "2026-08-30T21:00:32Z"
     },
     {
-      "id": "EP-TASK-001",
-      "type": "execution_plan",
+      "id": "TASK-001",
+      "type": "task",
       "status": "done",
-      "title": "Execution Plan for TASK-001",
-      "path": "docs/21_execution_plans/EP-TASK-001-bootstrap-service.md",
+      "title": "Bootstrap Service",
+      "path": "docs/11_tasks/TASK-001-bootstrap-service.md",
+      "parent_ids": [],
+      "runlayer_task_id": null,
+      "updated_at": "2026-08-30T21:00:32Z"
+    },
+    {
+      "id": "VAL-REPO-PLANNING-STANDARDIZATION-2026-08-30",
+      "type": "validation",
+      "status": "validated",
+      "title": "Repository planning standardization adoption validation",
+      "path": "docs/12_validation/VAL-REPO-PLANNING-STANDARDIZATION-2026-08-30.md",
       "parent_ids": [
         "TASK-001"
       ],
@@ -46,23 +57,9 @@
         "TASK-001"
       ],
       "updated_at": "2026-08-30T21:00:32Z"
-    },
-    {
-      "id": "VAL-REPO-PLANNING-STANDARDIZATION-2026-08-30",
-      "type": "validation",
-      "status": "validated",
-      "title": "Repository planning standardization adoption validation",
-      "path": "docs/12_validation/VAL-REPO-PLANNING-STANDARDIZATION-2026-08-30.md",
-      "parent_ids": [
-        "TASK-001"
-      ],
-      "updated_at": "2026-08-30T21:00:32Z"
     }
   ],
   "warnings": [
-    {
-      "code": "MISSING_RUNLAYER_PROJECT_SLUG",
-      "message": "[MISSING: verified RunLayer project slug for auth-microservice]"
-    }
+    "MISSING_RUNLAYER_PROJECT_SLUG: [MISSING: verified RunLayer project slug for auth-microservice]"
   ]
 }
