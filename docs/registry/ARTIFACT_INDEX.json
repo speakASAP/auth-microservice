@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "repository": "auth-microservice",
+  "generated_at": "2026-08-30T21:00:32Z",
+  "artifacts": [
+    {
+      "id": "TASK-001",
+      "type": "task",
+      "status": "done",
+      "title": "Bootstrap Service",
+      "path": "docs/11_tasks/TASK-001-bootstrap-service.md",
+      "parent_ids": [],
+      "runlayer_task_id": null,
+      "updated_at": "2026-08-30T21:00:32Z"
+    },
+    {
+      "id": "GOAL-IMPACT-TASK-001",
+      "type": "goal",
+      "status": "done",
+      "title": "Goal Impact for TASK-001",
+      "path": "docs/22_goal_impact/GOAL-IMPACT-TASK-001.md",
+      "parent_ids": [
+        "TASK-001"
+      ],
+      "runlayer_goal_id": null,
+      "updated_at": "2026-08-30T21:00:32Z"
+    },
+    {
+      "id": "EP-TASK-001",
+      "type": "execution_plan",
+      "status": "done",
+      "title": "Execution Plan for TASK-001",
+      "path": "docs/21_execution_plans/EP-TASK-001-bootstrap-service.md",
+      "parent_ids": [
+        "TASK-001"
+      ],
+      "updated_at": "2026-08-30T21:00:32Z"
+    },
+    {
+      "id": "VAL-TASK-001",
+      "type": "validation",
+      "status": "validated",
+      "title": "Validation for TASK-001",
+      "path": "docs/12_validation/VAL-TASK-001-bootstrap-service.md",
+      "parent_ids": [
+        "TASK-001"
+      ],
+      "updated_at": "2026-08-30T21:00:32Z"
+    },
+    {
+      "id": "VAL-REPO-PLANNING-STANDARDIZATION-2026-08-30",
+      "type": "validation",
+      "status": "validated",
+      "title": "Repository planning standardization adoption validation",
+      "path": "docs/12_validation/VAL-REPO-PLANNING-STANDARDIZATION-2026-08-30.md",
+      "parent_ids": [
+        "TASK-001"
+      ],
+      "updated_at": "2026-08-30T21:00:32Z"
+    }
+  ],
+  "warnings": [
+    {
+      "code": "MISSING_RUNLAYER_PROJECT_SLUG",
+      "message": "[MISSING: verified RunLayer project slug for auth-microservice]"
+    }
+  ]
+}
