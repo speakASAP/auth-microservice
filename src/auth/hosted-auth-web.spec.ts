@@ -54,6 +54,35 @@ describe('hosted auth web contract', () => {
     });
   });
 
+  describe('sign-in code flow', () => {
+    // A code and a password are alternatives, not a pair. While a code is pending the password
+    // field must be gone AND not required - a required hidden/visible password blocks submission
+    // at browser validation ("Please fill in this field") before any request leaves the page.
+    it('drops the password while a sign-in code is pending', () => {
+      const fn = html.slice(html.indexOf('function syncMode'), html.indexOf('function gotoMode'));
+      expect(fn).toContain('const codePending');
+      expect(fn).toContain('passwordInput.required = !codePending');
+      expect(fn).toMatch(/passwordRow\.style\.display = codePending \? 'none'/);
+      expect(fn).toMatch(/submitBtn\.style\.display = codePending \? 'none'/);
+    });
+
+    it('verifies the code when the form is submitted with a code pending', () => {
+      const fn = html.slice(html.indexOf('async function submitAuth'), html.indexOf('async function submitPasswordReset'));
+      expect(fn).toContain("if (mode === 'login' && contactCodeRequestedFor)");
+      expect(fn).toContain('await verifyContactCode()');
+    });
+
+    it('offers a way back to the password form', () => {
+      expect(html).toContain('id="use-password-btn"');
+      expect(html).toContain('function usePasswordInstead');
+      expect((html.match(/usePasswordInstead: /g) || []).length).toBe(3);
+    });
+
+    it('re-renders through syncMode when a code is requested', () => {
+      expect(html).not.toContain("contactCodeRow.style.display = 'block'");
+    });
+  });
+
   describe('marketing consent', () => {
     it('offers the checkbox on the register form', () => {
       expect(html).toContain('id="marketing-consent"');

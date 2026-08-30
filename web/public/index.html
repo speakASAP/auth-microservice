@@ -77,6 +77,7 @@
           <label id="contact-code-label" for="contact-code">Sign-in code</label>
           <input id="contact-code" name="contact-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code">
           <button id="verify-code-btn" type="button" class="btn btn-secondary" style="margin-left: 0; width: 100%; margin-top: 0.5rem;">Verify sign-in code</button>
+          <button id="use-password-btn" type="button" class="btn btn-secondary" style="margin-left: 0; width: 100%; margin-top: 0.5rem;">Use password instead</button>
         </div>
 
         <div id="submit-error" class="error" style="display: none;"></div>
@@ -129,6 +130,7 @@
         signInCode: 'Sign-in code',
         codePlaceholder: '6-digit code',
         verifySignInCode: 'Verify sign-in code',
+        usePasswordInstead: 'Use password instead',
         continue: 'Continue',
         login: 'Login',
         register: 'Register',
@@ -191,6 +193,7 @@
         signInCode: 'Přihlašovací kód',
         codePlaceholder: '6místný kód',
         verifySignInCode: 'Ověřit přihlašovací kód',
+        usePasswordInstead: 'Přihlásit se heslem',
         continue: 'Pokračovat',
         login: 'Přihlásit',
         register: 'Registrovat',
@@ -253,6 +256,7 @@
         signInCode: 'Код для входа',
         codePlaceholder: '6-значный код',
         verifySignInCode: 'Проверить код',
+        usePasswordInstead: 'Войти по паролю',
         continue: 'Продолжить',
         login: 'Войти',
         register: 'Зарегистрироваться',
@@ -403,6 +407,7 @@
     const contactCodeRow = document.getElementById('contact-code-row');
     const contactCodeInput = document.getElementById('contact-code');
     const verifyCodeBtn = document.getElementById('verify-code-btn');
+    const usePasswordBtn = document.getElementById('use-password-btn');
     const form = document.getElementById('auth-form');
     const submitBtn = document.getElementById('submit-btn');
     const submitError = document.getElementById('submit-error');
@@ -436,6 +441,7 @@
       document.getElementById('contact-code-label').textContent = t('signInCode');
       contactCodeInput.placeholder = t('codePlaceholder');
       verifyCodeBtn.textContent = t('verifySignInCode');
+      usePasswordBtn.textContent = t('usePasswordInstead');
       tabLogin.textContent = t('tabLogin');
       tabRegister.textContent = t('tabRegister');
       magicLinkBtn.textContent = t('sendSignInCode');
@@ -525,7 +531,12 @@
       identifierRow.style.display = isReset ? 'none' : 'block';
       phoneInput.required = isRegister && marathonPhoneRequired;
       identifierInput.required = !isReset;
-      passwordRow.style.display = 'block';
+      // A pending sign-in code REPLACES the password - asking for both is nonsense, and a
+      // required password field blocks the code flow at browser validation before any request
+      // is made. The escape hatch back to the password form is use-password-btn.
+      const codePending = !isRegister && !isReset && Boolean(contactCodeRequestedFor);
+      passwordRow.style.display = codePending ? 'none' : 'block';
+      passwordInput.required = !codePending;
       passwordConfirmRow.style.display = isReset ? 'block' : 'none';
       passwordConfirmInput.required = isReset;
       passwordLabel.textContent = isReset ? t('newPassword') : t('password');
@@ -535,7 +546,7 @@
       identifierInput.inputMode = isRegister ? 'email' : 'text';
       passwordInput.autocomplete = isRegister || isReset ? 'new-password' : 'current-password';
       submitBtn.textContent = isReset ? t('resetPassword') : (isRegister ? t('register') : t('login'));
-      submitBtn.style.display = 'block';
+      submitBtn.style.display = codePending ? 'none' : 'block';
       submitBtn.disabled = !isReset && !validatedReturnUrl;
       magicLinkBtn.disabled = !validatedReturnUrl;
       authLinks.style.display = isRegister || isReset ? 'none' : 'block';
@@ -550,7 +561,7 @@
         resetLoginAnchor.href = loginParams.toString() ? `/login?${loginParams.toString()}` : '/login';
       }
       returnUrlRow.style.display = isReset ? 'none' : 'block';
-      contactCodeRow.style.display = isRegister || isReset || !contactCodeRequestedFor ? 'none' : 'block';
+      contactCodeRow.style.display = codePending ? 'block' : 'none';
       if (!isReset) applyPrefill();
       tabLogin.classList.toggle('btn-secondary', isRegister);
       tabRegister.classList.toggle('btn-secondary', !isRegister);
@@ -561,8 +572,8 @@
       setError('');
       setSuccess('');
       contactCodeRequestedFor = '';
+      recoveryRequested = false;
       contactCodeInput.value = '';
-      contactCodeRow.style.display = 'none';
       const targetPath = nextMode === 'register' ? '/register' : '/login';
       window.history.replaceState(null, '', targetPath + buildSearchParams());
       syncMode();
@@ -610,6 +621,12 @@
       setSuccess('');
       if (mode === 'reset') {
         await submitPasswordReset();
+        return;
+      }
+      // Pressing Enter while a code is pending means "verify this code", never "log in with an
+      // empty password".
+      if (mode === 'login' && contactCodeRequestedFor) {
+        await verifyContactCode();
         return;
       }
       if (!validatedReturnUrl) {
@@ -751,7 +768,7 @@
         }
         contactCodeRequestedFor = identifier;
         contactCodeInput.value = '';
-        contactCodeRow.style.display = 'block';
+        syncMode();
         contactCodeInput.focus();
         setSuccess(t('codeSent'));
       } catch (error) {
@@ -809,6 +826,16 @@
       }
     }
 
+    function usePasswordInstead() {
+      setError('');
+      setSuccess('');
+      contactCodeRequestedFor = '';
+      recoveryRequested = false;
+      contactCodeInput.value = '';
+      syncMode();
+      passwordInput.focus();
+    }
+
     async function requestPasswordReset() {
       setError('');
       setSuccess('');
@@ -845,7 +872,7 @@
         contactCodeRequestedFor = identifier;
         recoveryRequested = true;
         contactCodeInput.value = '';
-        contactCodeRow.style.display = 'block';
+        syncMode();
         contactCodeInput.focus();
         setSuccess(t('recoveryCodeSent', { minutes: data.ttlMinutes }));
       } catch (error) {
@@ -862,6 +889,7 @@
     tabRegister.addEventListener('click', () => gotoMode('register'));
     magicLinkBtn.addEventListener('click', requestMagicLink);
     verifyCodeBtn.addEventListener('click', verifyContactCode);
+    usePasswordBtn.addEventListener('click', usePasswordInstead);
     resetPasswordBtn.addEventListener('click', requestPasswordReset);
     form.addEventListener('submit', submitAuth);
 
