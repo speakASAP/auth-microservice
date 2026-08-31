@@ -1,14 +1,11 @@
 # Tasks: auth-microservice
 
 
-## Active
-No active IPS bootstrap task remains; documentation adoption is complete.
+## ActiveNo active IPS bootstrap task remains; documentation adoption is complete.
 
-## Ready Next
-Existing customer-data wallet schema planning remains governed by repository planning.
+## Ready NextExisting customer-data wallet schema planning remains governed by repository planning.
 
-## Blocked
-Generic registration-event design is a separate cross-service decision because Auth emits no domain events.
+## BlockedGeneric registration-event design is a separate cross-service decision because Auth emits no domain events.
 
 ## Completed
 TASK-001-bootstrap-service completed IPS planning adoption on 2026-08-30.
