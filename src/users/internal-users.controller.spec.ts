@@ -10,6 +10,7 @@ describe('InternalUsersController', () => {
     findLegacyMapping: jest.fn(),
     resolveOrProvisionLegacyUser: jest.fn(),
     findLegacyIdByAuthUser: jest.fn(),
+    findNamesByLegacyIds: jest.fn(),
     existsById: jest.fn(),
   };
   const authService = {
@@ -127,6 +128,45 @@ describe('InternalUsersController', () => {
       await expect(controller.byAuthUser('speakasap-portal', 'auth-1')).rejects.toThrow(
         ConflictException,
       );
+    });
+  });
+
+  describe('namesByLegacyIds', () => {
+    it('delegates sanitized unique positive integer ids and wraps the result', async () => {
+      const users = [{ legacyUserId: 58, name: 'Anna Ivanova', email: 'anna@example.com' }];
+      usersService.findNamesByLegacyIds.mockResolvedValue(users);
+
+      const result = await controller.namesByLegacyIds({
+        system: 'speakasap-portal',
+        legacyUserIds: [58, '58', 0, -1, 12.5, 'abc', 145] as any,
+      });
+
+      expect(usersService.findNamesByLegacyIds).toHaveBeenCalledWith('speakasap-portal', [58, 145]);
+      expect(result).toEqual({ users });
+    });
+
+    it('400s on a missing system before querying names', async () => {
+      await expect(
+        controller.namesByLegacyIds({ system: '', legacyUserIds: [58] }),
+      ).rejects.toThrow(/system/);
+      expect(usersService.findNamesByLegacyIds).not.toHaveBeenCalled();
+    });
+
+    it('400s when legacyUserIds is not an array', async () => {
+      await expect(
+        controller.namesByLegacyIds({ system: 'speakasap-portal', legacyUserIds: '58' as any }),
+      ).rejects.toThrow(/array/);
+      expect(usersService.findNamesByLegacyIds).not.toHaveBeenCalled();
+    });
+
+    it('400s when a names batch exceeds the route cap', async () => {
+      await expect(
+        controller.namesByLegacyIds({
+          system: 'speakasap-portal',
+          legacyUserIds: Array.from({ length: 1001 }, (_, index) => index + 1),
+        }),
+      ).rejects.toThrow(/1000/);
+      expect(usersService.findNamesByLegacyIds).not.toHaveBeenCalled();
     });
   });
 
