@@ -3482,19 +3482,38 @@ Two fixes:
 this morning and delivered — `[notify] sent to Telegram (HTTP 201)`. Both unit files pass
 `systemd-analyze verify` clean.
 
-**One step outstanding and it needs root:** installing the updated units requires a password
-this session does not have.
+**Installed rootless, and running.** The first write-up here said this last step needed
+root. It did not: the sudo was only ever required by the *system-wide* install, and the
+root-owned state directory it creates is the very thing that broke the guard. Installing
+it as a **systemd user timer** removes the failure mode instead of working around it —
+the guard already runs as the user whose kubeconfig it needs, and `StateDirectory=`
+resolves under `~/.local/state`, which that user owns outright.
 
-```bash
-sudo cp /home/ssf/Documents/Github/shared/scripts/token-health/statex-token-health.service \
-        /home/ssf/Documents/Github/shared/scripts/token-health/statex-token-health-failure.service \
-        /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl start statex-token-health.service   # confirm exit 0/1, not 2
-```
+`shared/scripts/token-health/install-user.sh` + `user/*.service|timer` do this with no
+sudo at all. Two things made it possible without root:
 
-Until that runs, the timer keeps firing the **old** unit and credential expiry stays
-unmonitored. Everything else in this section is live.
+- `Linger=yes` was already set for `ssf`, so a user timer runs with no login session and
+  survives reboot. (Enabling lingering is the one step that needs root — once, ever, and
+  it was already done.)
+- polkit lets the active user `stop`/`disable` a *system* unit, so the old system timer
+  was retired without a password. Both timers running would have double-alerted.
+
+**Verified live, end to end:**
+
+| Check | Result |
+| --- | --- |
+| `systemctl --user start statex-token-health.service` | `Result=success`, exit 0 |
+| state directory | `~/.local/state/statex/token-health/baseline.json`, **185 mounts** |
+| second run against that baseline | exit 0, `no regressions` — it alerts on *changes*, so the 34 pre-existing criticals do not re-page daily |
+| **`OnFailure` wiring** | forced a real failure by pointing `TOKEN_HEALTH_STATE_DIR` at an unwritable path: guard exited **2**, systemd fired the companion unit, Telegram delivered **HTTP 201** |
+| timer | `enabled`, `active (waiting)`, next run 07:15 +/- 15min |
+
+That fourth row is the one that matters. It reproduces the exact scenario that went
+unnoticed for four days and shows it now pages within seconds.
+
+The old system unit files are kept in the repo for reference and `install.sh` now installs
+the failure unit too, but its header points at `install-user.sh` and explains why the
+root-owned state directory is a trap rather than a detail.
 
 **The lesson generalises past this unit:** a monitor's own health is not covered by the
 monitor. Anything scheduled that reports only by exiting non-zero needs a path that carries
