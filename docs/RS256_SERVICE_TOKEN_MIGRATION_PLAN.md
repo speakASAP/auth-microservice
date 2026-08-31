@@ -2325,6 +2325,18 @@ would have declared this lane healthy. Three of five pods were failing in produc
 Vault, the ExternalSecret and the Secret all read correct. **Hop four must be measured in
 every pod that mounts the key, not one.**
 
+**Re-verified 2026-08-31** after an unrelated ecosystem-wide redeploy replaced every pod.
+All four token-using pods measured together, fingerprint and live call in one step:
+
+| Pod | fp inside pod | `PUT /:id/status` |
+| --- | --- | --- |
+| `flipflop-order-service-7999cb4594-dq5kq` | `44a44139` | **404** |
+| `flipflop-user-service-65b5dc7f8b-w7gwq` | `44a44139` | **404** |
+| `flipflop-cart-service-64988fbb4f-68vhz` | `44a44139` | **404** |
+| `flipflop-product-service-7df9f8f6c5-dgtkk` | `44a44139` | **404** |
+
+The lane is healthy and has stayed healthy across a full pod replacement.
+
 ### 2. `9431f75c` — one value, three jobs: prepared, deliberately not executed
 
 Confirmed exactly as described. `FLIPFLOP_INTERNAL_SERVICE_SECRET` and `JWT_TOKEN` both
@@ -2375,6 +2387,33 @@ Not migrated here: the receiver-side edit (`orders-microservice/src/auth/jwt-rol
 is Session C's file, and moving the caller to Bearer before the receiver accepts it would
 break order creation. **Handed to Session C** — see the handover section below.
 
+**Measured both paths from inside `flipflop-order-service`** (2026-08-31), which settles
+what the migration actually needs:
+
+```
+POST /api/orders  x-internal-service-token: 321c86c8  -> 400 "channel is required"  (authorized)
+POST /api/orders  Authorization: Bearer   321c86c8    -> 401 "Invalid token"
+```
+
+The Bearer path 401s because `321c86c8` is **HS256** and auth now rejects that algorithm
+outright — the same structural obsolescence as item 4. So this lane needs a newly minted
+RS256 principal *before* the caller can switch, not merely a guard change on the receiver.
+`--check-db-only` for `flipflop-service--orders-microservice` /
+`internal:flipflop-service:service` returns `applicationFound:true, roleFound:true,
+principalExists:false` — ready to mint, blocked only on the Vault write.
+
+**A caller-side defect found while tracing this** (`flipflop/shared/clients/order-client.service.ts:418`):
+`getAuthHeaders()` **fails open** — it returns `{}` when `ORDERS_SERVICE_TOKEN` is unset, so
+a missing credential sends the order-create call to orders with no authentication at all
+rather than raising. Its sibling `getStatusActionHeaders()` eight lines below is already the
+correct fail-closed form. The fix (throw on missing, and send `Authorization: Bearer`) was
+written and typechecks clean on all four services that compile the shared client
+(`tsc --noEmit`, exit 0), but was **deliberately not committed**: committing it to `main`
+auto-deploys (`deploy_queue_paths_warrant_deploy` returns true for that path), and shipping
+Bearer against the current HS256 value would turn a working **400** into a **401** — an
+outage. It must land in the same change as the new RS256 credential. Patch preserved at
+`session-d-flipflop.patch` in the session scratchpad.
+
 ### 4. cliplot -> orders status: a second dead lane, not previously reported
 
 The prompt lists this as an HS256 over-privilege item to tidy up. It is **also broken in
@@ -2401,11 +2440,15 @@ is why a 26-day-style outage went unnoticed — but the flow is dead whenever it
 call sites — it writes, so `service` is not enough):
 
 ```
-principal    017408f1-a66e-49c5-9147-c8ce4e9e6e3e
-email        svc-cliplot--orders-microservice-status@internal.alfares.cz
-role         internal:orders-microservice:action-admin
-RS256, kid=a975635403084850, 90d, exp 2026-11-25, fp 10baae91
+principal    724fc31a-d735-475e-a29a-18a41bfe1166
+email        svc-cliplot--orders-microservice@internal.alfares.cz
+roles        internal:orders-microservice:action-admin, internal:cliplot:service
+RS256, kid=a975635403084850, 90d, exp 2026-11-29, fp 5443e373
 ```
+
+Re-minted 2026-08-31 after the earlier attempt's principal did not persist
+(`--check-db-only` for `cliplot--orders-microservice-status` returns
+`principalExists:false`; only the principal above stands, so there is no duplicate).
 
 `--check-db-only` -> `applicationFound:true, roleFound:true, principalExists:false`;
 `--dry-run` -> `wouldCreateUser:true` before `--apply`. Token written 0600, never printed.
@@ -2426,6 +2469,10 @@ RS256, kid=a975635403084850, 90d, exp 2026-11-25, fp 10baae91
 *create* (`CHANNEL_ORDER_CREATE_ROLES`), but grants neither the read nor the status update,
 so adding it would not clear the 403.
 
+**Tested, not assumed.** `internal:cliplot:service` was added to the principal and the
+token re-minted carrying both roles; `GET /api/orders/:id` still returned **403**. The
+role list, not the credential, is the constraint.
+
 So the old token only ever worked on the GET because it carried broad
 `internal:orders-microservice:admin`. Restoring that on the new principal would reproduce
 the over-privilege this migration exists to remove. **The clean fix is one line in
@@ -2438,8 +2485,8 @@ still holds the dead `c59347ae`. The lane is no worse than it was found — it w
 401 — but it is **not fixed**. The principal exists and is verified working for the PUT;
 what remains is the Vault write plus, for the GET, Session C's role change.
 
-Both token files (`/tmp/cliplot-status.token` in the auth pod, and the scratch copy) were
-deleted.
+The token file in the auth pod was deleted; no copy ever reached local disk (the
+pod->host copy was refused by the classifier, so the value never transited a shell).
 
 ### Handed to other sessions — not edited here
 
@@ -2453,9 +2500,11 @@ deleted.
    `CHANNEL_ORDER_CREATE_ROLES` *does* list `internal:cliplot:service`, so the omission looks
    accidental.
 2. **`321c86c8` (flipflop -> orders create)** is a live HS256 shared password on the legacy
-   `x-service-name` path, **expiring 2026-09-11**. The flipflop caller is ready to move to
-   Bearer as soon as the guard accepts it; this retires another entry from the
-   string-comparison map.
+   `x-service-name` path, **expiring 2026-09-11** (12 days out as of 2026-08-31 — the only
+   item here with a hard deadline). The flipflop caller's Bearer switch is written and
+   typechecks, but note the measured detail above: the existing value **401s as a Bearer
+   token because it is HS256**, so the guard change alone is not sufficient — a new RS256
+   principal must be minted and stored in the same change, or order creation breaks.
 
 **To Session F** (`marketing-microservice/`): `ORDER_AFFINITY_FLIPFLOP_REPLAY_TOKEN`
 (`9431f75c`) is the third copy of flipflop's internal shared string. Once the flipflop side
