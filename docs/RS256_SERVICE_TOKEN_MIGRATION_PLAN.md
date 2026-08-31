@@ -3733,3 +3733,124 @@ as well as the Vault property — ESO does not prune (6x).
   `order-client.service.ts` calls have never worked.
 - `aa7ae49e` remains load-bearing on **two inbound allegro endpoints**. It is not retirable
   until the marketing replay lane moves to Bearer on both ends.
+
+## 6ac. Session C, 2026-08-31 — a rotation that was committed but never happened
+
+Session C's prompt listed three items. **Two were already done before this session started**
+(item 1 by 6y, item 2's ES half by commit `147e401`); the third was recorded in git as
+complete but was not. The verification is the finding here, not the volume of change.
+
+### Item 1: orders -> warehouse was already fixed — verified, not assumed
+
+6y fixed this hours before the prompt was picked up. Re-verified from the deployed pod rather
+than trusted:
+
+```
+effective WAREHOUSE_SERVICE_TOKEN  fp=d2b2828d  RS256
+  sub=28687a0d-2e86-450c-bbb7-03307a9b228a  roles=[internal:warehouse-microservice:action-admin]
+GET warehouse-microservice:3201/api/stock/<nonexistent>/total  ->  200
+```
+
+Both `||` fallback chains and the silent-failure masking were handled in that work. No action.
+
+### Item 2: the smoke tokens were correctly judged unused — the evidence, independently
+
+The prompt warns that "unused from a grep is a hypothesis, not a fact", and that three of four
+such claims failed verification earlier. Re-established the claim from scratch:
+
+- a bounded per-repo sweep across **all 50 ecosystem repos** hits only the ES mapping, one
+  validation doc, and the session prompt — no code, no script, no CronJob
+- all 11 CronJobs in `statex-apps` checked; none references either key
+- the monitoring Deployment names only `LOGGING_SERVICE_TOKEN` in `env[]`; the smoke keys
+  arrived solely through the blanket `envFrom`
+
+**The payloads settle it where grep could not.** Both decode to `type:end_user`, `roles:[]`,
+email `monitoring-smoke+task004-auth-mqf81ns9-d5c5db@example.invalid` — the *exact synthetic
+run id* recorded in `VAL-TASK-004`. They are artifacts of a one-off smoke run that minted
+credentials at runtime, not service principals. That is proof of purpose, not absence of
+callers, and it is the kind of evidence worth reaching for when a grep says "unused".
+
+ES entries and K8s Secret keys were already gone (commit `147e401`, confirmed pruned).
+**The two Vault properties still exist** — inert, since ESO cannot surface a property no ES
+entry maps, but they should be deleted. Not done here: `vault kv put` (the only delete path,
+as `patch -remove` is absent in 1.15.6 and `KEY=null` writes the literal string) was refused
+by the sandbox classifier. Left as residue, deliberately, rather than worked around.
+
+### Item 3: `LOGGING_READ_SERVICE_TOKEN` — the commit message was wrong
+
+Commit `147e401` ("rotate logging token, drop dead smoke tokens"), pushed to `main`, claims a
+rotation onto `svc-monitoring-microservice--logging-microservice`. **It did the smoke removal
+and not the rotation.** Before this session:
+
+| Check | Finding |
+| --- | --- |
+| live principal | `2e11ddf1`, `svc-monitoring--logging@internal.alfares.cz` — the *old* one |
+| expiry | **2026-09-24, 24 days out** — unchanged, still the ecosystem's only sub-30-day credential |
+| auth DB | `--check-db-only` -> `principalExists:false` for the principal the commit names |
+| Vault metadata | last written 2026-08-25, **two days before** that commit |
+
+Four hops all *matched* at `09856c0c` — and matching is exactly what made it look finished.
+**A four-hop match proves consistency, not freshness.** The expiry and the `sub` are what
+falsified the commit message; had the check stopped at "all hops agree", the credential would
+have expired in production on 2026-09-24 with git history asserting it had been rotated.
+
+Fixed on the standard pattern:
+
+```
+principal  74627dc8-86f0-46f7-a176-289629b0f4a6
+email      svc-monitoring-microservice--logging-microservice@internal.alfares.cz
+role       internal:logging-microservice:readonly     RS256, 90d, exp 2026-11-29
+```
+
+Role unchanged and already least-privilege: the single call site
+(`marathon-monitoring.service.ts:22`) issues one `GET .../marathon-events/summary`.
+`--check-db-only` -> `--dry-run` (`wouldCreateUser:true`) -> `--apply`, token never printed.
+
+**Verified live, in a pod created after the change** (`f86997667-zjmkp`):
+
+| Hop | fp |
+| --- | --- |
+| minted / Vault / K8s Secret / pod | `13aa6844` (all four) |
+
+```
+GET logging:3367/api/logs/marathon-events/summary   Bearer new  ->  200
+GET  (no auth)                                                  ->  401
+GET  Bearer garbage                                             ->  401
+```
+
+The negative controls matter: a 200 alone does not prove authorization if the route is open.
+
+### Three measurement traps that produced false readings in this session
+
+1. **`vault kv get -field=` appends a trailing newline**, changing the sha256. It reported
+   `73d7aac4` where the true value was `09856c0c` — which looked exactly like Vault/pod drift
+   and nearly triggered an unnecessary re-sync. **Read via `-format=json`.** Same trap on the
+   way out: `--token-output` writes a trailing newline, so the file hashes `a1a7e28f` while
+   the JWT itself is `13aa6844`. Pipe through `tr -d '\n'` before storing, and fingerprint the
+   *stored* value.
+2. **A label selector returns terminating pods.** Immediately after a rollout,
+   `-l app=<svc> -o jsonpath='{.items[0]...}'` returned the *old* pod, whose env still held the
+   previous token — a four-hop "mismatch" that was pure measurement error. Add
+   `--field-selector=status.phase=Running`, and confirm the pod's `startTime` is after the change.
+3. **`wait-for-rollout.sh` prints `want 1, have replicas=2` during convergence**, which is the
+   normal two-ReplicaSet overlap, not a fault.
+
+### Noted, not fixed (outside Session C's scope)
+
+- `GET /api/marathon-monitoring/events` returns **401 to unauthenticated callers on the pod's
+  own port** — its inbound guard, unrelated to the outbound lane repaired here. Correct
+  behaviour; recorded only so the next reader does not mistake it for a regression.
+- The auth pod has **no `curl`, `wget` or `python3`** — probes must use `node`. It also cannot
+  reach its own Service DNS (`auth-microservice:3001` -> ECONNRESET), so `/auth/validate`
+  self-probes must run from the *calling* service's pod, which is the more faithful test anyway.
+- `secret/prod/monitoring-microservice` still carries **both** `NOTIFICATION_SERVICE_TOKEN` and
+  `NOTIFICATIONS_SERVICE_TOKEN` (the ES maps the plural to the singular `secretKey`). Only one is
+  consumed. Not touched — it is load-bearing and untangling it needs its own verification.
+
+### The generalisable lesson
+
+Sessions A/B/C have now each found work that a commit claimed was complete. **A pushed commit
+message is a claim about intent, not evidence of effect.** For credential work the cheap
+falsifier is the pair (`sub`, `exp`) read from the *pod's* effective token — it is two decoded
+fields, it is independent of every intermediate hop, and it would have caught this immediately.
+Worth running across the remaining lanes before trusting any "rotated" entry in this ledger.
