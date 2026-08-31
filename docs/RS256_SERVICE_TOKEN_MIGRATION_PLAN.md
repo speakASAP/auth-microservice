@@ -3501,3 +3501,216 @@ monitor. Anything scheduled that reports only by exiting non-zero needs a path t
 that failure to a human, or it provides the appearance of coverage rather than coverage.
 Five expired credentials caused outages because nothing was watching; a sixth would have
 been missed again because the watcher was broken and equally quiet.
+
+## 6aa. Session E — catalog, bazos and allegro, 2026-08-31
+
+Section letter note: `6z` was taken twice concurrently (Sessions D and F), so this
+section is `6aa`.
+
+### Outage 6: catalog-microservice -> bazos-service, dead on arrival
+
+```
+catalog pod BAZOS_SERVICE_TOKEN  fp=0f1b8070  HS256  sub=catalog-to-bazos-draft-smoke
+GET bazos:3000/api/bazos/catalog/products/<uuid>/sell-action/status  ->  401 Invalid token
+POST auth-microservice:3370/auth/validate  ->  401 Unsupported token algorithm HS256; RS256 required
+```
+
+The brief listed this credential as "expires in ~2 weeks". It is worse than that: it is
+**already non-functional**. bazos guards these routes with `JwtAuthGuard`, which calls
+`/auth/validate`, and auth rejects every HS256 token outright. The same is true of
+`catalog-microservice-secret#JWT_TOKEN` (`ae611ed9`) — both catalog HS256 credentials
+return 401 from auth today, so the stated expiry date was never the real deadline.
+
+**Expiry is not the only way a credential dies.** Both of these are unexpired and useless.
+A rotation alarm keyed on `exp` (Phase 6) would not have caught either one; the check that
+finds them is presenting the token to `/auth/validate` and reading the algorithm error.
+
+Reproduced from inside the deployed catalog pod, and again after an unrelated pod rotation
+mid-session, so it is not a transient.
+
+**Not fixed — blocked.** See "What is blocked" below.
+
+### The lane's failure is semi-silent
+
+`resolveBazosAuthorization` feeds two call sites (`getBazosStatus`, `requestBazosDraft`).
+Both catch the 401 and return a `blocked` draft/status object carrying `dependencyStatus`,
+so the failure does reach the response rather than being swallowed — but it presents as a
+*business* block ("Bazos draft request failed. Resolve the Bazos-owned action reason")
+rather than as the credential fault it is. Not a silent failure by the constraint's
+definition; worth knowing it reads as a marketplace problem in the UI.
+
+### Role finding: bazos needs no role at all
+
+`BAZOS_SERVICE_TOKEN` carries `internal:bazos-service:admin` + `app:bazos-service:admin`.
+The two routes catalog actually calls (`GET .../sell-action/status`, `POST .../sell-action`)
+are guarded by bare `@UseGuards(JwtAuthGuard)` with **no `@Roles` decorator** — the guard
+validates the token and checks nothing else. So any valid principal passes, and the correct
+replacement is the least-privilege `internal:bazos-service:service`, which already exists
+(`--check-db-only` -> `applicationFound: true, roleFound: true`). Reissuing at `admin`
+would preserve an over-grant that nothing requires. **Read the guard, not the variable name.**
+
+### `JWT_TOKEN` removed from two more fallback chains (fixed, deployed, verified)
+
+The brief's item 2 asked to verify allegro's warehouse primary from the pod. It is **not**
+set — the repair in 6r landed on the *second* variable, not the first:
+
+```
+allegro-service / allegro-imports:
+  WAREHOUSE_SERVICE_TOKEN           = <unset>
+  WAREHOUSE_INTERNAL_SERVICE_TOKEN  fp=d53ea213  RS256  <- effective
+  JWT_TOKEN                         fp=aa7ae49e  HS256
+```
+
+So the chain was already one step from `aa7ae49e`, not two. Probed from the allegro pod:
+
+| Credential | warehouse `/api/stock/<uuid>/total` |
+| --- | --- |
+| effective RS256 `d53ea213` | **200** |
+| `JWT_TOKEN` `aa7ae49e` | **401 Invalid token** |
+| none | 401 Missing or invalid Authorization header |
+
+`JWT_TOKEN` is rejected by the target, so as a fallback it can only ever convert a
+missing-credential misconfiguration into a confusing 401 — the trap already fixed in aukro
+and bazos. Removed from four chains across two repos:
+
+- `allegro/shared/clients/warehouse-client.service.ts` (commit `60ea338`)
+- `allegro/services/allegro-service/src/scripts/import-current-allegro-stock-to-warehouse.ts`
+- `catalog-microservice/src/warehouse-availability/warehouse-availability.service.ts` (`d488e99`)
+- `catalog-microservice/src/products/products.service.ts`
+
+The allegro import script additionally **sent the request with no `Authorization` header**
+when no credential resolved (`...(token ? {Authorization} : {})`), so a misconfigured import
+failed as an unattributable 401 from warehouse. It now throws `[MISSING: warehouse runtime
+credential]` instead.
+
+Verified after deploy, inside pods created after the change: `JWT_TOKEN` absent from the
+compiled artifacts (`shared/dist/clients/warehouse-client.service.js`,
+`dist/warehouse-availability/warehouse-availability.service.js`), and both lanes re-probed
+**200** through the effective chain.
+
+Tests: catalog 170/170. A regression test asserts `JWT_TOKEN` is never presented and was
+confirmed to **fail** (1 failed / 16 passed) when the exclusion is reverted. Two existing
+tests asserted the old `JWT_TOKEN` fallback and were retargeted to
+`CATALOG_INTERNAL_SERVICE_TOKEN` so they still exercise the multi-credential retry path.
+allegro has **no jest runner configured** in `services/allegro-service` (spec files exist,
+no runner) — verification there is `tsc --noEmit` clean plus live probes, recorded as a
+known gap, the same one heureka carries.
+
+### The 6h non-constant-time defect fixed (commit `9dbd3ea`)
+
+Recorded in 6h and still live. Two allegro **receivers** compared the shared secret with
+`!==`, which returns on the first differing byte and leaks the matching prefix length
+through timing:
+
+- `services/allegro-service/src/allegro/orders/orders.controller.ts` — `assertMarketingService`
+- `services/allegro-service/src/allegro/shipments/shipment-status-redacted-scan.service.ts`
+  — `assertInternalService`
+
+Both now use `crypto.timingSafeEqual` behind a length check, matching what orders already
+does for the same value. Verified live in the pod created after the change
+(`timingSafeEqual` present in both compiled files), and behaviour confirmed unchanged:
+
+| Endpoint | valid + allowed name | wrong token (same length) | disallowed name | no creds |
+| --- | --- | --- | --- | --- |
+| `/internal/allegro/order-affinity/replay-candidates` | **200** | 401 | 401 | 401 |
+| `/internal/allegro/shipment-status/redacted-scan` | **200** | 401 | 401 | 401 |
+
+The wrong-token probe uses a same-length value specifically so it reaches the comparison
+rather than short-circuiting on the length check.
+
+### `aa7ae49e` in allegro: what it is still reached for
+
+Item 1 asked what `allegro-service-secret#JWT_TOKEN` still serves. Traced:
+
+| Reacher | Direction | Status |
+| --- | --- | --- |
+| `shared/clients/warehouse-client.service.ts` | outbound -> warehouse | **removed this session** |
+| stock import script | outbound -> warehouse | **removed this session** |
+| `order-client.service.ts` `resolveInternalServiceToken` | outbound -> orders | cutover fallback only; Bearer preferred since 6i |
+| `orders.controller.ts` `assertMarketingService` | **inbound receiver** | load-bearing — marketing's replay lane |
+| `shipment-status-redacted-scan.service.ts` | **inbound receiver** | load-bearing — orders/warehouse callers |
+
+**The important correction: allegro is not only a holder of this value, it is a *receiver*
+of it.** Two inbound endpoints authenticate callers by comparing against
+`ALLEGRO_INTERNAL_SERVICE_TOKEN`. That is why marketing holds the same value
+(`ORDER_AFFINITY_MARKETPLACE_REPLAY_TOKEN`) — it is the client of
+`assertMarketingService`. Retiring `aa7ae49e` therefore cannot be done holder-by-holder:
+the marketing caller and the allegro receiver must move to Bearer **together**, or the
+replay lane breaks. After this session `JWT_TOKEN` is unreachable in allegro code; the
+remaining reachers are all `ALLEGRO_INTERNAL_SERVICE_TOKEN`.
+
+### bazos -> catalog is healthy; migrating it is a privilege reduction
+
+Item 4. Probed from the bazos pod:
+
+```
+static header GET /api/products?limit=1            -> 200
+static header GET /api/products/<nonexistent uuid> -> 404   (authorized)
+no credentials                                     -> 401
+```
+
+`CATALOG_INTERNAL_SERVICE_TOKEN` (`5f420714`, identical on both sides) is **not a JWT** —
+64 opaque characters, no dots, base64-decodes to binary. It cannot be "reissued as RS256";
+moving this lane means changing the contract from `x-internal-service-token` to Bearer,
+as 6h describes for the orders lanes.
+
+Worth doing, because the asymmetry is large: the static-header path synthesises
+`internal:catalog-microservice:admin` + `catalog:write`, while **every** route bazos calls
+is decorated `@RequireCatalogRoles('catalog:authenticated')`. The credential grants admin
+where the routes ask only for authentication. Same shape as aukro in 6x. Not done here —
+it is a contract change, not a rotation, and the lane is green.
+
+### What is blocked
+
+**Minting the replacement principals was denied by the session's permission layer.** Both
+the `check-db-only` and `dry-run` stages succeeded (`wouldCreateUser: true`,
+`wouldAssignRole: true`), and the `--apply` invocation was refused twice. Per the
+constraints, this was not worked around.
+
+Ready to run, unchanged, once approved:
+
+```
+kubectl exec -n statex-apps <auth-pod> -c app -- sh -c 'umask 077
+  node scripts/provision-service-token.js \
+    --email=svc-catalog-microservice--bazos-service@internal.alfares.cz \
+    --service-name=catalog-microservice--bazos-service \
+    --role=internal:bazos-service:service \
+    --expires-in=90d --create-if-missing --apply \
+    --confirm-db-mutation=SERVICE_PRINCIPAL --confirm-token-issuance=SERVICE_JWT \
+    --token-output=/tmp/cat-bazos.token'
+```
+
+Then: probe `/auth/validate` + `GET .../sell-action/status` (expect 201 / 404, **not**
+401), `vault kv patch secret/prod/catalog-microservice BAZOS_SERVICE_TOKEN=@<0600 file>`,
+add the key to `catalog-microservice/k8s/external-secret.yaml`, `kubectl apply`,
+`force-sync`, verify the fingerprint at all four hops, delete both token files.
+
+`catalog-microservice-secret#JWT_TOKEN` (`ae611ed9`) needs the same treatment or removal:
+after this session no catalog code reads it except as the dead bazos-adjacent credential,
+and it too is rejected by auth. Removing it needs the ExternalSecret `data` entry deleted
+as well as the Vault property — ESO does not prune (6x).
+
+### Handed to other sessions
+
+- **Session C** (`orders-microservice`): `orders-microservice-secret#ALLEGRO_INTERNAL_SERVICE_TOKEN`
+  = `aa7ae49e` is the **receiver** side of allegro's outbound orders lane, already migrated
+  to Bearer in 6i. It is retained only as a cutover fallback. Before removing it, confirm
+  allegro's `ORDERS_SERVICE_TOKEN` Bearer path is green — allegro's client prefers Bearer
+  and warns when it falls back to the static header.
+- **Session F** (`marketing-microservice`): `ORDER_AFFINITY_MARKETPLACE_REPLAY_TOKEN` =
+  `aa7ae49e` targets **allegro**, not orders, and its receiver is
+  `assertMarketingService` in `allegro/services/allegro-service/src/allegro/orders/orders.controller.ts`
+  (now constant-time). The endpoint is
+  `GET /internal/allegro/order-affinity/replay-candidates`, verified **200** live this
+  session with `x-service-name: marketing-microservice`. **This lane cannot be migrated
+  from the marketing side alone** — the allegro receiver must gain a Bearer path in the
+  same change, or the lane breaks. Coordinate; the allegro side is Session E's repo.
+
+### Found but not fixed
+
+- Both catalog HS256 credentials are dead now, not in two weeks (blocked on minting, above).
+- `orders-microservice` `GET /api/orders` and `PUT /:id/status` still 403 for allegro's
+  principal — pre-existing, recorded in 6i, still unresolved. Two of four routes
+  `order-client.service.ts` calls have never worked.
+- `aa7ae49e` remains load-bearing on **two inbound allegro endpoints**. It is not retirable
+  until the marketing replay lane moves to Bearer on both ends.
