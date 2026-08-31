@@ -2993,3 +2993,236 @@ after each write.
 Nothing in `marketing`, `logging`, `aukro`, `heureka` or `payments` holds it any more.
 **Three mounts remain across two sessions.** When those land, the value can be rotated —
 and since no DB principal stands behind it, rotation is the only revocation available.
+
+## 6aa. Session G — the superadmin token, ownerless ExternalSecrets, and Phase 6, 2026-08-31
+
+Numbered `6aa` because `6z` was taken twice concurrently (Sessions D and F both claimed it).
+
+### 1. `stock-traceability-runtime-token` retired — sixth dead lane found
+
+The widest-privilege credential in the inventory is gone. It was hand-created (no
+ExternalSecret, no ownerReferences, absent from Vault), HS256, carried
+`global:superadmin`, had expired **2026-06-24**, and was mounted by `suppliers-microservice`
+under two different names for two different targets.
+
+**Both lanes were dead in production** — confirmed by probing from inside the running pod
+before changing anything:
+
+| Lane | Before | After |
+| --- | --- | --- |
+| suppliers -> catalog `GET /api/products/:id` | **401** `Token validation failed` | **404** `Product ... not found` (authenticated; 404 is the legitimate "no rows") |
+| suppliers -> warehouse `POST /api/supplier-reconciliations` | **401** `Invalid token` | **400** body validation (authenticated) |
+
+This is outage number six, and the first one in this migration that was **not** masked into
+an empty result. `imports.service.ts` throws `ServiceUnavailableException` on 401/403 and
+only treats a 404 as "product missing" — the pattern the earlier sessions had to retrofit
+elsewhere was already correct here, so the lane failed loudly and merely went unread.
+
+**Least privilege differs per lane, and the obvious guess is wrong in both directions:**
+
+- catalog: `GET /api/products/:id` is decorated `@RequireCatalogRoles('catalog:authenticated')`,
+  which any non-marathon principal satisfies. No catalog-specific role is needed at all, so
+  the lane carries `internal:catalog-microservice:service`, not `:admin`.
+- warehouse: `POST /api/supplier-reconciliations` is decorated `WAREHOUSE_ADMIN_ROLES`
+  (`supplier-reconciliation.controller.ts:37`). **`:readonly` cannot pass it.** `:admin` is
+  the narrowest role that actually works — a reduction from `global:superadmin`, but not the
+  `:readonly` that the prompt's "least privilege" instinct suggests. Writing a reconciliation
+  is an admin-tier operation in warehouse's own vocabulary.
+
+Two per-pair RS256 principals, 90d:
+
+| Principal | Role | fp (in pod) |
+| --- | --- | --- |
+| `svc-suppliers-microservice--catalog-microservice` (`b08f2287…`) | `internal:catalog-microservice:service` | `34eda9ca` |
+| `svc-suppliers-microservice--warehouse-microservice` (`5a556c66…`) | `internal:warehouse-microservice:admin` | `510577f8` |
+
+Order of operations, each step verified before the next: Vault properties written → ES
+`data` entries added and applied (`Ready=True SecretSynced`) → K8s Secret fingerprints
+matched Vault exactly → pod restarted → **fingerprints confirmed inside the new pod** →
+both lanes probed 200-equivalent → only then, with 0 workloads still referencing it, the
+orphan Secret deleted. The repo `env[]` overrides are gone and the keys now arrive through
+`envFrom`, so the next rotation reaches this pod instead of being shadowed.
+
+**A trap worth recording: `vault kv patch KEY=-` silently wrote empty values.** The first
+attempt piped tokens from a pod path that no longer existed (the auth pod had been replaced,
+taking `/tmp` with it). `kubectl exec` failed, the pipeline's left side produced nothing, and
+`vault kv patch` **reported success while storing an empty string** — both keys read back as
+`e3b0c442`, the sha256 of empty input the prompt warns about. `set -o pipefail` does not help
+across a pipe into a command that accepts empty stdin. The re-run guards on source length
+(`< 100 chars` aborts) before writing. **Verify a secret write by reading back a fingerprint,
+never by trusting the writer's exit code.**
+
+### 2. The two ownerless ExternalSecrets — and a latent outage in `orders-microservice`
+
+Both had already been removed from the cluster: no ExternalSecret in any namespace, no
+Secret anywhere. But `database-credentials` was removed **while `orders-microservice` still
+referenced it**, and the consequence was live:
+
+```
+orders-microservice-57469d8785-8s5zt  CreateContainerConfigError
+    Error: secret "database-credentials" not found
+```
+
+The old ReplicaSet pod kept serving traffic, so nothing alerted — but **orders could not
+create a new pod**, which means the next deploy, restart, eviction or node event would have
+taken the service down with no rollback path. A Secret deletion that looks inert because
+the running pod already has its environment is exactly the shape that turns into an outage
+hours later.
+
+Fixed by bringing the manifest under `k8s-manifests/secrets/` (deny-listed from auto-deploy,
+applied manually — correct for this) and re-applying. Reconstructed with **four keys only**:
+`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`. The dead `JWT_TOKEN` entry (`a2880693`,
+Vault property already deleted 2026-08-27) is **not** in the file, so ESO had nothing to
+re-add — this is the prune that section 6x explains ESO will not do on its own.
+
+Verified: `Ready=True SecretSynced`, `DB_PASSWORD` fp `f78291d9` — identical to the value
+the running orders pod was already using and to `orders-microservice-secret#DB_PASSWORD`,
+so the restore was behaviourally neutral. The stuck pod went `Ready` and the old pod
+retired.
+
+**Worth noting for whoever owns orders (Session C):** the `DB_PASSWORD` named `env[]` entry
+pointing at `database-credentials` is redundant. `orders-microservice-secret` is already in
+`envFrom` carrying the identical value, and a named `env[]` entry overrides `envFrom`.
+Removing the named entry would drop this cross-service coupling entirely. Left alone here —
+it is Session C's repo.
+
+`nginx-microservice-secret` needs **no manifest**. The service is retired
+(`nginx-microservice.retired-20260617.tar.gz`), there is no repo, no workload in any
+namespace, and nothing references the Secret. Its ExternalSecret and Secret are already
+gone; reconstructing them under `k8s-manifests/` would recreate dead objects. The right
+action was to add nothing and record why. `secret/prod/nginx-microservice` still holds three
+`PAYMENT_*` keys for the retired service — out of scope here, flagged for a deliberate
+decision rather than deleted in passing.
+
+### 3. `JWT_SECRET` — the x13 value is not auth's signing secret
+
+The census reproduces, but the grouping means something different from what the prompt's
+framing implies:
+
+| fp | mounts | what it actually is |
+| --- | --- | --- |
+| `366a1388` | 13 | **not** auth's signing key — the HS256 secret for the `ServiceAuthGuard` mesh |
+| `278bf2fc` | 6 | auth's real signing secret, `secret/prod/auth-microservice#JWT_SECRET` |
+| `4ecb98f5` | 1 | domain-research |
+| `b794bf08` | 1 | monitoring-microservice |
+
+`secret/prod/ai-microservice#JWT_SECRET` and `secret/prod/docs-rag-microservice#JWT_SECRET`
+both fingerprint `366a1388`; auth's is `278bf2fc`. **So the 13-pod value cannot mint tokens
+auth would accept** — the "anyone holding this can mint HS256 tokens for 13 services" framing
+overstates it against auth, and understates it elsewhere.
+
+**Where it is still live and exploitable:**
+
+| Service | RS256 path? | `ALLOW_HS256_FALLBACK` | Verdict |
+| --- | --- | --- | --- |
+| `ai-microservice` | yes, `JWT_PUBLIC_KEY` present | `false` | **closed** |
+| `docs-rag-microservice` | none in the guard | unset | **HS256-only, open** |
+| `domain-research` | none in the guard | unset | **HS256-only, open** |
+
+`docs-rag-microservice/src/service-identity/service-auth.guard.ts` has no RS256 branch at
+all. `domain-research/src/service-identity/internal-service.guard.ts` calls
+`jwt.verify(token, secret)` and **checks no claims whatsoever** — any token signed with
+`366a1388`, whatever its subject or roles, is accepted. Thirteen pods hold that key.
+
+Of the 21 mounts, several services mount `JWT_SECRET` with **no runtime verification path**.
+Note the shape of the evidence, because a bare `grep JWT_SECRET` is misleading here — these
+repos do match, but every match is inert:
+
+| Service | matches | what they actually are |
+| --- | --- | --- |
+| `crypto-ai-agent` | 0 | nothing at all |
+| `bazos-service` | 1 | a comment in `shared/auth/auth.module.ts` |
+| `allegro`, `aukro-service` | 3 each | comments only — `auth.module.ts` plus `jwt-verifier.ts` prose describing the *retired* HS256 path |
+| `statex` | 1 | `test/setup.ts` sets `'test-secret-key'` |
+| `flipflop-service` | 4 | an offline SEO script, plus name-only entries in `settings.service.ts` and `env-validator.ts` |
+| `cv-tuning` | 17 | reads its own `CV_AI_JWT_SECRET` override; the bare `JWT_SECRET` is a fallback for calling ai-microservice |
+
+`backups`, `notifications` and `suppliers` pass it to `JwtModule.register({secret})` while
+their `jwt-verifier.ts` documents that RS256-only verification is already in force — the
+module registration is vestigial. `orders-microservice` uses it only as a
+`configured`/`missing` string in an admin health report.
+
+**Staged proposal — explicitly a plan, not executed here** (rotating a 13-pod secret in one
+step is exactly what the prompt forbids):
+
+1. **Drop the dead mounts first.** Remove `JWT_SECRET` from the ES `data` of every service
+   in the table above — none has a runtime verification path, so this is no behaviour
+   change, and it takes the sharing count from 13 toward 3 without touching a value.
+   Confirm each by reading the key back out of the pod (absent, not `e3b0c442`) and by
+   exercising one authenticated route, **not** by grepping — as the table shows, the greps
+   match on comments and would argue against a removal that is in fact safe.
+2. **Retire the vestigial `JwtModule.register({secret})`** in backups, notifications and
+   suppliers, whose verifiers are already RS256-only. Each is a one-line change in the
+   owning repo, with the existing tests as the check.
+3. **Give docs-rag and domain-research an RS256 path**, mirroring `ai-microservice`'s guard:
+   verify with `JWT_PUBLIC_KEY` first, fall back to HS256 only while
+   `ALLOW_HS256_FALLBACK !== 'false'`. Mint per-pair principals for their ~10 caller repos.
+   This is the only step needing real code and coordination.
+4. **Flip `ALLOW_HS256_FALLBACK=false`** on both once every caller is re-minted, then
+   **rotate `366a1388`**. At that point it verifies nothing and rotation is cheap.
+5. **Split `278bf2fc`** last, when auth's own HS256 issuance is fully retired — it is the
+   live signing key and must not move before then.
+
+Steps 1 and 2 are safe today and touch four sessions' repos. Step 3 is the real work.
+
+### 4. Phase 6 — the monitor existed and had been failing silently for four days
+
+`shared/scripts/token-health/` was already written (audit + guard + timer + installer). It
+works: run against the live cluster it enumerates **186 mounts** from running pods, decodes
+each JWT, and reports algorithm, days-to-expiry, sharing and privilege — `34 critical, 0 warn,
+0 error, 39 ok`. It independently confirmed this session's own fix (`suppliers-microservice
+CATALOG/WAREHOUSE_SERVICE_TOKEN`, RS256, 89 days). All 34 criticals are HS256 remnants in
+other sessions' scope, correctly flagged as structurally dead whatever their expiry.
+
+**But it had never produced a single alert.** `statex-token-health.timer` was installed and
+firing daily; the service exited **2 on every run from 2026-08-28 to 2026-08-31**:
+
+```
+mkdir: cannot create directory '/var/lib/statex': Permission denied
+ERROR: cannot create state directory /var/lib/statex/token-health
+```
+
+The unit runs as `ssf` (deliberately — Telegram delivery and cluster reads both use that
+user's credentials) but the guard's own `mkdir -p` targeted root-owned `/var/lib`. Four
+scheduled runs, four failures, no reading taken, nobody told.
+
+**The thing built to catch silent credential failures was itself failing silently.** The
+guard's shell-level discipline was fine — it exited 2 and wrote the reason to the journal,
+exactly as designed. The gap was one level up: **a systemd unit going red notifies nobody.**
+`SuccessExitStatus=0 1` correctly distinguishes "findings reported" from "could not run",
+and then nothing consumed the distinction.
+
+Two fixes:
+
+1. `StateDirectory=statex/token-health` on the unit, so systemd creates the directory owned
+   by `User=` before `ExecStart`, plus an explicit `TOKEN_HEALTH_STATE_DIR`. Verified by
+   running the guard with a writable state dir: exit 0, baseline written, **186 mounts**.
+2. `OnFailure=statex-token-health-failure.service` — a new companion unit and
+   `token-health-failure-alert.sh` that pulls the real `ERROR` lines from the journal and
+   sends them to the same Daily Digest Telegram channel the findings would have used, via
+   the same `deploy-queue/notify.sh` (no duplicated credential). Exit 1 stays in
+   `SuccessExitStatus`, so this fires only on genuine operational failure.
+
+**Tested live, not asserted:** the failure alert was run against the unit that really failed
+this morning and delivered — `[notify] sent to Telegram (HTTP 201)`. Both unit files pass
+`systemd-analyze verify` clean.
+
+**One step outstanding and it needs root:** installing the updated units requires a password
+this session does not have.
+
+```bash
+sudo cp /home/ssf/Documents/Github/shared/scripts/token-health/statex-token-health.service \
+        /home/ssf/Documents/Github/shared/scripts/token-health/statex-token-health-failure.service \
+        /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl start statex-token-health.service   # confirm exit 0/1, not 2
+```
+
+Until that runs, the timer keeps firing the **old** unit and credential expiry stays
+unmonitored. Everything else in this section is live.
+
+**The lesson generalises past this unit:** a monitor's own health is not covered by the
+monitor. Anything scheduled that reports only by exiting non-zero needs a path that carries
+that failure to a human, or it provides the appearance of coverage rather than coverage.
+Five expired credentials caused outages because nothing was watching; a sixth would have
+been missed again because the watcher was broken and equally quiet.
