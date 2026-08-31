@@ -191,6 +191,48 @@ describe('Auth contact code contract', () => {
     expect(codeBlock[0]).toContain('font-weight:bold');
   });
 
+  it('sanitizes the contact-code email display domain before rendering HTML', async () => {
+    const { service } = makeService();
+    jest.restoreAllMocks();
+    (service as any).httpService = { post: jest.fn(() => of({ data: { id: 'notification-3' } })) };
+
+    await (service as any).sendContactCode(
+      'email',
+      'person@example.test',
+      '123456',
+      'marathon.alfares.cz"><img src=x onerror=alert(1)>',
+    );
+
+    const payload = (service as any).httpService.post.mock.calls[0][1];
+    expect(payload.fromName).toBe('alfares.cz');
+    expect(payload.message).toContain('https://alfares.cz');
+    expect(payload.message).not.toContain('<img');
+    expect(payload.message).not.toContain('onerror');
+  });
+
+  it('uses the validated return_url host for contact-code email branding', async () => {
+    const { service } = makeService();
+
+    await service.requestContactCode(
+      {
+        identifier: 'person@example.test',
+        return_url: 'https://catalog.alfares.cz/orders',
+        app_domain: 'evil.example.test',
+      } as any,
+      '10.0.0.1',
+    );
+
+    expect((service as any).sendContactCode).toHaveBeenCalledWith(
+      'email',
+      'person@example.test',
+      '123456',
+      'catalog.alfares.cz',
+      undefined,
+      'login',
+      15,
+    );
+  });
+
   it('stores a recovery code with its purpose and the recovery TTL', async () => {
     const { service, savedTokens } = makeService();
     (service as any).passwordRecoveryTtlMinutes = 9;

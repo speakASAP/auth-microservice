@@ -1,6 +1,6 @@
 import { UsersService } from './users.service';
 
-describe('UsersService admin list query filters', () => {
+describe('UsersService', () => {
   function makeService() {
     const whereClauses: string[] = [];
     const query = {
@@ -16,12 +16,15 @@ describe('UsersService admin list query filters', () => {
     };
     const repository = {
       createQueryBuilder: jest.fn().mockReturnValue(query),
+      existsBy: jest.fn(),
+      findOne: jest.fn(),
     };
     const walletRepository = {};
 
     return {
       service: new UsersService(repository as any, walletRepository as any, walletRepository as any, walletRepository as any),
       query,
+      repository,
       whereClauses,
     };
   }
@@ -48,5 +51,16 @@ describe('UsersService admin list query filters', () => {
     expect(adminClause).toContain('ur."userId" = "user"."id"');
     expect(adminClause).toContain('AND ur."applicationId" = :adminApplicationId');
     expect(adminClause).not.toContain('ur."userId" = user.id');
+  });
+
+  it('checks user existence without loading profile fields', async () => {
+    const { service, repository } = makeService();
+    repository.existsBy.mockResolvedValue(true);
+
+    const exists = await service.existsById('e9c0e180-c837-404e-a954-a37b56241a80');
+
+    expect(exists).toBe(true);
+    expect(repository.existsBy).toHaveBeenCalledWith({ id: 'e9c0e180-c837-404e-a954-a37b56241a80' });
+    expect(repository.findOne).not.toHaveBeenCalled();
   });
 });
