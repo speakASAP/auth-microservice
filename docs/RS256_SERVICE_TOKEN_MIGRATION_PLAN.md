@@ -2466,6 +2466,83 @@ report no drift, pass review, and be entirely inert in production** — and the 
 assumed a Vault write that never happened. A commit touching only `k8s/*.yaml` deploys
 nothing. Until `kubectl apply` runs and a pod created afterwards is read, nothing has changed.
 
+## 6ah. Session F cutover executed and verified live, 2026-08-31
+
+6ab reported the lanes prepared but not cut over, because Vault writes were refused. The
+permission was granted and the cutover ran. **Every Session F lane is now off `a2880693`.**
+
+### Four-hop evidence, from pods created after the change
+
+| Lane | credential | Vault | K8s Secret | pod | old value now |
+| --- | --- | --- | --- | --- | --- |
+| marketing -> aukro replay | `MARKETING_REPLAY_TOKEN` | `725ca652` | `725ca652` | `725ca652` (both ends) | **401** |
+| marketing -> bazos replay | `MARKETING_REPLAY_TOKEN` | `88668001` | `88668001` | `88668001` (both ends) | **401** |
+| marketing API (17 routes) | `MARKETING_API_TOKEN` | `b24e8588` | `b24e8588` | `b24e8588` | **401** |
+| catalog -> heureka feed | `CATALOG_INTERNAL_SERVICE_TOKEN` | `5f420714` | `5f420714` | `5f420714` | n/a |
+| payments -> orders | `ORDERS_SERVICE_TOKEN` | `633a4184` | `633a4184` | `633a4184` | mounts deleted |
+
+Sender and receiver fingerprints match per lane, which is the property the one-Vault-property
+design buys: a single `vault kv patch` moved both ends, so there was never a skew window.
+
+### Live results
+
+```
+marketing -> aukro replay   200   (a2880693 -> 401)
+marketing -> bazos replay   200   (a2880693 -> 401)
+marketing API /campaigns    400 authorized   (a2880693 -> 401)
+logging ingest              201   (a2880693 -> 401, already true in 6ab)
+catalog -> heureka include  401 -> 400 authorized   ← outage six fixed
+```
+
+**Outage six is closed.** `catalog -> heureka` feed inclusion went from `401 Missing or
+invalid Heureka feed mutation service token` to `400 Heureka readiness blocked feed
+inclusion` — authorization now passes and only business validation rejects a non-existent
+product id, while a wrong token still returns 401. Verified from inside the catalog pod
+against the path the caller actually builds.
+
+`JWT_TOKEN` is now unset in the aukro, bazos, payments and heureka pods, and
+`PAYMENTS_ORDERS_SERVICE_TOKEN` is gone from payments. Zero fallback warnings and zero
+error-level lines in payments since the restart; all four deployments 1/1.
+
+### Ordering used
+
+1. `vault kv patch` the three new properties — **first**, because the ExternalSecrets
+   committed on 2026-08-27 already referenced them and applying those manifests against a
+   Vault without them would have blanked both replay credentials.
+2. `kubectl apply` the four ExternalSecrets. All four reported **`configured`**, not
+   `unchanged` — direct confirmation the cluster had been stale relative to git for four
+   days, exactly the 6q variant-4 hazard.
+3. Force-sync, then confirm each lane's sender and receiver fingerprints match in the Secret.
+4. Restart aukro + bazos + marketing + payments **together** under
+   `with-deploy-lock.sh`, converge through `wait-for-rollout.sh`.
+5. Re-probe from the new pods; merge the heureka branch only after
+   `heureka-service-secret#HEUREKA_INTERNAL_SERVICE_TOKEN` was confirmed present.
+
+### A verification error worth recording
+
+The first "is `a2880693` rejected now?" probe returned 401 on both replay lanes — but the
+shell had sourced the value from `heureka-service-secret#JWT_TOKEN`, which the ES apply had
+just pruned. `base64: invalid input` was the only tell; the variable was empty, so the probe
+proved an *empty* token is rejected, not that the shared value is. Re-sourced from
+`secret/prod/heureka-service#JWT_TOKEN` (fp `a2880693`, 211 chars) the 401s reproduced
+genuinely.
+
+**A 401 from an empty credential and a 401 from a rejected credential are indistinguishable
+in the status code.** Fingerprint the value you are about to present, and assert it is the
+one you meant, before believing a negative result. This is the same class as 6v's
+wrong-endpoint 401 — the probe was wrong, not the system.
+
+### `a2880693` after this session
+
+4 mounts remain, none in Session F's repos: `heureka-service-secret` (a stale key the pod no
+longer reads), and the `orders`/`warehouse` pair, which is **Session C's**. Vault still holds
+the property in several paths as the source behind those.
+
+**It still cannot be rotated**, but nothing in marketing, logging, aukro, heureka or payments
+holds it any more. What remains is Session C's `orders#PAYMENTS_INTERNAL_SERVICE_TOKEN` and
+`orders#WAREHOUSE_INTERNAL_SERVICE_TOKEN`, both read outbound by
+`warehouse-reservation.client.ts:275`.
+
 ## 6ag. Cross-session housekeeping and a re-measured inventory, 2026-08-31
 
 Four items raised against the C/D/E/F scope, each re-measured rather than taken on report.
@@ -2597,7 +2674,12 @@ while writes were allowed.
   flipflop -> orders admin status (401, 22 days), both found by a full sweep AFTER Sessions
   A/B completed. Both on per-pair RS256 with reduced privilege; verified 200/400 from the
   deployed pods.
-- [x] **Session F complete 2026-08-27 (6ae — UNVERIFIED, corrected by 6ab)** — all 19 `a2880693` mounts in
+- [x] **Session F COMPLETE and verified live 2026-08-31 (6ab findings, 6ah cutover)** — all
+  five owned repos are off `a2880693`; both replay lanes, the marketing API and payments
+  cut over with four-hop fingerprint evidence, and outage six (catalog -> heureka, 401)
+  fixed. The earlier 6ae claim of completion on 2026-08-27 was **unverified** — none of its
+  credentials existed in Vault or the cluster.
+- [x] ~~Session F complete 2026-08-27 (6ae — UNVERIFIED, corrected by 6ab)~~ — all 19 `a2880693` mounts in
   `marketing`, `logging`, `aukro`, `heureka`, `payments` retired; Vault sources 7 -> 2.
   Census was 3 short: deployment `env` aliases and a second `secretKey` on the same
   property are mounts too. Replay lanes moved atomically (sender and receiver read one
