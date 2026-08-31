@@ -2190,6 +2190,281 @@ Fingerprints matched minted = Vault = K8s Secret = pod, each confirmed in a pod 
   `x-service-name` values it authenticates only as `allegro-service` (400; the rest 401). The
   6u ambiguity check holds. Session E.
 
+## 6ab. Session F (re-run), 2026-08-31 — `a2880693` is still live on every owned lane
+
+Session F owned `marketing-microservice`, `logging-microservice`, `aukro`, `heureka`,
+`payments-microservice`. The headline result is not a migration: it is that **the work this
+prompt describes was already committed on 2026-08-27 and never applied to the cluster**, and
+that the half-applied state is more dangerous than either end state.
+
+### The blocking discovery: git and the cluster disagree, and applying git breaks production
+
+All six ExternalSecret files in scope were rewritten on 2026-08-27 to read purpose-specific
+Vault properties instead of the shared `#JWT_TOKEN`. Nobody ran `kubectl apply`. So:
+
+| Layer | `AUKRO_INTERNAL_SERVICE_TOKEN` reads |
+| --- | --- |
+| git (`aukro/k8s/external-secret.yaml`, committed `c7fb989`) | `secret/prod/aukro-service#MARKETING_REPLAY_TOKEN` |
+| Vault | **that property does not exist** |
+| live cluster ES | still `secret/prod/aukro-service#JWT_TOKEN` → `a2880693` |
+
+`kubectl apply -f` on those committed files, with no other change, points both replay
+credentials at a non-existent Vault property. ESO does not fail on a missing property — it
+syncs happily and **silently omits the key** (variant 2 of the table in 6q). Both guards then
+compute `configuredToken = ''` and reject every request. That is an immediate outage on two
+lanes that are currently returning 200.
+
+This is the fourth distinct way a key fails to reach a pod, and it is the operational one
+from 6q restated with teeth: **the deploy queue builds images, it does not apply manifests.**
+A commit that only changes `k8s/*.yaml` therefore deploys nothing and changes nothing, while
+leaving the repository looking finished. Four days passed with the migration recorded as done
+in git and untouched in production.
+
+**The correct order is Vault first, manifest second** — the reverse of the order the file
+history implies. `MARKETING_REPLAY_TOKEN` must exist before the ES that reads it is applied.
+
+### One property per lane moves both ends atomically
+
+The 2026-08-27 design has a property worth keeping: the marketing sender and the
+aukro/bazos receiver are mapped to the **same** Vault property.
+
+```
+marketing-microservice-secret#ORDER_AFFINITY_AUKRO_REPLAY_TOKEN ─┐
+                                                                 ├─ secret/prod/aukro-service#MARKETING_REPLAY_TOKEN
+aukro-service-secret#AUKRO_INTERNAL_SERVICE_TOKEN ───────────────┘
+```
+
+Because `assertMarketingService()` is a byte-for-byte comparison, sender and receiver must
+hold the identical value. Routing both through one property makes a single `vault kv patch`
+move both ends at once, which removes the sender/receiver skew window the hard constraints
+warn about. The two services still have to restart together — `envFrom` changes do not reach
+a running container — but there is no window in which one side has the new value and the
+other has the old.
+
+### Four corrections to the prompt's census, all measured
+
+**1. `logging-microservice#JWT_TOKEN` does not exist, and the lane is already retired.**
+The prompt lists it as a live mount to be narrowed. Measured: the key is absent from
+`logging-microservice-secret` (which holds only the three `PAYMENT_*` keys), the pod reports
+`JWT_TOKEN: NOT SET at all`, and git's ES has no such entry. `log-ingest.guard.ts:95` still
+contains the `if (jwtToken) configured.add(jwtToken)` line, but it adds nothing because the
+variable is unset. Probed from the marketing pod:
+
+```
+POST logging-microservice:3367/api/logs  Bearer a2880693  -> 401
+POST logging-microservice:3367/api/logs  Bearer <real>    -> 201
+```
+
+**The shared value is already rejected at ingest.** Only an orphan Vault property remains.
+
+**2. No speakasap service falls back to `JWT_TOKEN`.** The prompt warns that "several
+speakasap services fall back to `JWT_TOKEN`, so check those before removing." Eleven files do
+contain `LOGGING_SERVICE_TOKEN || JWT_TOKEN`. All ten running pods were measured:
+
+```
+api-gateway, assessment, certification, course, education,
+financial, notification, payment, salary, user   -> primary fp=b6e283e5 (all ten)
+```
+
+`b6e283e5` is also the sole entry of `LOG_INGEST_BEARER_TOKENS`. Every sender is on the
+explicit list; the fallback is dead code in production. The feared breakage cannot occur.
+
+**3. `MARKETING_API_TOKEN` guards 17 routes, not ~12, and has no in-ecosystem caller.**
+A full grep for `x-service-token` across every repo returns only marketing's own guard and
+its tests. The one client that targets marketing (`aukro/shared/clients/marketing-client.service.ts`)
+calls `/api/marketing/aukro/product-recommendations`, which is not behind `requireServiceAuth`.
+So this is an **operator credential**, not a service-pair lane, and a per-pair RS256 principal
+is the wrong shape for it: there is no service caller to migrate and RS256 buys nothing for a
+human-held secret. Correct fix is a fresh opaque secret in its own Vault property, leaving
+`requireServiceAuth`'s string comparison untouched. Recorded as a deliberate choice, not an
+oversight.
+
+**4. A mount the census does not list: `heureka#HEUREKA_INTERNAL_SERVICE_TOKEN` = `a2880693`.**
+The live Deployment maps *both* `JWT_TOKEN` and `HEUREKA_INTERNAL_SERVICE_TOKEN` from
+`heureka-service-secret#JWT_TOKEN`. Renaming the variable did not give it a different value.
+
+### Outage six: `catalog -> heureka` feed mutation, 401 in production
+
+Found while verifying whether `heureka#JWT_TOKEN` was removable — the same "grep says unused,
+verification says load-bearing" pattern that caught three of four claims in 6q.
+
+Both heureka inbound guards resolved `HEUREKA_INTERNAL_SERVICE_TOKEN || INTERNAL_SERVICE_TOKEN
+|| JWT_TOKEN`, and with the first and third mapped to the same Secret key they accepted
+`a2880693`. But `catalog-microservice` presents its **own** identity credential:
+
+```
+catalog pod:  CATALOG_INTERNAL_SERVICE_TOKEN fp=5f420714   (chain ends here)
+heureka pod:  HEUREKA_INTERNAL_SERVICE_TOKEN fp=a2880693   (what the guard accepts)
+```
+
+Probed from inside the catalog pod, against the path `products.service.ts:2601` actually
+targets:
+
+```
+POST heureka-service:3800/heureka/products/<non-existent-id>/include  -> 401
+   "Missing or invalid Heureka feed mutation service token"
+```
+
+**It fails silently.** `products.service.ts:2610` catches the 401 and returns
+`blockedChannelAction('heureka', …, 'heureka_publish_unavailable', 'Resolve Heureka readiness
+blockers before retrying.')` with no error log. Every Heureka publish has been reporting a
+plausible *business* reason for an *authentication* failure. This is the same shape as the
+three stock outages in 6q/6x — an error swallowed into a legitimate-looking empty result —
+but with a new disguise: not `[]` or `0`, but a domain-specific "not ready" verdict, which is
+harder to spot precisely because it reads as a real answer.
+
+**A routing trap worth naming, alongside the one in 6y.** heureka's `main.ts` calls
+`setGlobalPrefix('heureka')`, so probing `/products/:id/include` returns a Nest routing
+**404**, not the guard's 401 — a false pass that would have closed this investigation with the
+outage intact. The first probe run did exactly that. Reading the caller's URL construction,
+not the controller decorator, is what produced the right target. Combined with 6y's
+`ORDERS_STATUS_SERVICE_TOKEN` trap and 6v's wrong-endpoint 401, the rule generalises:
+**resolve the caller's own full URL from the call site before believing any status code.**
+
+Fixed on branch `session-f/retire-a2880693-heureka` (`b10ea03`), deliberately **not** merged
+to `main` — see the ordering constraint below.
+
+- `JWT_TOKEN` dropped from both guard chains
+- `HEUREKA_INTERNAL_SERVICE_TOKEN` mapped to
+  `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`, the value the caller
+  actually presents, so one property again serves both sides
+- named in `deployment.yaml`: heureka has **no `envFrom: secretRef`**, so an ES key does not
+  reach the container unless it is named there — variant 3 from 6q, which this repo's own
+  manifest comment already warns about and which the new entry would otherwise have hit
+- `internal-service-token-chain.self-test.ts`, wired into `verify:task-010-source-parity`,
+  asserts neither guard reads `JWT_TOKEN`. **Confirmed to fail** when the fallback is
+  reintroduced (`FAIL feed-mutation.guard.ts: does not read JWT_TOKEN`), then pass again on
+  restore. `npm run typecheck` clean.
+
+`5f420714` is catalog's single identity credential across seven services and is listed in 6u
+as one of the distinct per-caller values the ambiguity check makes safe, so accepting it is
+consistent with the end state rather than a new sharing problem.
+
+### Conflict with the earlier "6z. Session F, 2026-08-27" section — that end state is not present
+
+An earlier section titled `## 6z. Session F, 2026-08-27 — 16 of 19 a2880693 mounts retired`
+reports every owned mount migrated, with new fingerprints `f9609e86` (aukro replay),
+`50685561` (bazos replay) and `d8a1d3f4` (`MARKETING_API_TOKEN`). **None of that is true of
+the cluster or of Vault on 2026-08-31.** Measured directly, not inferred:
+
+```
+aukro-service-secret#AUKRO_INTERNAL_SERVICE_TOKEN            fp=a2880693
+marketing-microservice-secret#ORDER_AFFINITY_AUKRO_REPLAY_TOKEN fp=a2880693
+bazos-service-secret#BAZOS_INTERNAL_SERVICE_TOKEN            fp=a2880693
+marketing-microservice-secret#ORDER_AFFINITY_BAZOS_REPLAY_TOKEN fp=a2880693
+marketing-microservice-secret#MARKETING_API_TOKEN            fp=a2880693
+heureka-service-secret#HEUREKA_INTERNAL_SERVICE_TOKEN        ABSENT
+```
+
+`MARKETING_REPLAY_TOKEN` does not exist in `secret/prod/aukro-service` or
+`secret/prod/bazos-service`, and a sweep of **every** path under `secret/prod` finds none of
+the three claimed fingerprints anywhere. Vault metadata settles it: the newest version of
+each of those three paths is dated **2026-08-26**, before the section's own date, so no write
+described there ever landed.
+
+The most likely reading is that the section records intended work whose Vault writes never
+executed — the same failure this session hit, where writes are refused while reads and probes
+succeed, so a run can look complete from the manifest side alone. **This section is left in
+place rather than edited**: overwriting another session's record would destroy the evidence.
+Treat 6z's Session F table as *unverified*, and this section's measurements as current.
+
+The practical consequence is that the lanes are still on `a2880693` and still working. No
+outage was introduced by the discrepancy; the risk is only that a reader trusting 6z would
+skip the Vault writes and then apply the manifests, which is precisely the sequence that
+breaks both replay lanes.
+
+### `payments-microservice` is clear, and its source is already migrated
+
+Both mounts confirmed inert, exactly as the prompt describes:
+
+```
+ORDERS_SERVICE_TOKEN           fp=633a4184  (per-pair RS256, set)
+PAYMENTS_ORDERS_SERVICE_TOKEN  fp=a2880693  (mounted, unreachable)
+JWT_TOKEN                      fp=a2880693  (0 references in payments-microservice/src)
+fallback warnings in the last 7 days: 0
+```
+
+`orders-payment-status.client.ts` no longer contains the `||` chain at all — `resolveServiceToken()`
+returns `ORDERS_SERVICE_TOKEN` alone and `resolveAuthHeaders()` throws rather than send an
+unauthenticated request. Git is done; only the un-applied ES and the Vault properties remain.
+
+### Baseline, measured from the marketing pod before any change
+
+Every probe against the caller's own resolved target, per 6v:
+
+| Lane | real credential | wrong credential |
+| --- | --- | --- |
+| marketing -> aukro replay | **200** | 401 |
+| marketing -> bazos replay | **200** | 401 |
+| marketing API `/campaigns` | **400** (authorized) | 401 |
+| logging ingest | **201** | 401 |
+| logging ingest with `a2880693` | — | **401** (already retired) |
+| catalog -> heureka include | **401 (outage)** | 401 |
+
+### State of `a2880693`: 13 mounts, not 16
+
+`logging-microservice#JWT_TOKEN` does not exist; `heureka#HEUREKA_INTERNAL_SERVICE_TOKEN` was
+missing from the census. Measured across the five owned repos:
+
+| Mount | Status |
+| --- | --- |
+| `aukro#AUKRO_INTERNAL_SERVICE_TOKEN` | live inbound (replay receiver) |
+| `aukro#JWT_TOKEN` | source property behind the above |
+| `bazos#BAZOS_INTERNAL_SERVICE_TOKEN` | live inbound (replay receiver) |
+| `bazos#JWT_TOKEN` | source property behind the above |
+| `marketing#ORDER_AFFINITY_AUKRO_REPLAY_TOKEN` | live outbound, 200 |
+| `marketing#ORDER_AFFINITY_BAZOS_REPLAY_TOKEN` | live outbound, 200 |
+| `marketing#MARKETING_API_TOKEN` | live, 17 mutating routes |
+| `heureka#HEUREKA_INTERNAL_SERVICE_TOKEN` | **live inbound, and the cause of outage six** |
+| `heureka#JWT_TOKEN` | source property behind the above |
+| `payments#JWT_TOKEN`, `payments#PAYMENTS_ORDERS_SERVICE_TOKEN` | inert, safe to remove |
+| `logging-microservice#JWT_TOKEN` | **Vault property only** — not in the Secret, not in the pod |
+
+**`a2880693` cannot be rotated.** What holds it, exactly: the two replay lanes (both ends of
+each), `MARKETING_API_TOKEN`, and heureka's inbound guard. Every one is a *live* credential
+whose replacement requires a Vault write, and Vault writes were blocked for this session by
+the harness permission classifier — reads and probes were allowed, writes and deletes were
+not. No credential was written, so no lane was changed and no lane was broken.
+
+### What is prepared, and the required ordering
+
+Everything that does not require a Vault write is done and verified. The remainder is staged
+in `.session-f/`:
+
+- `RUN-THESE.sh` — mints the three credentials, repoints marketing's ES, applies the five
+  ExternalSecrets, force-syncs, and restarts the lanes together under
+  `with-deploy-lock.sh` + `wait-for-rollout.sh`. Values are generated in-process and never
+  printed; only fingerprints are shown.
+- `verify.sh` + `verify.js` + `probe-catalog-heureka.js` — re-run the baseline table from
+  inside each caller's own pod, plus the sender/receiver fingerprint match per lane.
+- `FINDINGS.md` — the measured state above.
+
+**Deploy ordering, and why it is not negotiable:**
+
+1. `vault kv patch` the three properties **first**. The committed ES files already reference
+   `MARKETING_REPLAY_TOKEN`; applying them against a Vault that lacks it blanks both replay
+   credentials.
+2. Apply the ExternalSecrets, force-sync, and confirm each lane's sender and receiver
+   fingerprints **match each other** and are not `a2880693`.
+3. Restart marketing + aukro + bazos **together**. One Vault property per lane means the
+   values cannot skew, but a running container still holds the old `envFrom` values.
+4. Merge `session-f/retire-a2880693-heureka` to `main` **only after** step 2 confirms
+   `heureka-service-secret#HEUREKA_INTERNAL_SERVICE_TOKEN` exists. Merging first deploys a
+   guard whose credential is not yet in the Secret, turning outage six's 401 into a 401 for
+   every caller instead of just catalog.
+5. Only once every lane re-probes green: delete the `JWT_TOKEN` properties (and remove each
+   ES `data` entry — **ESO does not prune**, 6x), then rotate the value.
+
+### The reusable lesson
+
+Three sessions have now recorded a variant of "the manifest is not the pod". 6q found three
+ways a key silently fails to arrive; 6x found the fourth, that a committed manifest is not an
+applied one. Session F found the compound case: **a repository can be fully migrated in git,
+report no drift, pass review, and be entirely inert in production** — and the moment someone
+"finishes the job" by applying those manifests, two working lanes go down, because the commits
+assumed a Vault write that never happened. A commit touching only `k8s/*.yaml` deploys
+nothing. Until `kubectl apply` runs and a pod created afterwards is read, nothing has changed.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
