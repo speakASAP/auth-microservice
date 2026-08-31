@@ -2340,9 +2340,10 @@ to `main` — see the ordering constraint below.
 as one of the distinct per-caller values the ambiguity check makes safe, so accepting it is
 consistent with the end state rather than a new sharing problem.
 
-### Conflict with the earlier "6z. Session F, 2026-08-27" section — that end state is not present
+### Conflict with the earlier "6ae. Session F, 2026-08-27" section — that end state is not present
 
-An earlier section titled `## 6z. Session F, 2026-08-27 — 16 of 19 a2880693 mounts retired`
+An earlier section titled `## 6ae. Session F, 2026-08-27 — 16 of 19 a2880693 mounts retired`
+(renumbered from `6z`, which Session D had already taken)
 reports every owned mount migrated, with new fingerprints `f9609e86` (aukro replay),
 `50685561` (bazos replay) and `d8a1d3f4` (`MARKETING_API_TOKEN`). **None of that is true of
 the cluster or of Vault on 2026-08-31.** Measured directly, not inferred:
@@ -2366,10 +2367,10 @@ The most likely reading is that the section records intended work whose Vault wr
 executed — the same failure this session hit, where writes are refused while reads and probes
 succeed, so a run can look complete from the manifest side alone. **This section is left in
 place rather than edited**: overwriting another session's record would destroy the evidence.
-Treat 6z's Session F table as *unverified*, and this section's measurements as current.
+Treat 6ae's Session F table as *unverified*, and this section's measurements as current.
 
 The practical consequence is that the lanes are still on `a2880693` and still working. No
-outage was introduced by the discrepancy; the risk is only that a reader trusting 6z would
+outage was introduced by the discrepancy; the risk is only that a reader trusting 6ae would
 skip the Vault writes and then apply the manifests, which is precisely the sequence that
 breaks both replay lanes.
 
@@ -2465,6 +2466,100 @@ report no drift, pass review, and be entirely inert in production** — and the 
 assumed a Vault write that never happened. A commit touching only `k8s/*.yaml` deploys
 nothing. Until `kubectl apply` runs and a pod created afterwards is read, nothing has changed.
 
+## 6ag. Cross-session housekeeping and a re-measured inventory, 2026-08-31
+
+Four items raised against the C/D/E/F scope, each re-measured rather than taken on report.
+
+### The HS256 count is 16, not 34 — the 2026-08-27 baseline is stale
+
+A live sweep of every JWT-shaped key in `statex-apps`:
+
+```
+total JWT-shaped keys: 42     RS256: 26     HS256: 16     expired: 1
+distinct HS256 values: 8 over 16 mount points
+```
+
+Against the 6y baseline (55 keys, 22 RS256 / 33 HS256, 13 distinct values, 6 expired) the
+HS256 side has halved and expiries are down to one. **Anyone quoting "34 HS256 criticals"
+is reading the 2026-08-27 figure.** Sessions C-G plus this session's ExternalSecret applies
+account for the difference.
+
+Values still shared across more than one mount:
+
+| fp | mounts | holders |
+| --- | --- | --- |
+| `a2880693` | 4 | heureka, orders, warehouse |
+| `aa7ae49e` | 3 | allegro, marketing, orders |
+| `9431f75c` | 3 | flipflop, marketing |
+| `321c86c8` | 2 | flipflop, orders |
+
+`a2880693` is down from 13 in-scope mounts to 4, none of which are Session F's: heureka's
+remaining copy is released by the branch below, and the orders/warehouse pair is Session C's.
+`aa7ae49e` is the value 6y already cleared as over-shared but not spoofable.
+
+### Heading collisions resolved: `6z` x2 and `6aa` x2
+
+Concurrent sessions appended the same letters. Resolved by first-writer-keeps, later-writer
+renumbered, so no existing cross-reference breaks:
+
+| Was | Now | Why |
+| --- | --- | --- |
+| `6z` Session D, 2026-08-27 | `6z` unchanged | earlier in document order |
+| `6z` Session F, 2026-08-27 | **`6ae`** | retitled "(UNVERIFIED, see 6ab)" — its claimed end state is absent from Vault and the cluster |
+| `6aa` Session C, 2026-08-27 | `6aa` unchanged | earlier date |
+| `6aa` Session E, 2026-08-31 | **`6af`** | later |
+
+References inside 6ab and in the progress list were updated to match. `6ad` (Session G) and
+`6ac` (Session C) were already unique and are untouched.
+
+**The letter collisions are a symptom worth fixing properly.** Five sessions appending
+`## 6<letter>` to one file concurrently will keep colliding. A per-session file under
+`docs/rs256/` with an index would remove the class of problem.
+
+### `orders#DB_PASSWORD` — redundant *today*, but it is a named override
+
+Session C's repo, so recorded not edited. Measured:
+
+```
+orders-microservice-secret#DB_PASSWORD  fp=f78291d9
+database-credentials#DB_PASSWORD        fp=f78291d9
+orders pod effective DB_PASSWORD        fp=f78291d9
+```
+
+The Deployment sets `DB_PASSWORD` explicitly from `database-credentials` *and* pulls
+`orders-microservice-secret` via `envFrom`. The explicit `env[]` entry wins, so this is the
+same shape as the `flipflop-warehouse-token` override removed in 6x and the named-override
+hazard in that section: the values agree now, so removal is behaviourally neutral, but a
+rotation reaching `orders-microservice-secret` alone would silently miss this pod.
+
+Remove the `env[]` entry (not the Secret — `database-credentials` is mounted by aukro and
+orders for real). Verify by fingerprint inside a pod created afterwards, per 6x's sequence.
+
+### `secret/prod/nginx-microservice` — three orphan keys, verified deletable, not deleted
+
+`nginx-microservice` was retired on 2026-06-17 (`nginx-microservice.retired-20260617.tar.gz`)
+and 6x already removed its `JWT_TOKEN`. Three `PAYMENT_*` properties remain:
+
+```
+PAYMENT_API_KEY          fp=5a2108e1
+PAYMENT_APPLICATION_ID   fp=ebdf11d7
+PAYMENT_WEBHOOK_API_KEY  fp=39e0dfd5
+```
+
+Checked before recommending deletion: no workload, Deployment or Secret named `nginx*` in
+`statex-apps`; no ExternalSecret anywhere reads `secret/prod/nginx-microservice`; and all
+three fingerprints were compared against the `PAYMENT_*` triple in **all 25** Vault paths
+that carry one — every value is unique to nginx, so nothing else depends on them.
+
+**That last check is the one worth keeping.** "No ExternalSecret references this path" only
+proves the *path* is unread; it says nothing about whether the *values* are duplicated into
+another service under a different property name. Fingerprint the values across every path
+before deleting a retired service's secrets.
+
+`vault kv delete` is a soft delete (`undelete -versions=7` restores it), so this is
+reversible. Not executed here — deletes were refused by the harness permission classifier
+while writes were allowed.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
@@ -2502,7 +2597,7 @@ nothing. Until `kubectl apply` runs and a pod created afterwards is read, nothin
   flipflop -> orders admin status (401, 22 days), both found by a full sweep AFTER Sessions
   A/B completed. Both on per-pair RS256 with reduced privilege; verified 200/400 from the
   deployed pods.
-- [x] **Session F complete 2026-08-27 (6z)** — all 19 `a2880693` mounts in
+- [x] **Session F complete 2026-08-27 (6ae — UNVERIFIED, corrected by 6ab)** — all 19 `a2880693` mounts in
   `marketing`, `logging`, `aukro`, `heureka`, `payments` retired; Vault sources 7 -> 2.
   Census was 3 short: deployment `env` aliases and a second `secretKey` on the same
   property are mounts too. Replay lanes moved atomically (sender and receiver read one
@@ -2915,7 +3010,7 @@ compiled client** in the pod (`MarathonMonitoringService.getEventSummary`), retu
 - `/tmp/cat-bazos.token` is left over inside the auth pod from another session (Session E's
   repo). Not deleted — not mine.
 
-## 6z. Session F, 2026-08-27 — 16 of 19 `a2880693` mounts retired
+## 6ae. Session F, 2026-08-27 — 16 of 19 `a2880693` mounts retired (UNVERIFIED, see 6ab)
 
 Session F owned `marketing-microservice/`, `logging-microservice/`, `aukro/`, `heureka/`,
 `payments-microservice/`. **Every mount in those repos is gone.** Vault sources 7 -> 2;
@@ -3335,10 +3430,10 @@ that failure to a human, or it provides the appearance of coverage rather than c
 Five expired credentials caused outages because nothing was watching; a sixth would have
 been missed again because the watcher was broken and equally quiet.
 
-## 6aa. Session E — catalog, bazos and allegro, 2026-08-31
+## 6af. Session E — catalog, bazos and allegro, 2026-08-31
 
-Section letter note: `6z` was taken twice concurrently (Sessions D and F), so this
-section is `6aa`.
+Section letter note: `6z` was taken twice concurrently (Sessions D and F, the latter
+now renumbered `6ae`), and `6aa` was then taken by Session C, so this section is `6af`.
 
 ### Outage 6: catalog-microservice -> bazos-service, dead on arrival
 
@@ -3668,3 +3763,68 @@ message is a claim about intent, not evidence of effect.** For credential work t
 falsifier is the pair (`sub`, `exp`) read from the *pod's* effective token — it is two decoded
 fields, it is independent of every intermediate hop, and it would have caught this immediately.
 Worth running across the remaining lanes before trusting any "rotated" entry in this ledger.
+
+---
+
+## Session H — order-affinity replay lanes cut over (2026-08-31)
+
+`MARKETING_REPLAY_TOKEN` for bazos was already present in Vault (`secret/prod/bazos-service` v17)
+and both ExternalSecrets were synced and byte-identical. Nothing needed minting. What was missing
+was **activation**: `envFrom` does not reach a running container, so both pods were still serving
+the legacy shared credential (sha16 `a2880693`) written into them at their last restart.
+
+### What was done
+
+Restarted the sender and receiver **together** under `with-deploy-lock.sh`, then re-verified.
+All four order-affinity replay lanes now hold a distinct per-lane value and agree end to end:
+
+| Lane | sha16 | Sender = receiver | Functional check |
+|---|---|---|---|
+| bazos | `88668001` | yes | 200 / 401 no-token / 401 wrong-service / **401 legacy** |
+| aukro | `725ca652` | yes | 200 / 401 no-token / 401 wrong-service / **401 legacy** |
+| flipflop | `9431f75c` | yes | hash-verified (receiver reads `FLIPFLOP_INTERNAL_SERVICE_SECRET`) |
+| marketplace to allegro | `aa7ae49e` | yes | hash-verified |
+
+The legacy value being **rejected** is the load-bearing assertion — it proves the cutover happened
+rather than merely that something still answers 200.
+
+### The trap this session hit
+
+Restarting `marketing-microservice` re-reads **every** key it holds, not just the one being worked
+on. It carries four replay tokens. The bazos restart therefore silently broke the **aukro** lane,
+whose receiver was still on the legacy value — a lane nobody had touched. It was caught only
+because the sender/receiver hashes were swept for all four lanes afterwards.
+
+> **Rule: a shared sender is a blast radius.** Before restarting a service that holds N credentials,
+> enumerate all N and check each counterpart, then restart every drifted receiver in the same window.
+
+Also worth noting: flipflop reads `FLIPFLOP_INTERNAL_SERVICE_SECRET`, not `..._TOKEN`. Probing the
+`_TOKEN` name returned the empty-string hash `e3b0c442` and looked exactly like an unprovisioned
+lane. **`e3b0c442` means "you may be reading the wrong variable name", not just "missing".**
+
+### Residual debt — the legacy credential is NOT fully retired
+
+A sweep of every Secret in `statex-apps` (hashing each property, never printing values) shows the
+shared `a2880693` value still live in four places:
+
+- `orders-microservice-secret` -> `PAYMENTS_INTERNAL_SERVICE_TOKEN`
+- `orders-microservice-secret` -> `WAREHOUSE_INTERNAL_SERVICE_TOKEN`
+- `warehouse-microservice-secret` -> `JWT_TOKEN`
+- `heureka-service-secret` -> `JWT_TOKEN`
+
+So orders to payments and orders to warehouse still run on the same shared secret. Retiring it
+needs per-lane values plus a coordinated restart of orders, payments and warehouse together — a
+larger blast radius than the scope of this session, and deliberately **not** attempted here.
+
+Sweep command (safe to re-run; prints key names only):
+
+```bash
+kubectl get secrets -n statex-apps -o json | python3 -c "
+import json,sys,base64,hashlib
+LEG = \"a28806936d3db924\"
+for s in json.load(sys.stdin)[\"items\"]:
+    for k,v in (s.get(\"data\") or {}).items():
+        if hashlib.sha256(base64.b64decode(v)).hexdigest()[:16] == LEG:
+            print(s[\"metadata\"][\"name\"], \"->\", k)
+"
+```
