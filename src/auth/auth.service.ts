@@ -779,7 +779,7 @@ export class AuthService {
     resetUrlParams.set('lang', lang);
     resetUrlParams.set('ttl', String(this.passwordRecoveryTtlMinutes));
     const resetUrl = `${frontendUrl}/reset-password?${resetUrlParams.toString()}`;
-    const fromDomain = process.env.DOMAIN || '';
+    const fromDomain = this.normalizeEmailDisplayDomain(process.env.DOMAIN || '');
     const resetTtlMinutes = this.passwordRecoveryTtlMinutes;
     const resetCopy = this.getAuthEmailCopy('password_reset', lang, resetTtlMinutes);
     try {
@@ -1590,8 +1590,9 @@ export class AuthService {
     const durationMs = Date.now() - startedAt;
     if (this.notificationsServiceUrl) {
       try {
-        const fromDomain = dto.app_domain || process.env.DOMAIN || '';
-        if (!fromDomain) {
+        const rawFromDomain =
+          this.getEmailDisplayDomainFromReturnUrl(validReturnUrl) || dto.app_domain || process.env.DOMAIN || '';
+        if (!rawFromDomain) {
           this.audit('warn', 'magic_link_request', 'missing_display_domain', {
             identifier: dto.email,
             user_id: user.id,
@@ -1599,6 +1600,7 @@ export class AuthService {
             duration_ms: Date.now() - startedAt,
           });
         }
+        const fromDomain = this.normalizeEmailDisplayDomain(rawFromDomain);
         await firstValueFrom(
           this.httpService.post(
             `${this.notificationsServiceUrl}/notifications/send`,
@@ -1696,7 +1698,7 @@ export class AuthService {
     }
 
     const lang = this.normalizeAuthLang(langRaw);
-    const fromDomain = appDomain || process.env.DOMAIN || '';
+    const fromDomain = this.normalizeEmailDisplayDomain(appDomain || process.env.DOMAIN || '');
     const channel = contactType === 'phone' ? this.contactCodePhoneChannel : 'email';
     const channelKey = contactType === 'phone' ? this.contactCodePhoneChannelKey : this.contactCodeEmailChannelKey;
     const contactCopy = this.getPlainEmailCopy(
@@ -1785,7 +1787,15 @@ export class AuthService {
 
     let delivered = false;
     try {
-      delivered = await this.sendContactCode(contactType, identifier, code, dto.app_domain, dto.lang, purpose, ttlMinutes);
+      delivered = await this.sendContactCode(
+        contactType,
+        identifier,
+        code,
+        this.getEmailDisplayDomainFromReturnUrl(validReturnUrl) || dto.app_domain,
+        dto.lang,
+        purpose,
+        ttlMinutes,
+      );
     } catch (error) {
       this.audit(
         'error',
@@ -2523,6 +2533,39 @@ export class AuthService {
     return copies[kind][lang];
   }
 
+  private normalizeEmailDisplayDomain(domainRaw?: string): string {
+    const candidate = String(domainRaw || '').trim();
+    if (!candidate) {
+      return 'alfares.cz';
+    }
+
+    const host = candidate.replace(/^https?:\/\//i, '').split('/')[0].trim();
+    const hostnamePattern =
+      /^(?:localhost|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*)(?::\d{1,5})?$/i;
+    if (!hostnamePattern.test(host)) {
+      return 'alfares.cz';
+    }
+
+    const port = host.match(/:(\d{1,5})$/)?.[1];
+    if (port && Number(port) > 65535) {
+      return 'alfares.cz';
+    }
+
+    return host.toLowerCase();
+  }
+
+  private getEmailDisplayDomainFromReturnUrl(returnUrl?: string | null): string | undefined {
+    if (!returnUrl) {
+      return undefined;
+    }
+
+    try {
+      return new URL(returnUrl).host;
+    } catch {
+      return undefined;
+    }
+  }
+
   private buildContactCodeEmailHtml(
     code: string,
     domainRaw: string,
@@ -2533,7 +2576,7 @@ export class AuthService {
     const BLUE = '#1E88E5';
     const LIGHT_BLUE = '#BBDEFB';
     const CARD_BG = '#F5F5F5';
-    const domain = domainRaw || 'alfares.cz';
+    const domain = this.normalizeEmailDisplayDomain(domainRaw);
     const safeCode = String(code).replace(/[^0-9A-Za-z-]/g, '');
 
     return `<!DOCTYPE html>
@@ -2578,6 +2621,7 @@ export class AuthService {
     const BLUE = '#1E88E5';
     const LIGHT_BLUE = '#BBDEFB';
     const CARD_BG = '#F5F5F5';
+    const displayDomain = this.normalizeEmailDisplayDomain(domain);
 
     return `<!DOCTYPE html>
 <html lang="${lang}">
@@ -2587,7 +2631,7 @@ export class AuthService {
   <tr><td align="center" style="padding:40px 16px;">
     <table width="100%" style="max-width:640px;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.12);" cellpadding="0" cellspacing="0" border="0">
       <tr><td style="background:${BLUE};padding:24px 32px;">
-        <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:20px;font-weight:bold;">${domain}</a>
+        <a href="https://${displayDomain}" style="color:#fff;text-decoration:none;font-size:20px;font-weight:bold;">${displayDomain}</a>
       </td></tr>
       <tr><td style="background:${CARD_BG};padding:32px;">
         <h2 style="margin:0 0 16px;color:#212121;font-size:22px;">${copy.title}</h2>
@@ -2603,7 +2647,7 @@ export class AuthService {
         <p style="color:#9E9E9E;font-size:12px;margin:16px 0 0;">${copy.ignore}</p>
       </td></tr>
       <tr><td style="background:${BLUE};padding:16px 32px;text-align:center;">
-        <a href="https://${domain}" style="color:#fff;text-decoration:none;font-size:13px;">${domain}</a>
+        <a href="https://${displayDomain}" style="color:#fff;text-decoration:none;font-size:13px;">${displayDomain}</a>
       </td></tr>
     </table>
   </td></tr>
