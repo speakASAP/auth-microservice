@@ -4535,6 +4535,62 @@ characters, no `alg`, no claims, no expiry — which is why it never surfaced in
 expired-token sweeps, and why splitting it is a provisioning task outside this migration's
 RS256 scope.
 
+### Pricing 500 -> 404, and why per-caller roles are blocked (2026-09-01)
+
+Two follow-ups from the guard work, one fixed and one deliberately deferred with a written
+handover.
+
+**Fixed (`b4de21f`, verified live).** `POST /api/pricing` with a non-existent `productId`
+reached the database and the `product_pricing_product_id_fkey` violation escaped as an
+unhandled **500**. Found by Session F while probing the orders lane; pre-existing. `upsert`
+now checks the product exists first:
+
+```
+missing product  ->  404 Product with ID … not found     (was 500)
+empty body       ->  400 productId is required           (validation still runs first)
+real product     ->  200
+```
+
+`bulkUpsert` routes through `upsert`, so it is covered and now fails *before* writing the
+offending row. This is the same 4xx-reported-as-5xx class as the six swallowed catches in
+`d149d24`, seen from the receiving end: orders' `updateCatalogPricing` rethrows
+"upstream request failed", so a mistyped product id was indistinguishable from catalog being
+broken. Suite 177/177; the two regression tests fail (2/7) on revert.
+
+**Deferred with a reason: per-caller roles cannot be narrowed yet.** The obvious next step
+after 6af is to stop granting all 11 callers `internal:catalog-microservice:admin` +
+`catalog:write`. Measuring first showed that is not currently possible:
+
+```
+81 guarded routes
+  41  no @RequireCatalogRoles -> fall back to defaultWriteRoles
+  36  'catalog:authenticated'
+   3  ...PRODUCT_RELATION_ADMIN_ROLES
+   1  'global:superadmin'
+```
+
+`defaultWriteRoles` **is** the pair a narrowing would remove, so removing them does not make
+a caller read-only — it 403s it on routes it uses today, **including plain reads**. Probed
+from the bazos pod:
+
+| Route | Service actor today | With roles narrowed |
+| --- | --- | --- |
+| `GET /api/pricing/product/:id/current` | 200 | 403 |
+| `GET /api/media/product/:id` | 200 | 403 |
+| `GET /api/categories` | 200 | 403 |
+
+`PRODUCT_RELATION_ADMIN_ROLES` and `BUNDLE_ADMIN_ROLES` also contain
+`internal:catalog-microservice:admin`, so those routes need a deliberate decision too.
+
+The routes must therefore be decorated with honest requirements **first**, verified to change
+no caller's access, and only then can roles be split per caller. Written up as a two-phase
+prompt in `catalog-microservice/docs/CATALOG_ROUTE_ROLES_PROMPT.md` (`37fd53a`) rather than
+attempted here — doing it in the wrong order breaks publishing on all four marketplace lanes.
+
+A measurement trap worth carrying: `@RequireCatalogRoles` sits **after** the
+`@Get`/`@Post` decorator and before the handler. A scan looking backwards from the method
+line reports 81/81 undecorated, which is wrong and would have hidden the real 41.
+
 ### Verifying a deploy by grepping `dist`
 
 A near-miss worth recording. Checking whether the logging fix had shipped, grepping the
