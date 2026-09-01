@@ -3971,6 +3971,108 @@ as well as the Vault property — ESO does not prune (6x).
 - `aa7ae49e` remains load-bearing on **two inbound allegro endpoints**. It is not retirable
   until the marketing replay lane moves to Bearer on both ends.
 
+### Addendum, 2026-09-01 — principal minted, Vault write blocked
+
+`svc-catalog-microservice--bazos-service@internal.alfares.cz`
+(`796fec93-625d-4da0-bdd0-08d699e448ce`), RS256, 90d, one role
+`internal:bazos-service:service`. Probed from the auth pod **before** storing:
+
+```
+/auth/validate                          -> 201 valid:true
+GET  .../sell-action/status  (was 401)  -> 200
+POST .../sell-action                    -> 400 identityId must be a UUID, title should not be empty
+```
+
+**401 -> 200 on the real endpoint** is the acceptance proof; the 400 is DTO validation
+rejecting after authorization passed, so nothing was mutated. Privilege reduced from
+`internal:bazos-service:admin` + `app:bazos-service:admin` to a single `service` role,
+because the routes carry no `@Roles` at all (bare `JwtAuthGuard`).
+
+Token fingerprint **`28bee9d3`**, 937 bytes. Note the file fingerprint differs
+(`da7fc9f0`) because `--token-output` appends a newline — fingerprint the
+newline-stripped value or the four hops will appear to disagree. Same trap recorded in
+`reference_vault_field_trailing_newline`.
+
+**The `vault kv patch` was denied by the session's permission layer and is not done.**
+The ES side needs no change: `BAZOS_SERVICE_TOKEN <- secret/prod/catalog-microservice#BAZOS_SERVICE_TOKEN`
+is already mapped, maps to its own property (no 6j remap trap), and no other
+ExternalSecret in the ecosystem reads that property. Remaining: the patch, a force-sync,
+four-hop fingerprint verification, a re-probe from the new pod, and deleting both token
+copies.
+
+### Six silent catches, not one (commit `d149d24`, deployed and verified)
+
+Session F handed over one silent-failure site on the catalog -> heureka lane. Sweeping
+`products.service.ts` found **six** of that exact shape, each converting any error —
+401, 403, 5xx — into a business verdict with **no log line at any level**:
+
+| Site | Verdict returned |
+| --- | --- |
+| heureka status / publish | `heureka_status_unavailable` / `heureka_publish_unavailable` |
+| flipflop status / publish | `flipflop_status_unavailable` / `flipflop_publish_unavailable` |
+| bazos status / draft | `bazos_status_request_failed` / `bazos_draft_request_failed` |
+
+**The bazos pair is why outage 6 above went unnoticed.** A credential rejected by auth was
+reported to the operator as a Bazos-owned readiness blocker. That is the fourth disguise
+for this failure mode: 6q and 6x found three stock outages hidden behind an empty
+collection or a zero returned from inside a `catch`; this one hides behind a *plausible
+business verdict*, which is harder to spot because the response looks deliberate.
+
+404 still returns empty where that already meant "no rows". Every other status now logs at
+error level with product id, `httpStatus` and the upstream message before returning the
+unchanged response shape, so no caller or test is affected. Suite 170/170.
+
+### A fourth way a key fails to reach a pod: live manifest ≠ git manifest
+
+6q catalogued three (ES mapping, Vault key, Deployment env). 6ab added a fourth
+(committed but never applied). Catalog carries a fifth variant:
+
+```
+git:  WAREHOUSE_SERVICE_TOKEN <- secret/prod/catalog-microservice#CATALOG_WAREHOUSE_SERVICE_TOKEN
+live: WAREHOUSE_SERVICE_TOKEN <- secret/prod/auth-microservice#CATALOG_WAREHOUSE_SERVICE_TOKEN
+```
+
+**Same property name, different Vault path.** Anyone rotating this key by editing the
+committed manifest would write to a property nothing reads, and every signal stays green
+throughout — ES `Ready`, Secret populated, lane returns 200. It is invisible from either
+side alone: git shows the wrong path, the cluster shows a correct-looking mapping. The
+only check that catches it is diffing live `.spec.data` against the manifest:
+
+```
+kubectl get externalsecret <name> -n statex-apps -o jsonpath='{range .spec.data[*]}{.secretKey}{" <- "}{.remoteRef.key}{"#"}{.remoteRef.property}{"\n"}{end}'
+```
+
+Not reconciled here: the lane is green and repointing a live ExternalSecret is not a
+side-effect change to make while doing something else. Flagged for whoever owns catalog's
+manifests.
+
+### `5f420714` is an 8-way shared credential
+
+Measured by hashing every value in every `statex-apps` Secret, not by reading reports:
+
+```
+a2880693 -> 0 mounts    (deletion by Session F confirmed independently)
+ae611ed9 -> 1 mount     catalog-microservice-secret#JWT_TOKEN   (still live)
+aa7ae49e -> 3 mounts    allegro / marketing / orders            (matches this section)
+5f420714 -> 8 mounts
+```
+
+The eight: allegro, bazos, catalog, cliplot, flipflop, marketing, orders — all as
+`CATALOG_INTERNAL_SERVICE_TOKEN` — plus **heureka as `HEUREKA_INTERNAL_SERVICE_TOKEN`**,
+reading the same Vault property under a different variable name (added 2026-09-01 by
+Session F to fix a catalog -> heureka 401). One Vault write, eight pods to restart, and
+**grepping for `CATALOG_INTERNAL_SERVICE_TOKEN` will not find the heureka mount.**
+Enumerate by fingerprint, not by variable name — the method from
+`reference_enumerate_secret_holders_by_fingerprint`.
+
+### Verifying a deploy by grepping `dist`
+
+A near-miss worth recording. Checking whether the logging fix had shipped, grepping the
+compiled artifact for the comment text returned 0 — which reads exactly like a stale
+image. **The build strips comments.** Grepping for the emitted log strings returned 6/6.
+When verifying a deploy from compiled output, match on code or string literals the change
+emits, never on comments.
+
 ## 6ac. Session C, 2026-08-31 — a rotation that was committed but never happened
 
 Session C's prompt listed three items. **Two were already done before this session started**
