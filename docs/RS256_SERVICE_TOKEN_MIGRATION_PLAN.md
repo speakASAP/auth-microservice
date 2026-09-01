@@ -5581,3 +5581,197 @@ names is refused. Also confirmed to fail on revert.
 `verify:channel-lifecycle-surfaces` fails on a clean tree, looking for
 `services/aukro-service/src/aukro/orders/orders.service.ts` under `bazos/`. Pre-existing,
 not touched here — recorded rather than silently absorbed.
+
+## 6ay. Catalog route roles: both phases executed, and the premise they rested on was wrong, 2026-09-01
+
+Executed `catalog-microservice/docs/CATALOG_ROUTE_ROLES_PROMPT.md`. Both phases are
+deployed and verified live (`fc2f81c`, `3fb296a`). The prompt's central measurement was
+wrong in a way that mattered, and re-measuring it first changed what the task was.
+
+### The prompt's premise did not survive re-measurement
+
+The prompt said 41 guarded routes fall back to `defaultWriteRoles`, and that narrowing
+roles would 403 a caller on `GET /api/pricing/product/:id/current`, `GET /api/media/product/:id`
+and `GET /api/categories`. It said to reproduce this before trusting it.
+
+Reproducing it showed those three routes **had no guard at all**. Not on the class, not on
+the method, and there is no `APP_GUARD` in `app.module.ts` or `useGlobalGuards` in `main.ts`.
+They returned 200 with no credentials of any kind — including from the public internet,
+because the catalog ingress maps `catalog.alfares.cz/api` to this service:
+
+```
+GET /api/categories                       200   <- no token, no header, nothing
+GET /api/categories/tree                  200
+GET /api/attributes                       200
+GET /api/attributes/:id                   200
+GET /api/media/product/:id                200
+GET /api/pricing/product/:id              200   <- wholesale pricing
+GET /api/pricing/product/:id/current      200
+```
+
+They answered 200 to a service actor not because `defaultWriteRoles` granted it, but
+because nothing was checked. **The three rows in the prompt's table were evidence of a
+worse problem than the one they were cited for.**
+
+### Why every previous count was wrong, including the corrected one
+
+6ar corrected 6am/6ao's "37 routes" to "41 undecorated of 81 guarded" and identified the
+real trap: `@RequireCatalogRoles` sits *after* the HTTP-verb decorator, so a backwards scan
+reports 81/81. That correction was right about the direction of the scan and still wrong
+about the total, because it inherited a second assumption nobody had checked.
+
+Both counts resolved `@UseGuards(CatalogAuthGuard)` **per file**. `attributes`, `categories`,
+`media`, `pricing` and `products` apply the guard **per method, on the writes only**. Every
+read in those files was counted as a guarded route falling back to `defaultWriteRoles`.
+
+Corrected inventory, resolving the guard per route (class decorator or method decorator):
+
+```
+89 routes total
+  72 guarded by CatalogAuthGuard   (8 class-scope, 64 method-scope)
+  17 NO GUARD AT ALL
+  of the 72 guarded:
+    48  carried @RequireCatalogRoles
+    24  fell back to defaultWriteRoles
+```
+
+The "41" was 24 genuinely undecorated routes plus 17 unguarded ones miscounted as guarded.
+
+**The generalisation from 6ar holds and needs one more clause.** It is not enough to state
+which direction the scan ran. A scan that resolves a decorator at the wrong *scope* — file
+instead of route — produces a number that is arithmetically fine, structurally meaningless,
+and *more* dangerous than an obviously broken one, because it reports unprotected routes as
+protected. Three sessions in a row counted this and the error survived a correction that was
+itself about counting.
+
+### Phase 1 — every guarded route declares its requirement, and 14 public routes are closed
+
+Three of the 17 (`heureka-feed-snapshot`, `channel-readiness`, `business-health`) were fixed
+concurrently by another session in `2ad2a5a`/`47f0e51` while this work was in progress. The
+remaining 14 are closed by `fc2f81c`.
+
+Final state — 83 guarded routes, **0 without an explicit role requirement**:
+
+| Group | Before | After |
+| --- | --- | --- |
+| `categories` reads (3) | no guard, public | guard + `catalog:authenticated` |
+| `attributes` reads (2) | no guard, public | guard + `catalog:authenticated` |
+| `media/product/:id` | no guard, public | guard + `catalog:authenticated` |
+| `pricing` reads (2) | no guard, public | guard + `catalog:authenticated` |
+| `categories`/`attributes`/`media`/`pricing` writes (12) | guard, implicit admin | guard + `WRITE_ROLES` |
+| `content-previews` (2), `marketplace-fields` reads (2) | guard, implicit admin | `catalog:authenticated` |
+| `marketplace-fields` PUT, `imports/reconciliation/dry-run` | guard, implicit admin | `WRITE_ROLES` |
+| `warehouse-availability` (3), `flipflop-projection/batch` | guard, implicit admin | `catalog:authenticated` |
+
+Six routes remain deliberately unguarded: `/health` and `/ready` (the k8s probes both target
+`/health`, verified in `k8s/deployment.yaml`), `auth/login` and `auth/register` (public by
+design), and `auth/profile` and `auth/admin/users`, which enforce Bearer themselves (401
+confirmed live).
+
+`defaultWriteRoles` is gone. It is now `CatalogAuthGuard.WRITE_ROLES`, referenced explicitly
+by the routes that need it, and a guarded route with no decorator **fails closed** with an
+error-level log naming the handler. That is only safe because all 83 routes now declare a
+requirement; it would have denied 24 routes before this change.
+
+### Phase 2 — per-caller roles
+
+`3fb296a`. Grants derived from each caller's real call sites, not from the prompt's table:
+
+| Caller | Grant | Why |
+| --- | --- | --- |
+| allegro, bazos, orders, flipflop x4, catalog | `catalog:read` + `catalog:write` | all POST/PUT products, media or pricing |
+| heureka | + `internal:catalog-microservice:admin` | also `POST /api/catalog/access/provision` |
+| marketing | `catalog:read` + admin, **no** `catalog:write` | only writes `/api/internal/product-relations/*`, which need the admin set |
+| cliplot | `catalog:read` | only GETs `/api/products` |
+| any other allowlisted name | `catalog:read` | adding a caller must not silently confer write |
+
+### What the live probes actually showed
+
+All 11 callers probed from their own pods before and after, 26 routes each (286 rows).
+Phase 1 changed no caller's status on any route. Phase 2's only changes were the intended
+ones: cliplot 400 -> 403 on `POST /api/pricing`, `/api/media`, `/api/categories`,
+`/api/attributes`; every caller except heureka and marketing 400 -> 403 on
+`POST /api/internal/bundles` (which no service calls — it is a human-admin surface, and
+`global:superadmin` / `app:catalog-microservice:admin` still pass).
+
+Load-bearing lanes confirmed still working after both phases:
+
+```
+orders   -> POST /api/pricing                                   400 productId is required
+heureka  -> POST /api/products                                  400  (authorized)
+marketing-> POST .../order-affinity/replace-window              400  (authorized)
+aukro    -> GET /api/pricing/product/:id/current                200
+aukro    -> GET /api/media/product/:id, /api/categories         200
+public   -> all seven previously-open routes                    401
+/health, /ready                                                 200
+```
+
+**aukro was the regression risk and it is worth recording why it survived.** It calls two of
+the routes that were unguarded, using a per-pair RS256 principal whose only role is
+`internal:catalog-microservice:service` — a role in none of catalog's role sets. It passes
+because `catalog:authenticated` means "any authenticated non-marathon actor" rather than a
+role an actor must carry. Guarding those reads with an enumerated role list instead would
+have 403'd aukro, and both its call sites swallow the error into `null`/`[]`, so it would
+have degraded silently rather than failing.
+
+### A limit on what Phase 2 achieves — the read-only grant does not bind where it matters most
+
+Probing cliplot's *actual* destructive paths, rather than only the ones in the probe matrix:
+
+```
+cliplot -> POST   /api/pricing        403   (narrowed)
+cliplot -> POST   /api/media          403   (narrowed)
+cliplot -> POST   /api/products       400   NOT narrowed -- authorized
+cliplot -> DELETE /api/products/:id   404   NOT narrowed -- authorized
+```
+
+**19 mutating routes are gated only by `catalog:authenticated`**, including create, update
+and delete product, all the marketplace publish actions, and bulk review updates. That
+predicate ignores roles entirely, so no per-caller grant can narrow them. A read-only caller
+still cannot be stopped from deleting a product.
+
+Three of the 19 are non-mutating batch queries that use POST for a request body
+(`warehouse-availability/batch`, `.../coverage`, `flipflop-projection/batch`);
+`catalog:authenticated` is correct there. The other 16 are genuinely mutating.
+
+**Narrowing them was attempted and deliberately reverted.** `catalog:write` is granted
+nowhere in `auth-microservice` to human users — it is minted only for service actors. Moving
+those 16 to `WRITE_ROLES` typechecked and passed 183/183, and would have 403'd every
+logged-in dashboard user on product create, edit and delete. That needs a user-facing
+catalog role to exist first. **This is the top follow-up and it is the remaining half of the
+over-grant**; the prompt's Phase 2 exit criterion ("a test proving a read-only caller is 403
+on a write route") passes on `/api/pricing` while `DELETE /api/products/:id` stays open.
+
+### Two process findings
+
+**A deploy built from the working tree, not from the commit.** Phase 1 was committed alone,
+deliberately, so Phase 2 could not reach production before Phase 1 was verified — the
+ordering the prompt calls non-negotiable. The queue built an image containing the
+uncommitted Phase 2 guard anyway, and both phases went live together. Caught by diffing the
+live probe results against the Phase 1 baseline and seeing Phase 2's signature, then
+confirming `grep -c rolesForServiceName dist/…` returned 2 on a pod whose commit did not
+contain that function. Git state was reconciled immediately (`3fb296a`), and the deployed
+image now matches HEAD. **A commit is not a deployment boundary here; anything in the working
+tree at build time ships.** Phase separation needs a clean tree, not just separate commits.
+
+**`wait-for-rollout.sh` returned "converged" before the new ReplicaSet existed.** At that
+moment the only Running pod was still on the previous image and the new pod was `Pending`,
+pulling. Verifying by pod age against commit time — as the repo's own guidance says — caught
+it; the banner alone would have produced a false green, and the subsequent probes would have
+tested the old code and "confirmed no change".
+
+### Adjacent defects found, not fixed
+
+- `POST /api/media`, `/api/categories`, `/api/attributes` return **500** on an empty body
+  where `POST /api/pricing` returns 400. Same 4xx-as-5xx class as `b4de21f`, missing
+  validation rather than an escaped FK violation.
+- `aukro -> GET /api/products/:id/content-previews/:marketplace` returns **403**, live and
+  pre-existing. Its principal lacks the write/admin roles that route required. Both aukro
+  call sites swallow it into `null`, so the feature has been silently degrading.
+
+### Verification
+
+183/183 tests (was 177 — six new guard tests). Typecheck clean. The six new tests confirmed
+to **fail 6/19** when both the per-caller map and the fail-closed default are reverted.
+Deployed image `3fb296a-wt20260901200259` matches HEAD; confirmed by pod age against commit
+time and by grepping the pod's `dist/` for emitted strings rather than comments.
