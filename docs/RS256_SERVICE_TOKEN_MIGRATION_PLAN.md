@@ -4355,11 +4355,17 @@ no credentials                                     -> 401
 moving this lane means changing the contract from `x-internal-service-token` to Bearer,
 as 6h describes for the orders lanes.
 
-Worth doing, because the asymmetry is large: the static-header path synthesises
-`internal:catalog-microservice:admin` + `catalog:write`, while **every** route bazos calls
-is decorated `@RequireCatalogRoles('catalog:authenticated')`. The credential grants admin
-where the routes ask only for authentication. Same shape as aukro in 6x. Not done here —
-it is a contract change, not a rotation, and the lane is green.
+Worth doing, because the asymmetry is real: the static-header path synthesises
+`internal:catalog-microservice:admin` + `catalog:write`, while the routes bazos calls are
+mostly decorated `@RequireCatalogRoles('catalog:authenticated')`. Same shape as aukro in 6x.
+Not done here — it is a contract change, not a rotation, and the lane is green.
+
+**Correction (2026-09-01):** an earlier draft of this paragraph said *every* route bazos
+calls asks only for `catalog:authenticated`. That is false, and it is the exact reasoning
+that leads to attempting the role narrowing in the wrong order. **41 of 81 guarded routes
+carry no decorator at all** and fall back to `defaultWriteRoles`, which *is* admin +
+`catalog:write` — including plain reads like `GET /api/categories` and
+`GET /api/pricing/product/:id/current`. See the measured table below.
 
 ### What is blocked
 
@@ -4600,9 +4606,33 @@ guard, so the test validated nothing about real access. Fixed.
 
 **Roles deliberately unchanged.** The synthesised
 `internal:catalog-microservice:admin` + `catalog:write` is still too broad for callers that
-only read (every catalog route requires just `catalog:authenticated`), but narrowing it
-needs the senders' write usage traced first — bazos POSTs `/api/products` and PUTs
-`/api/products/:id`. Separate change; getting it wrong breaks live publishing.
+only read, but narrowing it is **blocked**, not merely untraced.
+
+An earlier version of this paragraph said "every catalog route requires just
+`catalog:authenticated`, so narrowing needs write usage traced first". Both halves were
+wrong. Measuring showed 41 of 81 guarded routes carry no `@RequireCatalogRoles` and fall
+back to `defaultWriteRoles` — which *is* the pair a narrowing would remove. So removing
+those roles does not make a caller read-only; it 403s it on routes it uses today, plain
+reads included. The routes must be decorated honestly **first**. Full measurement and the
+two-phase sequence are recorded further down and in
+`catalog-microservice/docs/CATALOG_ROUTE_ROLES_PROMPT.md`.
+
+Measured independently by two sessions, agreeing:
+
+```
+guarded routes  81
+  decorated     40
+  undecorated   41   <- fall back to defaultWriteRoles (= admin + catalog:write)
+                        of which 15 are plain GETs
+```
+
+**Why the wrong number looked plausible for three sections running:** the counts that come
+easily are all misleading. `grep -c RequireCatalogRoles` returns **48** (it counts matching
+*lines* across files), `grep -o` returns **42** (decorator occurrences, including the
+constants), and the number quoted in three sections was **37**. None of them is the count
+that matters — 40 decorated *routes* out of 81 — and none says anything about the 41 without
+a decorator. When a count drives a security decision, verify the shape of what is being
+counted and state which direction the scan ran.
 
 The real fix remains per-caller credentials. `5f420714` is **not a JWT** — 64 opaque
 characters, no `alg`, no claims, no expiry — which is why it never surfaced in the
