@@ -3039,8 +3039,10 @@ evidence when the suite encodes the assumption under test.**
 
 ### Deferred deliberately
 
-Per-caller roles are **not** part of E's change. All 37 guarded catalog routes need only
-`catalog:authenticated`, so narrowing the synthesised grant is safe in principle — but bazos POSTs
+Per-caller roles are **not** part of E's change. [CORRECTED in 6ar: narrowing is **not** safe in
+principle — 41 of 81 guarded routes carry no decorator and fall through to `defaultWriteRoles`,
+which is admin + write, so removing those roles 403s 15 plain GETs.] The original reasoning was
+that bazos POSTs
 `/api/products` and PUTs `/api/products/:id`, so the senders' real write usage must be traced
 first. Getting it wrong breaks live publishing. Separate, deliberate change, correctly sequenced
 after the identity fix.
@@ -3126,7 +3128,10 @@ hatch that matters precisely because this enumeration proved so easy to get wron
 
 Per-caller roles. The synthesised grant is still
 `internal:catalog-microservice:admin` + `catalog:write` for every allowlisted caller, which
-remains broader than the 37 routes needing only `catalog:authenticated`. Narrowing it requires
+remains broader than the decorated routes need. [CORRECTED in 6ar: this said "the 37 routes
+needing only `catalog:authenticated`", which was wrong — 41 of 81 guarded routes carry no
+decorator and fall through to `defaultWriteRoles` (admin + write), so narrowing 403s 15 plain
+GETs. Routes must be decorated honestly first.] Narrowing it requires
 tracing the senders' real write usage first — bazos POSTs `/api/products` and PUTs
 `/api/products/:id` through this path. Correctly sequenced after the identity fix rather than
 bundled with it.
@@ -3253,6 +3258,75 @@ the Service list, not from a sibling's convention.
 `SESSION_F_PROMPT.md` is implemented. Items 1-5 as specified, item 6 superseded by deletion. The one
 remaining Session F obligation is blocked on Session D by design, and its lane is verified working
 in the meantime.
+
+## 6ar. Corrections from Session E: the pricing 500, and why role-narrowing is blocked, 2026-09-01
+
+Two follow-ups to 6am/6ao/6ap. One is a fix landing; the other **corrects a claim I made twice.**
+
+### The pricing 4xx-as-5xx is closed
+
+Session E fixed it (`b4de21f`). Verified from the orders pod — my own boundary — against catalog
+pod `catalog-microservice-776bfd865d-h6n7m`, image `b4de21f-…`:
+
+```
+missing product, exact caller payload  ->  404 "Product with ID 00000000-… not found"   (was 500)
+x-service-name: totally-made-up-service ->  401  (guard fix still holding)
+```
+
+`upsert` now checks the product exists before writing, and `bulkUpsert` routes through it, so a
+missing row fails **before** partial writes rather than after.
+
+E's framing is better than my two separate findings: **a 4xx condition must not surface as a 5xx,
+in either direction.** The sender side swallowed a 401 into a business verdict (`d149d24`,
+`heureka_publish_unavailable`); the receiver side escalated a missing row into a server error. Both
+leave the operator with a message that does not name the cause. One rule, two symptoms.
+
+### Correction: narrowing the catalog role grant is NOT "safe in principle"
+
+6am and 6ao both said 37 guarded routes need only `catalog:authenticated`, so narrowing the
+synthesised `internal:catalog-microservice:admin` + `catalog:write` grant was safe in principle and
+merely needed write-usage tracing. **That reading was incomplete and the conclusion was wrong.**
+
+Measured independently here, confirming E's numbers exactly:
+
+```
+routes on CatalogAuthGuard controllers:  81
+carrying @RequireCatalogRoles:           40
+undecorated:                             41
+```
+
+`catalog-auth.guard.ts:68` falls back to `defaultWriteRoles` when no decorator is present — and
+that default **is** `[global:superadmin, global:platform_admin, app:catalog-microservice:admin,
+internal:catalog-microservice:admin, catalog:write]`. So the 41 undecorated routes are not
+permissive by omission; they silently require the very roles the narrowing would remove.
+
+15 of them are plain `GET`s, including `categories`, `pricing/product/:id/current` and
+`media/product/:id`. Removing the roles would not make a caller read-only — **it would 403 it on
+reads it performs today.** E measured the same from the bazos pod.
+
+So the correct order is: decorate the 41 routes honestly, verify nobody's access changed, and only
+then split roles per caller. E wrote that up as a two-phase task
+(`catalog-microservice/docs/CATALOG_ROUTE_ROLES_PROMPT.md`, `37fd53a`) rather than attempting it
+backwards, which would have broken publishing on all four marketplace lanes.
+
+### The counting trap that produced my wrong number
+
+`@RequireCatalogRoles` sits **after** the HTTP-verb decorator and before the handler signature:
+
+```ts
+@Get('product/:productId/current')
+@RequireCatalogRoles(...)          // <- after @Get, not before
+async getCurrentPrice(...)
+```
+
+A scan looking *backwards* from the verb finds no decorator and reports 81/81 undecorated; a naive
+`grep -c` of the decorator name counts 37 occurrences and reads as "37 routes are permissive". The
+real figure needs a forward window from each verb line. E hit the same trap from the other side and
+flagged it.
+
+**Generalisable:** when a count drives a security decision, verify the *shape* of what you are
+counting before trusting the number — and state which direction the scan ran. Both of my earlier
+"37 routes" statements were arithmetically fine and structurally meaningless.
 
 ## 7. Progress
 
