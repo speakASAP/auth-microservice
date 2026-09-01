@@ -5199,3 +5199,158 @@ Commits `53ee3b5` (orders) carry source comments citing "plan section 6ad" — w
 `6ad` was free. Session G has since taken `6ad`; this section is `6ai`. The comments are
 corrected in a follow-up rather than left pointing at the wrong section. Concurrent appends
 make citing a section number from inside a commit fragile: prefer citing the fix's date.
+
+## 6av. Session D completed, 2026-09-01 — flipflop and cliplot closed
+
+Session D's four items, re-validated from scratch against the original prompt before any
+change (several days had passed and other sessions had been working; item 1 turned out to
+be already fixed, and item 4 turned out to be worse than the prompt described).
+
+| Item | Before | After |
+| --- | --- | --- |
+| 1. flipflop -> orders status | 401 in 3 of 5 pods | **404** (authorized) in all 4 token-using pods |
+| 2. `9431f75c` one value, three jobs | one Vault property, three consumers | **three properties**, byte-identical, independently rotatable |
+| 3. flipflop -> orders create | HS256, **10 days** to expiry, legacy header | **RS256 Bearer**, 90d, per-pair principal |
+| 4. cliplot -> orders status | **401**, dead | **404** (authorized) |
+
+### Item 1 was a stale pod, not a stale credential
+
+Vault, the ExternalSecret and the K8s Secret all held the correct RS256 `44a44139`
+(`internal:orders-microservice:action-admin`). Only hop four was wrong: three of five pods
+had not restarted since the rotation and still held the expired `1dc28737` in their process
+environment. Measured both sides rather than inferred:
+
+```
+stale pod (user-service,  fp=1dc28737)  PUT /:id/status -> 401 Invalid token
+fresh pod (order-service, fp=44a44139)  PUT /:id/status -> 404 Order not found
+```
+
+An unrelated ecosystem redeploy replaced every pod on 2026-08-30 and closed it. Re-verified
+2026-09-01: all four token-using pods measure `44a44139` and return **404**.
+`flipflop-frontend` mounts the key empty (`e3b0c442` = sha256 of "") and has no call site —
+it mounts it only because all five services share one `envFrom`.
+
+**A four-hop check that stops at the K8s Secret would have called this lane healthy while
+three pods were failing in production.** Hop four must be measured in every pod that mounts
+the key.
+
+### Item 2: the split was made byte-neutral first, then applied
+
+`FLIPFLOP_INTERNAL_SERVICE_SECRET` and `JWT_TOKEN` both read Vault property `JWT_TOKEN`, and
+`marketing-microservice-secret#ORDER_AFFINITY_FLIPFLOP_REPLAY_TOKEN` reads that same property
+*across from flipflop's path*. One value, three jobs, and all five flipflop services share one
+`envFrom` — so a naive rotation breaks the payment-result webhook and marketing's replay pull
+at once.
+
+Two things worth recording:
+
+- **The value is used as an opaque shared string, not as a JWT.** Both consumers
+  (`assertInternalServiceKey`, `assertAffinityReplayAccess`) do a constant string comparison;
+  the `x-flipflop-internal-key` header is never parsed. Its
+  `roles:['internal:warehouse-microservice:admin']` payload is **inert on this path** —
+  alarming to read, but not an active grant.
+- **The fail-open guard from 6n is already fixed** — `assertInternalServiceKey` now throws
+  when the variable is unset instead of treating it as permission to proceed.
+
+Order that made this safe, each step verified before the next:
+
+1. seeded `FLIPFLOP_INTERNAL_SERVICE_SECRET` and `ORDER_AFFINITY_REPLAY_TOKEN` with the
+   **identical current value** — all three properties measured `9431f75c` afterwards
+2. repointed the ES entry at its own property and `kubectl apply`-ed it (the deploy queue
+   builds images, it does **not** apply manifests), then `force-sync`
+3. confirmed ES `Ready=True` and the K8s Secret still `9431f75c`
+
+**No restart was required and none was done** — the bytes never changed, so every running pod
+was already correct. Verified in all five: `9431f75c` (frontend empty, as expected).
+
+Proven in both directions, which is the part that matters:
+
+```
+replay endpoint, correct key -> 200 + live contract data
+replay endpoint, wrong key   -> 401 Invalid internal service key
+```
+
+Marketing still reads property `JWT_TOKEN` and keeps working; moving it to
+`ORDER_AFFINITY_REPLAY_TOKEN` is Session F's, and can happen whenever, independently.
+
+### Item 3: the expiring lane needed a new principal, not just a guard change
+
+`321c86c8` was a matched caller/receiver pair (`flipflop-service-secret#ORDERS_SERVICE_TOKEN`
+and `orders-microservice-secret#FLIPFLOP_INTERNAL_SERVICE_TOKEN`), HS256,
+**expiring 2026-09-11 — ten days out.** Measuring both paths settled what the migration
+actually required:
+
+```
+POST /api/orders  x-internal-service-token: 321c86c8  -> 400 "channel is required"  (authorized)
+POST /api/orders  Authorization: Bearer   321c86c8    -> 401 "Invalid token"
+```
+
+The Bearer path 401s because auth rejects HS256 outright. **So the receiver-side guard change
+alone would not have worked** — a new RS256 principal had to exist first. Minted
+`svc-flipflop-service--orders-microservice` (`f8f35d2b-6164-48b5-a694-f993dc344fe5`, RS256,
+90d, fp `6a678ab9`), role `internal:flipflop-service:service` — the least-privilege fit, since
+that is exactly the role the legacy path was synthesising from an unauthenticated header.
+
+Probed from inside the auth pod before storing: `create -> 400`, `GET -> 404`, both authorized.
+
+**A property shared by both sides made this a single write.** Orders' ExternalSecret reads
+`secret/prod/flipflop-service#ORDERS_SERVICE_TOKEN`, the caller's own property — so one
+`vault kv patch` moved caller and receiver together and the pair could never skew.
+
+Two caller-side defects fixed in the same commit (`c991faa`):
+`getAuthHeaders()` **failed open** (returned `{}` when the token was unset, sending
+order-create with no credential at all), and it used the legacy static-header path. Both now
+match the already-correct `getStatusActionHeaders()` beside it.
+
+### Item 4: a second dead lane the prompt did not know was dead
+
+The prompt lists cliplot as an over-privilege tidy-up. It was **also 401 in production**:
+
+```
+cliplot-secret#ORDERS_STATUS_SERVICE_TOKEN  fp=c59347ae  HS256  exp 2026-09-30 (NOT expired)
+POST /auth/validate -> 401 "Unsupported token algorithm HS256; RS256 required"
+```
+
+**Unexpired but structurally obsolete** — the same shape as the bazos outage in 6x. `exp` is a
+useless health signal on its own: a far-future expiry masked a credential auth had stopped
+accepting. Worth checking algorithm, not just expiry, when auditing.
+
+The prompt's open question ("`service` or `action-admin`?") is answered by the call sites:
+`cancelOrderThroughOrders` does `PUT /:id/status`, a write, so `service` is not enough.
+Minted `svc-cliplot--orders-microservice` (`724fc31a`, RS256, 90d, fp `1adf3cc0`).
+
+Four hops verified `1adf3cc0` (Vault = ES = K8s Secret = **inside the pod created by the
+restart**), lane **401 -> 404**.
+
+**`GET /api/orders/:id` still returns 403, and that is correct, not a regression.** Tested
+rather than reasoned about: `internal:cliplot:service` was added to the principal and the
+token re-minted carrying both roles — still 403. `ORDER_DETAIL_READ_ROLES` is
+`superadmin | orders:admin | invoices:service | ORDER_CHANNEL_LIFECYCLE_READ_ROLES`, and that
+last list names flipflop, allegro, aukro, bazos and heureka — **cliplot is not in it**. The old
+token only ever passed that route by carrying broad `internal:orders-microservice:admin`;
+restoring that would reproduce the over-privilege this migration exists to remove. The clean
+fix is one line in Session C's file.
+
+### Handed to other sessions — not edited here
+
+**To Session C** (`orders-microservice/`): add `internal:cliplot:service` to
+`ORDER_CHANNEL_LIFECYCLE_READ_ROLES` (`src/orders/orders.controller.ts:44-50`). Verified live
+with a freshly minted principal carrying that exact role: still 403 without the list entry.
+The neighbouring `CHANNEL_ORDER_CREATE_ROLES` *does* list it, so the omission looks accidental.
+Separately, `flipflop-service` can now be removed from the guard's static-header map — the
+caller sends Bearer as of `c991faa`.
+
+**To Session F** (`marketing-microservice/`): `ORDER_AFFINITY_REPLAY_TOKEN` now exists on
+`secret/prod/flipflop-service`, seeded byte-identical. Repoint
+`ORDER_AFFINITY_FLIPFLOP_REPLAY_TOKEN` at it whenever convenient; no code change needed and no
+coordination required, since the value is the same until someone rotates it.
+
+### An operational note on this session
+
+An earlier attempt wrote a throwaway probe key (`CLAUDE_PERMCHECK_TMP`) into
+`secret/prod/flipflop-service` while testing whether writes were permitted. That was the wrong
+place to test — a scratch path, not a live production secret. It was removed via the JSON
+merge-patch API (`vault kv patch -remove` does not exist in 1.15.6, and `KEY=null` writes the
+literal string "null"); the path was confirmed back to 17 keys with all four credential
+fingerprints unchanged, and the key never reached the K8s Secret because ESO only syncs keys
+named in the ExternalSecret. **Test permission gates against a scratch path.**
