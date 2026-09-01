@@ -2965,6 +2965,86 @@ this session.** Recorded here because it is an ecosystem-level defect that outli
 session, and because the migration's own inventories cannot see it: an opaque shared password
 authorising an admin role set, in a guard that has never been part of the JWT work.
 
+## 6an. `5f420714` sender enumeration — handed to Session E, 2026-09-01
+
+The 6am fix is **Session E's**, not this session's: E had uncommitted work in
+`resolveInternalServiceActor` when the handoff was proposed, and two sessions editing one guard
+is the failure this coordination exists to prevent. Nothing in `catalog-microservice` was
+branched or edited here. What follows is the enumeration the fix depends on, recorded because it
+was expensive to get right and both sessions got part of it wrong first.
+
+### Enumerate senders by who HOLDS the value, not by who sends the header
+
+My first allowlist was built by grepping call sites for `x-service-name` and included
+**warehouse-microservice**, which holds no catalog credential at all. Its
+`x-service-name: warehouse-microservice` targets **orders**
+(`fulfillment-orders.service.ts`, `PUT /api/orders/:id/warehouse-fulfillment-status`), not
+catalog. Allowlisting it would have granted `internal:catalog-microservice:admin` +
+`catalog:write` to a name that cannot legitimately present the credential — **widening the hole
+while appearing to close it.** Caught by Session E.
+
+E's counter-list, built correctly from Secret holders, then dropped **orders-microservice**,
+which *does* hold it. Verified here:
+
+```
+orders-microservice-secret#CATALOG_INTERNAL_SERVICE_TOKEN  fp=5f420714
+orders pod:  CATALOG_INTERNAL_SERVICE_TOKEN fp=5f420714
+             CATALOG_SERVICE_URL=http://catalog-microservice.statex-apps.svc.cluster.local:3200
+pricing.service.ts:33   reads the token
+pricing.service.ts:493  throws BadRequestException when unset — a hard dependency, not a fallback
+pricing.service.ts:~502 POST ${CATALOG_SERVICE_URL}/api/pricing, x-service-name: orders-microservice
+```
+
+Rejecting that name turns catalog pricing updates into 401s, surfaced only as
+`Unable to update Catalog pricing … upstream request failed` — a message that does not point at
+the guard.
+
+**Both errors are the same shape from opposite directions**: one list came from call sites and
+gained a service that holds nothing; the other came from holders and lost a service whose call
+site proves it sends. Neither source is sufficient alone. **Cross-check holders against call
+sites, and require both before allowlisting a name.**
+
+### The confirmed list
+
+| Sender | Evidence |
+| --- | --- |
+| `allegro-service` | holds `CATALOG_INTERNAL_SERVICE_TOKEN` |
+| `bazos-service` | holds it; catalog client does 7 GET / 4 POST / 1 PUT |
+| `cliplot` | holds it; `integrations.js:331` |
+| `flipflop-service` | holds it |
+| `marketing-microservice` | holds it; `order-affinity-catalog-publisher.ts` |
+| `orders-microservice` | holds it; `pricing.service.ts` POST `/api/pricing` |
+| `heureka-service` | holds it as `HEUREKA_INTERNAL_SERVICE_TOKEN` (added 2026-09-01, 6ab) |
+
+Seven senders plus catalog's own copy — the eight mounts of 6am.
+
+### `cliplot`, not `cliplot-service`
+
+Its header value is a **variable**, `serviceConfig.serviceName` (`integrations.js:331`), resolving
+through `process.env.SERVICE_NAME || 'cliplot'`. The live pod has `SERVICE_NAME=cliplot`.
+
+So grepping cliplot for a quoted service name returns nothing and the sender looks absent, while
+two other signals point at the wrong string: the Secret is `cliplot-secret`, and 6u lists a
+`cliplot-service` alias (dropped precisely because the pod sends `cliplot`). **A header built from
+a variable needs its value resolved in the pod, not read from the source.**
+
+### A test that encodes a caller which cannot exist
+
+Session E found `catalog-auth.guard.spec.ts:241` asserting `x-service-name: warehouse-microservice`
+— the same wrong assumption my allowlist made, frozen into a passing test. It would have stayed
+green under an allowlist containing warehouse, so it validates nothing about who can reach the
+guard. Third instance of this pattern: the two contract scripts in 6u asserting the old static
+path, the warehouse spec in 6aj setting only `JWT_TOKEN`, and now this. **A green suite is not
+evidence when the suite encodes the assumption under test.**
+
+### Deferred deliberately
+
+Per-caller roles are **not** part of E's change. All 37 guarded catalog routes need only
+`catalog:authenticated`, so narrowing the synthesised grant is safe in principle — but bazos POSTs
+`/api/products` and PUTs `/api/products/:id`, so the senders' real write usage must be traced
+first. Getting it wrong breaks live publishing. Separate, deliberate change, correctly sequenced
+after the identity fix.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
