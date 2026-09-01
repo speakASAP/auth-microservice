@@ -3389,6 +3389,106 @@ prompt, not its execution, and E has explicitly not handed it on — correctly, 
 owner's call. Prompt is current at `catalog-microservice/docs/CATALOG_ROUTE_ROLES_PROMPT.md`
 (`609c1f8`), and its stated counts match this session's independent scan.
 
+## 6at. Three unauthenticated internet-facing routes on catalog, and the audit tool that hid one, 2026-09-01
+
+Found while Sessions E and F were agreeing an approach for the route-decoration task. **No fix has
+been applied by either session** — the exposure is characterised and both blockers to fixing it are
+cleared, but the decision sits with the repository owner.
+
+### The exposure
+
+`catalog.alfares.cz` ingress maps `/api` to `catalog-microservice:3200`, so any route under `/api`
+without a guard is internet-facing. Three have none. Verified from outside the cluster with no
+credentials, responses returning through Cloudflare (`server: cloudflare`, `cf-ray: …-PRG`):
+
+| Route | Result | Content |
+| --- | --- | --- |
+| `GET /api/products/:id/heureka-feed-snapshot` | **200** | Heureka feed row: `PRODUCTNAME`, `PRICE_VAT`, `IMGURL`, `EAN`, `CATEGORYTEXT`, … |
+| `GET /api/products/:id/channel-readiness` | **200** | per-channel readiness, missing-field diagnostics |
+| `GET /api/business-health/channel-availability` | **200**, ~5KB | service topology, contract identifiers |
+| `GET /api/products?limit=1` (control) | 401 | — |
+
+The 401 control proves the ingress is fine and the routes are not. Severity **low-to-moderate**:
+41 distinct JSON paths inspected on the business-health payload, no key names matching
+token/secret/password/credential/email, no JWT- or password-shaped values. No write path, no auth
+bypass. But it is unauthenticated business data on the open internet, on a catalogue of 62 real
+products.
+
+**An early severity claim was wrong.** This session first reported the finding as "cluster-internal,
+so the blast radius is limited" — an assumption never tested, and the single line that set the
+severity. Session E checked it instead of inheriting it. The correction came from refusing a stated
+premise, not from finding new evidence.
+
+### The audit tool reported the exposure as safe
+
+The most consequential finding. Session E's coverage scanner classified
+`heureka-feed-snapshot` — the one unguarded internet-facing route — as **class-covered**, i.e.
+protected. Cause: `products.controller.ts:39-40` is `@Controller('products')` then
+`export class ProductsController` with no class-level `@RequireCatalogRoles`, and a scan reading
+"everything above the class" swallows the import block for the *first* class in any file.
+
+> **An authorization audit tool whose failure mode is a false negative is worse than no tool,
+> because it converts "unknown" into "verified safe."**
+
+Every other miscount in this thread produced a number someone could argue with. This one produced a
+clean bill of health for a live exposure, in the specific act of auditing for that class of problem.
+
+### Three scanner defects, one family
+
+| Defect | Mechanism | Symptom |
+| --- | --- | --- |
+| decorator position | scanned backwards from the verb line | 81/81 reported undecorated |
+| class-scope boundary | "everything above the class" swallowed the import block | false class-cover on the first class in every file |
+| class vs. DTO | matched `class` rather than `@Controller` | `ImportFromUrlDto` counted as a controller |
+
+Each matched something **structurally adjacent** to the target. None was visible from its own
+output — all three surfaced only when an independently-derived number disagreed. That is a stronger
+argument than "static analysis is unreliable", because it names the mechanism: the pattern and the
+intent drift apart silently, and the tool reports success either way.
+
+Corrected counts, verified by both sessions independently: **22 controllers** across `src`, two
+multi-controller files (`bundles` 2, `product-relations` 3). The route split
+40 method-decorated / 8 class-covered / 32 undecorated / 1 unguarded is **withdrawn as a stated
+figure** — provisional only, pending enumeration from the deployed router table.
+
+### Both fix-blockers cleared
+
+- **`warnings[]` is a fixed enum**, not free text: four literal pushes in
+  `content-renderer.service.ts:272-281` and no other push site in `src`, all content-formatting
+  gaps. So the snapshot route's "public-safe" property holds on the unhappy path too — a broken
+  product leaks no more than a healthy one.
+- **Nothing scrapes `channel-availability`.** The only ecosystem references are two
+  contract-verification scripts asserting on the string in source; k8s liveness and readiness both
+  target `/health`. Guarding it breaks no health signal.
+- **heureka already authenticates** on the snapshot route
+  (`catalog-client.service.ts:272` → service headers), so guarding it leaves the live consumer on
+  the passing path.
+
+Provisional split for the owner: `channel-readiness` and `business-health/channel-availability`
+guard cleanly; `heureka-feed-snapshot` is plausibly **intentional** — its docstring says
+"public-safe" and its payload is exactly what the marketplace publishes — so the fix there is an
+explicit decorator recording the decision, not necessarily a denial.
+
+### `BundlesController` / `InternalBundlesController` is the target pattern, not a defect
+
+Raised as a possible merge, since the two-classes-in-one-file split broke a scanner. **It should
+not be merged.** `/bundles` carries two `@Get`s at `catalog:authenticated`; `/internal/bundles`
+carries four mutations under class-level `BUNDLE_ADMIN_ROLES`. Merging forces one prefix and one
+class-level role, which either exposes four admin mutations under `catalog:authenticated` or locks
+two public reads behind admin. This file already does what the route-decoration task is trying to
+achieve — reads and writes separated, roles explicit on both — and is the shape to move other
+controllers toward.
+
+### Method
+
+Both sessions converged on: **the source is authoritative for intent; only the deployed pod is
+authoritative for enforcement.** Phase 1's enumeration must come from the running app's router
+table plus observed status codes, not from static analysis, and no count goes into the handover
+prompt as fact.
+
+Every substantive correction in this thread came from one session declining to accept the other's
+number and re-deriving it. Neither found its own errors.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
