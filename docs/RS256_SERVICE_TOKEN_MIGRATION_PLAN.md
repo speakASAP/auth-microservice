@@ -3489,6 +3489,73 @@ prompt as fact.
 Every substantive correction in this thread came from one session declining to accept the other's
 number and re-deriving it. Neither found its own errors.
 
+## 6au. The three public routes are closed, 2026-09-01
+
+Session E was ended by its owner mid-thread; Session F took the fix. Applied, deployed and verified
+from the public internet.
+
+### Before and after, anonymous from outside the cluster
+
+| Route | before | after |
+| --- | --- | --- |
+| `GET /api/products/:id/heureka-feed-snapshot` | 200 | **401** |
+| `GET /api/products/:id/channel-readiness` | 200 | **401** |
+| `GET /api/business-health/channel-availability` | 200, ~5KB | **401** |
+| `GET /api/products?limit=1` (control) | 401 | 401 |
+
+All three now require `catalog:authenticated`. Commit `2ad2a5a`, merged `47f0e51`, deployed as
+image `47f0e51-wt20260901115226`.
+
+**No consumer broke.** Captured from the heureka pod before the change and re-probed after, against
+the endpoint heureka actually calls:
+
+```
+before:  authenticated 200   anonymous 200      <- the exposure
+after:   authenticated 200   anonymous 401      <- closed, lane intact
+```
+
+E's `b99a38c` guard fix still holds on the new image (7 legitimate senders 200, 3 spoofs 401), the
+`orders -> catalog` pricing lane still authorizes (404 on a non-existent id), zero error-level lines
+since start, `/health` 200, and all eight catalog-dependent deployments 1/1.
+
+### The scan found more than three, and most of it was deliberate
+
+Enumerating unguarded routes and probing every one anonymously returned **13** reachable without
+credentials, not 3. The extra ten split cleanly:
+
+- `attributes`, `categories`, `media`, `pricing` — reads open, **every write guarded**. Four
+  controllers, one consistent pattern. That is a pre-existing product decision about catalogue
+  browsing, not an oversight, and reversing it was not in scope for a security fix.
+- `/health`, `/ready` — Kubernetes probes.
+- `POST /auth/login`, `/auth/register` — cannot require the credentials they issue.
+- `GET /auth/profile`, `/auth/admin/users` — **authenticated in the handler body**, not by the
+  guard. Both return 401 anonymously, verified live. Same shape as the settings route found
+  earlier: an access rule invisible to any decorator audit.
+
+Only the three fixed here had the signature of an omission: `heureka-feed-snapshot` sat among 31
+guarded siblings on the same controller, with the routes immediately above and below it both
+carrying `@UseGuards` + `catalog:authenticated`.
+
+The "public-safe" reading of that route was correct on the evidence — the payload is the Heureka
+feed row, and `warnings[]` is a fixed four-value enum, so a broken product leaks no more than a
+healthy one — but **being safe to expose is not the same as being intended to be exposed**, and
+both consumers already authenticated. Guarding it cost nothing and removed the ambiguity.
+
+### The regression check is written to fail closed
+
+`scripts/verify-no-unauthenticated-routes.js` (`npm run verify:no-unauthenticated-routes`) treats an
+unguarded route outside an explicit, reasoned allowlist as an error. Confirmed to exit 1 naming the
+route when a guard is removed, and 0 when restored.
+
+It is deliberately built to avoid the three defects that made the earlier scanners wrong — anchoring
+class spans on `@Controller` rather than `class` (a DTO is not a controller) and scanning **forward**
+from the verb line (decorators sit after it). The allowlist carries a reason per entry, so widening
+it is a visible decision rather than a silent one.
+
+**It is a commit-time backstop, not the authority.** The file says so. A scanner reported the
+unguarded snapshot route as protected earlier in this thread; only a probe against the deployed pod
+settles enforcement. Both were run here, and the probe is what this section reports.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
