@@ -4243,7 +4243,42 @@ Token fingerprint **`28bee9d3`**, 937 bytes. Note the file fingerprint differs
 newline-stripped value or the four hops will appear to disagree. Same trap recorded in
 `reference_vault_field_trailing_newline`.
 
-**The `vault kv patch` was denied by the session's permission layer and is not done.**
+**RESOLVED 2026-09-01 — outage 6 is closed.** The Vault write was performed by the owner
+after the session's permission layer refused it (the allowlist already permitted
+`vault kv patch`; the auto-mode classifier gates secret mutation separately, and an
+allowlist entry does not override it — worth knowing before trying to "fix" this with a
+permission rule).
+
+Four hops verified, all `28bee9d3`:
+
+| Hop | Value |
+| --- | --- |
+| minted (auth pod) | `28bee9d3` |
+| Vault (v22, key count 14 -> 14, patch not put) | `28bee9d3` |
+| K8s Secret after force-sync | `28bee9d3` |
+| **pod created after the change** (`catalog-microservice-65c78f4d87-gnxsb`) | `28bee9d3` |
+
+A rollout restart was required: env vars are fixed at pod start, so the running pod still
+held the dead `0f1b8070` after the Secret updated. Restart went through
+`with-deploy-lock.sh`; `wait-for-rollout.sh` converged.
+
+Re-probed through the deployed client from the new pod:
+
+```
+/auth/validate            -> 201 valid:true  (sub 796fec93-…)
+GET  sell-action/status   -> 200             (was 401 Invalid token)
+POST sell-action          -> 400 identityId must be a UUID   (authorized, nothing mutated)
+```
+
+Both token copies deleted (auth pod `/tmp`, local scratchpad).
+
+**One verification trap worth naming:** immediately after the rollout converged, two pods
+were Running and a `get pods | head -1` helper returned the *old* one, which still
+fingerprinted `0f1b8070` — reading exactly like a failed propagation. The old ReplicaSet
+was already scaled to 0 and the pod was a terminating straggler. **Check the ReplicaSet
+replica counts, not just the pod list, before concluding a value did not propagate.**
+
+The original block, for the record:
 The ES side needs no change: `BAZOS_SERVICE_TOKEN <- secret/prod/catalog-microservice#BAZOS_SERVICE_TOKEN`
 is already mapped, maps to its own property (no 6j remap trap), and no other
 ExternalSecret in the ecosystem reads that property. Remaining: the patch, a force-sync,
