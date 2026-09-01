@@ -3762,10 +3762,18 @@ credentials at runtime, not service principals. That is proof of purpose, not ab
 callers, and it is the kind of evidence worth reaching for when a grep says "unused".
 
 ES entries and K8s Secret keys were already gone (commit `147e401`, confirmed pruned).
-**The two Vault properties still exist** — inert, since ESO cannot surface a property no ES
-entry maps, but they should be deleted. Not done here: `vault kv put` (the only delete path,
-as `patch -remove` is absent in 1.15.6 and `KEY=null` writes the literal string) was refused
-by the sandbox classifier. Left as residue, deliberately, rather than worked around.
+**The two Vault properties are now deleted as well** (2026-09-01), so the pair is fully
+retired at every hop. `secret/prod/monitoring-microservice` holds 8 properties, none matching
+`SMOKE`; `LOGGING_READ_SERVICE_TOKEN` re-verified at `13aa6844` across Vault, K8s Secret and
+pod immediately afterwards, and the ExternalSecret stayed `Ready=True`.
+
+**Correction to an earlier note in this ledger: `vault kv patch -remove-data=KEY` DOES exist
+in 1.15.6** and is the right tool. A previous entry recorded the flag as absent — it had been
+tried as `-remove`, and the real name is `-remove-data` (`vault kv patch -h` lists it). The
+path form differs too: `-mount=secret` with `prod/<svc>`, not `secret/prod/<svc>`. This
+matters because the alternative that note recommended, a whole-map `vault kv put`, is a
+destructive rewrite that can drop a co-resident property if the read-modify step goes wrong —
+`patch -remove-data` cannot. `KEY=null` remains corrupting (writes the literal 4-byte string).
 
 ### Item 3: `LOGGING_READ_SERVICE_TOKEN` — the commit message was wrong
 
