@@ -3045,6 +3045,94 @@ Per-caller roles are **not** part of E's change. All 37 guarded catalog routes n
 first. Getting it wrong breaks live publishing. Separate, deliberate change, correctly sequenced
 after the identity fix.
 
+## 6ao. `5f420714` spoofing closed — independently verified, 2026-09-01
+
+Session E shipped the fix (`b99a38c`, write-up in 6af). Verified here from a second session
+rather than accepted on report, and the enumeration in 6an needs one correction: **it was mine
+that was wrong the third time.**
+
+### Verified against the deployed image
+
+Catalog pod `catalog-microservice-55dd894f5d-fvwln`, image `b99a38c-wt20260901072042`. Probed
+from the bazos pod — the same vantage that produced the original 6am reproduction:
+
+```
+orders-microservice        200      totally-made-up-service   401
+cliplot                    200      warehouse-microservice    401
+flipflop-api-gateway       200      flipflop-service          401
+flipflop-product-service   200      "" (empty)                401
+bazos-service              200
+marketing-microservice     200
+catalog-microservice       200
+```
+
+Every legitimate sender authorised; every spoof rejected, **including the empty string**, which
+previously authenticated as `internal-service` with admin rights. And from the orders pod, the
+lane 6an warned about:
+
+```
+POST catalog:3200/api/pricing  ->  400 "productId is required"
+```
+
+400-not-401: authorised, rejected by DTO validation on an empty body, nothing mutated.
+
+### `flipflop-service` is not a sender — my entry would have broken four lanes
+
+`flipflop/shared/clients/catalog-client.service.ts:219` reads
+`process.env.SERVICE_NAME || 'flipflop-service'`, and **every live flipflop container sets
+`SERVICE_NAME`**, so the literal is unreachable. Four deployments share
+`flipflop-service-secret` and each sends its own name.
+
+The trap is sharper than it first looks. Measured:
+
+```
+deployment flipflop-service           ->  SERVICE_NAME=flipflop-api-gateway
+deployment flipflop-cart-service      ->  SERVICE_NAME=flipflop-cart-service
+deployment flipflop-order-service     ->  SERVICE_NAME=flipflop-order-service
+deployment flipflop-product-service   ->  SERVICE_NAME=flipflop-product-service
+```
+
+**The deployment named `flipflop-service` is the one that does not send `flipflop-service`.** So
+the source literal, the Secret name and the Deployment name all agree on a string that no pod
+ever presents. Allowlisting it would have 401'd all four senders; it is now a spoof case in E's
+own probe, correctly returning 401.
+
+### A sender neither session found: catalog itself
+
+`catalog-microservice/src/products/products.service.ts:2872` calls its own
+`/api/products/projections/flipflop/batch` with this credential and
+`x-service-name: catalog-microservice`, so it passes through the very guard being fixed. A
+self-inflicted 401, invisible to any enumeration that only looks at *other* repos' clients.
+
+### Four failure modes in one enumeration
+
+| Mode | Instance | Which source lied |
+| --- | --- | --- |
+| sender that holds nothing | `warehouse-microservice` | call sites (its header targets orders) |
+| holder that was missed | `orders-microservice` | a truncated holder scan |
+| literal that is only a fallback | `flipflop-service` | source (env always overrides) |
+| header set from a variable | `cliplot` | source (no literal to grep) |
+| caller inside the guarded service | `catalog-microservice` | both (self-call) |
+
+Between two sessions the list went wrong in every direction available. **The rule that survives
+all five: enumerate by holder, then confirm the exact string inside the live pod. Never from
+source alone, and never from one direction alone.** Each session's list was wrong; each caught
+the other's error; neither would have caught its own.
+
+The final allowlist is 11 names, overridable via `CATALOG_INTERNAL_SERVICE_NAMES` — an escape
+hatch that matters precisely because this enumeration proved so easy to get wrong.
+
+### Still open, deliberately
+
+Per-caller roles. The synthesised grant is still
+`internal:catalog-microservice:admin` + `catalog:write` for every allowlisted caller, which
+remains broader than the 37 routes needing only `catalog:authenticated`. Narrowing it requires
+tracing the senders' real write usage first — bazos POSTs `/api/products` and PUTs
+`/api/products/:id` through this path. Correctly sequenced after the identity fix rather than
+bundled with it.
+
+The identity half is closed: a holder of `5f420714` can no longer choose who it claims to be.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
