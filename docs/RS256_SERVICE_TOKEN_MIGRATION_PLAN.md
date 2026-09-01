@@ -2190,7 +2190,7 @@ Fingerprints matched minted = Vault = K8s Secret = pod, each confirmed in a pod 
   `x-service-name` values it authenticates only as `allegro-service` (400; the rest 401). The
   6u ambiguity check holds. Session E.
 
-## 6ab. Session F (re-run), 2026-08-31 — `a2880693` is still live on every owned lane
+## 6ab. Session F (re-run), 2026-08-31 — `a2880693` still live on every owned lane (CUTOVER in 6ah, DELETED in 6ak)
 
 Session F owned `marketing-microservice`, `logging-microservice`, `aukro`, `heureka`,
 `payments-microservice`. The headline result is not a migration: it is that **the work this
@@ -2883,7 +2883,7 @@ This is the largest remaining shared value. It is not spoofable — the 6u ambig
 but it is the same "one string, many holders" shape that made `a2880693` unrotatable for two
 weeks.
 
-## 6am. `5f420714` — the 6u defect is still open on catalog, 2026-09-01
+## 6am. `5f420714` — the 6u defect found open on catalog, 2026-09-01 (CLOSED, see 6ao)
 
 Scoped as "the largest remaining shared value". It is not a rotation problem. Two findings
 changed what it is.
@@ -3189,6 +3189,70 @@ endpoint does with a well-formed request.
 Every probe used a non-existent product id, and nothing was written: the FK constraint rejected the
 insert, confirmed by `select count(*) from product_pricing where product_id = '00000000-…'`
 returning **0**.
+
+## 6aq. SESSION_F_PROMPT completion audit, 2026-09-01
+
+Re-verified every numbered item against live state rather than against this session's own report.
+
+| Prompt item | Status | Evidence |
+| --- | --- | --- |
+| 1. per-lane credential for marketing -> aukro / bazos replay | **done** | `725ca652` / `88668001`, sender==receiver, 200 both lanes, old value 401 |
+| 2. `MARKETING_API_TOKEN` own credential | **done** | `b24e8588`; 17 routes; 400 authorized, wrong token 401 |
+| 3. narrow logging ingest to `LOG_INGEST_BEARER_TOKENS` | **done** | ingest 201; `a2880693` 401; key absent from Secret and pod |
+| 4. remove `JWT_TOKEN` / `*_INTERNAL_SERVICE_TOKEN` copies | **done** | absent from all seven Secrets *and* unset in every pod |
+| 5. remove payments' two inert cutover mounts | **done** | both absent; `ORDERS_SERVICE_TOKEN` `633a4184` intact; 0 fallback warnings |
+| 6. rotate the value | **superseded — deleted instead** | 0 mounts, 0 Vault properties (6ak) |
+
+Item 6 was not performed as written. With every holder migrated the value had zero mounts, and no
+`applications` row ever stood behind it, so **deletion was the terminal step and rotation would have
+been a no-op** — a new shared password with the same properties. Recorded as a deliberate deviation.
+
+### Boundaries held
+
+Commits from this session exist in exactly four repositories: `auth-microservice` (9, docs only),
+`heureka` (1), `warehouse-microservice` (2), `rent-a-box` (1). **Zero** in `orders-microservice`,
+`monitoring-microservice`, `flipflop`, `cliplot`, `catalog-microservice`, `bazos`, `allegro`,
+`suppliers-microservice` or `k8s-manifests`. The two orders mounts the prompt assigned to Session C
+were handed over and removed by C, not here.
+
+### One open item, correctly blocked — and not in the original prompt
+
+Section 7 carries a handoff **to** Session F that the prompt never listed:
+`marketing#ORDER_AFFINITY_FLIPFLOP_REPLAY_TOKEN` should read its own Vault property
+(`FLIPFLOP_AFFINITY_REPLAY_TOKEN`) instead of `secret/prod/flipflop-service#JWT_TOKEN`.
+
+Current state: still mapped to `#JWT_TOKEN`, value `9431f75c`, and
+`secret/prod/flipflop-service` has no `FLIPFLOP_AFFINITY_REPLAY_TOKEN` property.
+
+**This is correctly not done.** The handoff says explicitly: *do not rotate the value until
+flipflop's split lands*, because flipflop's receiver still compares against the unchanged string —
+and `flipflop/` is **Session D's** repo. Splitting the marketing side first would 401 the lane.
+
+The lane is healthy meanwhile. Probed from the marketing pod against the caller's own resolved
+target:
+
+```
+POST flipflop-product-service:3002/internal/marketing/campaigns
+  real key   -> 400  "No products for campaign"   (authorized)
+  wrong key  -> 401  "Invalid internal service key"
+```
+
+**Two wrong targets preceded that result**, both worth naming. The variable is called
+`ORDER_AFFINITY_FLIPFLOP_REPLAY_TOKEN`, so the obvious probe is a `replay-candidates` endpoint like
+aukro's and bazos's — flipflop has none; the credential guards
+`MarketingController` campaign routes. And `flipflop-product-service` listens on **3002**, while
+`flipflop-service` is 3000, so the first attempt hit the wrong service entirely and returned
+ECONNRESET, then a routing 404 that could easily read as "lane dead".
+
+Third instance of the 6v/6y rule in this session: **the variable name is not the endpoint.** Resolve
+the caller's real target from the call site — and for a multi-deployment repo, resolve the port from
+the Service list, not from a sibling's convention.
+
+### Conclusion
+
+`SESSION_F_PROMPT.md` is implemented. Items 1-5 as specified, item 6 superseded by deletion. The one
+remaining Session F obligation is blocked on Session D by design, and its lane is verified working
+in the meantime.
 
 ## 7. Progress
 
