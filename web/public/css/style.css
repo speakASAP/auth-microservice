@@ -687,6 +687,56 @@ a:hover {
   color: var(--muted);
   font-size: 0.82rem;
 }
+.admin-chip {
+  align-items: center;
+  gap: 0.35rem;
+}
+.admin-chip-remove {
+  border: none;
+  background: transparent;
+  color: var(--error, #ef4444);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0 0.1rem;
+}
+.admin-chip-remove:hover {
+  color: var(--text);
+}
+.admin-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.admin-add-input,
+.admin-add-select {
+  padding: 0.3rem 0.45rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+.admin-add-input {
+  min-width: 190px;
+}
+#application-form textarea {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+#application-name[readonly] {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
 
 @media (max-width: 900px) {
   #dashboard-view.container {

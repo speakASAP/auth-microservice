@@ -36,6 +36,10 @@
   let applicationsLoading, applicationsContent, applicationsEmpty;
   let applicationAdminsLoading, applicationAdminsContent, applicationAdminsEmpty;
   let rolesUserSelect, rolesRefreshBtn, userRolesPlaceholder, userRolesLoading, userRolesContent;
+  let rolesUserSearchInput, rolesUserSearchStatus;
+  let rolesUserSelectedLabel = '';
+  let rolesUserSearchTimer = null;
+  let applicationModal, applicationModalClose, applicationForm, applicationSaveBtn, applicationCancelBtn, applicationError;
   let cachedUsers = [];
   let cachedApplications = [];
   let cachedRoles = [];
@@ -95,6 +99,28 @@
     userRolesPlaceholder = document.getElementById('user-roles-placeholder');
     userRolesLoading = document.getElementById('user-roles-loading');
     userRolesContent = document.getElementById('user-roles-content');
+    rolesUserSearchInput = document.getElementById('roles-user-search');
+    rolesUserSearchStatus = document.getElementById('roles-user-search-status');
+    applicationModal = document.getElementById('application-modal');
+    applicationModalClose = document.getElementById('application-modal-close');
+    applicationForm = document.getElementById('application-form');
+    applicationSaveBtn = document.getElementById('application-save-btn');
+    applicationCancelBtn = document.getElementById('application-cancel-btn');
+    applicationError = document.getElementById('application-error');
+
+    if (rolesUserSearchInput) {
+      rolesUserSearchInput.addEventListener('input', function () {
+        if (rolesUserSearchTimer) clearTimeout(rolesUserSearchTimer);
+        const term = rolesUserSearchInput.value;
+        rolesUserSearchTimer = setTimeout(function () {
+          searchRolesUsers(term);
+        }, 300);
+      });
+    }
+
+    if (applicationSaveBtn) applicationSaveBtn.addEventListener('click', saveApplication);
+    if (applicationCancelBtn) applicationCancelBtn.addEventListener('click', closeApplicationModal);
+    if (applicationModalClose) applicationModalClose.addEventListener('click', closeApplicationModal);
 
     /* Attach Sign in button first so click always works even if rest of init fails */
     if (loginBtn) {
@@ -215,6 +241,8 @@
     if (rolesUserSelect) {
       rolesUserSelect.addEventListener('change', function () {
         const userId = rolesUserSelect.value;
+        const selected = rolesUserSelect.options[rolesUserSelect.selectedIndex];
+        rolesUserSelectedLabel = selected ? selected.textContent : '';
         if (userId) {
           loadUserRoles(userId);
         } else {
@@ -274,9 +302,11 @@
     if (loggedIn) {
       if (userEmailEl) userEmailEl.textContent = sessionStorage.getItem('auth_admin_email') || 'User';
       loadDashboard();
-      loadApplications();
-      loadRoleCatalog();
-      loadApplicationAdmins();
+      // The application-admins section builds its role picker from the
+      // application and role catalogs, so both must land before it renders.
+      Promise.all([loadApplications(), loadRoleCatalog()])
+        .then(loadApplicationAdmins)
+        .catch(loadApplicationAdmins);
       loadUsers();
       updateTokenDisplay();
     } else {
@@ -553,21 +583,98 @@
     }
   }
 
+  /**
+   * Fill the roles picker.
+   *
+   * The user table is far larger than one page (hundreds of thousands of rows),
+   * so seeding this select from the current page would hide every user outside
+   * it — including the oldest accounts, which sort last under createdAt DESC.
+   * The picker is therefore driven by its own search (searchRolesUsers), and
+   * this only supplies an initial convenience list plus the selected user.
+   */
   function populateRolesUserSelect(users) {
     if (!rolesUserSelect) return;
     const current = rolesUserSelect.value;
-    rolesUserSelect.innerHTML = '<option value="">— Select user —</option>';
-    (users || []).forEach(function (u) {
-      const opt = document.createElement('option');
-      opt.value = u.id;
-      opt.textContent = u.email || u.id;
-      if (u.id === current) opt.selected = true;
-      rolesUserSelect.appendChild(opt);
-    });
+    const currentLabel = rolesUserSelectedLabel;
+    setRolesUserOptions(users || [], current, currentLabel);
     if (current && rolesUserSelect.value === current) {
       loadUserRoles(current);
     } else {
       showUserRolesPlaceholder();
+    }
+  }
+
+  /**
+   * Render options, keeping the selected user present even when they are not in
+   * the supplied list — otherwise selecting a searched user then re-rendering
+   * would silently drop the selection.
+   */
+  function setRolesUserOptions(users, selectedId, selectedLabel) {
+    if (!rolesUserSelect) return;
+    rolesUserSelect.innerHTML = '<option value="">— Select user —</option>';
+    let sawSelected = false;
+    (users || []).forEach(function (u) {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = userPickerLabel(u);
+      if (u.id === selectedId) {
+        opt.selected = true;
+        sawSelected = true;
+        rolesUserSelectedLabel = opt.textContent;
+      }
+      rolesUserSelect.appendChild(opt);
+    });
+    if (selectedId && !sawSelected) {
+      const opt = document.createElement('option');
+      opt.value = selectedId;
+      opt.textContent = selectedLabel || selectedId;
+      opt.selected = true;
+      rolesUserSelect.appendChild(opt);
+    }
+  }
+
+  function userPickerLabel(u) {
+    const name = [u.firstName, u.lastName].filter(Boolean).join(' ');
+    return (u.email || u.id) + (name ? ' (' + name + ')' : '');
+  }
+
+  /**
+   * Look up users for the roles picker by server-side search so any account is
+   * reachable regardless of how many users exist or how old the account is.
+   */
+  async function searchRolesUsers(term) {
+    const token = getAccessToken();
+    if (!token || !rolesUserSelect) return;
+
+    const query = (term || '').trim();
+    if (rolesUserSearchStatus) {
+      rolesUserSearchStatus.textContent = query ? 'Searching…' : 'Showing most recent users.';
+    }
+
+    try {
+      const params = new URLSearchParams({ limit: '100', offset: '0' });
+      if (query) params.set('search', query);
+      const res = await fetch('/auth/admin/users?' + params.toString(), {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.message || 'Search failed');
+
+      const found = Array.isArray(data.users) ? data.users : [];
+      setRolesUserOptions(found, rolesUserSelect.value, rolesUserSelectedLabel);
+
+      if (rolesUserSearchStatus) {
+        const total = Number.isFinite(Number(data.count)) ? Number(data.count) : found.length;
+        if (found.length === 0) {
+          rolesUserSearchStatus.textContent = 'No users match "' + query + '".';
+        } else if (total > found.length) {
+          rolesUserSearchStatus.textContent = 'Showing ' + found.length + ' of ' + total + ' matches — refine the search to narrow it.';
+        } else {
+          rolesUserSearchStatus.textContent = 'Showing ' + found.length + ' match' + (found.length === 1 ? '' : 'es') + '.';
+        }
+      }
+    } catch (e) {
+      if (rolesUserSearchStatus) rolesUserSearchStatus.textContent = e.message || 'User search failed.';
     }
   }
 
@@ -693,23 +800,106 @@
 
     const table = document.createElement('table');
     table.className = 'users-table';
-    table.innerHTML = '<thead><tr><th>Name</th><th>Display name</th><th>Type</th><th>Domain</th><th>Description</th><th>Active</th></tr></thead><tbody></tbody>';
+    table.innerHTML = '<thead><tr><th>Name</th><th>Display name</th><th>Type</th><th>Domain</th><th>Description</th><th>Active</th><th>Actions</th></tr></thead><tbody></tbody>';
     const tbody = table.querySelector('tbody');
 
     apps.forEach(function (app) {
       const tr = document.createElement('tr');
+      const description = app.description || '';
+      const descriptionCell = description
+        ? escapeHtml(description.substring(0, 80)) + (description.length > 80 ? '…' : '')
+        : '<span class="muted-small">No description</span>';
       tr.innerHTML =
         '<td>' + escapeHtml(app.name || '—') + '</td>' +
         '<td>' + escapeHtml(app.displayName || '—') + '</td>' +
         '<td>' + escapeHtml(app.type || '—') + '</td>' +
         '<td>' + escapeHtml(app.domain || '—') + '</td>' +
-        '<td>' + escapeHtml((app.description || '').substring(0, 80)) + (app.description && app.description.length > 80 ? '…' : '') + '</td>' +
-        '<td>' + (app.isActive !== false ? 'Yes' : 'No') + '</td>';
+        '<td>' + descriptionCell + '</td>' +
+        '<td>' + (app.isActive !== false ? 'Yes' : 'No') + '</td>' +
+        '<td class="actions">' +
+        '<button type="button" class="btn btn-small" data-action="edit-app" data-id="' + escapeHtml(app.id) + '">Edit</button>' +
+        '</td>';
       tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('[data-action="edit-app"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openApplicationModal(btn.getAttribute('data-id'));
+      });
     });
 
     applicationsContent.innerHTML = '';
     applicationsContent.appendChild(table);
+  }
+
+  function openApplicationModal(applicationId) {
+    if (!applicationModal || !applicationForm) return;
+    const app = findApplication(applicationId);
+    if (!app) return;
+
+    showError(applicationError, '');
+    document.getElementById('application-id').value = app.id;
+    document.getElementById('application-name').value = app.name || '';
+    document.getElementById('application-displayName').value = app.displayName || '';
+    document.getElementById('application-type').value = app.type || '';
+    document.getElementById('application-domain').value = app.domain || '';
+    document.getElementById('application-description').value = app.description || '';
+    document.getElementById('application-isActive').checked = app.isActive !== false;
+
+    applicationModal.classList.remove('hidden');
+  }
+
+  function closeApplicationModal() {
+    if (applicationModal) applicationModal.classList.add('hidden');
+    showError(applicationError, '');
+  }
+
+  /**
+   * Persist application metadata. `name` is the stable identifier other services
+   * key on, so it is shown read-only and never sent.
+   */
+  async function saveApplication() {
+    const token = getAccessToken();
+    if (!token) {
+      showError(applicationError, 'Not authenticated. Please log in again.');
+      return;
+    }
+
+    const id = document.getElementById('application-id').value;
+    if (!id) return;
+
+    const payload = {
+      displayName: document.getElementById('application-displayName').value.trim(),
+      type: document.getElementById('application-type').value,
+      domain: document.getElementById('application-domain').value.trim(),
+      description: document.getElementById('application-description').value.trim(),
+      isActive: document.getElementById('application-isActive').checked
+    };
+
+    if (applicationSaveBtn) applicationSaveBtn.disabled = true;
+    showError(applicationError, '');
+
+    try {
+      const res = await fetch('/auth/admin/applications/' + encodeURIComponent(id), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showError(applicationError, data.message || 'Failed to update application (requires global:superadmin).');
+        return;
+      }
+      closeApplicationModal();
+      loadApplications();
+    } catch (e) {
+      showError(applicationError, 'Network error updating application');
+    } finally {
+      if (applicationSaveBtn) applicationSaveBtn.disabled = false;
+    }
   }
 
   async function loadApplicationAdmins() {
@@ -762,10 +952,25 @@
       const app = row.application || {};
       const admins = Array.isArray(row.admins) ? row.admins : [];
       const tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td><strong>' + escapeHtml(app.displayName || app.name || '—') + '</strong><br><span class="muted-small">' + escapeHtml(app.name || app.id || '—') + '</span></td>' +
-        '<td>' + escapeHtml(app.type || '—') + '</td>' +
-        '<td>' + renderAdminUsersList(admins) + '</td>';
+
+      const appCell = document.createElement('td');
+      appCell.innerHTML =
+        '<strong>' + escapeHtml(app.displayName || app.name || '—') + '</strong><br>' +
+        '<span class="muted-small">' + escapeHtml(app.name || app.id || '—') + '</span>';
+
+      const typeCell = document.createElement('td');
+      typeCell.textContent = app.type || '—';
+
+      const adminsCell = document.createElement('td');
+      const status = document.createElement('div');
+      status.className = 'muted-small';
+      adminsCell.appendChild(renderAdminUsersList(app, admins, status));
+      adminsCell.appendChild(renderAddAdminControl(app, status));
+      adminsCell.appendChild(status);
+
+      tr.appendChild(appCell);
+      tr.appendChild(typeCell);
+      tr.appendChild(adminsCell);
       tbody.appendChild(tr);
     });
 
@@ -773,13 +978,202 @@
     applicationAdminsContent.appendChild(table);
   }
 
-  function renderAdminUsersList(admins) {
-    if (!admins || admins.length === 0) return '<span class="muted-small">No app admins</span>';
-    return '<div class="admin-chip-list">' + admins.map(function (admin) {
+  /** Admin chips, each with a remove control for the admin role it represents. */
+  function renderAdminUsersList(app, admins, statusEl) {
+    const list = document.createElement('div');
+    list.className = 'admin-chip-list';
+
+    if (!admins || admins.length === 0) {
+      const empty = document.createElement('span');
+      empty.className = 'muted-small';
+      empty.textContent = 'No app admins';
+      list.appendChild(empty);
+      return list;
+    }
+
+    admins.forEach(function (admin) {
       const label = admin.email || [admin.firstName, admin.lastName].filter(Boolean).join(' ') || admin.id;
-      const roles = Array.isArray(admin.roles) && admin.roles.length > 0 ? ' · ' + admin.roles.join(', ') : '';
-      return '<span class="admin-chip">' + escapeHtml(label + roles) + '</span>';
-    }).join('') + '</div>';
+      const roles = Array.isArray(admin.roles) ? admin.roles : [];
+
+      const chip = document.createElement('span');
+      chip.className = 'admin-chip';
+      const text = document.createElement('span');
+      text.textContent = label + (roles.length > 0 ? ' · ' + roles.join(', ') : '');
+      chip.appendChild(text);
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'admin-chip-remove';
+      remove.title = 'Remove admin access to ' + (app.displayName || app.name);
+      remove.textContent = '×';
+      remove.addEventListener('click', function () {
+        if (!confirm('Remove ' + label + ' as admin of ' + (app.displayName || app.name) + '?')) return;
+        removeApplicationAdmin(app, admin, roles, statusEl);
+      });
+      chip.appendChild(remove);
+
+      list.appendChild(chip);
+    });
+
+    return list;
+  }
+
+  /** Admin-role picker plus an email box, so an admin can be granted inline. */
+  function renderAddAdminControl(app, statusEl) {
+    const wrap = document.createElement('div');
+    wrap.className = 'admin-add-row';
+
+    const adminRoles = cachedRoles.filter(function (role) {
+      return role
+        && role.isActive !== false
+        && role.applicationId === app.id
+        && (role.scope === 'application' || role.scope === 'internal')
+        && /admin/i.test(role.name || '');
+    });
+
+    if (adminRoles.length === 0) {
+      const note = document.createElement('span');
+      note.className = 'muted-small';
+      note.textContent = 'No admin role defined for this application.';
+      wrap.appendChild(note);
+      return wrap;
+    }
+
+    const emailInput = document.createElement('input');
+    emailInput.type = 'email';
+    emailInput.placeholder = 'user@example.com';
+    emailInput.className = 'admin-add-input';
+
+    const roleSelect = document.createElement('select');
+    roleSelect.className = 'admin-add-select';
+    adminRoles.forEach(function (role) {
+      const opt = document.createElement('option');
+      opt.value = role.id;
+      opt.textContent = role.name;
+      roleSelect.appendChild(opt);
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn btn-small btn-secondary';
+    addBtn.textContent = 'Add admin';
+    addBtn.addEventListener('click', function () {
+      const role = adminRoles.find(function (r) { return r.id === roleSelect.value; });
+      addApplicationAdmin(app, emailInput.value.trim(), role, statusEl, emailInput);
+    });
+
+    wrap.appendChild(emailInput);
+    wrap.appendChild(roleSelect);
+    wrap.appendChild(addBtn);
+    return wrap;
+  }
+
+  /**
+   * Resolve an email to a user id via the admin search, requiring an exact
+   * case-insensitive match so a partial hit can never grant the wrong account.
+   */
+  async function findUserByEmail(email) {
+    const token = getAccessToken();
+    if (!token) return null;
+    const params = new URLSearchParams({ limit: '100', offset: '0', search: email });
+    const res = await fetch('/auth/admin/users?' + params.toString(), {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.message || 'User lookup failed');
+    const target = email.toLowerCase();
+    return (data.users || []).find(function (u) {
+      return (u.email || '').toLowerCase() === target;
+    }) || null;
+  }
+
+  async function addApplicationAdmin(app, email, role, statusEl, emailInput) {
+    if (!email) {
+      statusEl.textContent = 'Enter the email of an existing user.';
+      return;
+    }
+    if (!role) {
+      statusEl.textContent = 'Select an admin role.';
+      return;
+    }
+
+    const token = getAccessToken();
+    if (!token) {
+      statusEl.textContent = 'Not authenticated. Please log in again.';
+      return;
+    }
+
+    statusEl.textContent = 'Looking up ' + email + '…';
+
+    try {
+      const user = await findUserByEmail(email);
+      if (!user) {
+        statusEl.textContent = 'No user found with email ' + email + '. Create the user first.';
+        return;
+      }
+
+      statusEl.textContent = 'Granting ' + role.name + '…';
+      const res = await fetch('/auth/admin/users/' + encodeURIComponent(user.id) + '/roles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ roleId: role.id, applicationId: app.id })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Failed to assign role (requires global:superadmin).');
+
+      if (emailInput) emailInput.value = '';
+      statusEl.textContent = 'Added ' + email + ' as ' + role.name + '.';
+      loadApplicationAdmins();
+    } catch (e) {
+      statusEl.textContent = e.message || 'Failed to add application admin.';
+    }
+  }
+
+  /**
+   * Revoke this application's admin roles from the user. The admin list reports
+   * role names, so match them back to the catalog to recover the role ids.
+   */
+  async function removeApplicationAdmin(app, admin, roleNames, statusEl) {
+    const token = getAccessToken();
+    if (!token) {
+      statusEl.textContent = 'Not authenticated. Please log in again.';
+      return;
+    }
+
+    const targets = cachedRoles.filter(function (role) {
+      return role
+        && role.applicationId === app.id
+        && roleNames.indexOf(role.name) !== -1;
+    });
+
+    if (targets.length === 0) {
+      statusEl.textContent = 'Could not resolve the admin role to remove. Reload roles and retry.';
+      return;
+    }
+
+    statusEl.textContent = 'Removing admin access…';
+
+    try {
+      for (const role of targets) {
+        const res = await fetch('/auth/admin/users/' + encodeURIComponent(admin.id) + '/roles/' + encodeURIComponent(role.id), {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ applicationId: app.id })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || 'Failed to remove role (requires global:superadmin).');
+      }
+      statusEl.textContent = 'Admin access removed.';
+      loadApplicationAdmins();
+    } catch (e) {
+      statusEl.textContent = e.message || 'Failed to remove application admin.';
+    }
   }
 
   function showUserRolesPlaceholder() {
@@ -840,8 +1234,10 @@
     if (!userRolesContent) return;
 
     const assigned = new Set((roles || []).filter(function (r) { return typeof r === 'string'; }));
+    // The picker can select users outside the current page, so fall back to the
+    // selected option's label rather than showing a bare UUID.
     const user = cachedUsers.find(function (u) { return u.id === userId; });
-    const userEmail = user ? user.email : userId;
+    const userEmail = (user && user.email) || rolesUserSelectedLabel || userId;
     const roleCatalog = cachedRoles.filter(function (role) { return role && role.isActive !== false; });
     const appCatalog = cachedApplications.filter(function (app) { return app && app.isActive !== false; });
 
@@ -1111,9 +1507,22 @@
     tbody.querySelectorAll('[data-action="delete"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         const userId = btn.getAttribute('data-id');
-        if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-          deleteUser(userId);
+        const user = cachedUsers.find(function (u) { return u.id === userId; });
+        const email = (user && user.email) || '';
+
+        // Deletion is permanent and this table holds real accounts, so require
+        // the email to be retyped rather than a single OK click.
+        if (!email) {
+          if (confirm('Permanently delete this user? This cannot be undone.')) deleteUser(userId);
+          return;
         }
+        const typed = prompt('Permanently delete ' + email + '?\n\nThis cannot be undone. Type the email address to confirm:');
+        if (typed === null) return;
+        if (typed.trim().toLowerCase() !== email.toLowerCase()) {
+          alert('Email did not match. User was not deleted.');
+          return;
+        }
+        deleteUser(userId);
       });
     });
 

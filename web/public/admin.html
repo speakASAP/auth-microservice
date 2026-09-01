@@ -161,13 +161,16 @@
     <section class="section">
       <h2>User's roles per application</h2>
       <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem;">View and update the selected user's global roles, per-application roles, and application registrations.</p>
-      <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem;">
+      <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 0.5rem;">
+        <label for="roles-user-search">Find user</label>
+        <input type="search" id="roles-user-search" placeholder="Search by email, name or phone" style="padding: 0.5rem 0.75rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); min-width: 260px;">
         <label for="roles-user-select">Select user</label>
-        <select id="roles-user-select" style="padding: 0.5rem 0.75rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); min-width: 220px;">
+        <select id="roles-user-select" style="padding: 0.5rem 0.75rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); min-width: 260px;">
           <option value="">— Select user —</option>
         </select>
         <button type="button" class="btn btn-secondary" id="roles-refresh-btn">Refresh roles</button>
       </div>
+      <p id="roles-user-search-status" class="muted-small" style="margin: 0 0 1rem;">Showing most recent users. Search to reach any account.</p>
       <div id="user-roles-container" style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
         <div id="user-roles-placeholder" style="color: var(--muted);">Select a user to see their roles.</div>
         <div id="user-roles-loading" class="loading hidden">Loading roles…</div>
@@ -238,6 +241,57 @@
     </div>
   </div>
 
-  <script src="/js/admin.js?v=20260628235000"></script>
+  <!-- Application Modal -->
+  <div id="application-modal" class="modal hidden">
+    <div class="modal-content" style="max-width: 560px;">
+      <div class="modal-header">
+        <h3>Edit application</h3>
+        <button type="button" class="close-btn" id="application-modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="application-form">
+          <input type="hidden" id="application-id" name="id">
+          <div class="form-group">
+            <label for="application-name">Name</label>
+            <input type="text" id="application-name" name="name" readonly>
+            <span style="color: var(--muted); font-size: 0.85rem;">Stable identifier used by other services — not editable.</span>
+          </div>
+          <div class="form-group">
+            <label for="application-displayName">Display name</label>
+            <input type="text" id="application-displayName" name="displayName">
+          </div>
+          <div class="form-group">
+            <label for="application-type">Type</label>
+            <select id="application-type" name="type">
+              <option value="user_facing">user_facing</option>
+              <option value="internal">internal</option>
+              <option value="infrastructure">infrastructure</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="application-domain">Domain</label>
+            <input type="text" id="application-domain" name="domain" placeholder="example.alfares.cz">
+          </div>
+          <div class="form-group">
+            <label for="application-description">Description</label>
+            <textarea id="application-description" name="description" rows="3" placeholder="What this service does"></textarea>
+          </div>
+          <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+              <input type="checkbox" id="application-isActive" name="isActive" checked>
+              <span>Active</span>
+            </label>
+          </div>
+          <div id="application-error" class="error hidden"></div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button type="button" class="btn" id="application-save-btn">Save</button>
+            <button type="button" class="btn btn-secondary" id="application-cancel-btn">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js?v=20260901120000"></script>
 </body>
 </html>
