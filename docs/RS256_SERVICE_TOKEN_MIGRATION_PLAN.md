@@ -5354,3 +5354,79 @@ merge-patch API (`vault kv patch -remove` does not exist in 1.15.6, and `KEY=nul
 literal string "null"); the path was confirmed back to 17 keys with all four credential
 fingerprints unchanged, and the key never reached the K8s Secret because ESO only syncs keys
 named in the ExternalSecret. **Test permission gates against a scratch path.**
+
+## 6aw. Session D's two handovers closed by the same session, 2026-09-01
+
+No other session remained to pick these up, so Session D took both. Recorded separately
+from 6av because they touch repos 6av deliberately did not.
+
+### cliplot's order-detail read: the smaller diff was the wrong one
+
+`GET /api/orders/:id` returned **403** for cliplot even holding
+`internal:cliplot:service`, verified live in 6av. The obvious fix is one line — add cliplot
+to `ORDER_CHANNEL_LIFECYCLE_READ_ROLES`, where the other five channels already sit.
+
+**That would have over-granted.** That list is spread into
+`ORDER_ADMIN_LIFECYCLE_READ_ROLES` and `ORDER_CUSTOMER_LIFECYCLE_READ_ROLES` as well as
+`ORDER_DETAIL_READ_ROLES`, so joining it also grants `GET admin/lifecycle` and
+`GET customer/lifecycle` — listings that span **every channel's** orders, not just the
+caller's own. cliplot calls neither: `grep -cE "admin/lifecycle|customer/lifecycle"` over
+`cliplot/src/integrations.js` returns **0**. It reads one order by id after a status change
+(`readOrderWithStatusToken`), and that is the entire requirement.
+
+So `internal:cliplot:service` was added to `ORDER_DETAIL_READ_ROLES` directly. One extra
+line of diff, three endpoints not granted.
+
+### flipflop off the legacy static-header path — four entries become three
+
+`flipflop-service` removed from the guard's `configuredServices` map, verified from the
+deployed pod first (Bearer create **400 "channel is required"**, Bearer GET **404**, no
+credential **401**).
+
+**`cliplot`'s entry stays, and that distinction matters:** only its *status* lane moved to
+Bearer. Its create and validate-create calls still send `x-internal-service-token`
+(`f5a28e51`, matched on both sides — verified in the pod and in
+`orders-microservice-secret`), so deleting that entry would break order creation.
+
+The stale note claiming neither `cliplot` nor `invoices-microservice` has an `applications`
+row was corrected: both were seeded 2026-08-27 (6x), and this session issued a real
+principal against cliplot's.
+
+### The test passed for the wrong reason, and that is the finding worth keeping
+
+`scripts/verify-internal-service-identity.js` exercised the ambiguity rule using
+`catalog-microservice` and `flipflop-service`. Every flipflop case is a **rejection**
+assertion — "this must NOT authenticate". Removing flipflop from the map keeps all of them
+green, because the request now rejects for a completely different reason: the entry is gone,
+not because the shared-value rule fired. **A rejection test aimed at a removed entry is
+vacuous and silently stays green.**
+
+Repointed those cases at `allegro-service` (still in the map, so the ambiguity rule is
+genuinely exercised) and added `flipflop-service` to the script's source-level migrated
+list, which asserts the name does not appear in the guard at all.
+
+A first attempt added a *runtime* assertion that flipflop must fail `canActivate`. It
+failed — the harness stubs `validateTokenWithAuth`, so with no static entry the request
+falls through to the stubbed Bearer path and succeeds. The assertion was testing the
+harness, not the guard. The source-level check is the right mechanism here; the runtime one
+was removed rather than left passing for a reason nobody would reconstruct later.
+
+Confirmed the check fails on revert:
+`flipflop-service is a Bearer lane and must not appear in the guard's static map`.
+
+`verify:internal-service-identity`, `channel-lifecycle-surfaces`, `create-order-contract`,
+`order-lifecycle-read-model` and `transitions` all pass; `nest build` clean.
+
+### marketing's replay token moved to its own property
+
+`ORDER_AFFINITY_FLIPFLOP_REPLAY_TOKEN` now reads
+`secret/prod/flipflop-service#ORDER_AFFINITY_REPLAY_TOKEN` instead of `JWT_TOKEN`, matching
+the neighbouring bazos entry which already used a dedicated `MARKETING_REPLAY_TOKEN`
+property. Because 6av seeded it byte-identical, the remap was a **no-op**: Vault, the K8s
+Secret and the marketing pod all still measure `9431f75c`, and no restart was needed.
+
+Verified from marketing's own pod, both directions: replay endpoint **200** with the correct
+key, **401** with a wrong one.
+
+`9431f75c` is now one value per job across three properties. It can finally be rotated one
+job at a time — which was the entire point of the split, and was impossible before today.
