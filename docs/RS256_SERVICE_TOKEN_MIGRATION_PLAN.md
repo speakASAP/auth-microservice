@@ -2883,6 +2883,88 @@ This is the largest remaining shared value. It is not spoofable — the 6u ambig
 but it is the same "one string, many holders" shape that made `a2880693` unrotatable for two
 weeks.
 
+## 6am. `5f420714` — the 6u defect is still open on catalog, 2026-09-01
+
+Scoped as "the largest remaining shared value". It is not a rotation problem. Two findings
+changed what it is.
+
+### It is not a JWT, which is why every sweep missed it
+
+```
+length 64   no dots   base64-ish charset   does not start "ey"
+```
+
+An opaque static secret, not a token: no `alg`, no claims, no `exp`. Every inventory in this
+plan counted JWT-shaped keys, so `5f420714` never appeared in the HS256 totals, the expired-token
+sweeps, or the RS256/HS256 split. **A credential does not have to be a JWT to be a shared
+password**, and the sweeps that found the other outages are structurally blind to this class.
+
+### The header-spoofing defect 6u closed on orders is still live on catalog
+
+`catalog-microservice/src/auth/catalog-auth.guard.ts:99` `resolveInternalServiceActor()` compares
+`x-internal-service-token` byte-for-byte, then builds the actor from the caller-supplied
+`x-service-name` header and grants a fixed role set:
+
+```
+roles: ['internal:catalog-microservice:admin', 'catalog:write']
+```
+
+Measured from inside the bazos pod against `catalog-microservice:3200`:
+
+| `x-service-name` presented | result |
+| --- | --- |
+| `allegro-service` | **200** |
+| `flipflop-service` | **200** |
+| `marketing-microservice` | **200** |
+| `totally-made-up-service` | **200** |
+| `` (empty string) | **200** |
+| any name, wrong token | 401 |
+
+The write path is no stricter: `POST /api/products` as `totally-made-up-service` returns **400**
+(DTO validation), not 401 — authorization passed and only an empty body stopped it. Nothing was
+created; the empty body was deliberate.
+
+**The consequence is not only authentication.** The spoofed name becomes `actor.sub`,
+`actor.source` and `actor.serviceName`, which flow into `bundles.service.ts:527-529`,
+`product-event-publisher.service.ts:94` and `products.service.ts:419`. A fabricated caller name
+is written into the audit trail and published on product events, so attribution is corrupted
+downstream of the guard.
+
+Catalog has no ambiguity check: `grep -c 'namesSharingToken\|ambiguous'` on that guard returns 0.
+
+### Why 6u's fix does not port directly
+
+On orders, six callers each had their own env slot holding the same value, so the ambiguity check
+had something to compare — "this value is configured for more than one caller, deny." Here there
+is **one slot and six legitimate senders by design**: allegro, bazos, cliplot, flipflop, marketing
+and orders all present the same string to one door. No check can distinguish them, because from
+the guard's side they are identical.
+
+Separating them needs per-caller credentials, or Bearer through `/auth/validate` — which this
+same guard already does on its JWT path (`validateBearerToken`). That is a design decision inside
+catalog, so it is Session E's to make, not something to change underneath an active session.
+
+### The 8-mount blast radius
+
+One Vault property, `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`:
+
+```
+allegro / bazos / catalog / cliplot / flipflop / marketing / orders   #CATALOG_INTERNAL_SERVICE_TOKEN
+heureka                                                              #HEUREKA_INTERNAL_SERVICE_TOKEN
+```
+
+Seven share the variable name; heureka reads the same property under a different one, added
+2026-09-01 to close the `catalog -> heureka` 401 in 6ab. **Grepping for
+`CATALOG_INTERNAL_SERVICE_TOKEN` will not find the heureka mount** — a per-caller split that
+misses it breaks that lane again. One Vault write, eight pods to restart, atomically.
+
+### Status
+
+Reported to Session E with the reproduction. **Nothing in `catalog-microservice` was changed by
+this session.** Recorded here because it is an ecosystem-level defect that outlives any one
+session, and because the migration's own inventories cannot see it: an opaque shared password
+authorising an admin role set, in a guard that has never been part of the JWT work.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
