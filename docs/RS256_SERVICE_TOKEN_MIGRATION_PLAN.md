@@ -2813,6 +2813,76 @@ sharing one Vault property between sender and receiver, one operator credential 
 property, and five dead `PRIMARY || JWT_TOKEN` fallbacks removed. The shared password was the
 last thing to go, not the first.
 
+## 6al. `381e450e` retired — the second roleless docs-rag credential, 2026-09-01
+
+Found while sweeping Vault for `a2880693`. `381e450e` decodes to **the same claims**:
+
+```
+{"serviceId":"alfares-agent-rag","iss":"docs-rag-microservice"}   no sub, no roles
+iat 2026-06-12   exp 2027-06-12   HS256
+```
+
+A sibling of the value retired in 6ak, minted five months earlier and shared between two
+services. Same defect class: a roleless string with no `applications` row behind it, so it
+could never be revoked per-caller.
+
+**It was already dead everywhere but Vault:** two properties
+(`secret/prod/rent-a-box#JWT_TOKEN`, `secret/prod/speakasap-portal#JWT_TOKEN`), **zero**
+Kubernetes mounts, zero pod environments, zero source reads. Both deleted with
+`-remove-data` (versions 5 and 5, soft, recoverable). Sibling properties verified intact —
+`PORTAL_INBOUND_API_TOKEN` (`3f5f026b`) and `SPEAKASAP_PLATFORM_JWT_SECRET` (`b960e67a`).
+
+### A fifth drift variant: the manifest that would resurrect a deleted key
+
+`rent-a-box/k8s/external-secret.yaml` **does** map `JWT_TOKEN` — but the cluster has **no
+`rent-a-box` ExternalSecret at all**. `rent-a-box-secret` is hand-created and carries only the
+three keys the pods use, none of which even exist in that Vault path.
+
+So the repo describes an ESO integration that was never applied. Deleting only the Vault
+property would have left a manifest that, on some future `kubectl apply`, re-introduces
+`JWT_TOKEN` — and now that the property is gone, syncs it **empty**. The ES entry was removed
+alongside the Vault delete (`4a92500`).
+
+Worth adding to the drift catalogue, which now runs: key missing / mapping missing / deployment
+env missing (6q), committed-but-never-applied (6ab), and **applied-manifest-absent** — where
+the repo shows an integration the cluster has never had. Each is invisible from ESO status, and
+this one is invisible from the cluster too: there is no resource to inspect.
+
+### `speakasap-portal` was verified read-only
+
+`ssh speakasap` is read-only and that host must not be mutated, so nothing was written there.
+Verification was by reading alone, and the first attempt was **wrong**: a grep under `/var/www`
+returned nothing, which looks like proof of absence but was actually the wrong path. The
+portal's live `.env` is at `/home/portal_db/speakasap-portal/.env`.
+
+Read correctly, it has no `JWT_TOKEN` key at all — its tokens are `PORTAL_INBOUND_API_TOKEN`,
+`DRILLS_INTERNAL_TOKEN`, `NOTIFICATION_SERVICE_AUTH_TOKEN`,
+`MARATHON_PORTAL_JWT_SECRET`, `SPEAKASAP_PLATFORM_JWT_SECRET`. Every value in the file was then
+fingerprinted to confirm `381e450e` does not appear under a *different* name either.
+
+**An empty grep is only evidence once you have proved you searched the right place.** Locate
+the file first, then search it; and when deleting a shared credential, match on fingerprint,
+because the same value under a different key name is exactly what a name-based search misses.
+
+### `5f420714` is an 8-way rotation, not a 2-way one
+
+Session E corrected a count of mine, verified independently here:
+
+```
+allegro / bazos / catalog / cliplot / flipflop / marketing / orders  #CATALOG_INTERNAL_SERVICE_TOKEN
+heureka                                                             #HEUREKA_INTERNAL_SERVICE_TOKEN
+```
+
+Eight mount points, one Vault property (`secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`).
+Seven share a variable name; heureka is the outlier, reading the same property under a
+different name — added 2026-09-01 to close the `catalog -> heureka` 401 in 6ab. So rotating it
+is **one Vault write, eight pods to restart, atomically**. Anyone treating it as a catalog-local
+credential will break seven other services.
+
+This is the largest remaining shared value. It is not spoofable — the 6u ambiguity check holds —
+but it is the same "one string, many holders" shape that made `a2880693` unrotatable for two
+weeks.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
