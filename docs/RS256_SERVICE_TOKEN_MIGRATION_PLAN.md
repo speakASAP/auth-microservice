@@ -3910,3 +3910,78 @@ for s in json.load(sys.stdin)[\"items\"]:
             print(s[\"metadata\"][\"name\"], \"->\", k)
 "
 ```
+
+## 6ai. Session C — `a2880693` fallbacks removed from orders, unblocking Session F
+
+Session F reported that `warehouse#JWT_TOKEN` and `payments#JWT_TOKEN` could not be rotated
+because `orders-microservice` still mapped both. Orders is Session C's repo, so the removal
+belongs here. Both are now gone and the lane is verified live.
+
+### What those two variables actually were
+
+| ES key (orders) | Vault source | Live value in pod |
+| --- | --- | --- |
+| `WAREHOUSE_INTERNAL_SERVICE_TOKEN` | `secret/prod/warehouse-microservice#JWT_TOKEN` | `a2880693` |
+| `PAYMENTS_INTERNAL_SERVICE_TOKEN` | `secret/prod/payments-microservice#JWT_TOKEN` | `a2880693` |
+
+Both resolved to the **shared roleless value** (`serviceId=alfares-agent-rag`,
+`iss=docs-rag-microservice`, no `sub`, no `roles`) — a credential neither target can
+authenticate. So neither variable could ever have worked, and their only possible effect was
+to make a missing primary fail *quietly* instead of loudly.
+
+`WAREHOUSE_INTERNAL_SERVICE_TOKEN` was the `||` fallback in both
+`warehouse-reservation.client.ts` and `order-fulfillment-handoff.client.ts` — the exact
+hazard 6y flagged ("clearing the primary does not fail loudly"). The primary `d2b2828d` is a
+working per-pair RS256 principal, so the fallback was pure downside: it could only ever
+substitute a guaranteed-401 credential for a working one.
+
+`PAYMENTS_INTERNAL_SERVICE_TOKEN` had **no production code path at all**. Payments and
+warehouse were removed from the guard's `configuredServices` map in 6u and moved to Bearer,
+so the static `x-internal-service-token` header is no longer honoured for either. The only
+thing still asserting the variable was `smoke-lifecycle-mutation-propagation.js`, which
+treated its absence as a **blocker** — a gate demanding a credential the guard had already
+stopped accepting. Updated to assert `WAREHOUSE_SERVICE_TOKEN`, the credential that actually
+carries the lane.
+
+### Verified
+
+ES entries removed, applied, force-synced; both keys **confirmed pruned** from
+`orders-microservice-secret` (8 keys remain). Re-confirms the 6x mechanism: removing the
+`data` entry prunes, where deleting only the Vault property would not.
+
+In a pod created after the change (`6d9fbcf7bb-h7rwh`, 03:39):
+
+```
+WAREHOUSE_SERVICE_TOKEN            fp=d2b2828d
+WAREHOUSE_INTERNAL_SERVICE_TOKEN   UNSET
+PAYMENTS_INTERNAL_SERVICE_TOKEN    UNSET
+
+GET warehouse:3201/api/stock/<nonexistent>/total   Bearer primary -> 200
+GET  (no auth)                                                    -> 401
+```
+
+Ecosystem check after the change: **nothing in `statex-apps` maps `payments#JWT_TOKEN`**.
+`warehouse#JWT_TOKEN` is now referenced only by warehouse's own ExternalSecret — Session F's
+third blocker, in Session F's repo, deliberately left alone.
+
+### A contract gate that could not run
+
+`verify-warehouse-handoff-contract.js` failed with `TypeError: this.logger.error is not a
+function` — **before any change of mine**, confirmed by stashing and re-running on a clean
+checkout. Its eight stub loggers define only `warn()`, while the client has called
+`logger.error()` since the 6p/6x silent-failure sweep. So the sweep that fixed the masking
+silently disabled the gate that guards this contract, and it had been dead since.
+
+Fixed (`error() {}` added to each stub). The gate now also asserts the fallback is **absent**,
+and was confirmed to fail when the fallback is reintroduced — so this cannot regress quietly.
+
+**Worth generalising: a gate that throws is not a gate that passes.** This one had been
+erroring for days while reading as part of the suite. When a sweep changes a logging contract,
+the stubs that impersonate the logger need the same change.
+
+### Note for whoever renumbers next
+
+Commits `53ee3b5` (orders) carry source comments citing "plan section 6ad" — written when
+`6ad` was free. Session G has since taken `6ad`; this section is `6ai`. The comments are
+corrected in a follow-up rather than left pointing at the wrong section. Concurrent appends
+make citing a section number from inside a commit fragile: prefer citing the fix's date.
