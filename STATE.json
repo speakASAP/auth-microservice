@@ -1,17 +1,4 @@
 {
-  "schemaVersion": 1,
-  "project": "auth-microservice",
-  "lifecycle": "planning-adopted",
-  "health": "documented-production-service",
-  "activeTask": "No active IPS bootstrap task",
-  "lastUpdated": "2026-08-30T21:00:32Z",
-  "deployment": {
-    "status": "production service; documentation-only standardization adoption"
-  },
-  "blockers": [],
-  "followUps": [
-    "Maintain separately tracked generic registration-event design."
-  ],
   "schema_version": "1.0",
   "repository": "auth-microservice",
   "service": {

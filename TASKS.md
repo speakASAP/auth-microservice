@@ -8,6 +8,7 @@ No active IPS bootstrap task remains; documentation adoption is complete.
 ## Ready Next
 
 Existing customer-data wallet schema planning remains governed by repository planning.
+- Maintain separately tracked generic registration-event design.
 
 ## Blocked
 
