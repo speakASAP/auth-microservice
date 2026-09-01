@@ -3133,6 +3133,63 @@ bundled with it.
 
 The identity half is closed: a holder of `5f420714` can no longer choose who it claims to be.
 
+## 6ap. `orders -> catalog` pricing lane verified, and a 4xx reported as a 5xx, 2026-09-01
+
+The lane 6an warned about — the one an allowlist without `orders-microservice` would have broken —
+probed from the orders pod against the deployed guard fix.
+
+### Verified green
+
+Catalog pod `catalog-microservice-65c78f4d87-gnxsb`, image `b99a38c-…`, started 08:35:12Z. Probed
+from inside `orders-microservice`, the caller's own pod:
+
+```
+real creds, empty body                 ->  400  "productId is required"
+real creds, wrong field names          ->  400  "basePrice must be a finite number"
+wrong token                            ->  401  Missing or invalid Authorization header
+x-service-name: totally-made-up-service->  401  "Unknown internal service name '…'"
+```
+
+Authorized in both real-credential cases; only DTO validation rejected them. The spoof message
+naming the unknown service is a usability improvement over a bare 401 — it points at
+`CATALOG_INTERNAL_SERVICE_NAMES` rather than leaving the operator to guess.
+
+### The defect the correct payload exposed
+
+Sending the **exact** body `pricing.service.ts` builds — `productId`, `basePrice`, `currency`,
+`priceType`, `isActive` — with a non-existent product id returns **500**, not 404:
+
+```
+ERROR [ExceptionsHandler] insert or update on table "product_pricing"
+violates foreign key constraint "product_pricing_product_id_fkey"
+QueryFailedError ... at PricingController.create (dist/pricing/pricing.controller.js:37)
+```
+
+`pricing.controller.ts create` calls `pricingService.upsert(data)` with no existence check, so a
+missing product surfaces the raw FK violation as an unhandled 500. **Pre-existing and unrelated to
+the guard work** — `git log -- src/pricing/` shows the path last touched by `b379b02`.
+
+It matters because of what the caller does with it. `updateCatalogPricing` catches everything and
+rethrows `Unable to update Catalog pricing for <id>: upstream request failed`. So a deleted or
+mistyped product id reads as a generic upstream failure on the orders side and an unhandled 500 on
+catalog's, with nothing anywhere saying "no such product". Same class as the six catch blocks swept
+in `d149d24`, inverted: there a 4xx was hidden inside a success-shaped result, here a 4xx condition
+is reported as a 5xx. Both make a client error look like an infrastructure fault.
+
+Reported to Session E; not fixed here (their repo, their sequencing).
+
+### Probe hygiene
+
+The first probes used guessed field names and produced 400s that looked like clean authorization
+proof. They were — but only of the guard, not of the handler behind it. **Reading the caller's
+actual request body was what reached the real code path**, and the 500 only appeared once the
+payload was right. A DTO rejection proves the guard passed; it proves nothing about what the
+endpoint does with a well-formed request.
+
+Every probe used a non-existent product id, and nothing was written: the FK constraint rejected the
+insert, confirmed by `select count(*) from product_pricing where product_id = '00000000-…'`
+returning **0**.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
