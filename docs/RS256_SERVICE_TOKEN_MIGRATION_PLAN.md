@@ -4227,6 +4227,70 @@ Session F to fix a catalog -> heureka 401). One Vault write, eight pods to resta
 Enumerate by fingerprint, not by variable name — the method from
 `reference_enumerate_secret_holders_by_fingerprint`.
 
+### Header-chosen identity closed on catalog (commit `b99a38c`, verified live)
+
+The 6u defect was still open on catalog. Found by Session F, reproduced independently
+from the bazos pod against `catalog-microservice:3200`:
+
+```
+x-service-name: bazos-service            -> 200
+x-service-name: allegro-service          -> 200
+x-service-name: totally-made-up-service  -> 200
+x-service-name: <empty>                  -> 200
+wrong token, any name                    -> 401
+```
+
+`catalog-auth.guard.ts resolveInternalServiceActor` authenticated the shared secret and
+then took the identity from the caller-supplied header unchecked. **It corrupts
+attribution, not only identity**: the header becomes `actor.sub`/`source`/`serviceName`,
+which `bundles.service.ts` persists as actor evidence and
+`product-event-publisher.service.ts` publishes on product events.
+
+**6u does not port from orders.** There, six callers each had their own env slot holding
+the same value, so an ambiguity check had something to compare. Here one slot has many
+legitimate senders by design. The fix instead constrains the name to the set of known
+senders, and **denies** an unknown or empty one rather than authenticating it as
+`internal-service` — a placeholder would write a fiction into the same audit trail.
+
+**Build the allowlist from who HOLDS the credential, not from who sends the header.**
+This is the reusable part; enumerating by call site produced two wrong answers in one
+session, in both directions:
+
+| Candidate | By call site | By holder | Truth |
+| --- | --- | --- | --- |
+| `warehouse-microservice` | sends the header | holds nothing | sends it to **orders**; allowlisting it would have granted catalog admin to a non-caller |
+| `orders-microservice` | easy to miss | holds `5f420714` | real sender; `pricing.service.ts` hard-throws without it — excluding it breaks catalog pricing |
+| `flipflop-service` | the literal in the code | no pod sends it | only an unused fallback; the four flipflop containers each send their own `SERVICE_NAME` |
+| `cliplot` | header is a variable, greps find nothing | holds `5f420714` | sends `cliplot`, not `cliplot-service` |
+| `catalog-microservice` | — | its own secret | catalog calls **itself** on the flipflop-projection batch route |
+
+Final allowlist is 11 names, overridable via `CATALOG_INTERNAL_SERVICE_NAMES` because
+several callers take their name from an env var. Verified from the bazos pod against the
+pod created after the change:
+
+```
+11/11 real senders            -> 200
+totally-made-up-service, "",
+warehouse-microservice,
+flipflop-service              -> 401
+orders -> POST /api/pricing   -> 400 productId is required   (authorized, nothing mutated)
+```
+
+Suite 174/174; the two spoofing tests confirmed to **fail** (2/13) on revert. A pre-existing
+spec asserted `x-service-name: warehouse-microservice` — a caller that cannot reach this
+guard, so the test validated nothing about real access. Fixed.
+
+**Roles deliberately unchanged.** The synthesised
+`internal:catalog-microservice:admin` + `catalog:write` is still too broad for callers that
+only read (every catalog route requires just `catalog:authenticated`), but narrowing it
+needs the senders' write usage traced first — bazos POSTs `/api/products` and PUTs
+`/api/products/:id`. Separate change; getting it wrong breaks live publishing.
+
+The real fix remains per-caller credentials. `5f420714` is **not a JWT** — 64 opaque
+characters, no `alg`, no claims, no expiry — which is why it never surfaced in the
+expired-token sweeps, and why splitting it is a provisioning task outside this migration's
+RS256 scope.
+
 ### Verifying a deploy by grepping `dist`
 
 A near-miss worth recording. Checking whether the logging fix had shipped, grepping the
