@@ -3328,6 +3328,67 @@ flagged it.
 counting before trusting the number — and state which direction the scan ran. Both of my earlier
 "37 routes" statements were arithmetically fine and structurally meaningless.
 
+## 6as. A count is not a measurement until you know what it counted, 2026-09-01
+
+Closing note on the role-narrowing thread. The wrong number in 6am/6ao was not a typo; it was a
+measurement nobody re-derived, and it propagated through **three layers of documents before anyone
+recomputed it from a different direction.**
+
+### The four numbers, all reproduced here
+
+Session E tabulated these in their handover prompt. Re-run independently against
+`catalog-microservice/src`:
+
+| Method | Returns | What it actually counts |
+| --- | --- | --- |
+| `grep -rc RequireCatalogRoles` | **48** | matching *lines*, summed across files |
+| `grep -rhoE '@RequireCatalogRoles\('` | **42** | decorator occurrences, including shared constants |
+| quoted in three plan sections | **37** | neither — never re-derived after first writing |
+| forward scanner from each verb line | **40 of 81** | decorated routes, the only figure that answers the question |
+
+Exact agreement with E on all three reproducible methods. **None of the grep figures says anything
+about the 41 routes that carry no decorator** — which is the entire safety question, because those
+fall through to `defaultWriteRoles` (admin + `catalog:write`).
+
+### Where it propagated
+
+- my 6am and 6ao — "37 routes need only `catalog:authenticated`, so narrowing is safe in principle"
+- E's 6af, in **two** places: the bazos-lane paragraph ("every route bazos calls is decorated") and
+  "Roles deliberately unchanged" ("every catalog route requires just `catalog:authenticated`")
+- E's own handover prompt, which instructed the next session to count with
+  `grep -rn "@RequireCatalogRoles" | wc -l` — **a file warning about the decorator-position trap
+  while shipping a counting method with the same defect**
+
+All corrected: mine in place with explicit `[CORRECTED in 6ar: …]` markers (`f352b1f`), E's in 6af
+(`494d94f`) and the prompt rewritten around a scanner they actually ran (`609c1f8`, verified here).
+Corrections were marked rather than silently edited, because the wrong version is what three
+sections reasoned from and someone may have already read it.
+
+### The rule
+
+**A count is not a measurement until you know what it counted.** Two traps produced four numbers
+here and they are the same failure in different clothes:
+
+- **position** — `@RequireCatalogRoles` sits *after* the HTTP-verb decorator, so a backwards scan
+  reports 81/81 undecorated and a forward one reports 40
+- **granularity** — lines vs. occurrences vs. routes; `grep -c` answers a question nobody asked
+
+Both wrong numbers were *plausible*, which is why they survived review in five separate documents.
+The correction did not come from anyone being more careful with the same method; it came from a
+second session computing it a different way and disagreeing. **When a number gates a security
+decision, state the method alongside it and have someone re-derive it independently** — a figure
+quoted without its method is a claim, not evidence.
+
+This is the same shape as 6an's five-way sender enumeration: each session's answer was wrong, each
+caught the other's, neither caught its own.
+
+### Status
+
+The route-decoration and per-caller role split remains **unassigned**. E's user asked for the
+prompt, not its execution, and E has explicitly not handed it on — correctly, since that is the
+owner's call. Prompt is current at `catalog-microservice/docs/CATALOG_ROUTE_ROLES_PROMPT.md`
+(`609c1f8`), and its stated counts match this session's independent scan.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
