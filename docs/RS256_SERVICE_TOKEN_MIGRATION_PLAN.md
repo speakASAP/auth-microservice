@@ -5430,3 +5430,154 @@ key, **401** with a wrong one.
 
 `9431f75c` is now one value per job across three properties. It can finally be rotated one
 job at a time — which was the entire point of the split, and was impossible before today.
+
+## 6ax. Three more static-header lanes retired; catalog isolated as its own workstream, 2026-09-01
+
+The legacy static-credential map in `orders-microservice/src/auth/jwt-roles.guard.ts` goes
+from four entries to **one**. Each removal was verified on Bearer from the caller's deployed
+pod *before* the entry was deleted.
+
+| Lane | What it actually needed | Result |
+| --- | --- | --- |
+| allegro-service | **nothing minted** — a restart | Bearer create **400**, lifecycle **404** |
+| invoices-microservice | mint + one Vault write + caller edit | **404** (authorized) |
+| cliplot create | mint a *second*, separate principal | create **400**, status **403** |
+| catalog-microservice | **left in place — see below** | unchanged |
+
+### allegro was already provisioned and nobody had noticed
+
+`ORDERS_SERVICE_TOKEN` read **UNSET** in every allegro pod, so the client was taking its
+warned static fallback. But the credential was not missing: `03c9f99c` (RS256, per-pair,
+from the 6i pilot) was present in Vault **and** in `allegro-service-secret`, and the
+Deployment's `env[]` had the correct `secretKeyRef`. The pod simply predated the key landing
+in the Secret and had never read it.
+
+**All four hops looked right; only the process was stale.** Same shape as item 1 in 6av, and
+the fix was likewise a restart, not a credential. Worth checking for this before minting
+anything: `printenv` in the pod versus the Secret is the cheap test.
+
+### cliplot got a second principal rather than reusing its first
+
+Its existing status principal (`1adf3cc0`) already carries `internal:cliplot:service` and
+*would* have authorised create — verified, it returns 400. Reusing it was the smaller change
+and was **not** taken: one credential covering both lanes cannot be revoked for one of them.
+`svc-cliplot--orders-microservice-create` (`97afd84f`, `14e5001a`) is scoped to
+`internal:cliplot:service` only, and returns **403 on `PUT /:id/status`** — proof the split
+is real and not decorative.
+
+### catalog is not a like-for-like migration, and trying it broke something
+
+`5f420714` is **one shared password held by eight services**:
+
+```
+allegro-service-secret#CATALOG_INTERNAL_SERVICE_TOKEN
+bazos-service-secret#CATALOG_INTERNAL_SERVICE_TOKEN
+catalog-microservice-secret#CATALOG_INTERNAL_SERVICE_TOKEN
+cliplot-secret#CATALOG_INTERNAL_SERVICE_TOKEN
+flipflop-service-secret#CATALOG_INTERNAL_SERVICE_TOKEN
+heureka-service-secret#HEUREKA_INTERNAL_SERVICE_TOKEN   <- different key name, same value
+marketing-microservice-secret#CATALOG_INTERNAL_SERVICE_TOKEN
+orders-microservice-secret#CATALOG_INTERNAL_SERVICE_TOKEN
+```
+
+All eight resolve from **one** Vault property, `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`.
+
+**This session patched that property with catalog's new RS256 token before checking who else
+read it.** It is catalog's *inbound* shared secret — the credential seven other services use
+to call catalog — not catalog's outbound credential to orders. Had any ExternalSecret synced,
+seven inbound lanes to catalog would have broken at once.
+
+Caught before any sync. The original 64-byte value was recovered from
+`orders-microservice-secret` (which had not yet re-synced), written back, and confirmed:
+**zero** Secrets held the wrong value, and `flipflop-product-service -> catalog` still
+answers **404** with a legitimate `x-service-name`.
+
+**The lesson is the one already recorded in `enumerate_secret_holders_by_fingerprint`, and it
+was skipped here:** fingerprint every holder *before* writing, not after. A key name matching
+the receiver's variable is not evidence that the property is that caller's own credential.
+
+Why catalog cannot be migrated the same way: `catalog-auth.guard.ts` mints
+`internal:catalog-microservice:admin` + `catalog:write` from an **unauthenticated**
+`x-service-name` header, constrained only to a known-names allowlist. Retiring the shared
+value means minting eight per-caller principals and changing eight repos — the `a2880693`
+shape from 6n, and its own workstream. The guard comment now records this so the next reader
+does not attempt the one-line swap.
+
+### An outage I caused mid-migration, and what actually catches it
+
+After committing the invoices and cliplot caller switches, both lanes went **401**. The code
+had shipped and was sending Bearer, but the pods still held the **old** values
+(`34e68a52`, `f5a28e51`) — the ExternalSecrets had not re-synced — while orders' static map
+entry was already gone. Neither the old path nor the new one worked.
+
+**The ordering that avoids this:** force-sync the caller's ExternalSecret and restart the
+caller *before* the receiver stops accepting its old credential — or accept a window and
+close it fast. Here the receiver change and the caller change deployed together, so the
+window opened as soon as orders rolled.
+
+Fixed by force-syncing both ExternalSecrets (`57fee617`, `14e5001a` landed immediately) and
+restarting both deployments. Re-verified from the new pods: invoices **404**, cliplot create
+**400** / GET **404** / status **403**, status principal **404**.
+
+**A deploy is not a rotation.** Committing a caller's switch to Bearer does not move the
+credential into its pod; only an ES sync plus a pod restart does. The four-hop check exists
+precisely for this, and skipping hop four between commit and verification is what turned a
+clean migration into a brief outage.
+
+### A pre-existing 500 found while probing
+
+`GET /api/orders/statistics/products/:productId` — catalog's **only** orders endpoint —
+returned **500 on every call**:
+
+```
+TypeORMError: "COALESCE(orders" alias was not found. Maybe you forgot to join it?
+```
+
+`getProductSalesStatistics` repeated `MAX(COALESCE(orders.orderedAt, orders.createdAt))`
+inside `.orderBy()`. TypeORM splits that string on the comma **inside** `COALESCE` and looks
+for an alias literally named `"COALESCE(orders"`. The four identical `addSelect` calls are
+unaffected — only `orderBy` is parsed for alias resolution, and `.take()` is what forces it
+by building a distinct-id subquery. Fixed by ordering on the select alias.
+
+Found only because the credential probe returned 500 instead of the expected 401/403/404.
+**A probe that returns an unexpected status is worth reading, not just classifying** — the
+`verify:product-sales-statistics` check passes both before and after this fix, so it never
+exercised the real query.
+
+**It took two commits, because there were two occurrences and the first fix looked
+sufficient.** After the first deploy the endpoint still returned the identical error. The
+stack trace pointed at `getRawAndEntities` — i.e. `.getMany()`, not the `getRawMany()` that
+had been fixed. The second occurrence was in `buildProductSalesLifecycleQuery`, which holds
+the expression in a **variable**, so the grep for the literal string had never matched it.
+
+The second fix was then verified against the live database instead of reasoned about,
+running all three candidate shapes through the app's own compiled entities:
+
+```
+A raw-expression + take()   FAIL   "COALESCE(orders" alias was not found
+B aliased + take()          OK     (3 rows)
+C real columns + take()     OK     (3 rows)
+```
+
+B was applied — `addSelect` the expression under an alias, then order by the alias, which
+preserves the exact COALESCE ordering. C passes too but silently changes the semantics: two
+independent sort keys are not one coalesced key. **A passing query is not automatically the
+right query.**
+
+### Two tests that were passing vacuously
+
+`verify-create-order-contract` keeps a static-header list and a Bearer list; the three
+migrated services moved between them, and the Bearer list asserts they must **not** appear
+in the guard. Confirmed it fails on revert.
+
+`verify-internal-service-identity` can no longer exercise the two-caller ambiguity rule at
+all, because one entry remains. Writing it against a removed name would pass for the wrong
+reason — **that trap already bit once in 6aw**. The rule is now asserted structurally
+(`namesSharingToken` must still be present), plus a loop proving each of the four removed
+names is refused. Also confirmed to fail on revert.
+
+### Known unrelated failure
+
+`verify:channel-lifecycle-surfaces` fails on a clean tree, looking for
+`services/aukro-service/src/aukro/orders/orders.service.ts` under `bazos/`. Pre-existing,
+not touched here — recorded rather than silently absorbed.
