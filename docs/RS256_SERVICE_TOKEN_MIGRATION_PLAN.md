@@ -2637,6 +2637,96 @@ before deleting a retired service's secrets.
 reversible. Not executed here — deletes were refused by the harness permission classifier
 while writes were allowed.
 
+## 6aj. `a2880693` fully retired from `statex-apps`, 2026-09-01
+
+Session C's removal of the two orders entries (6ai) left exactly one mount: warehouse's own
+`JWT_TOKEN`. That is now gone, and **the value is mounted by zero Secrets in the namespace.**
+
+```
+kubectl get secret -n statex-apps -o json | <sha256 first-8 scan>
+TOTAL MOUNTS: 0
+```
+
+### The last one was the same dead-fallback shape, verified before removal
+
+`fulfillment-orders.service.ts:303` resolved `ORDERS_SERVICE_TOKEN || JWT_TOKEN` and passed the
+result into `resolveOrdersAuthHeader`. C reported this and was right; it was re-verified rather
+than taken on report, because "unused" claims in this migration have failed verification three
+times out of four (6q).
+
+Probed from the deployed warehouse pod against the endpoint this lane actually calls,
+`PUT /api/orders/:id/warehouse-fulfillment-status`, with a non-existent order id:
+
+```
+Bearer ORDERS_SERVICE_TOKEN (fp 46477b50)  ->  404  (authorized; no such order)
+static x-internal-service-token a2880693   ->  401  Missing or invalid Authorization header
+```
+
+404-not-401 on the primary is the acceptance proof; the 401 on the static path confirms orders
+has genuinely stopped honouring the value. So the fallback could only ever convert a missing
+primary into a 401 that reads as a credential fault on the caller's side.
+
+### Two defects fixed alongside the removal
+
+**A silent skip on a missing credential.** `notifyOrdersStatus` logged
+`logger.warn('orders fulfillment status sync skipped…')` and returned. An order status
+transition that never reaches orders is not a warning-level event — it is a lost write between
+two services. Now `logger.error`, and the message says explicitly that the transition was
+**not** propagated.
+
+**A `||` chain that outlived its loud guard.** 6q added an error-level log to
+`resolveOrdersAuthHeader` so a lane silently reverting to the static header would announce
+itself. But the fallback selection happened one level up, at line 303, with no logging at all —
+so the loud guard could never fire for the case it was written to catch. Removing the chain
+removes the gap; `resolveOrdersAuthHeader` now throws rather than send an unauthenticated
+request.
+
+Worth generalising: **a loud fallback warning protects only the line it sits on.** If the `||`
+that chooses the credential lives in a different function from the one that logs, the warning
+is decorative. Check where the selection happens, not where the log is.
+
+### Regression cover
+
+`scripts/verify-orders-token-chain-contract.js` (`npm run verify:orders-token-chain`) asserts
+the service reads no `JWT_TOKEN`, sends no `x-internal-service-token`, authenticates by Bearer,
+logs a missing credential at error level, and that the ExternalSecret `data` entry stays
+removed — **ESO does not prune**, so re-adding the entry would put the shared value straight
+back into the Secret. Confirmed to exit 1 on revert with the expected assertion, exit 0 on
+restore.
+
+The existing spec had encoded the *old* behaviour: it set only `JWT_TOKEN` and asserted the
+static header, so it passed against the defect and failed against the fix. Rewritten to assert
+Bearer, plus a new case proving the sync is **skipped, not downgraded**, when only `JWT_TOKEN`
+is present. 131 tests pass, typecheck clean. This is the same trap as the two contract scripts
+in 6u that asserted the old static path — a green suite is not evidence when the suite encodes
+the thing you are removing.
+
+### Ordering
+
+ExternalSecret applied and the key confirmed pruned from `warehouse-microservice-secret`
+**before** merging the code, so the fallback and the mount disappeared together. Applying the
+manifest reported `configured`, not `unchanged` — the same four-day cluster/git drift recorded
+in 6ab.
+
+**The post-commit hook did not enqueue the merge.** Warehouse is deploy-eligible and not
+deny-listed, but the queue stayed empty and the pod kept running `df92767`, predating the
+merge. Deployed manually through `scripts/deploy.sh` under the deploy lock. Consistent with the
+standing rule: verify by pod age and image, never by the queue banner or a deploy message.
+
+### State of the value
+
+`a2880693` is mounted by **no Secret in `statex-apps`**. It survives only as Vault properties
+(`secret/prod/<svc>#JWT_TOKEN`) that nothing maps, and in `runlayer`/dormant copies already
+recorded as unused. **It can now be rotated** — or, better, deleted outright: there is no DB
+principal behind it to revoke, and with zero mounts a rotation has nothing to update.
+
+The remaining cleanup is deleting those orphan Vault properties, which needs the `-remove-data`
+form C documented:
+
+```
+vault kv patch -mount=secret -remove-data=JWT_TOKEN prod/<svc>
+```
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
