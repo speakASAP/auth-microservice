@@ -2727,6 +2727,92 @@ form C documented:
 vault kv patch -mount=secret -remove-data=JWT_TOKEN prod/<svc>
 ```
 
+## 6ak. `a2880693` deleted from Vault — the credential no longer exists, 2026-09-01
+
+6aj left the value at zero Secret mounts but still present as seven orphan Vault properties.
+Those are now deleted. **A sweep of every property in every `secret/prod` path finds no
+occurrence of the fingerprint.** The credential is gone, not merely unmounted — and because no
+`applications` row ever stood behind it, there is nothing left to revoke or rotate.
+
+### Four gates checked before each delete
+
+"Unused" claims in this migration failed verification three times in four (6q), so each of the
+seven paths was cleared on four independent hops rather than on the absence of a grep hit:
+
+| Gate | Method | Result |
+| --- | --- | --- |
+| No ES mapping | every `ExternalSecret` in every namespace, `remoteRef.property == JWT_TOKEN` | 9 entries exist, **none** point at an `a2880693` path |
+| No source read | `process.env.JWT_TOKEN` / `configService.get('JWT_TOKEN')`, non-test | 0 in six repos; heureka's 4 hits are self-test files, two of which *delete* the var to prove independence |
+| No pod env | `JWT_TOKEN` unset inside each running pod | unset in all seven |
+| No Secret key | sha256 scan of every Secret value in `statex-apps` | 0 mounts (6aj) |
+
+The ES gate is the one that mattered. Nine ExternalSecret entries still map a `JWT_TOKEN`
+property — allegro, backups, catalog, domain-research, flipflop, plus marketing's and orders'
+cross-references into allegro and flipflop. **Every one of them points at a different value**
+(`aa7ae49e`, `fef71b5e`, `ae611ed9`, `3c55b305`, `9431f75c`). Deleting by property *name*
+across all paths would have broken five live services. The deletes were driven by
+**fingerprint**, not by key name.
+
+Two further paths (`rent-a-box`, `speakasap-portal`) hold `JWT_TOKEN` at `381e450e` — a
+different shared value, unmapped by any ES, and out of scope here. Worth a look by whoever owns
+those.
+
+### `-remove-data`, not `put`
+
+```
+vault kv patch -mount=secret -remove-data=JWT_TOKEN prod/<svc>
+```
+
+Per Session C's correction: `-remove-data` removes one property and leaves the rest untouched,
+whereas `kv put` is a whole-map rewrite that can drop a co-resident property if the
+read-modify-write step goes wrong. Confirmed surgical on the first path before continuing —
+`aukro-service` went 13 properties to 12 with `ORDERS_SERVICE_TOKEN` (`16573df3`),
+`MARKETING_REPLAY_TOKEN` (`725ca652`), `CATALOG_SERVICE_TOKEN` (`8443b848`) and
+`WAREHOUSE_SERVICE_TOKEN` (`ca99c9bc`) all intact, then the remaining six ran the same way.
+
+| Path | new version | properties left |
+| --- | --- | --- |
+| aukro-service | 20 | 12 |
+| bazos-service | 18 | 11 |
+| heureka-service | 17 | 9 |
+| logging-microservice | 8 | 5 |
+| marketing-microservice | 18 | 8 |
+| payments-microservice | 24 | 21 |
+| warehouse-microservice | 15 | 6 |
+
+Deletes are soft — `vault kv undelete -versions=<n> secret/prod/<svc>` restores a version if
+one of these turns out to have been load-bearing after all.
+
+### Verified after, not assumed
+
+A `Ready=True` ExternalSecret proves nothing about a *future* sync: the status can be stale from
+before the delete. So three ExternalSecrets were force-synced afterwards and their
+`refreshTime` confirmed to advance, proving ESO can still reconcile against the reduced Vault
+paths. All eleven relevant ExternalSecrets remain `Ready=True SecretSynced`.
+
+Then every lane re-probed from inside the caller's own pod:
+
+```
+marketing -> aukro replay    200   (wrong token 401)
+marketing -> bazos replay    200   (wrong token 401)
+marketing API /campaigns     400 authorized   (wrong token 401)
+logging ingest               201
+catalog  -> heureka include  400 authorized   (wrong token 401)
+warehouse -> orders status   404 authorized   (static a2880693 401)
+```
+
+### The value is retired
+
+`a2880693` now exists in no Vault property, no Kubernetes Secret and no pod environment across
+`statex-apps`. The rotation that this migration was blocked on for two weeks is not needed: with
+zero holders, deletion was the terminal step.
+
+What made it deletable was never a rotation — it was migrating each lane to a credential with an
+owner. Seven lanes to per-pair RS256 principals, two replay lanes to per-lane opaque secrets
+sharing one Vault property between sender and receiver, one operator credential to its own
+property, and five dead `PRIMARY || JWT_TOKEN` fallbacks removed. The shared password was the
+last thing to go, not the first.
+
 ## 7. Progress
 
 - [x] Phase 0 — logging, script, Dockerfile (`eb03ddb`, live)
