@@ -1,8 +1,8 @@
 # Service Credential Prober — Plan
 
 Date: 2026-09-02
-Status: Phase 1 receiver shipped; Phase 1b Task E done 2026-09-02 (the watcher
-sweeps production); Tasks A–D outstanding, consumer adoption is the bulk
+Status: Phase 1 receiver shipped. Phase 1b: C, D, E done 2026-09-02; A (consumer
+reporters) is the only remaining work, and B now depends on it
 Owner decisions recorded 2026-09-02 — see "Decisions and corrections"
 
 ## Context
@@ -563,6 +563,37 @@ reporters can adopt it without a second round of changes. `exp` stays a
 **Exit criteria:** expiry is available for every reporting principal, so Phase 2
 can warn at 14 days.
 
+#### Done 2026-09-02 — option 2, receiver side
+
+`monitoring-microservice` `b9f063c`. The contract gains an optional `expiresAt`,
+and the receiver an `expiringSoon` / `daysUntilExpiry` annotation on every
+reconciled row. `CREDENTIAL_EXPIRY_HORIZON_DAYS` defaults to 14 and is
+configurable, because the fleet is not uniformly 90-day.
+
+Three decisions worth keeping:
+
+- **`expiringSoon` is not a sixth status.** It sits beside the status rather
+  than replacing it, so a credential can be both `rejected` and expiring. Expiry
+  never modifies a verdict — 2026-08-18 is why, where 41 tokens carried
+  far-future `exp` values and none verified.
+- **Absent means absent, not imminent.** An unset or unparseable `expiresAt`
+  yields `expiringSoon: false` and no day count. Phase 2 alerts on that flag, so
+  defaulting it true would fire on every reporter that has not yet adopted the
+  field.
+- **Reporters decode without verifying.** The receiver's verdict establishes
+  validity; a reporter verifying its own token would be grading its own
+  homework. The contract says to omit the field rather than send a guess.
+
+8 new tests cover the horizon boundary, already-expired, absent and unparseable
+input, and that a `rejected` verdict survives a healthy-looking expiry. 72/72
+pass, `nest build` clean.
+
+**Exit criteria are half met, and the remainder belongs to Task A.** The
+receiver accepts and surfaces expiry; no reporter sends it yet, because no
+reporter exists. Expiry becomes available per principal exactly as each consumer
+adopts the reporter — the same adoption curve that resolves `silent`, and now
+Task B as well.
+
 ### Task E — wire the watcher's own credential (found in production 2026-09-02)
 
 `CredentialWatcher` shipped and runs, but `INTERNAL_SERVICE_TOKEN` is **absent
@@ -705,9 +736,13 @@ dead before A's reporters demonstrate which are live. B's own section records
 the evidence and the options. The revised order is:
 
 ```
-E [DONE] ──> D (contract field) ──> A (reporters) ──> B (retire what stayed silent)
-C (mismatches) ── independent, any time
+E [DONE] ──> D [DONE] ──> A (reporters) ──> B (retire what stayed silent)
+C [DONE]
 ```
+
+Only **Task A** remains before the baseline week. It now carries three payloads
+at once: it moves principals off `silent`, supplies the expiry Task D made room
+for, and produces the liveness evidence Task B needs.
 
 The original ordering assumed B could be answered from the inventory alone. It
 cannot, and the plan's own rule against guessing forbids the shortcut: a
@@ -727,7 +762,7 @@ deliberate baseline wait.
 |---|---|---|
 | ~~E — watcher credential~~ | **done 2026-09-02** | Option 2, as recommended. Estimated 1.5 days; the code was already written, so what remained was the ordered production sequence. |
 | B — classify duplicates | 1 day, **after A** | 7 duplicate groups / 15 principals identified 2026-09-02. Blocked on a liveness signal the auth DB does not have, so it now follows A rather than preceding it. |
-| D — contract `expiresAt` field | 0.5 day | Contract edit plus receiver field; no consumer work yet. Now deadlined: the watcher's own credential expires 2026-12-01. |
+| ~~D — contract `expiresAt` field~~ | **done 2026-09-02** | Receiver accepts and surfaces expiry. Reporters supply it as they adopt, so the rest lands with A. |
 | A — shared reporter module | 1 day | Written and tested once. |
 | A — vendor into repos | 3–4 days | 14 known repos, plus whatever Task B assigns from the 18 unowned principals. Deploy-serialized, so these do not parallelize freely. |
 | ~~C — mismatch decisions~~ | **done 2026-09-02** | All 14 classified; no renames warranted. 10 are false positives by construction. |
