@@ -557,13 +557,21 @@ spot this task existed to close is closed.
 exist yet, so nothing is checking these credentials. That is Task A. The watcher
 now says so instead of failing to run.
 
-**Carried forward — the watcher's credential expires 2026-10-02.**
-`provision-service-token.js` defaults to `30d`, not the 90-day lifetime this
-plan assumes elsewhere, and the default was kept rather than overridden. Task D
-is still open, so **nothing will warn before it expires** — the watcher would
-simply stop sweeping, which is this plan's own subject reproduced once more. Two
-follow-ups, either sufficient: finish Task D, or reissue this principal at 90d
-and record the date. Live `targetMismatch` count is 14, matching finding 2.
+**The watcher's credential expires 2026-12-01.** It was first issued at
+`provision-service-token.js`'s `30d` default — not the 90-day lifetime this plan
+assumes elsewhere — and reissued the same day at `--expires-in=90d` against the
+same principal (`fd504bb0-ca7c-4760-8360-04253bfa0f21`, no new user), Vault
+`secret/prod/monitoring-microservice` v18. The pod was restarted to pick it up:
+ESO refreshes the Secret, but env vars are read at container start, so a running
+pod holds the old value indefinitely. Verified 200 against the inventory route
+afterwards.
+
+That reissue buys time; it does not close the gap. **Task D is still open, so
+nothing will warn before 2026-12-01** — the watcher would simply stop sweeping,
+this plan's own subject reproduced in the tool built to detect it. Finish D, or
+put the date in a calendar.
+
+Live `targetMismatch` count is 14, matching finding 2.
 
 ### Sequencing
 
@@ -587,7 +595,8 @@ reporter at all — and writing a reporter for a dead principal is how dead
 credentials acquire maintenance.
 
 D has acquired a deadline it did not have when written: the watcher's own
-credential expires **2026-10-02** and no expiry signal exists to warn about it.
+credential expires **2026-12-01** (reissued at 90d; it was 2026-10-02 at the
+script's 30d default) and no expiry signal exists to warn about it.
 
 ### When it will be done
 
@@ -598,7 +607,7 @@ deliberate baseline wait.
 |---|---|---|
 | ~~E — watcher credential~~ | **done 2026-09-02** | Option 2, as recommended. Estimated 1.5 days; the code was already written, so what remained was the ordered production sequence. |
 | B — classify duplicates | 1 day | Mostly determining what is live; may hand retirements to the RS256 plan. Now checkable against a live matrix. |
-| D — contract `expiresAt` field | 0.5 day | Contract edit plus receiver field; no consumer work yet. Now deadlined: the watcher's own credential expires 2026-10-02. |
+| D — contract `expiresAt` field | 0.5 day | Contract edit plus receiver field; no consumer work yet. Now deadlined: the watcher's own credential expires 2026-12-01. |
 | A — shared reporter module | 1 day | Written and tested once. |
 | A — vendor into repos | 3–4 days | 14 known repos, plus whatever Task B assigns from the 18 unowned principals. Deploy-serialized, so these do not parallelize freely. |
 | C — mismatch decisions | 0.5 day | Documentation, no code. Live `targetMismatch` count is 14, as finding 2 predicted. |
