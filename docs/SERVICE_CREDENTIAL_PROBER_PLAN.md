@@ -310,6 +310,13 @@ Monitoring (`monitoring-microservice`):
 
 Validation: auth 229/229 tests, monitoring 63/63, both `nest build` clean.
 
+Deployed 2026-09-02: auth `01c6cb1`, monitoring `ab27a7a`, both ready with zero
+restarts. `GET /internal/service-principals` is live and returns 401
+unauthenticated, so the guard is enforcing.
+
+**The watcher is inert in production.** Its `INTERNAL_SERVICE_TOKEN` was never
+wired into the monitoring pod, so no sweep can run — Task E.
+
 **Exit criteria not yet met.** The plan requires one week of clean runs with all
 principals accepted or explained. No consumer reports yet, so every principal
 reconciles as `silent` — a truthful reading of the current state: nothing is
@@ -444,17 +451,72 @@ reporters can adopt it without a second round of changes. `exp` stays a
 **Exit criteria:** expiry is available for every reporting principal, so Phase 2
 can warn at 14 days.
 
+### Task E — wire the watcher's own credential (found in production 2026-09-02)
+
+`CredentialWatcher` shipped and runs, but `INTERNAL_SERVICE_TOKEN` is **absent
+from the monitoring pod** — not empty, never wired. Only auth's manifests
+reference that variable; monitoring's `k8s/external-secret.yaml` has no entry for
+it. Every sweep therefore refuses to run and logs
+`credential_watch_inventory_failed`, and the credential matrix stays empty.
+
+This is the plan's own subject reproduced in the tool built to detect it: a
+service authenticating with a credential that is not there, exactly the
+`catalog-contract-monitor` shape from 2026-09-02. It failed loudly rather than
+silently only because the watcher refuses to sweep without a token; a prober that
+had treated a missing token as "nothing to report" would have shown a clean
+matrix forever.
+
+The risk section already anticipated this — "the prober needs its own credential,
+which can itself expire — the failure this exists to prevent." It was missing
+from the start rather than expiring.
+
+**The decision this needs, which is why it belongs beside Task B and D rather
+than as a quick fix:** `INTERNAL_SERVICE_TOKEN` is auth's shared static string,
+compared by string equality in `InternalServiceGuard` and held by every service
+that calls auth's internal routes. Adding it here would reverse the direction
+this repo already moved in — see the `TASK-KEY-F2` note in its ExternalSecret,
+where a shared 6-holder `SERVICE_TOKEN` was replaced by this service's own
+delivery-scoped token.
+
+Two options:
+
+1. **Add `INTERNAL_SERVICE_TOKEN` to monitoring's ExternalSecret.** One manifest
+   entry; `envFrom: secretRef` means no deployment.yaml change. Fastest, and
+   consistent with how every other caller of auth's internal routes works today.
+   Cost: one more holder of a shared static secret, and a credential that by
+   construction cannot be probed — it carries no identity, so a rejection cannot
+   be attributed. The watcher would be watching the fleet with the one credential
+   shape the watcher cannot watch.
+
+2. **Give the inventory route a per-pair principal**
+   (`svc-monitoring-microservice--auth-microservice`) and have monitoring
+   authenticate with RS256 like the fleet it observes. The watcher's own
+   credential then appears in its own matrix and is probed like any other. Cost:
+   auth's internal routes accept the static guard today, so this needs a second
+   accepted auth path on `/internal/service-principals`.
+
+Recommend option 2, and option 1 only as an explicitly temporary unblock with a
+follow-up recorded. A watcher whose own credential is invisible to it is the
+blind spot this plan was written about.
+
+**Exit criteria:** a sweep completes against production and returns all 42
+principals; the watcher's own credential appears in the matrix under option 2, or
+is documented as a known blind spot under option 1.
+
 ### Sequencing
 
 ```
-B (classify duplicates) ──┐
-                          ├──> A (reporters) ──> one week baseline ──> Phase 2
-D (contract field)     ───┘
+E (watcher credential) ──> B (classify duplicates) ──┐
+                                                     ├──> A (reporters) ──> one week baseline ──> Phase 2
+                           D (contract field)     ───┘
 C (mismatches) ── independent, any time
 ```
 
-B and D come before A: B decides which principals deserve a reporter at all, and
-D settles the payload shape so reporters are written once. C is independent.
+E comes first and blocks everything: until the watcher can read the inventory,
+no sweep runs, so B cannot be checked against live data and A's reporters have
+nowhere to land. B and D then precede A: B decides which principals deserve a
+reporter at all, and D settles the payload shape so reporters are written once.
+C is independent.
 
 ### When it will be done
 
@@ -463,14 +525,15 @@ deliberate baseline wait.
 
 | Task | Effort | Notes |
 |---|---|---|
+| E — watcher credential | 0.5 day (option 1) / 1.5 days (option 2) | Blocks everything else. Option 2 adds a second accepted auth path on the inventory route. |
 | B — classify duplicates | 1 day | Mostly determining what is live; may hand retirements to the RS256 plan. |
 | D — contract `expiresAt` field | 0.5 day | Contract edit plus receiver field; no consumer work yet. |
 | A — shared reporter module | 1 day | Written and tested once. |
 | A — vendor into repos | 3–4 days | 14 known repos, plus whatever Task B assigns from the 18 unowned principals. Deploy-serialized, so these do not parallelize freely. |
 | C — mismatch decisions | 0.5 day | Documentation, no code. |
-| **Implementation total** | **6–7 days** | |
+| **Implementation total** | **6.5–8.5 days** | Range depends on the Task E option chosen. |
 | Baseline observation | +7 calendar days | Phase 1's own exit criterion; cannot be compressed. |
-| **Phase 1 complete** | **~3 working weeks** | Then Phase 2 may be wired. |
+| **Phase 1 complete** | **~3–3.5 working weeks** | Then Phase 2 may be wired. |
 
 The largest line is vendoring the reporter into consumer repos, and it is large
 because deploys are serialized — one rollout at a time. Batching several repos
