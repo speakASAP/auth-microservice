@@ -1,8 +1,10 @@
 ---
-status: review
+status: done
 owner: repository-owner
-last_updated: 2026-08-31
+last_updated: 2026-09-02
 ---
+
+<!-- done: implemented by 75679be, acfdc4d, 6525d16, 2f26f14, 62d8266, dd32a81, and a3f843; focused recovery/web tests and build pass. -->
 
 # Forced Password Recovery After One-Time-Code Login — Implementation Plan
 
@@ -65,7 +67,7 @@ A standalone resolver, so every consumer imports the same function and no caller
 - Consumes: nothing.
 - Produces: `resolvePasswordRecoveryTtlMinutes(env?: NodeJS.ProcessEnv): number` and the instance field `private readonly passwordRecoveryTtlMinutes: number` on `AuthService`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/auth/password-recovery-ttl.spec.ts`:
 
@@ -90,12 +92,12 @@ describe('resolvePasswordRecoveryTtlMinutes', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- --runTestsByPath src/auth/password-recovery-ttl.spec.ts`
 Expected: FAIL — `Cannot find module './password-recovery-ttl'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `src/auth/password-recovery-ttl.ts`:
 
@@ -120,12 +122,12 @@ export function resolvePasswordRecoveryTtlMinutes(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm test -- --runTestsByPath src/auth/password-recovery-ttl.spec.ts`
 Expected: PASS, 3 tests (the `it.each` counts as 4 cases)
 
-- [ ] **Step 5: Wire it into AuthService**
+- [x] **Step 5: Wire it into AuthService**
 
 In `src/auth/auth.service.ts`, add to the imports at the top of the file:
 
@@ -145,7 +147,7 @@ And in the constructor, immediately after the `this.magicLinkTtlMinutes = ...` l
     this.passwordRecoveryTtlMinutes = resolvePasswordRecoveryTtlMinutes();
 ```
 
-- [ ] **Step 6: Add the env plumbing**
+- [x] **Step 6: Add the env plumbing**
 
 In `.env.example`, directly after the `AUTH_MAGIC_LINK_TTL_MINUTES=` line (line 79):
 
@@ -157,17 +159,17 @@ AUTH_PASSWORD_RECOVERY_TTL_MINUTES=
 
 In `deploy.config.sh:61`, add `${AUTH_PASSWORD_RECOVERY_TTL_MINUTES}` to the `configmap_vars` string, directly after `${AUTH_MAGIC_LINK_TTL_MINUTES}`. A variable missing from this list never reaches the pod and silently falls back to the default — a failure every local test still passes.
 
-- [ ] **Step 7: Verify the wiring compiles and the suite is green**
+- [x] **Step 7: Verify the wiring compiles and the suite is green**
 
 Run: `./node_modules/.bin/tsc --noEmit -p tsconfig.json && npm test`
 Expected: no TypeScript output, all tests pass
 
-- [ ] **Step 8: Confirm the plumbing is actually present**
+- [x] **Step 8: Confirm the plumbing is actually present**
 
 Run: `rtk rg -n 'AUTH_PASSWORD_RECOVERY_TTL_MINUTES' .env.example deploy.config.sh src/auth/password-recovery-ttl.ts`
 Expected: three files listed. If `deploy.config.sh` is missing, the variable will not exist in production.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 rtk git add src/auth/password-recovery-ttl.ts src/auth/password-recovery-ttl.spec.ts src/auth/auth.service.ts .env.example deploy.config.sh
@@ -187,7 +189,7 @@ rtk git commit -m "feat(auth): single TTL variable for password recovery"
 - Consumes: nothing.
 - Produces: `MagicLinkToken.purpose: 'login' | 'recovery'`; `PasswordResetToken.returnUrl: string | null`, `.clientId: string | null`, `.state: string | null`.
 
-- [ ] **Step 1: Write the SQL**
+- [x] **Step 1: Write the SQL**
 
 Create `docs/sql/2026-07-23-password-recovery-columns.sql`:
 
@@ -212,7 +214,7 @@ CREATE INDEX IF NOT EXISTS idx_magic_link_tokens_purpose
   ON magic_link_tokens(purpose);
 ```
 
-- [ ] **Step 2: Update the entities**
+- [x] **Step 2: Update the entities**
 
 In `src/auth/entities/magic-link-token.entity.ts`, add after the `state` column:
 
@@ -234,12 +236,12 @@ In `src/auth/entities/password-reset-token.entity.ts`, add after the `token` col
   state: string | null;
 ```
 
-- [ ] **Step 3: Verify it compiles**
+- [x] **Step 3: Verify it compiles**
 
 Run: `./node_modules/.bin/tsc --noEmit -p tsconfig.json`
 Expected: no output
 
-- [ ] **Step 4: Verify the SQL is valid and idempotent**
+- [x] **Step 4: Verify the SQL is valid and idempotent**
 
 Run it twice against a scratch database — the second run must be a no-op, because it will be applied by hand to production where a half-applied change is not recoverable by rerunning:
 
@@ -250,7 +252,7 @@ psql -h "$DB_HOST" -U "$DB_USER" -d auth_scratch -f docs/sql/2026-07-23-password
 
 Expected: both runs succeed; the second prints `NOTICE: column "purpose" of relation "magic_link_tokens" already exists, skipping`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 rtk git add docs/sql/2026-07-23-password-recovery-columns.sql src/auth/entities/
@@ -272,7 +274,7 @@ rtk git commit -m "feat(auth): add recovery purpose and grant return-target colu
 
 **Why the hash changes:** `token` is `UNIQUE` and derived deterministically from identifier + code + secret. Without `purpose` in the hash, a login code and a recovery code that happen to draw the same six digits for the same person collide on insert and the second request fails. The `'login'` case must keep producing the byte-identical legacy string so codes already in flight survive the deploy.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to the `describe` block in `src/auth/auth-contact-code.spec.ts`:
 
@@ -347,12 +349,12 @@ Append to the `describe` block in `src/auth/auth-contact-code.spec.ts`:
   });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npm test -- --runTestsByPath src/auth/auth-contact-code.spec.ts`
 Expected: FAIL — `contactCodeHash` takes two arguments, the result has no `ttlMinutes`, and `purpose` is undefined on saved tokens
 
-- [ ] **Step 3: Add `purpose` to the request DTO**
+- [x] **Step 3: Add `purpose` to the request DTO**
 
 In `src/auth/dto/contact-code-request.dto.ts`, add after the `identifier` field:
 
@@ -364,7 +366,7 @@ In `src/auth/dto/contact-code-request.dto.ts`, add after the `identifier` field:
 
 `IsIn` is already imported in this file.
 
-- [ ] **Step 4: Make the hash purpose-aware**
+- [x] **Step 4: Make the hash purpose-aware**
 
 Replace `contactCodeHash` (`src/auth/auth.service.ts:1552`):
 
@@ -380,7 +382,7 @@ Replace `contactCodeHash` (`src/auth/auth.service.ts:1552`):
   }
 ```
 
-- [ ] **Step 5: Branch the request on purpose**
+- [x] **Step 5: Branch the request on purpose**
 
 In `requestContactCode` (`src/auth/auth.service.ts:1611`), immediately after the `identifier` is computed and before the rate-limit calls, add:
 
@@ -430,7 +432,7 @@ and the final return:
 
 `ttlMinutes` is a constant for all callers, so returning it on the unknown-user path discloses nothing.
 
-- [ ] **Step 6: Give recovery its own email copy**
+- [x] **Step 6: Give recovery its own email copy**
 
 Change the signature of `sendContactCode` (`src/auth/auth.service.ts:1574`) to accept the new arguments:
 
@@ -480,12 +482,12 @@ In `getPlainEmailCopy` (`src/auth/auth.service.ts:2210`), widen the `kind` param
     }
 ```
 
-- [ ] **Step 7: Run tests to verify they pass**
+- [x] **Step 7: Run tests to verify they pass**
 
 Run: `npm test -- --runTestsByPath src/auth/auth-contact-code.spec.ts`
 Expected: PASS, including the four pre-existing tests in that file
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 rtk git add src/auth/dto/contact-code-request.dto.ts src/auth/auth.service.ts src/auth/auth-contact-code.spec.ts
@@ -505,7 +507,7 @@ rtk git commit -m "feat(auth): request a password-recovery code"
 - Consumes: `contactCodeHash(identifier, code, purpose)` (Task 3), `PasswordResetToken.returnUrl/.clientId/.state` (Task 2).
 - Produces: `mintPasswordRecoveryGrant(userId: string, target: { returnUrl: string; clientId: string | null; state: string | null }): Promise<string>` returning the raw grant token, and `buildSetPasswordUrl(token: string, lang: 'en' | 'cs' | 'ru'): string`. Task 6 calls both.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `src/auth/auth-contact-code.spec.ts`. Note the harness needs a `passwordResetTokenRepository` stub, which `makeService` does not yet provide — add it inside `makeService` beside `magicLinkTokenRepository`, and return `savedGrants` from the function:
 
@@ -597,12 +599,12 @@ Change the final line of `makeService` to `return { service: service as AuthServ
   });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npm test -- --runTestsByPath src/auth/auth-contact-code.spec.ts`
 Expected: FAIL — `result.recovery` is undefined and a login verify happily accepts the recovery code
 
-- [ ] **Step 3: Add `purpose` to the verify DTO**
+- [x] **Step 3: Add `purpose` to the verify DTO**
 
 In `src/auth/dto/contact-code-verify.dto.ts`, add after `code`:
 
@@ -621,7 +623,7 @@ In `src/auth/dto/contact-code-verify.dto.ts`, add after `code`:
 
 and add `IsIn` to the existing `class-validator` import.
 
-- [ ] **Step 4: Add the grant and URL helpers**
+- [x] **Step 4: Add the grant and URL helpers**
 
 Add these private methods to `AuthService`, directly above `verifyContactCode`:
 
@@ -661,7 +663,7 @@ Add these private methods to `AuthService`, directly above `verifyContactCode`:
   }
 ```
 
-- [ ] **Step 5: Branch the verify on purpose**
+- [x] **Step 5: Branch the verify on purpose**
 
 In `verifyContactCode` (`src/auth/auth.service.ts:1684`), add near the top beside the existing `code` extraction:
 
@@ -708,12 +710,12 @@ After the `used` flag is set and the user has been loaded and checked, insert th
     }
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `npm test -- --runTestsByPath src/auth/auth-contact-code.spec.ts`
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 rtk git add src/auth/dto/contact-code-verify.dto.ts src/auth/auth.service.ts src/auth/auth-contact-code.spec.ts
@@ -732,7 +734,7 @@ rtk git commit -m "feat(auth): exchange a recovery code for a single-use grant"
 - Consumes: the grant row shape from Task 4.
 - Produces: `confirmPasswordReset` returns `{ message, user, accessToken, refreshToken, redirectUrl }` when the grant carries a `returnUrl`, and the existing `{ message }` otherwise.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/auth/password-recovery-flow.spec.ts`:
 
@@ -859,12 +861,12 @@ describe('password recovery flow', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npm test -- --runTestsByPath src/auth/password-recovery-flow.spec.ts`
 Expected: FAIL — `result.accessToken` is undefined; `confirmPasswordReset` returns only a message
 
-- [ ] **Step 3: Complete the grant into a session**
+- [x] **Step 3: Complete the grant into a session**
 
 In `confirmPasswordReset` (`src/auth/auth.service.ts:762`), replace the final `return { message: 'Password reset successfully' };` with:
 
@@ -897,12 +899,12 @@ In `confirmPasswordReset` (`src/auth/auth.service.ts:762`), replace the final `r
     };
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npm test -- --runTestsByPath src/auth/password-recovery-flow.spec.ts`
 Expected: PASS, 5 tests
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 rtk git add src/auth/auth.service.ts src/auth/password-recovery-flow.spec.ts
@@ -921,7 +923,7 @@ rtk git commit -m "feat(auth): completing a recovery grant signs the user in"
 - Consumes: `mintPasswordRecoveryGrant` (Task 4), `resolvePasswordRecoveryTtlMinutes` (Task 1).
 - Produces: nothing new.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `src/auth/password-recovery-flow.spec.ts`, inside the top-level `describe`:
 
@@ -964,12 +966,12 @@ Append to `src/auth/password-recovery-flow.spec.ts`, inside the top-level `descr
   });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- --runTestsByPath src/auth/password-recovery-flow.spec.ts -t 'link grant'`
 Expected: FAIL — the email says `60 minutes` and the grant has no `returnUrl`
 
-- [ ] **Step 3: Use the shared TTL and persist the target**
+- [x] **Step 3: Use the shared TTL and persist the target**
 
 In `requestPasswordReset` (`src/auth/auth.service.ts:657`), replace the token-creation block (currently the `crypto.randomBytes` line through the `passwordResetTokenRepository.save` call) with a call to the shared helper, so both entry points mint grants identically:
 
@@ -1010,17 +1012,17 @@ Add `ttl` to the reset URL so the page can state the window:
     resetUrlParams.set('ttl', String(this.passwordRecoveryTtlMinutes));
 ```
 
-- [ ] **Step 4: Confirm the 1-hour expiry is really gone**
+- [x] **Step 4: Confirm the 1-hour expiry is really gone**
 
 Run: `rtk rg -n 'setHours|resetTtlMinutes = 60|60 \* 60 \* 1000' src/auth/auth.service.ts`
 Expected: no match for any of them in the password-reset path. A leftover `setHours(+1)` would keep the row alive for an hour while the email promises 15 minutes.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `npm test -- --runTestsByPath src/auth/password-recovery-flow.spec.ts`
 Expected: PASS, 6 tests
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 rtk git add src/auth/auth.service.ts src/auth/password-recovery-flow.spec.ts
@@ -1042,7 +1044,7 @@ rtk git commit -m "feat(auth): reset links share the recovery grant and TTL"
 
 **Note:** the existing `reset` mode already renders exactly the set-password screen — identifier hidden, password + confirm shown, `new-password` autocomplete. `/set-password` is therefore an alias path onto that mode, not a new mode.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `src/auth/hosted-auth-web.spec.ts` a new `describe` block inside the top-level one:
 
@@ -1090,12 +1092,12 @@ Append to `src/auth/hosted-auth-web.spec.ts` a new `describe` block inside the t
   });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts`
 Expected: FAIL on all eight new assertions
 
-- [ ] **Step 3: Serve the new path**
+- [x] **Step 3: Serve the new path**
 
 In `web/server.js:172`:
 
@@ -1105,7 +1107,7 @@ app.get(['/login', '/register', '/reset-password', '/set-password'], (req, res) 
 });
 ```
 
-- [ ] **Step 4: Map the path onto the reset screen**
+- [x] **Step 4: Map the path onto the reset screen**
 
 In `web/public/index.html`, replace the `initialMode` line (line 358):
 
@@ -1123,7 +1125,7 @@ Add beside the other querystring reads (near line 361):
     let recoveryTtlMinutes = ttlFromUrl;
 ```
 
-- [ ] **Step 5: Let translations take parameters**
+- [x] **Step 5: Let translations take parameters**
 
 Replace `t` (line 303):
 
@@ -1140,7 +1142,7 @@ Replace `t` (line 303):
     }
 ```
 
-- [ ] **Step 6: Add the copy**
+- [x] **Step 6: Add the copy**
 
 Add these keys to each of the three `I18N` language blocks, beside the existing `codeSent`:
 
@@ -1165,7 +1167,7 @@ Add these keys to each of the three `I18N` language blocks, beside the existing 
         passwordUpdatedRedirecting: 'Пароль изменён. Возвращаем вас назад…',
 ```
 
-- [ ] **Step 7: Point "Forgot password?" at the recovery code**
+- [x] **Step 7: Point "Forgot password?" at the recovery code**
 
 Replace the body of `requestPasswordReset` (the `fetch` at line 672 onward is a different function — this is the one starting near line 790) so it requests a recovery code instead of an email link:
 
@@ -1223,7 +1225,7 @@ Declare the flag beside `contactCodeRequestedFor` (line 397):
     let recoveryRequested = false;
 ```
 
-- [ ] **Step 8: Send the purpose when verifying, and follow the server**
+- [x] **Step 8: Send the purpose when verifying, and follow the server**
 
 In `verifyContactCode`, add `purpose` to the request body:
 
@@ -1243,7 +1245,7 @@ and replace the success handling:
         window.location.assign(data.redirectUrl || buildTokenHandoffUrl(validatedReturnUrl, data, state));
 ```
 
-- [ ] **Step 9: Complete the set-password screen into the application**
+- [x] **Step 9: Complete the set-password screen into the application**
 
 In the reset submit handler, replace the success block (lines 681-686) with:
 
@@ -1262,7 +1264,7 @@ In the reset submit handler, replace the success block (lines 681-686) with:
         setSuccess(t('resetSuccess'));
 ```
 
-- [ ] **Step 10: State the window on the set-password screen**
+- [x] **Step 10: State the window on the set-password screen**
 
 In `syncMode`, inside the branch that runs when `isReset`, set the subtitle from the TTL when the URL carried one:
 
@@ -1274,12 +1276,12 @@ In `syncMode`, inside the branch that runs when `isReset`, set the subtitle from
           : t('subtitleLogin'));
 ```
 
-- [ ] **Step 11: Run tests to verify they pass**
+- [x] **Step 11: Run tests to verify they pass**
 
 Run: `npm test -- --runTestsByPath src/auth/hosted-auth-web.spec.ts`
 Expected: PASS
 
-- [ ] **Step 12: Commit**
+- [x] **Step 12: Commit**
 
 ```bash
 rtk git add web/server.js web/public/index.html src/auth/hosted-auth-web.spec.ts
@@ -1292,17 +1294,17 @@ rtk git commit -m "feat(auth): recover with a code and finish on the target page
 
 **Files:** none modified — this task proves the previous seven.
 
-- [ ] **Step 1: Typecheck by path**
+- [x] **Step 1: Typecheck by path**
 
 Run: `./node_modules/.bin/tsc --noEmit -p tsconfig.json`
 Expected: no output. Do not substitute `npx tsc`; it runs an unrelated package that prints a friendly message and reads as a pass.
 
-- [ ] **Step 2: Full suite**
+- [x] **Step 2: Full suite**
 
 Run: `npm test`
 Expected: all suites pass, including `auth-contract.spec.ts`, which asserts response shapes that Task 5 changed
 
-- [ ] **Step 3: Prove the TTL test can fail**
+- [x] **Step 3: Prove the TTL test can fail**
 
 A green check that never ran is worse than a red one. Temporarily change `resetTtlMinutes` in `requestPasswordReset` back to a literal `60`:
 
@@ -1321,7 +1323,7 @@ Expected: no matches. Every displayed lifetime interpolates.
 Run: `rtk git diff --stat main -- . ':!docs'`
 Expected: changes confined to `src/auth/`, `web/`, `.env.example`, `deploy.config.sh`. Any other path means the blast radius exceeded the design.
 
-- [ ] **Step 6: Commit any fixes**
+- [x] **Step 6: Commit any fixes**
 
 ```bash
 rtk git add -A
