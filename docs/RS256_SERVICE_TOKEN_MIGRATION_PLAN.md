@@ -5826,3 +5826,75 @@ errors in orders-microservice.
 - `~/.claude/logging-admin-token` is expired, and it is a `test@example.com` principal
   holding `global:superadmin` plus ~30 app admin roles. Reissuing it as a scoped
   read-only logging principal would remove a standing superadmin credential from disk.
+
+## 6az. Logging admin credential moved off `test@example.com`, 2026-09-02
+
+`~/.claude/logging-admin-token` had expired on 2026-09-01 and could not be renewed:
+`shared/scripts/rotate-logging-admin-token.sh` logs in as
+`secret/prod/logging-microservice` `ADMIN_JWT_EMAIL`, which is `test@example.com` —
+the account deactivated on 2026-08-25 by this very migration. The nightly 03:15 cron
+had been dying on `login request to auth-microservice failed` ever since. The log
+index confirms it:
+
+```
+service=auth-microservice operation=login outcome=failure
+identifier=test@example.com reason=inactive_user
+```
+
+Replaced with a per-pair service principal rather than reactivating the account:
+
+| | before | after |
+|---|---|---|
+| principal | `test@example.com` | `svc-claude-agent--logging-microservice@internal.alfares.cz` |
+| roles | `global:superadmin` + ~30 app admin | `internal:logging-microservice:admin` only |
+| alg | HS256-era login token | RS256 (`kid=a975635403084850`) |
+| expiry | 7d, password re-mint | 90d, expires 2026-12-01 |
+
+`/api/logs/query` is guarded by `AdminRoleGuard`, whose `REQUIRED_ADMIN_ROLES`
+(`logging-microservice/src/auth/admin-role.guard.ts:9`) accepts
+`internal:logging-microservice:admin`. `global:superadmin` was never required —
+it was simply what the shared test account happened to carry.
+
+Issued via `scripts/provision-service-token.js` (dry-run first). The token was piped
+from the pod straight into the file and never printed; the pod-side temp file and the
+old superadmin token backup were both removed.
+
+### Retirement evidence, now from traffic
+
+With `logs_query` working, the three principals deactivated in 6ay were re-checked
+against the persistent index: `orders-warehouse-service`, `orders-smoke-admin-service`
+and `cliplot-orders-status-smoke` each return **zero** auth events since 2026-08-01.
+6ay's holder-based reasoning is confirmed by traffic.
+
+### `rotate-logging-admin-token.sh` is now inert
+
+Its mint path cannot succeed. A status banner at the top records this, the reissue
+command, and the expiry date. It still usefully *verifies* an installed token, but it
+can no longer produce one; renewing means re-running the provisioning script, or
+rewriting the rotation to renew a service principal instead of logging in with a
+password.
+
+### `test@example.com` is not yet removable
+
+Requested, but blocked on live consumers that hardcode it as the admin identity:
+
+- `catalog-microservice/src/auth/auth.service.ts:102` — rejects every other email
+- `aukro/k8s/configmap.yaml:14` `AUKRO_ADMIN_EMAILS`, defaulted again at
+  `aukro/services/aukro-service/src/ui/ui.controller.ts:1013`
+- `heureka/services/heureka-service/src/heureka/dashboard/dashboard.service.ts:63`
+  (already lists `ssfskype@gmail.com` alongside it)
+
+Deleting the auth row before repointing these would remove catalog and aukro admin
+access. In the auth DB it also holds 31 role bindings and is the `grantedBy` of one
+live grant. Sequence: repoint the three services to `ssfskype@gmail.com`, deploy,
+verify admin access, then delete the principal.
+
+### Owner roles widened
+
+`ssfskype@gmail.com` gained the 10 human-facing roles it lacked (backups admin/
+operator/readonly, monitoring admin/operator, school-committee admin, wisdom-quotes
+admin/editor, logging readonly, warehouse readonly) — 72 -> 82. The only roles it
+still lacks are the 12 `internal:<app>:service` machine roles, deliberately: those
+belong to `svc-` principals, and granting them to a human would defeat the per-pair
+isolation this plan exists to establish. `global:superadmin` already implies access
+everywhere; the narrow grants make the intent explicit rather than adding power.
