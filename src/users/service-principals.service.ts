@@ -60,12 +60,12 @@ export class ServicePrincipalsService {
    * Selects on `userType = 'service'`, NOT on the `svc-%@internal.alfares.cz`
    * address convention.
    *
-   * The convention matches 24 of the 45 service principals in production. The
-   * other 21 are equally real and equally able to fail — several sit on
+   * The convention matches 24 of the 42 active service principals in production.
+   * The other 18 are equally real and equally able to fail — several sit on
    * unroutable domains (`@internal.invalid`, `@internal.alfares`, `@alfares.local`)
    * and two use `@alfares.cz`, missing the convention by one domain segment.
-   * Filtering by address would drop nearly half the fleet without saying so,
-   * which is precisely the silent gap being closed.
+   * Filtering by address would drop them without saying so, which is precisely
+   * the silent gap being closed.
    */
   async listServicePrincipals(includeInactive = false): Promise<ServicePrincipalRecord[]> {
     const query = this.userRepository
