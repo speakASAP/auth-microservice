@@ -5967,3 +5967,41 @@ The next durable step is a scheduled prober that walks every issued principal,
 asks its receiver whether the credential is accepted, and alerts on rejection —
 generalizing the `token_accepted()` pattern beyond logging. That is a planning
 item, not part of this change.
+
+## 6bb. `test@example.com` deleted, 2026-09-02
+
+Removed in one transaction once 6ba landed and no consumer referenced it:
+
+```
+magic_link_tokens         3   (all expired June 2026)
+legacy_identity_mappings  1   (speakasap-portal user 344, RESTRICT — hard block)
+user_roles               31
+users                     1
+```
+
+`legacy_identity_mappings` is `ON DELETE RESTRICT` and `magic_link_tokens` is
+`NO ACTION`, so both blocked the delete and had to go first; the remaining
+dependents cascade. The single `grantedBy` reference pointed at the account's
+own bazos-service grant, so it cascaded rather than orphaning. Verified after:
+zero rows in all four tables, and zero orphaned `grantedBy` anywhere in
+`user_roles`.
+
+The roles it held, for the record — this is what a shared admin account
+accumulates, and the reason it was worth deleting rather than reactivating:
+
+```
+global:superadmin
+application:{allegro-service,aukro-service,bazos-service,beauty,crypto-ai-agent,
+  domain-research,ecosystem-console,flipflop-service,heureka-service,
+  leads-microservice,marathon,messenger,runlayer,sgiprealestate,shop-assistant,
+  speakasap,statex,task-management}:admin
+internal:{ai,catalog,logging,marketing,notifications,orders,payments,prompts,
+  suppliers,warehouse}-microservice:admin
+```
+
+The legacy mapping carried a pbkdf2 hash and a source snapshot from the
+2026-06-12 speakasap-portal import; the snapshot showed `isSuperuser: false` and
+a masked `tt***@example.com`, confirming test data rather than a real subscriber
+identity.
+
+catalog, aukro, heureka and auth all Running/ready afterwards with no errors.
