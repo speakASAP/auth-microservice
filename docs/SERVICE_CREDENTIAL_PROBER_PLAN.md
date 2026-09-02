@@ -392,6 +392,54 @@ timeout `rejected` produces exactly the false alert Phase 2 must not fire.
 **Exit criteria:** every active principal reports at least once; `silent` count
 reaches zero or each remainder has a written reason.
 
+#### Shared module and pilot, 2026-09-02
+
+`shared/packages/credential-reporter` (`3140b7a`, CJS fix `e3dee65`), vendored
+by `shared/scripts/sync-credential-reporter.sh` following `sync-consent.sh`.
+16 tests, zero dependencies. Pilot adoption in `monitoring-microservice`
+(`87990a8`), verified in production: `{"verdict":"accepted","posted":true,
+"status":201}`, reconciling to `accepted` with `daysUntilExpiry: 90`.
+
+**Finding: a probeable read is rarer than the plan assumed, and this is the
+constraint that will shape the rollout.**
+
+monitoring was chosen as pilot because auth's `GET /internal/service-principals`
+enforces `internal:auth-microservice:readonly` — exactly the role its credential
+holds — so 200 proves the credential and 401/403 disproves it.
+`warehouse-microservice`, examined first, has no such route:
+
+- `internal:warehouse-microservice:service` appears on **exactly one** orders
+  route, `PUT /:id/warehouse-fulfillment-status`. The contract forbids probing
+  with a write, and a probe every 30 minutes that mutates state is a scheduled
+  corruption job.
+- `GET /api/orders` returns **403** — the credential authenticates but lacks
+  that role. Probing it would report `rejected` for a healthy credential.
+- `GET /health` returns **200 with no credential at all** (verified
+  unauthenticated). Probing it would report `accepted` for a service holding an
+  empty token — the `catalog-contract-monitor` failure exactly, reproduced by
+  the tool built to detect it.
+
+So warehouse→orders is **unprobeable** and must stay `silent`, which is true,
+rather than be given a probe that cannot fail. Before writing each remaining
+reporter, check that a read-only route genuinely enforcing that principal's role
+exists. Where none does, the honest options are to add one to the receiver, or
+record the principal as unprobeable — never to point the probe at `/health`.
+
+This also revises the estimate: the 3–4 day vendoring figure assumed each repo
+needed a copy and a config. Repos needing a *new receiver endpoint* first are
+larger, and how many there are is not yet known.
+
+**Two implementation notes for the next adopter:**
+
+- The module is **CommonJS**, not ESM like `shared/packages/consent`. That
+  package is browser-served; this one is imported by NestJS compiled to CJS,
+  where `export` fails at `require()` with `Unexpected token 'export'`.
+- The vendored `.js` must be registered as a **nest-cli asset**, or it is absent
+  from `dist/` and the service throws `MODULE_NOT_FOUND` at boot. Tests pass
+  either way, because ts-jest resolves from source — this only appears in a
+  running pod. Verify by requiring the built file directly, not by running the
+  suite.
+
 ### Task B — reconcile the duplicate principals (finding 1)
 
 Enumerating by `userType` surfaced principals the address convention was hiding,
