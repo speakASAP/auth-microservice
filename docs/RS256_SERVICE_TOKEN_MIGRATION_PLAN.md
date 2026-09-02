@@ -5775,3 +5775,54 @@ tested the old code and "confirmed no change".
 to **fail 6/19** when both the per-caller map and the fail-closed default are reverted.
 Deployed image `3fb296a-wt20260901200259` matches HEAD; confirmed by pod age against commit
 time and by grepping the pod's `dist/` for emitted strings rather than comments.
+
+## 6ay. Four pre-standard principals retired, 2026-09-02
+
+The four `@internal.alfares.cz` accounts that predate the `svc-<caller>--<target>`
+naming standard are gone from the active set. All four held blanket `admin` rather
+than the least-privilege `service`/`readonly` the 23 conforming pairs use.
+
+| Principal | Role held | Action |
+|---|---|---|
+| `369e4f3c…` `service.allegro` | `internal:warehouse-microservice:admin` | **deleted** |
+| `cbb8dd00…` `orders-warehouse-service` | `internal:warehouse-microservice:admin` | deactivated |
+| `31c6373a…` `orders-smoke-admin-service` | `internal:orders-microservice:admin` | deactivated |
+| `c4fe2c2e…` `cliplot-orders-status-smoke` | `internal:orders-microservice:admin` | deactivated |
+
+`service.allegro` was deleted outright because 6k had already deactivated it on
+2026-08-26 and nothing regressed in the week since. Its role binding was removed
+first (`user_roles` has no cascade from `users`, so deleting the row alone would
+have orphaned the grant).
+
+The other three are deactivated, not deleted, matching the 6k treatment: they stay
+auditable and reversible.
+
+### Evidence they are unused
+
+`users.lastActivity` is NULL for **every** service principal including the 23 known-good
+pairs, so it is not populated on this path and proves nothing either way. The auth pod's
+container log held only startup lines (restarted at 21:20 for `c0b4199`), and the
+persistent log index was unreachable — the admin token at `~/.claude/logging-admin-token`
+expired 2026-09-01. Usage was therefore established from holders rather than from traffic:
+
+- No live Deployment env var references any of them. `cliplot` no longer carries
+  `ORDERS_STATUS_SERVICE_TOKEN` and `orders-microservice` no longer carries
+  `ALLEGRO_INTERNAL_SERVICE_TOKEN`; both lanes moved to `svc-` pairs (6ax, 6k).
+  A full sweep of every `*TOKEN*` env var across all deployments found no holder.
+- No consumer repo references them outside `docs/` and `reports/`.
+- Zero matches in any ConfigMap in `statex-apps`.
+- `updatedAt == createdAt` on all three: untouched since July.
+
+Note the inventory in section A lists `cliplot-orders-status-smoke` as held by cliplot's
+`ORDERS_STATUS_SERVICE_TOKEN`. That is now stale — the variable is absent from the running
+deployment.
+
+Post-change state: **23 active, 3 inactive, 26 total**. orders-microservice,
+warehouse-microservice, cliplot and allegro-service all Running/ready afterwards, no
+errors in orders-microservice.
+
+### Follow-up worth doing
+
+- `~/.claude/logging-admin-token` is expired, and it is a `test@example.com` principal
+  holding `global:superadmin` plus ~30 app admin roles. Reissuing it as a scoped
+  read-only logging principal would remove a standing superadmin credential from disk.
