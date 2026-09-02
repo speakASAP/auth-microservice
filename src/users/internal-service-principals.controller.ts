@@ -1,5 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { InternalServiceGuard } from '../auth/guards/internal-service.guard';
+import { ServicePrincipalsGuard } from './service-principals.guard';
 import { ServicePrincipalsService } from './service-principals.service';
 
 /**
@@ -10,11 +10,16 @@ import { ServicePrincipalsService } from './service-principals.service';
  * widen the blast radius of the most sensitive database is a poor trade for one
  * read.
  *
+ * Accepts a per-pair RS256 principal holding
+ * `internal:auth-microservice:readonly`, or the shared static token that every
+ * other internal caller uses. The RS256 path is what lets the watcher's own
+ * credential be enumerated and probed like the fleet it observes.
+ *
  * Returns identity and role metadata only — never a token, secret, or password
  * hash. The prober needs to know which credentials exist, not what they are.
  */
 @Controller('internal/service-principals')
-@UseGuards(InternalServiceGuard)
+@UseGuards(ServicePrincipalsGuard)
 export class InternalServicePrincipalsController {
   constructor(private readonly servicePrincipals: ServicePrincipalsService) {}
 

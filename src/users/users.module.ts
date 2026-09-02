@@ -15,7 +15,9 @@ import { UserMarketingConsent } from './entities/user-marketing-consent.entity';
 import { MarketingConsentService } from './marketing-consent.service';
 import { UnsubscribeTokenService } from './unsubscribe-token.service';
 import { MarketingConsentController } from './marketing-consent.controller';
+import { RolesModule } from '../roles/roles.module';
 import { ServicePrincipalsService } from './service-principals.service';
+import { ServicePrincipalsGuard } from './service-principals.guard';
 import { InternalServicePrincipalsController } from './internal-service-principals.controller';
 
 @Module({
@@ -24,9 +26,12 @@ import { InternalServicePrincipalsController } from './internal-service-principa
     // Circular by nature: AuthModule needs UsersService to look users up, and
     // InternalUsersController needs AuthService to mint a session for one it resolved.
     forwardRef(() => AuthModule),
+    // ServicePrincipalsGuard resolves role strings from the database rather than
+    // trusting the token's own claim, so a revoked role stops working at once.
+    RolesModule,
   ],
   controllers: [InternalUsersController, MarketingConsentController, InternalServicePrincipalsController],
-  providers: [UsersService, MarketingConsentService, UnsubscribeTokenService, ServicePrincipalsService],
+  providers: [UsersService, MarketingConsentService, UnsubscribeTokenService, ServicePrincipalsService, ServicePrincipalsGuard],
   exports: [UsersService, MarketingConsentService, UnsubscribeTokenService, ServicePrincipalsService],
 })
 export class UsersModule {}
