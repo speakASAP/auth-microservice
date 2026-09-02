@@ -499,9 +499,34 @@ Recommend option 2, and option 1 only as an explicitly temporary unblock with a
 follow-up recorded. A watcher whose own credential is invisible to it is the
 blind spot this plan was written about.
 
+**Decision: option 2**, implemented 2026-09-02.
+
+`InternalServiceOrRoleGuard` accepts either a per-pair RS256 principal holding
+`internal:auth-microservice:readonly` or the existing shared static token, RS256
+first. The static path stays because every current caller of auth's internal
+routes uses it; removing it would break them. Two properties are deliberate and
+tested: roles are read from the database rather than the token's own claim, so a
+revoked role stops working at revocation instead of at expiry; and a failed
+bearer token does not fall back to the static path, which would otherwise accept
+a junk bearer plus a stolen shared secret as an anonymous holder.
+
+A prerequisite surfaced during implementation: **`auth-microservice` has no
+internal roles at all.** `seed-rbac.ts` creates them only for `INTERNAL`-typed
+applications and auth is typed `INFRASTRUCTURE`. Widening that loop would create
+`admin` and `action-admin` across every infrastructure application as a side
+effect, so `scripts/seed-auth-readonly-role.js` creates the one role instead,
+idempotently. `readonly` rather than `admin` because listing identities is a
+read; it is already the established shape on logging, backups and warehouse.
+
+Ordering matters and is not obvious. The Vault value must exist **before** the
+monitoring manifest referencing it deploys: ESO fails an ExternalSecret whose
+remote property is missing, which would stop refreshing all of that service's
+keys rather than just the new one. So auth ships first (its guard still accepts
+the static path, and nothing uses RS256 yet), then role, principal and Vault, and
+the monitoring manifest last.
+
 **Exit criteria:** a sweep completes against production and returns all 42
-principals; the watcher's own credential appears in the matrix under option 2, or
-is documented as a known blind spot under option 1.
+principals, with the watcher's own credential appearing in its own matrix.
 
 ### Sequencing
 
