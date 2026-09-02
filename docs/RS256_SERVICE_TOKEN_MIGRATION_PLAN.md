@@ -5898,3 +5898,72 @@ still lacks are the 12 `internal:<app>:service` machine roles, deliberately: tho
 belong to `svc-` principals, and granting them to a human would defeat the per-pair
 isolation this plan exists to establish. `global:superadmin` already implies access
 everywhere; the narrow grants make the intent explicit rather than adding power.
+
+## 6ba. `test@example.com` removed from the three consumers, 2026-09-02
+
+6az recorded that the account could not be deleted while catalog, aukro and
+heureka hardcoded it as the admin identity. All three are now repointed and
+deployed; the auth row is ready to delete.
+
+| service | before | after | image |
+|---|---|---|---|
+| catalog | email `=== 'test@example.com'` (backend + 2 frontend gates) | `CatalogAuthGuard.WRITE_ROLES` | `c3614b5` |
+| aukro | `AUKRO_ADMIN_EMAILS` default + ConfigMap | `ssfskype@gmail.com` | `d5f0db0` |
+| heureka | listed alongside the owner | entry dropped | `970fefd` |
+
+Only catalog needed a real change. Aukro and heureka already authorized on roles
+and merely carried the address as an identity fallback.
+
+Catalog's backend gate was the outlier: it compared an email and consulted no
+role at all, so admin access was bound to one shared account, could not be
+granted to a second person, and could not be revoked without a redeploy. It now
+uses the same `WRITE_ROLES` set as every other catalog admin surface rather than
+duplicating a list that would drift.
+
+### The frontend needed roles the profile does not return
+
+`/auth/profile` returns the user row, and roles live in `user_roles`, so the
+response carries no `roles` field — a pure-roles UI gate would have denied
+everyone including the owner. The access token does carry them (auth embeds
+roles when signing, `src/auth/auth.service.ts:646`), so `AdminGuard` reads the
+claim from the token and falls back to `user.roles` when populated. The UI gate
+only decides rendering; `CatalogAuthGuard` revalidates server-side.
+
+### Adjacent defect found and fixed
+
+`catalog-microservice/k8s/contract-monitor-cronjob.yaml` set `JWT_TOKEN` to a
+literal `""`, so every scheduled smoke run authenticated with no credential and
+`product-search` failed 401 (all four attempts of job 29805644). The value was
+already synced from Vault into `catalog-microservice-secret`, and the adjacent
+`CATALOG_SMOKE_INTERNAL_SERVICE_TOKEN` already read it from there. Fixed in
+`03d3d40`. The empty literal predates today's changes — it was found while
+verifying the deploy, not caused by it.
+
+### On extending A2A coverage
+
+The owner asked whether these gates should be service principals. They should
+not: all three are human admin surfaces reached by a logged-in person, not
+service-to-service calls, so a `svc-` principal has no caller to represent.
+Role-based authorization is the correct control, and is what this change
+installs.
+
+The genuine A2A gap is elsewhere, and is about reliability rather than coverage:
+
+- **Credentials sit in three different shapes.** Per-pair RS256 principals (23),
+  Vault-synced static strings still read as `*_SERVICE_TOKEN` env vars, and at
+  least one literal in a manifest (the empty `JWT_TOKEN` above). Only the first
+  is revocable per-caller.
+- **Nothing proves a service credential still works until something fails.** The
+  contract monitor is the closest thing to a prober and it was itself
+  unauthenticated for an unknown period. `rotate-logging-admin-token.sh` had the
+  right idea — ask the receiver whether the token is accepted rather than trust
+  `exp` — but it covers exactly one credential and its mint path is now dead
+  (6az).
+- **Expiry is unmonitored.** The 23 per-pair tokens are 90-day. Nothing tracks
+  when each was issued, so the first signal of expiry will be a 401 in
+  production, which is how the 2026-08-18 outage presented.
+
+The next durable step is a scheduled prober that walks every issued principal,
+asks its receiver whether the credential is accepted, and alerts on rejection —
+generalizing the `token_accepted()` pattern beyond logging. That is a planning
+item, not part of this change.
