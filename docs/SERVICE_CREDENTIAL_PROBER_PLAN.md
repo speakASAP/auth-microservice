@@ -1,7 +1,8 @@
 # Service Credential Prober — Plan
 
 Date: 2026-09-02
-Status: Phase 1 implemented (receiver side); consumer adoption outstanding
+Status: Phase 1 receiver shipped; Phase 1b Task E done 2026-09-02 (the watcher
+sweeps production); Tasks A–D outstanding, consumer adoption is the bulk
 Owner decisions recorded 2026-09-02 — see "Decisions and corrections"
 
 ## Context
@@ -314,8 +315,12 @@ Deployed 2026-09-02: auth `01c6cb1`, monitoring `ab27a7a`, both ready with zero
 restarts. `GET /internal/service-principals` is live and returns 401
 unauthenticated, so the guard is enforcing.
 
-**The watcher is inert in production.** Its `INTERNAL_SERVICE_TOKEN` was never
-wired into the monitoring pod, so no sweep can run — Task E.
+~~**The watcher is inert in production.** Its `INTERNAL_SERVICE_TOKEN` was never
+wired into the monitoring pod, so no sweep can run — Task E.~~
+
+**Resolved 2026-09-02 by Task E.** The watcher now authenticates with its own
+per-pair RS256 principal rather than the shared static string, and sweeps
+complete against production. See Task E.
 
 **Exit criteria not yet met.** The plan requires one week of clean runs with all
 principals accepted or explained. No consumer reports yet, so every principal
@@ -528,11 +533,43 @@ the monitoring manifest last.
 **Exit criteria:** a sweep completes against production and returns all 42
 principals, with the watcher's own credential appearing in its own matrix.
 
+**Met 2026-09-02.** The 15:30Z scheduled sweep logged
+`43 principal(s): 0 accepted, 0 rejected, 0 indeterminate, 43 silent, 0 stale`
+— 43 rather than 42 because provisioning the watcher's own principal added one.
+Every prior sweep died on `INTERNAL_SERVICE_TOKEN is empty`.
+
+Shipped in the order the section requires, Vault before the manifest:
+
+| Step | Result |
+|---|---|
+| auth guard + seed script | `565b32d`, already deployed |
+| `internal:auth-microservice:readonly` | `970d8d47-32ad-465b-bd9b-0cc762f04bcb`; re-running the seed reports `roleExists: true` and mutates nothing |
+| `svc-monitoring-microservice--auth-microservice@internal.alfares.cz` | `fd504bb0-ca7c-4760-8360-04253bfa0f21`, RS256, kid `a975635403084850` |
+| Vault `AUTH_SERVICE_TOKEN` | `secret/prod/monitoring-microservice` v17; the other 8 keys preserved |
+| monitoring watcher + ExternalSecret | `68a237d`; ESO `SecretSynced`, pod 0 restarts |
+
+`GET /internal/service-principals` returns 200 to the RS256 bearer, and the
+watcher's own credential appears in its own matrix — `onConvention: true`,
+`targetMismatch: false`, one `readonly` grant on `auth-microservice`. The blind
+spot this task existed to close is closed.
+
+`43 silent` is the correct reading, not a regression: no consumer reporters
+exist yet, so nothing is checking these credentials. That is Task A. The watcher
+now says so instead of failing to run.
+
+**Carried forward — the watcher's credential expires 2026-10-02.**
+`provision-service-token.js` defaults to `30d`, not the 90-day lifetime this
+plan assumes elsewhere, and the default was kept rather than overridden. Task D
+is still open, so **nothing will warn before it expires** — the watcher would
+simply stop sweeping, which is this plan's own subject reproduced once more. Two
+follow-ups, either sufficient: finish Task D, or reissue this principal at 90d
+and record the date. Live `targetMismatch` count is 14, matching finding 2.
+
 ### Sequencing
 
 ```
 E (watcher credential) ──> B (classify duplicates) ──┐
-                                                     ├──> A (reporters) ──> one week baseline ──> Phase 2
+      [DONE 2026-09-02]                              ├──> A (reporters) ──> one week baseline ──> Phase 2
                            D (contract field)     ───┘
 C (mismatches) ── independent, any time
 ```
@@ -543,6 +580,15 @@ nowhere to land. B and D then precede A: B decides which principals deserve a
 reporter at all, and D settles the payload shape so reporters are written once.
 C is independent.
 
+**E is done (2026-09-02), so B, C and D are all unblocked.** Sweeps run and the
+matrix is populated, so B can now be checked against live data. B remains the
+next task on the critical path, because it decides which principals get a
+reporter at all — and writing a reporter for a dead principal is how dead
+credentials acquire maintenance.
+
+D has acquired a deadline it did not have when written: the watcher's own
+credential expires **2026-10-02** and no expiry signal exists to warn about it.
+
 ### When it will be done
 
 Estimates are working days of focused effort, excluding review and the
@@ -550,13 +596,13 @@ deliberate baseline wait.
 
 | Task | Effort | Notes |
 |---|---|---|
-| E — watcher credential | 0.5 day (option 1) / 1.5 days (option 2) | Blocks everything else. Option 2 adds a second accepted auth path on the inventory route. |
-| B — classify duplicates | 1 day | Mostly determining what is live; may hand retirements to the RS256 plan. |
-| D — contract `expiresAt` field | 0.5 day | Contract edit plus receiver field; no consumer work yet. |
+| ~~E — watcher credential~~ | **done 2026-09-02** | Option 2, as recommended. Estimated 1.5 days; the code was already written, so what remained was the ordered production sequence. |
+| B — classify duplicates | 1 day | Mostly determining what is live; may hand retirements to the RS256 plan. Now checkable against a live matrix. |
+| D — contract `expiresAt` field | 0.5 day | Contract edit plus receiver field; no consumer work yet. Now deadlined: the watcher's own credential expires 2026-10-02. |
 | A — shared reporter module | 1 day | Written and tested once. |
 | A — vendor into repos | 3–4 days | 14 known repos, plus whatever Task B assigns from the 18 unowned principals. Deploy-serialized, so these do not parallelize freely. |
-| C — mismatch decisions | 0.5 day | Documentation, no code. |
-| **Implementation total** | **6.5–8.5 days** | Range depends on the Task E option chosen. |
+| C — mismatch decisions | 0.5 day | Documentation, no code. Live `targetMismatch` count is 14, as finding 2 predicted. |
+| **Implementation remaining** | **6–7 days** | Was 6.5–8.5 including E. |
 | Baseline observation | +7 calendar days | Phase 1's own exit criterion; cannot be compressed. |
 | **Phase 1 complete** | **~3–3.5 working weeks** | Then Phase 2 may be wired. |
 
