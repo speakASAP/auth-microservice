@@ -73,22 +73,30 @@ export class ServicePrincipalsService {
       // LEFT JOINs throughout: a principal with no grant, or a grant with no
       // application, must still appear so it can be reported unprobeable. An
       // inner join would delete exactly the rows worth looking at.
-      .leftJoin('user_roles', 'ur', 'ur."userId" = user.id')
-      .leftJoin('roles', 'role', 'role.id = ur."roleId"')
-      .leftJoin('applications', 'app', 'app.id = ur."applicationId"')
-      .select([
-        'user.id AS id',
-        'user.email AS email',
-        'user."isActive" AS "isActive"',
-        'role.name AS "roleName"',
-        'role.scope AS "roleScope"',
-        'app.name AS "appName"',
-        'ur."expiresAt" AS "expiresAt"',
-      ])
-      .where("user.\"userType\" = 'service'");
+      .leftJoin('user_roles', 'ur', '"ur"."userId" = "user"."id"')
+      .leftJoin('roles', 'role', '"role"."id" = "ur"."roleId"')
+      .leftJoin('applications', 'app', '"app"."id" = "ur"."applicationId"')
+      // Two-argument addSelect rather than .select([...]): the array form parses
+      // entries as entity property paths, so `'user."isActive" AS "isActive"'`
+      // rendered the alias UNQUOTED as `user."isActive"`. Postgres then read
+      // `user` as the reserved keyword USER and failed with
+      // `syntax error at or near "."`.
+      //
+      // Joined tables are addressed by explicit quoted identifiers because they
+      // have no entity metadata for TypeORM to quote on our behalf. `"ur"` and
+      // `"app"` are not reserved words, so the unquoted form happened to work —
+      // relying on that is one rename away from the same production failure.
+      .select('user.id', 'id')
+      .addSelect('user.email', 'email')
+      .addSelect('user.isActive', 'isActive')
+      .addSelect('"role"."name"', 'roleName')
+      .addSelect('"role"."scope"', 'roleScope')
+      .addSelect('"app"."name"', 'appName')
+      .addSelect('"ur"."expiresAt"', 'expiresAt')
+      .where('user.userType = :serviceType', { serviceType: 'service' });
 
     if (!includeInactive) {
-      query.andWhere('user."isActive" = true');
+      query.andWhere('user.isActive = true');
     }
 
     const rows = await query.orderBy('user.email', 'ASC').getRawMany();

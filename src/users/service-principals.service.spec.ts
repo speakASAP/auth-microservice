@@ -6,18 +6,24 @@ import { ServicePrincipalsService } from './service-principals.service';
  * Two production facts drive these tests, both discovered by querying the auth
  * database rather than reading the convention:
  *
- *  - 21 of 45 service principals do not match `svc-%@internal.alfares.cz`.
- *    Selecting on the address would drop nearly half the fleet without saying
- *    so, which is the same silent gap the prober exists to close.
- *  - The address does not reliably name the receiver. Several principals named
- *    `svc-<caller>--<target>` hold a role on the *caller*, so a prober trusting
- *    the address would query the wrong service and misread its answer.
+ *  - 18 of the 42 active service principals do not match
+ *    `svc-<caller>--<target>@internal.alfares.cz`. Selecting on the address
+ *    would drop them without saying so, which is the same silent gap the prober
+ *    exists to close.
+ *  - The address does not reliably name the receiver. 14 of the 42 hold a role
+ *    on the *caller* rather than the named target, so a prober trusting the
+ *    address would query the wrong service and misread its answer.
+ *
+ * These stub the query builder, so they cover grouping and mismatch logic but
+ * prove nothing about the SQL emitted — that is `service-principals.sql.spec.ts`,
+ * added after a malformed select reached production as a 500.
  */
 describe('ServicePrincipalsService', () => {
   const build = (rows: any[]) => {
     const query: any = {
       leftJoin: jest.fn(() => query),
       select: jest.fn(() => query),
+      addSelect: jest.fn(() => query),
       where: jest.fn(() => query),
       andWhere: jest.fn(() => query),
       orderBy: jest.fn(() => query),
@@ -43,9 +49,10 @@ describe('ServicePrincipalsService', () => {
 
     await service.listServicePrincipals();
 
-    const clause = query.where.mock.calls[0][0];
-    expect(clause).toContain("'service'");
-    // An address filter here would silently drop the 21 off-convention
+    const [clause, params] = query.where.mock.calls[0];
+    expect(clause).toContain('userType');
+    expect(params).toMatchObject({ serviceType: 'service' });
+    // An address filter here would silently drop the 18 off-convention
     // principals that exist in production today.
     expect(clause).not.toContain('internal.alfares.cz');
   });
@@ -134,7 +141,7 @@ describe('ServicePrincipalsService', () => {
     const { service, query } = build([row()]);
 
     await service.listServicePrincipals();
-    expect(query.andWhere).toHaveBeenCalledWith('user."isActive" = true');
+    expect(query.andWhere).toHaveBeenCalledWith('user.isActive = true');
 
     query.andWhere.mockClear();
     await service.listServicePrincipals(true);
