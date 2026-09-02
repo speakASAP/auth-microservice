@@ -315,3 +315,178 @@ principals accepted or explained. No consumer reports yet, so every principal
 reconciles as `silent` — a truthful reading of the current state: nothing is
 checking these credentials. The remaining Phase 1 work is consumer adoption
 across ~20 repos, per the contract document.
+
+## Phase 1b — closing the four findings
+
+Written 2026-09-02, after the Phase 1 receiver shipped (auth `01c6cb1`,
+monitoring `ab27a7a`).
+
+Findings 1, 2 and 3 are already corrected **in the receiver's own code**: it
+enumerates by `userType`, resolves targets from role grants, and LEFT JOINs
+throughout. What none of them is yet corrected in is *the fleet* — the receiver
+now reports the mess accurately instead of hiding it, and this phase acts on
+what it reports. Finding 4's consequence, consumer adoption, is the bulk of the
+work.
+
+Phase 1b is what actually satisfies Phase 1's original exit criteria: "one week
+of clean runs, every one of the principals either consistently accepted or
+explained." Today every principal reads `silent`, so that criterion is not close
+to met.
+
+### Task A — consumer reporters (finding 4)
+
+Each service probes its own credential and posts the verdict, per
+`monitoring-microservice/docs/CREDENTIAL_SELF_REPORT_CONTRACT.md`.
+
+Ownership is only partly derivable. For the 24 principals following
+`svc-<caller>--<target>`, the address names the caller and therefore the repo
+that must implement the reporter. Note the repo name differs from the service
+name for every marketplace connector — the principal says `allegro-service`, the
+repo is `allegro/`:
+
+| Repo | Service name |
+|---|---|
+| `allegro` | allegro-service |
+| `aukro` | aukro-service |
+| `bazos` | bazos-service |
+| `heureka` | heureka-service |
+| `flipflop` | flipflop-service |
+| `cliplot` | cliplot |
+| `catalog-microservice` | catalog-microservice |
+| `warehouse-microservice` | warehouse-microservice |
+| `orders-microservice` | orders-microservice |
+| `payments-microservice` | payments-microservice |
+| `invoices-microservice` | invoices-microservice |
+| `marketing-microservice` | marketing-microservice |
+| `suppliers-microservice` | suppliers-microservice |
+| `monitoring-microservice` | monitoring-microservice |
+
+All fourteen repos exist locally and are deploy-eligible.
+
+For the remaining 18 off-convention principals the caller is **not** derivable
+from the address: `orders-action-admin`, `payments-admin-smoke`,
+`catalog-warehouse-service` and similar name a role or a service pair, not a
+caller. Assigning these is part of Task B, not an input to it — several are
+expected to be dead rather than unowned, and guessing an owner for a dead
+principal creates work that should not exist.
+
+The exact per-repo principal counts therefore follow Task B, not this table.
+
+A shared reporter module is written once and vendored, rather than hand-written
+fourteen times: fourteen independent implementations of the accepted/rejected/
+indeterminate rule will not classify identically, and a reporter that calls a
+timeout `rejected` produces exactly the false alert Phase 2 must not fire.
+
+**Exit criteria:** every active principal reports at least once; `silent` count
+reaches zero or each remainder has a written reason.
+
+### Task B — reconcile the duplicate principals (finding 1)
+
+Enumerating by `userType` surfaced principals the address convention was hiding,
+and several are visibly redundant pairs:
+
+- `allegro-service@alfares.local` and `allegro-service@internal.alfares`
+- `aukro-service@internal.alfares.invalid` and `aukro-service@internal.invalid`
+- `svc-monitoring--logging` and `svc-monitoring-microservice--logging-microservice`
+- `svc-catalog--warehouse` and `svc-catalog-microservice--warehouse-microservice`
+
+Several sit on domains that do not resolve (`@internal.invalid`,
+`@internal.alfares`, `@alfares.local`). These look like the pre-standard/standard
+pairs `RS256_SERVICE_TOKEN_MIGRATION_PLAN.md` has been retiring.
+
+Each must be classified as live, redundant, or already-dead. **A redundant
+principal that still validates is a finding, not bookkeeping** — it is an
+unrotated credential nobody is watching, which is this plan's subject.
+
+Do not write a reporter for a principal in this set until it is classified;
+that is how dead credentials acquire maintenance.
+
+**Exit criteria:** every duplicate is retired or documented as intentionally
+distinct. Retirement goes through the RS256 migration plan's process, not this
+one.
+
+### Task C — resolve the address/grant mismatches (finding 2)
+
+14 of 42 active principals have an address naming a service their role grants do
+not match. The receiver flags these as `targetMismatch`.
+
+The reporter makes this self-correcting in practice — a consumer knows which
+receiver it actually calls, so it reports the true target regardless of what its
+address claims. But the mismatch stays a latent trap for anyone reading the
+inventory, and the address is what a human greps for during an incident.
+
+Decide per principal: rename to match the grant, or record why the address is
+misleading-but-correct. No code depends on the outcome; this is legibility.
+
+**Exit criteria:** `targetMismatch` is zero, or each remaining case is
+documented.
+
+### Task D — unblock the expiry horizon (Phase 2 blocker)
+
+All 44 active role grants have `expiresAt IS NULL` and auth stores no issued
+token, so the plan's 14-day warning has no data source in any form.
+
+Two options, and the self-report design makes the second nearly free:
+
+1. Record token issuance in auth (`provision-service-token.js` writes an
+   issuance row). Authoritative, but new write surface on the most sensitive
+   service and it cannot see tokens minted before it existed.
+2. **Have each reporter decode its own token's `exp` and include it in the
+   self-report.** The reporter already holds the token, so this is one extra
+   field on a payload being sent anyway, and it reports the credential genuinely
+   deployed rather than what was issued.
+
+Recommend option 2, added to the contract as an optional `expiresAt` field so
+reporters can adopt it without a second round of changes. `exp` stays a
+**secondary** signal: 2026-08-18 is the proof, where every token had a valid
+`exp` and none worked.
+
+**Exit criteria:** expiry is available for every reporting principal, so Phase 2
+can warn at 14 days.
+
+### Sequencing
+
+```
+B (classify duplicates) ──┐
+                          ├──> A (reporters) ──> one week baseline ──> Phase 2
+D (contract field)     ───┘
+C (mismatches) ── independent, any time
+```
+
+B and D come before A: B decides which principals deserve a reporter at all, and
+D settles the payload shape so reporters are written once. C is independent.
+
+### When it will be done
+
+Estimates are working days of focused effort, excluding review and the
+deliberate baseline wait.
+
+| Task | Effort | Notes |
+|---|---|---|
+| B — classify duplicates | 1 day | Mostly determining what is live; may hand retirements to the RS256 plan. |
+| D — contract `expiresAt` field | 0.5 day | Contract edit plus receiver field; no consumer work yet. |
+| A — shared reporter module | 1 day | Written and tested once. |
+| A — vendor into repos | 3–4 days | 14 known repos, plus whatever Task B assigns from the 18 unowned principals. Deploy-serialized, so these do not parallelize freely. |
+| C — mismatch decisions | 0.5 day | Documentation, no code. |
+| **Implementation total** | **6–7 days** | |
+| Baseline observation | +7 calendar days | Phase 1's own exit criterion; cannot be compressed. |
+| **Phase 1 complete** | **~3 working weeks** | Then Phase 2 may be wired. |
+
+The largest line is vendoring the reporter into consumer repos, and it is large
+because deploys are serialized — one rollout at a time. Batching several repos
+per deploy window is the only real compression available.
+
+The 3–4 day figure covers the 14 identified repos. It is the estimate most
+likely to move, in either direction, once Task B says how many of the 18
+unowned principals are live rather than dead.
+
+### What would change these estimates
+
+- Task B is the main source of variance. If most off-convention principals are
+  dead, Task A stays near 3 days; if they are live and belong to repos not yet
+  listed, it grows.
+- If any consumer has no safe read-only endpoint to probe, that principal cannot
+  self-report; it stays `unprobeable` by construction and needs a decision rather
+  than an estimate.
+- The baseline week is a hard floor. Wiring Phase 2 before it is what the
+  original plan warns produces a muted channel on day one.
