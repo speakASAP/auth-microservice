@@ -417,6 +417,69 @@ that is how dead credentials acquire maintenance.
 distinct. Retirement goes through the RS256 migration plan's process, not this
 one.
 
+#### Live data, 2026-09-02 — and the blocker it exposed
+
+The first sweep after Task E gives the real numbers: **46 principals, 43
+active**. Normalising each address (drop the domain, the `svc-` prefix and the
+`-microservice`/`-service` suffixes) collapses them into **7 duplicate groups
+covering 15 principals**:
+
+| Group | Members | Grants |
+|---|---|---|
+| allegro | `allegro-service@alfares.local`, `allegro-service@internal.alfares` | both `allegro-service:service` |
+| aukro | `aukro-service@internal.alfares.invalid`, `aukro-service@internal.invalid` | both `warehouse-microservice:admin` |
+| catalog→warehouse | `catalog-warehouse-service@alfares.cz`, `svc-catalog--warehouse@internal.alfares.cz` | **`admin` vs `readonly`** |
+| orders→warehouse | `orders-warehouse-service@internal.alfares.cz` (inactive), `…@internal.alfares.local`, `svc-orders-microservice--warehouse-microservice@…` | `admin`, `admin`, **`action-admin`** |
+| suppliers→catalog | `suppliers-catalog-service@alfares.cz`, `svc-suppliers-microservice--catalog-microservice@alfares.cz` | both `catalog-microservice:service` |
+| suppliers→warehouse | `suppliers-warehouse-service@alfares.cz`, `svc-suppliers-microservice--warehouse-microservice@alfares.cz` | both `warehouse-microservice:admin` |
+| monitoring→logging | `svc-monitoring--logging@…`, `svc-monitoring-microservice--logging-microservice@…` | both `logging-microservice:readonly` |
+
+Two groups are **not** clean duplicates and must not be retired as such: the
+catalog→warehouse pair differs `admin` vs `readonly`, and orders→warehouse
+spans `admin` and `action-admin`. Retiring the wrong member of either silently
+removes authority a caller may depend on. The plan listed both as redundant
+pairs; they are not.
+
+The creation dates confirm the pre-standard/standard reading. Every
+off-convention principal was created 2026-06-29 → 2026-07-06; every
+`svc-<caller>--<target>` one from 2026-08-25 onward, when
+`provision-service-token.js` became the single path. 18 of the 43 active sit on
+a non-standard domain, six of them on `@internal.invalid`, which does not
+resolve.
+
+**Blocker: there is no liveness signal.** `users.lastActivity` reads `NEVER` for
+all 46 principals — including `svc-monitoring-microservice--auth-microservice`,
+created this session and used successfully against the inventory route minutes
+before the query. All four writes to that column live in contact-based human
+registration flows (`auth.service.ts`); nothing in service-token validation
+touches it. `NEVER` therefore means *not instrumented*, not *unused*, and the
+column cannot distinguish a live principal from a dead one.
+
+So Task B cannot be completed from the auth DB as it stands. Classifying by
+address shape alone would be exactly the guess this plan forbids — the
+`@internal.invalid` group looks dead and would be *assumed* dead, which is how a
+credential that still validates gets retired out from under a running caller.
+
+Three ways forward, in preference order:
+
+1. **Let Task A's reporters answer it.** A principal whose consumer reports is
+   live by demonstration; one that stays `silent` after every repo has adopted
+   the reporter is the candidate set for retirement. This needs no new write
+   surface on auth and is the signal the whole plan is built on — but it
+   inverts the stated sequencing, since B was meant to precede A.
+2. **Instrument `lastActivity` on service-token validation.** One write in the
+   validation path makes the column mean what its name implies. Cheap, but it
+   is a write on auth's hot path and answers nothing about the past — every
+   principal reads `NEVER` until each one is next used.
+3. **Read it from outside auth.** Receiver access logs already record which
+   principal presented a token. Authoritative and retrospective, but the query
+   spans services and log retention bounds how far back it can see.
+
+Recommend 1, with 2 alongside if the write is acceptable, because 2 makes the
+question permanently answerable while 1 only answers it once. Either way **B is
+now downstream of A, not upstream**, and the sequencing below is wrong as
+written.
+
 ### Task C — resolve the address/grant mismatches (finding 2)
 
 14 of 42 active principals have an address naming a service their role grants do
@@ -432,6 +495,50 @@ misleading-but-correct. No code depends on the outcome; this is legibility.
 
 **Exit criteria:** `targetMismatch` is zero, or each remaining case is
 documented.
+
+#### Resolved 2026-09-02 — documented, not renamed
+
+All 14 active mismatches, read against live grants, fall into three classes.
+None is a misconfiguration:
+
+**Class 1 — caller-scoped `service` role (10 principals).** Every one of
+`svc-<caller>--orders-microservice` holding `<caller>:service`:
+allegro, aukro, bazos, catalog, flipflop, heureka, invoices, marketing,
+payments, warehouse.
+
+The address is right and the mismatch flag is a false positive. These callers
+hold a role scoped to *themselves* — the `service` role on their own
+application — and present it to orders-microservice, which enforces it. The
+address names the pair correctly; `targetMismatch` only detects that the grant's
+application is not the address's target segment, which for a caller-scoped role
+it never will be. **No action.**
+
+**Class 2 — abbreviated target (2 principals).** `svc-catalog--warehouse`
+(grant `warehouse-microservice:readonly`) and `svc-monitoring--logging` (grant
+`logging-microservice:readonly`). The target is correct but abbreviated, so
+string equality against `warehouse-microservice` fails. Both are also members of
+duplicate groups in Task B and are the *older* half of each pair; retiring them
+there removes these two mismatches as a side effect. **Defer to B.**
+
+**Class 3 — endpoint suffix in the address (2 principals).**
+`svc-flipflop-service--orders-microservice-status` (grant
+`orders-microservice:action-admin`) and `svc-cliplot--orders-microservice-create`
+(grant `cliplot:service`). The address encodes a target *plus an operation*,
+which the convention has no room for. The first is genuinely
+orders-microservice-scoped and reads as a mismatch only because of the `-status`
+suffix; the second is caller-scoped like class 1, with `-create` appended.
+
+**Conclusion: no renames.** Renaming a principal changes the `sub` of every
+issued token and forces a reissue across the fleet, to make a metadata flag
+read zero. The flag is doing its job — it says "the address does not name the
+enforced application", which is true and worth knowing during an incident. What
+was wrong is the plan's assumption that a nonzero count means a defect.
+
+`targetMismatch` will not reach zero and should not be expected to. Class 1
+makes 10 of 14 permanent by construction: any caller-scoped role produces one.
+The receiver already returns grants alongside the flag, so anyone reading the
+inventory sees the enforced application directly and the flag is legible rather
+than misleading. Task B's retirements will take the count from 14 to 12.
 
 ### Task D — unblock the expiry horizon (Phase 2 blocker)
 
@@ -589,10 +696,23 @@ reporter at all, and D settles the payload shape so reporters are written once.
 C is independent.
 
 **E is done (2026-09-02), so B, C and D are all unblocked.** Sweeps run and the
-matrix is populated, so B can now be checked against live data. B remains the
-next task on the critical path, because it decides which principals get a
-reporter at all — and writing a reporter for a dead principal is how dead
-credentials acquire maintenance.
+matrix is populated, so B can now be checked against live data.
+
+**That check has since been run, and it reverses B and A.** The auth DB has no
+liveness signal — `lastActivity` is `NEVER` for every principal because nothing
+in service-token validation writes it — so B cannot decide which principals are
+dead before A's reporters demonstrate which are live. B's own section records
+the evidence and the options. The revised order is:
+
+```
+E [DONE] ──> D (contract field) ──> A (reporters) ──> B (retire what stayed silent)
+C (mismatches) ── independent, any time
+```
+
+The original ordering assumed B could be answered from the inventory alone. It
+cannot, and the plan's own rule against guessing forbids the shortcut: a
+principal on `@internal.invalid` *looks* dead, and retiring it on that basis is
+how a credential that still validates gets removed from under a running caller.
 
 D has acquired a deadline it did not have when written: the watcher's own
 credential expires **2026-12-01** (reissued at 90d; it was 2026-10-02 at the
@@ -606,11 +726,11 @@ deliberate baseline wait.
 | Task | Effort | Notes |
 |---|---|---|
 | ~~E — watcher credential~~ | **done 2026-09-02** | Option 2, as recommended. Estimated 1.5 days; the code was already written, so what remained was the ordered production sequence. |
-| B — classify duplicates | 1 day | Mostly determining what is live; may hand retirements to the RS256 plan. Now checkable against a live matrix. |
+| B — classify duplicates | 1 day, **after A** | 7 duplicate groups / 15 principals identified 2026-09-02. Blocked on a liveness signal the auth DB does not have, so it now follows A rather than preceding it. |
 | D — contract `expiresAt` field | 0.5 day | Contract edit plus receiver field; no consumer work yet. Now deadlined: the watcher's own credential expires 2026-12-01. |
 | A — shared reporter module | 1 day | Written and tested once. |
 | A — vendor into repos | 3–4 days | 14 known repos, plus whatever Task B assigns from the 18 unowned principals. Deploy-serialized, so these do not parallelize freely. |
-| C — mismatch decisions | 0.5 day | Documentation, no code. Live `targetMismatch` count is 14, as finding 2 predicted. |
+| ~~C — mismatch decisions~~ | **done 2026-09-02** | All 14 classified; no renames warranted. 10 are false positives by construction. |
 | **Implementation remaining** | **6–7 days** | Was 6.5–8.5 including E. |
 | Baseline observation | +7 calendar days | Phase 1's own exit criterion; cannot be compressed. |
 | **Phase 1 complete** | **~3–3.5 working weeks** | Then Phase 2 may be wired. |
