@@ -15,6 +15,8 @@ import { UserMarketingConsent } from './entities/user-marketing-consent.entity';
 import { MarketingConsentService } from './marketing-consent.service';
 import { UnsubscribeTokenService } from './unsubscribe-token.service';
 import { MarketingConsentController } from './marketing-consent.controller';
+import { ServicePrincipalsService } from './service-principals.service';
+import { InternalServicePrincipalsController } from './internal-service-principals.controller';
 
 @Module({
   imports: [
@@ -23,8 +25,8 @@ import { MarketingConsentController } from './marketing-consent.controller';
     // InternalUsersController needs AuthService to mint a session for one it resolved.
     forwardRef(() => AuthModule),
   ],
-  controllers: [InternalUsersController, MarketingConsentController],
-  providers: [UsersService, MarketingConsentService, UnsubscribeTokenService],
-  exports: [UsersService, MarketingConsentService, UnsubscribeTokenService],
+  controllers: [InternalUsersController, MarketingConsentController, InternalServicePrincipalsController],
+  providers: [UsersService, MarketingConsentService, UnsubscribeTokenService, ServicePrincipalsService],
+  exports: [UsersService, MarketingConsentService, UnsubscribeTokenService, ServicePrincipalsService],
 })
 export class UsersModule {}

@@ -1,8 +1,8 @@
 # Service Credential Prober — Plan
 
 Date: 2026-09-02
-Status: proposed, not implemented
-Owner decision pending
+Status: Phase 1 implemented (receiver side); consumer adoption outstanding
+Owner decisions recorded 2026-09-02 — see "Decisions and corrections"
 
 ## Context
 
@@ -218,3 +218,100 @@ deactivated afterwards. No production credential is used as a test fixture.
 3. **Scope of Phase 3** — every deployment, or only those with a known credential
    contract? Recommend the latter first, to avoid asserting on env vars whose
    emptiness is legitimate.
+
+## Decisions and corrections (2026-09-02)
+
+Owner decisions: inventory via a read-only endpoint on auth; alerts share the
+`HealthWatcher` channel; Phase 3 asserts only on deployments with a known
+credential contract; Phase 1 only this session.
+
+Implementation surfaced four facts that contradict the plan above. The code
+follows the facts; this section records where the plan was wrong so it is not
+re-derived later.
+
+### 1. The inventory query missed a third of the fleet
+
+The plan selects on `email LIKE 'svc-%@internal.alfares.cz'`. Production holds
+**45 service principals, 42 active**. Of the 42 active, **18 do not match** the
+address convention the plan filters on. They are equally real — several on unroutable domains (`@internal.invalid`,
+`@internal.alfares`, `@alfares.local`), and two missing the convention by one
+domain segment (`svc-suppliers-microservice--catalog-microservice@alfares.cz`).
+
+Selecting by address would have dropped nearly half the fleet silently, which is
+the same class of failure the prober exists to catch. The implementation selects
+on `userType = 'service'` and reports the convention as metadata.
+
+### 2. The address does not name the probe target
+
+The plan states "the `svc-<caller>--<target>` convention names the target, so the
+probe endpoint is derivable from the principal." It is not. Many principals hold
+a role on the *caller*, not the target:
+
+- `svc-allegro-service--orders-microservice` → role application `allegro-service`
+- `svc-catalog-microservice--bazos-service` → role application `bazos-service`
+- `svc-warehouse-microservice--orders-microservice` → role application `warehouse-microservice`
+
+This is not an edge case: **14 of the 42 active principals** have an address
+naming a service that none of their grants match. The role grant's application is
+what the receiver enforces, so probing the address-derived target would query the
+wrong service for a third of the fleet and read its answer as a verdict on this
+credential. One principal holds grants across several applications, so the target
+is not even one-to-one.
+
+The endpoint returns grants and flags `targetMismatch` rather than pretending a
+single derivable target exists.
+
+### 3. The plan's SQL used an inner JOIN on a nullable column
+
+`user_roles.applicationId` is nullable (global roles). The plan's
+`JOIN applications` would drop those grants entirely — silently skipping
+principals, which the plan elsewhere forbids. The implementation uses LEFT JOINs
+throughout and keeps null-application grants visible.
+
+### 4. Central probing was replaced by consumer self-reporting
+
+The plan never says where the prober gets each credential's token. Auth does not
+store issued JWTs; they live in Vault and sync into each consumer's own secret.
+A central prober would therefore need read access to every service token, making
+monitoring-microservice able to impersonate the whole ecosystem in order to watch
+it — a worse exposure than the failures being prevented.
+
+Decision: each consumer probes its own credential and posts the verdict. No
+secret leaves its owner, and the verdict reflects the genuinely deployed
+credential. Contract:
+`monitoring-microservice/docs/CREDENTIAL_SELF_REPORT_CONTRACT.md`.
+
+Consequence: **silence becomes the primary signal.** A broken credential usually
+stops reporting rather than reporting failure, so `silent` (exists in auth, never
+reported) and `stale` (past TTL) are first-class statuses alongside the plan's
+three.
+
+### Blocker for Phase 2
+
+The 14-day expiry horizon has **no data source**. All 44 active service role
+grants have `user_roles."expiresAt" IS NULL`, and auth stores no issued token, so
+neither the DB nor the inventory endpoint can supply `exp`. The expiry warning
+needs either a token-issuance record in auth or the `exp` decoded by each
+consumer and included in its self-report. Unresolved.
+
+## Phase 1 — as built
+
+Auth (`auth-microservice`):
+- `src/users/service-principals.service.ts` — inventory, convention and mismatch detection
+- `src/users/internal-service-principals.controller.ts` — `GET /internal/service-principals`, `InternalServiceGuard`
+- `src/users/service-principals.service.spec.ts` — 8 tests
+
+Monitoring (`monitoring-microservice`):
+- `src/alerts/credential-watcher.ts` — reconciler, fires no alerts
+- `src/alerts/credentials.controller.ts` — `POST /api/credentials/report`, `GET /api/credentials`
+- `src/alerts/dto/credential-report.dto.ts`
+- `src/alerts/credential-watcher.spec.ts` — 9 tests
+- `docs/CREDENTIAL_SELF_REPORT_CONTRACT.md`
+
+Validation: auth 229/229 tests, monitoring 63/63, both `nest build` clean.
+
+**Exit criteria not yet met.** The plan requires one week of clean runs with all
+principals accepted or explained. No consumer reports yet, so every principal
+reconciles as `silent` — a truthful reading of the current state: nothing is
+checking these credentials. The remaining Phase 1 work is consumer adoption
+across ~20 repos, per the contract document.
