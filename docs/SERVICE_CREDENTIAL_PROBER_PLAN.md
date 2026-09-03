@@ -592,6 +592,48 @@ established cross-path pattern in these manifests — so there is one source of
 truth and no copy to re-sync when it rotates. All three synced `SecretSynced`
 with the fingerprint matching monitoring's running pod.
 
+**The nest-cli asset trap fired anyway, and the check that was supposed to catch
+it passed.** invoices crashlooped on boot with
+`Cannot find module './vendor/credential-reporter.js'` (6 restarts), and the
+deploy worker then reported FAILED because that rollout never went ready — one
+fault, two alarming symptoms.
+
+The asset entry was present. The problem was *where it landed*: invoices has no
+`rootDir`, so tsc infers it from the widest include and emits to `dist/src/...`,
+while nest-cli resolves an asset `include` against `sourceRoot` and dropped the
+file at `dist/common/vendor`. Both paths existed; only one was where the
+compiled code looks. Fixed with `outDir: dist/src` on the asset entry
+(`38b1adb`).
+
+The verify script was the real defect. It asserted a **hardcoded** dist path, so
+it confirmed a file that nothing loads and passed while the pod died. It now
+locates the compiled reporter wherever it landed and looks for
+`./vendor/credential-reporter.js` relative to that — the resolution Node
+actually performs — and was confirmed to fail when the file is removed, because
+a check that has never failed is untested. Propagated to orders, catalog and
+suppliers (`f219504`, `5aacc75`, `683d63a`), whose layouts happen to match the
+old hardcoded path today.
+
+**Generalise before the next wave: do not assume `dist/<module>/vendor`.** Check
+where each repo's build actually emits, and let the check derive the path rather
+than restate it.
+
+**The fix then deadlocked against the deploy runner's own safety check, which is
+worth knowing before it happens again.** `deploy.sh` preflight refuses to deploy
+a service that already has unhealthy pods — correct in general, and here it
+rejected the very commit that would clear the crashloop, failing in 1 second
+rather than the 654 the first attempt took. A one-second failure is a
+precondition, not a build.
+
+Breaking the deadlock: `kubectl rollout undo` to the last good revision (25)
+removed the crashlooping ReplicaSet, after which preflight passed and the fix
+deployed OK in 81s with the queue logging `RESOLVED — clear event sent`.
+Throughout, the previous good pod kept serving, so there was no outage — the
+failed rollout never took traffic.
+
+Sequence to reuse: roll back first, then redeploy the fix. Deploying the fix on
+top of a crashloop cannot work by design.
+
 **Running total: 5 reporters deployed** — the monitoring pilot, suppliers
 (Wave 1), and orders, catalog, invoices (Wave 2). **Six principals are confirmed
 unprobeable with written reasons**: warehouse→orders, payments→orders (write-only
