@@ -1,9 +1,23 @@
 # Service Credential Prober — Plan
 
 Date: 2026-09-02 (last updated 2026-09-03)
-Status: Phase 1 receiver shipped. Phase 1b: C, D, E done 2026-09-02; A (consumer
-reporters) in progress — Wave 1 (suppliers) shipped 2026-09-03, 13 repos remain;
-B depends on A
+Status: Phase 1 receiver shipped. Phase 1b: A, C, D, E done; **B is the only
+open task**. Task A's reporter adoption completed 2026-09-03 — 16 reporters
+across 12 repos, 8 principals recorded unprobeable. Baseline week runs from
+2026-09-03; Phase 2 stays unwired until it passes.
+
+**This file is the single source of truth for the credential prober.** The
+session working plan was folded in on 2026-09-03 and deleted. Two related
+documents are deliberately *not* merged and remain authoritative in their own
+right:
+
+- `monitoring-microservice/docs/CREDENTIAL_SELF_REPORT_CONTRACT.md` — the wire
+  contract each reporter implements. It is a consumer-facing interface with its
+  own readership; inlining it here would mean consumers reading auth's internal
+  plan to find a payload shape.
+- `auth-microservice/docs/RS256_SERVICE_TOKEN_MIGRATION_PLAN.md` — a separate,
+  owner-approved migration with its own execution log. This plan *depends* on it
+  (principal retirement goes through its process) but does not supersede it.
 Owner decisions recorded 2026-09-02 — see "Decisions and corrections"
 
 ## Context
@@ -718,6 +732,113 @@ in, and are the population Task B must classify as live or dead. Their continued
 silence after this wave is now evidence rather than an absence of evidence,
 which is exactly what Task B was blocked on.
 
+#### Adoption reference — how to add a reporter to one more repo
+
+Folded in from the session plan file 2026-09-03, corrected against what the
+three waves actually needed. **This supersedes the earlier "copy and a config"
+description**, which only ever held for a repo with nest-cli and a scheduler
+already in place.
+
+Source of truth and tooling:
+
+| Thing | Path |
+|---|---|
+| Shared module | `shared/packages/credential-reporter/` (`.js`, `.d.ts`, 16 tests) |
+| Vendor script | `shared/scripts/sync-credential-reporter.sh <target-dir>` |
+| Contract | `monitoring-microservice/docs/CREDENTIAL_SELF_REPORT_CONTRACT.md` |
+| NestJS template | `monitoring-microservice/src/alerts/credential-self-reporter.ts` |
+| Multi-lane template | `allegro/services/allegro-service/src/health/credential-self-reporter.ts` |
+| Non-Nest template | `marketing-microservice/src/credential-self-reporter.ts` (express + `setInterval`) |
+| ESM template | `cliplot/src/credential-self-reporter.js` (`createRequire`, `.cjs` module) |
+
+**Step 0, and it gates everything: find a read-only route that enforces this
+principal's actual granted role.** Read the grant from the auth DB
+(`userType='service'`, join `user_roles`/`roles`/`applications`), then find the
+receiver constant that contains it. Verify live from inside the calling pod —
+200 with the deployed token, 401 with a garbage token, 401 with none — before
+writing any code. If no such route exists, the principal is **unprobeable**:
+record the reason and let it stay `silent`. Never point a probe at `/health`,
+which answers 200 with no credential at all and so can never fail.
+
+Then, per repo:
+
+1. Vendor: `shared/scripts/sync-credential-reporter.sh <repo>/src/<module>/vendor`.
+2. **Get the module into the built output — the step that has broken twice.**
+   How depends on the build, not the framework:
+   - **nest-cli** (`nest build`): add a `compilerOptions.assets` entry. If the
+     repo emits to `dist/src/...` (no `rootDir` in tsconfig), also set
+     `outDir` on the asset entry or it lands in a sibling directory the code
+     never looks in.
+   - **plain `tsc`**: there is **no asset copier**. `include` is `src/**/*` and
+     `allowJs` is off, so the `.js` is silently dropped. Add a `postbuild`
+     script that copies it explicitly.
+   - **no build step** (source copied verbatim by the Dockerfile): nothing to
+     do, but assert the file exists.
+3. Reporter: hardcode `PRINCIPAL` exactly as auth lists it — including
+   off-convention domains like `@alfares.cz` — and `TARGET` as the receiver
+   actually called, never what the address claims. Point `url` at the audited
+   route. `expiresAt` needs no work; `reportCredential` decodes it.
+4. Schedule it: `@Cron` under NestJS (needs `@nestjs/schedule` **in that
+   service's own package.json**, v4 for NestJS 10 and v6 for 11 — a root-level
+   dependency can compile locally through hoisting and fail in a clean Docker
+   build), or `setInterval(...).unref()` where there is no Nest.
+5. Ingest credential: add to the repo's ExternalSecret, sourcing
+   `secret/prod/monitoring-microservice` property **`NOTIFICATIONS_SERVICE_TOKEN`**
+   (plural — the singular key exists with a stale value the guard rejects). Use
+   env `NOTIFICATION_SERVICE_TOKEN`, unless the repo already uses that name for
+   something else, in which case pick a distinct one and assert the reporter
+   does not read the occupied variable.
+6. Verify script: copy a neighbour's `scripts/verify-credential-self-report.js`.
+   It must resolve the vendored module **relative to the compiled reporter**,
+   the way Node does at runtime — a hardcoded `dist/` path passed while the
+   invoices pod crashlooped. Confirm it fails when the file is deleted.
+
+Language gotchas, both found the hard way:
+
+- The module is **CommonJS**. Load it with `require`, never `import`.
+- Under `"type": "module"` a `.js` file is ESM *regardless* of how it is
+  loaded, so the vendored file must be renamed `.cjs` and loaded through
+  `createRequire(import.meta.url)`.
+
+Deploy order matters: **Vault value (or a cross-path ExternalSecret reference)
+first, manifest second.** ESO fails an ExternalSecret whose remote property is
+missing and then stops refreshing every key for that service. A pod also holds
+the env it booted with, so a token change needs a restart.
+
+If a rollout crashloops, **roll back before redeploying the fix**: `deploy.sh`
+preflight refuses to deploy a service that already has unhealthy pods, so the
+corrected commit is rejected in about a second until the bad ReplicaSet is gone.
+
+#### Task A remaining — Wave 4
+
+Waves 1–3 covered every principal with an owning repo. What is left is not more
+vendoring:
+
+1. **Write down what stays silent.** Eight principals are already recorded
+   unprobeable with reasons above. The ~19 off-convention ones have no owning
+   repo and are Task B's input, not Task A's.
+2. **Then the baseline week.** Phase 1's exit criterion — "one week of clean
+   runs, every principal either consistently accepted or explained" — cannot be
+   compressed, and Phase 2 stays unwired until it passes.
+
+Task A's exit criterion is met when every active principal either reports or has
+a written reason not to. The reporting half is done; the written-reason half is
+complete for the 24 principals with owners and pending for the rest, which is
+exactly the handoff to Task B.
+
+**Two receiver defects surfaced by this work are not fixed and are not Task A's
+to fix:**
+
+- `catalog-microservice` derives caller grants from the `SERVICE_NAME` header
+  rather than the JWT role, defaulting unlisted callers to read
+  (`catalog-auth.guard.ts`, `grants[source] ?? READ`). A GET returns 200 for a
+  revoked credential. Blocks two reporters and is a live authorization gap.
+- `bazos` enforces no roles on any route — `@Get` with no `@Roles` anywhere.
+  Blocks one reporter, same class of problem.
+
+Both need a read-only route that enforces the caller's own role before their
+lanes can be probed.
+
 ### Task B — reconcile the duplicate principals (finding 1)
 
 Enumerating by `userType` surfaced principals the address convention was hiding,
@@ -1070,6 +1191,22 @@ Only **Task A** remains before the baseline week. It now carries three payloads
 at once: it moves principals off `silent`, supplies the expiry Task D made room
 for, and produces the liveness evidence Task B needs.
 
+**Updated 2026-09-03: Task A's vendoring is done.** Waves 1–3 shipped 16
+reporters across 12 repos, covering every principal that has an owning repo. The
+current order is:
+
+```
+E [DONE] ──> D [DONE] ──> A (reporters) [vendoring DONE 2026-09-03]
+                            ├──> one week baseline ──> Phase 2
+                            └──> B (retire what stayed silent)
+C [DONE]
+```
+
+The baseline week and Task B now run in parallel, both fed by the same reporting
+data. B's blocker is lifted the moment adoption is complete rather than after
+the baseline: a principal reporting `accepted` is live by demonstration, and one
+still `silent` with no written reason is the retirement candidate.
+
 The original ordering assumed B could be answered from the inventory alone. It
 cannot, and the plan's own rule against guessing forbids the shortcut: a
 principal on `@internal.invalid` *looks* dead, and retiring it on that basis is
@@ -1089,28 +1226,35 @@ deliberate baseline wait.
 | ~~E — watcher credential~~ | **done 2026-09-02** | Option 2, as recommended. Estimated 1.5 days; the code was already written, so what remained was the ordered production sequence. |
 | B — classify duplicates | 1 day, **after A** | 7 duplicate groups / 15 principals identified 2026-09-02. Blocked on a liveness signal the auth DB does not have, so it now follows A rather than preceding it. |
 | ~~D — contract `expiresAt` field~~ | **done 2026-09-02** | Receiver accepts and surfaces expiry. Reporters supply it as they adopt, so the rest lands with A. |
-| A — shared reporter module | 1 day | Written and tested once. |
-| A — vendor into repos | 3–4 days | 14 known repos, plus whatever Task B assigns from the 18 unowned principals. Deploy-serialized, so these do not parallelize freely. |
+| ~~A — shared reporter module~~ | **done 2026-09-02** | Written and tested once, 16 tests. |
+| ~~A — vendor into repos~~ | **done 2026-09-03** | 16 reporters across 12 repos in one session, not the estimated 3–4 days. See below for why the estimate was wrong in both directions. |
 | ~~C — mismatch decisions~~ | **done 2026-09-02** | All 14 classified; no renames warranted. 10 are false positives by construction. |
-| **Implementation remaining** | **6–7 days** | Was 6.5–8.5 including E. |
-| Baseline observation | +7 calendar days | Phase 1's own exit criterion; cannot be compressed. |
-| **Phase 1 complete** | **~3–3.5 working weeks** | Then Phase 2 may be wired. |
+| B — classify duplicates | 1 day, **now unblocked** | 7 duplicate groups / 15 principals. Reporting data supplies the liveness signal the auth DB lacks. |
+| Baseline observation | +7 calendar days | Phase 1's own exit criterion; cannot be compressed. Running from 2026-09-03. |
+| **Phase 1 complete** | **~1 week** | Then Phase 2 may be wired. |
 
-The largest line is vendoring the reporter into consumer repos, and it is large
-because deploys are serialized — one rollout at a time. Batching several repos
-per deploy window is the only real compression available.
+**Why the 3–4 day vendoring estimate was wrong in both directions.** It assumed
+14 repos each needing a copy and a config. What actually happened:
 
-The 3–4 day figure covers the 14 identified repos. It is the estimate most
-likely to move, in either direction, once Task B says how many of the 18
-unowned principals are live rather than dead.
+- **Fewer reporters than repos in some cases, more in others.** Five repos got
+  no reporter at all because every principal they hold is unprobeable
+  (payments, warehouse) or has no deployed credential (part of catalog). Four
+  repos got two reporters each, because they hold two probeable credentials.
+  The unit of work is the *principal*, not the repo.
+- **The real cost was the probe-target audit, not the vendoring.** Establishing
+  that a read-only route genuinely enforces a given principal's role — and
+  verifying it live from inside the calling pod — took most of the effort.
+  Vendoring once that answer exists is minutes.
+- **Deploy serialization mattered less than expected**, because the queue drains
+  unattended while the next repo is prepared.
 
-### What would change these estimates
+### What would change the remaining estimates
 
-- Task B is the main source of variance. If most off-convention principals are
-  dead, Task A stays near 3 days; if they are live and belong to repos not yet
-  listed, it grows.
-- If any consumer has no safe read-only endpoint to probe, that principal cannot
-  self-report; it stays `unprobeable` by construction and needs a decision rather
-  than an estimate.
+- Task B is the main source of variance, unchanged. The ~19 off-convention
+  principals are still unclassified; if several turn out live and belong to
+  repos not yet listed, new reporter work appears.
 - The baseline week is a hard floor. Wiring Phase 2 before it is what the
   original plan warns produces a muted channel on day one.
+- Two receiver defects (catalog's header-derived grants, bazos's absent role
+  enforcement) block three principals from ever being probeable until fixed.
+  Those are separate work items, not estimates on this plan.
