@@ -1,7 +1,9 @@
 # Service Credential Prober — Plan
 
 Date: 2026-09-02 (last updated 2026-09-03)
-Status: Phase 1 receiver shipped. **Phase 1b tasks A–E are all complete.**
+Status: Phase 1 receiver shipped. **Phase 1b tasks A–E are all complete, and
+Task B's retirement is executed** — 17 principals deactivated 2026-09-03, active
+service principals 43 → 26, all 16 reporters still accepted.
 Task A's reporter adoption finished 2026-09-03 — 16 reporters across 12 repos,
 8 principals recorded unprobeable. Task B classified all 43 active principals
 the same day by decoding deployed JWT `sub` claims: 24 live, 19 not deployed,
@@ -1082,6 +1084,92 @@ principal used by something that runs rarely — a quarterly job, a disaster
 recovery path — would look dead. Instrumenting `lastActivity` on service-token
 validation (option 2 above) is still worth doing before any deletion, as opposed
 to deactivation, becomes permanent.
+
+#### Retirement executed 2026-09-03 — 17 principals deactivated, 43 → 26
+
+Carried out under `RS256_SERVICE_TOKEN_MIGRATION_PLAN.md` §6k's precedent:
+**`isActive=false`, never deleted, so it stays auditable and reversible.**
+
+Two checks were added beyond the classification, because "not deployed" is not
+the same as "unreferenced":
+
+- **A Vault sweep** decoding every stored `*TOKEN` value across all 49
+  `secret/prod/*` paths, to catch a token issued and stored but not currently
+  mounted. One hit: `aukro-service@internal.alfares.invalid` still had a token in
+  `secret/prod/aukro-service` under `WAREHOUSE_SERVICE_TOKEN`. It turned out to
+  be **orphaned** — aukro's ExternalSecret sources that variable from
+  `secret/prod/auth-microservice` property `AUKRO_WAREHOUSE_SERVICE_TOKEN`
+  instead, so nothing reads the aukro-path copy. Safe to retire; the stale Vault
+  key is separate cleanup.
+- **A repo-wide grep** for each address across manifests, code and scripts. Only
+  test fixtures, one seed-marker string
+  (`verify-orders-action-admin-rbac-seed.js`) and a docstring example in
+  `provision-service-token.js`. No runtime dependency.
+
+Executed in the recommended order, verifying between each class:
+
+| Class | Count | Result |
+|---|---|---|
+| 3 — provisioned, never issued | 3 | deactivated 07:51Z |
+| 2 — admin/smoke one-offs | 5 | deactivated, including both `payments-microservice:admin` grants |
+| 1 — pre-standard duplicates | 9 | deactivated; each had a confirmed-live standard counterpart |
+
+**Verification: the 08:00Z sweep read
+`26 principal(s): 16 accepted, 0 rejected, 0 indeterminate, 10 silent, 0 stale`.**
+Inventory fell 43 → 26 exactly as intended, **all 16 reporters still `accepted`,
+zero rejected**, no watcher errors, and no restart spikes anywhere in the
+namespace. Nothing depended on the retired principals.
+
+**Two deliberately not retired:**
+
+- `heureka-warehouse-service@alfares.cz` — the one Class 1 member with **no
+  standard counterpart**. Retiring it removes a capability rather than a
+  duplicate. Establish whether heureka still needs warehouse access first.
+- `svc-claude-agent--logging-microservice@internal.alfares.cz` — live, held in
+  `~/.claude/logging-admin-token` outside Kubernetes.
+
+**Unrelated failure found during verification, still open.**
+`catalog-contract-monitor` began failing at 07:44Z — before the first
+deactivation at 07:51Z, and its previous run two days earlier passed. The failing
+contract is `product-search` returning **401**, using catalog's `JWT_TOKEN`,
+whose `sub` is `catalog-authorized-runtime-smoke@internal` — a principal that
+does not exist in the users table at all and was in no retirement class. Its
+token expires **2026-09-11**. This is a genuine production breakage that this
+work did not cause and did not fix; it belongs to whoever owns that smoke lane.
+
+**The 10 still silent, each with its reason — Task A's exit criterion is now
+met** ("`silent` reaches zero **or** each remainder has a written reason"):
+
+| Principal | Why silent |
+|---|---|
+| `svc-warehouse-microservice--orders-microservice` | unprobeable — role on a PUT only |
+| `svc-payments-microservice--orders-microservice` | unprobeable — role on a PUT only |
+| `svc-aukro-service--catalog-microservice` | unprobeable — catalog's header-derived grants |
+| `suppliers-catalog-service` | unprobeable — same catalog defect |
+| `svc-catalog-microservice--bazos-service` | unprobeable — bazos enforces no roles |
+| `svc-flipflop-service--orders-microservice-status` | unprobeable — `orders:action-admin` is write-only |
+| `svc-cliplot--orders-microservice-create` | shares `cliplot:service` with the reported principal; no probe can distinguish them |
+| `svc-claude-agent--logging-microservice` | live, held outside Kubernetes |
+| `heureka-warehouse-service` | held back from retirement pending an owner decision |
+
+That is nine with a written reason against ten reported silent, and **the
+one-row gap is not yet explained**. Seventeen reporter lanes exist across the
+twelve repos and the sweep reports sixteen accepted, so one lane's principal is
+reconciling as silent rather than accepted. Candidates are a reporter whose
+hardcoded `PRINCIPAL` still does not match its deployed token's `sub` — the same
+defect Task B found in suppliers and cliplot — or a report that had not landed
+within the TTL when the sweep ran.
+
+**Resolve this by reading the per-principal matrix at `GET /api/credentials`
+rather than inferring from counts.** It is admin-gated, so it needs a credential
+the static ingest token does not provide; the watcher logs only totals. Until
+that read happens the ten-vs-nine discrepancy stands as an open item, and it is
+recorded here rather than rounded away because an unexplained silent row is
+exactly what this plan exists to surface.
+
+Three of these ten would become probeable if the two receiver defects were
+fixed — catalog's header-derived grants (two principals) and bazos's absent role
+enforcement (one). Those remain the highest-value follow-up.
 
 ### Task C — resolve the address/grant mismatches (finding 2)
 
