@@ -1,10 +1,17 @@
 # Service Credential Prober — Plan
 
 Date: 2026-09-02 (last updated 2026-09-03)
-Status: Phase 1 receiver shipped. Phase 1b: A, C, D, E done; **B is the only
-open task**. Task A's reporter adoption completed 2026-09-03 — 16 reporters
-across 12 repos, 8 principals recorded unprobeable. Baseline week runs from
-2026-09-03; Phase 2 stays unwired until it passes.
+Status: Phase 1 receiver shipped. **Phase 1b tasks A–E are all complete.**
+Task A's reporter adoption finished 2026-09-03 — 16 reporters across 12 repos,
+8 principals recorded unprobeable. Task B classified all 43 active principals
+the same day by decoding deployed JWT `sub` claims: 24 live, 19 not deployed,
+grouped into four classes with a recommended retirement order. **Retirement
+itself is deliberately not done here** — it goes through
+`RS256_SERVICE_TOKEN_MIGRATION_PLAN.md`'s process, per this plan's own rule.
+
+Open: the baseline week (from 2026-09-03), then Phase 2. Two receiver defects
+(catalog's header-derived grants, bazos's absent role enforcement) block three
+principals from ever being probeable and are separate work.
 
 **This file is the single source of truth for the credential prober.** The
 session working plan was folded in on 2026-09-03 and deleted. Two related
@@ -957,6 +964,125 @@ question permanently answerable while 1 only answers it once. Either way **B is
 now downstream of A, not upstream**, and the sequencing below is wrong as
 written.
 
+#### Classified 2026-09-03 — by a fourth method neither option anticipated
+
+A liveness signal existed all along and none of the three options named it:
+**every issued JWT carries the principal in its `sub` claim.** Decoding the
+tokens actually mounted in every pod says which principals are genuinely in use,
+retrospectively, with no new write surface on auth and no dependence on log
+retention. No secret value leaves its pod — only the `sub` and `exp` claims are
+read.
+
+Method: for all 76 running pods in `statex-apps`, decode the payload of every
+env var that parses as a three-part JWT; collect the distinct `sub` values. A
+14-pod sample and the full 76-pod sweep returned **identical** sets, and the 11
+CronJobs add nothing (`catalog-contract-monitor` now uses `secretRef`, so its
+2026-09-02 empty-literal `JWT_TOKEN` is fixed).
+
+**Result: 24 of 43 active principals have a deployed token. 19 do not.**
+
+**Two errors in Task A's own reporters surfaced immediately**, both fixed:
+
+- `suppliers-microservice` (`555184a`) reported
+  `svc-suppliers-microservice--warehouse-microservice@alfares.cz`, but the token
+  in its pod carries `sub=suppliers-warehouse-service@alfares.cz`. The `svc-`
+  principal exists in auth and **no token was ever issued for it**. The probe,
+  route and verdict were all correct; only the attribution was wrong — so the
+  wrong principal showed `accepted` while the credential actually keeping the
+  service working stayed `silent`. That is this plan's subject in its subtlest
+  form: a green row describing a different credential than the live one.
+- `cliplot` (`34eaa09`) had its two orders credentials crossed relative to their
+  variable names — `ORDERS_STATUS_SERVICE_TOKEN` holds
+  `svc-cliplot--orders-microservice` while `ORDERS_SERVICE_TOKEN` holds
+  `…-create`. The reporter declared one and probed with the other, so a
+  revocation would have been attributed to the wrong principal. Note this also
+  corrects wave 3: `…-create` was recorded unprobeable for sharing a role, but
+  it was in fact the credential being tested.
+
+##### The 19 with no deployed token
+
+**Class 1 — pre-standard duplicates superseded by a live standard principal
+(9).** Created 2026-06-29 → 07-03, all on unroutable or non-standard domains,
+each with a `svc-<caller>--<target>` counterpart confirmed live:
+
+| Pre-standard principal | Superseded by (live) |
+|---|---|
+| `allegro-service@alfares.local` | `svc-allegro-service--orders-microservice` |
+| `allegro-service@internal.alfares` | `svc-allegro-service--orders-microservice` |
+| `aukro-service@internal.alfares.invalid` | `svc-aukro-service--warehouse-microservice` |
+| `aukro-service@internal.invalid` | `svc-aukro-service--warehouse-microservice` |
+| `catalog-warehouse-service@alfares.cz` | `svc-catalog--warehouse` |
+| `flipflop-service@internal` | `svc-flipflop-service--warehouse-microservice` |
+| `orders-warehouse-service@internal.alfares.local` | `svc-orders-microservice--warehouse-microservice` |
+| `orders-microservice@internal.alfares.invalid` | `svc-orders-microservice--warehouse-microservice` |
+| `heureka-warehouse-service@alfares.cz` | *(none — heureka holds no warehouse principal at all)* |
+
+These are the retirement candidates. `heureka-warehouse-service` is the
+exception worth pausing on: it has **no** standard counterpart, so retiring it
+removes a capability rather than a duplicate. Establish whether heureka still
+needs warehouse access before touching it.
+
+**Class 2 — admin/smoke one-offs, no counterpart and no owning repo (5).**
+`orders-status-cleanup@internal.invalid` (two grants: `admin` and
+`action-admin`), `orders-action-admin@internal.invalid`,
+`goal24-flipflop-admin@internal.invalid`,
+`payments-admin-smoke@internal.invalid`,
+`payments-admin-first-config-seed@internal.invalid`.
+
+Names describing a one-time seed, cleanup or smoke run, all on
+`@internal.invalid`, none deployed anywhere. `payments-admin-*` hold
+`payments-microservice:admin`, which is the broadest grant in this set — a
+standing admin credential for a one-off task is the exact shape this plan
+exists to find.
+
+**Class 3 — provisioned but never issued (3).**
+`svc-suppliers-microservice--catalog-microservice@alfares.cz`,
+`svc-suppliers-microservice--warehouse-microservice@alfares.cz`,
+`svc-catalog-microservice--orders-microservice@internal.alfares.cz`.
+
+These are *standard* principals that exist in auth with no token anywhere —
+provisioning that was started and never completed. The catalog one explains a
+wave 2 finding directly: its reporter was skipped because "no orders token is
+deployed," and this is why. Not duplicates; incomplete work. Either finish
+issuing or remove the principal.
+
+**Class 4 — live, but held outside Kubernetes (1).**
+`svc-claude-agent--logging-microservice@internal.alfares.cz` is in
+`~/.claude/logging-admin-token` (expires 2026-12-01), not in any pod. **It would
+have been wrongly retired by pod evidence alone**, which is precisely the
+guessing the plan forbids. Any retirement pass must check credential stores
+outside the cluster before concluding a principal is dead.
+
+**One more, already known:** `svc-monitoring--logging@internal.alfares.cz` — the
+abbreviated half of the monitoring→logging pair, superseded by the live
+`svc-monitoring-microservice--logging-microservice`. Class 1 in substance; it
+was already identified in the earlier duplicate-group table.
+
+##### Exit criteria: met for classification, not for retirement
+
+Every duplicate is now classified with evidence rather than by address shape.
+**No principal has been deactivated**, and that is deliberate: this plan's own
+rule sends retirement through `RS256_SERVICE_TOKEN_MIGRATION_PLAN.md`'s process,
+not this one. What Task B owes that plan is the evidence, which is above.
+
+Recommended order when retirement is executed there, safest first:
+
+1. **Class 3** (3 principals) — nothing to break; no token exists.
+2. **Class 2** (5) — one-offs; confirm each task is complete, then deactivate.
+   `payments-admin-*` first, being the broadest grants.
+3. **Class 1** (9, minus `heureka-warehouse-service`) — deactivate rather than
+   delete, watch one sweep, and reactivate if anything breaks. Each has a live
+   standard counterpart, so a mistake is recoverable.
+4. **`heureka-warehouse-service`** — only after establishing heureka does not
+   need warehouse access. It has no counterpart.
+5. **Never** `svc-claude-agent--logging-microservice`, which is live.
+
+The remaining gap is that this method sees only what is *currently deployed*. A
+principal used by something that runs rarely — a quarterly job, a disaster
+recovery path — would look dead. Instrumenting `lastActivity` on service-token
+validation (option 2 above) is still worth doing before any deletion, as opposed
+to deactivation, becomes permanent.
+
 ### Task C — resolve the address/grant mismatches (finding 2)
 
 14 of 42 active principals have an address naming a service their role grants do
@@ -1259,7 +1385,7 @@ deliberate baseline wait.
 | ~~A — shared reporter module~~ | **done 2026-09-02** | Written and tested once, 16 tests. |
 | ~~A — vendor into repos~~ | **done 2026-09-03** | 16 reporters across 12 repos in one session, not the estimated 3–4 days. See below for why the estimate was wrong in both directions. |
 | ~~C — mismatch decisions~~ | **done 2026-09-02** | All 14 classified; no renames warranted. 10 are false positives by construction. |
-| B — classify duplicates | 1 day, **now unblocked** | 7 duplicate groups / 15 principals. Reporting data supplies the liveness signal the auth DB lacks. |
+| ~~B — classify duplicates~~ | **done 2026-09-03** | All 43 classified by decoding deployed JWT sub claims — a fourth liveness method none of the three options anticipated. Retirement execution belongs to the RS256 plan. |
 | Baseline observation | +7 calendar days | Phase 1's own exit criterion; cannot be compressed. Running from 2026-09-03. |
 | **Phase 1 complete** | **~1 week** | Then Phase 2 may be wired. |
 
