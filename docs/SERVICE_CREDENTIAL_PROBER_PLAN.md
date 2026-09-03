@@ -539,6 +539,66 @@ minted, no production credential used as a fixture):
 The empty-token case is the `catalog-contract-monitor` failure of 2026-09-02
 exactly, and the module refuses to call it `accepted`.
 
+#### Wave 2 shipped 2026-09-03 — orders, catalog, invoices
+
+`orders-microservice` `eb40afe`, `catalog-microservice` `22262e8`,
+`invoices-microservice` `be968f6`. Three reporters from five repos, and the gap
+between those numbers is the finding.
+
+All five needed `@nestjs/schedule` — **v4, not v6**: these run NestJS 10 while
+suppliers runs 11, so the version that works in the Wave 1 template is wrong here.
+
+**Two of the five get no reporter at all.** Wave 2 was scoped as five repos; the
+probe-target audit removed two:
+
+| Repo | Principal | Outcome |
+|---|---|---|
+| orders | `svc-orders-microservice--warehouse-microservice` (`warehouse:action-admin`) | reporter — `GET /api/stock/:id` |
+| catalog | `svc-catalog--warehouse` (`warehouse:readonly`) | reporter — `GET /api/stock/:id` |
+| invoices | `svc-invoices-microservice--orders-microservice` (`invoices:service`) | reporter — see the caveat below |
+| **payments** | `svc-payments-microservice--orders-microservice` (`payments:service`) | **unprobeable** — role appears only on `PUT /:id/payment-status`, a write |
+| **warehouse** | `svc-warehouse-microservice--orders-microservice` (`warehouse:service`) | **unprobeable** — role appears only on `PUT /:id/warehouse-fulfillment-status` |
+
+Two further principals in these repos are unprobeable for different reasons:
+
+- `svc-catalog-microservice--orders-microservice` — **no credential is deployed
+  for it.** catalog's pod holds `WAREHOUSE_SERVICE_TOKEN` and
+  `BAZOS_SERVICE_TOKEN` and no orders token at all, so there is nothing to probe
+  with. A principal that exists in auth with no deployed credential is a Task B
+  finding, not a reporter gap.
+- `svc-catalog-microservice--bazos-service` — bazos enforces no roles anywhere.
+  Its controllers carry `@Get` with no `@Roles` decorator, so any GET returns 200
+  regardless of credential: the `/health` problem across a whole service.
+
+**A probe can be valid-credential-scoped rather than role-scoped, and that is
+worth recording rather than hiding.** invoices' credential is scoped to
+`ORDER_DETAIL_READ_ROLES` (`GET /api/orders/:id`), which could not be used:
+`ParseUUIDPipe` plus a nonexistent id returns 404 → `indeterminate`, and probing
+a real order id would tie a credential check to specific rows surviving in the
+database. `GET /api/orders/customer/lifecycle` is used instead, but its role set
+includes `'authenticated:user'`, so it accepts any valid principal.
+
+That probe catches expiry, revocation, wrong algorithm and the empty-token case —
+the failure classes this plan was written about — but would not catch this
+principal losing only its `invoices-microservice:service` grant. It is weaker
+than a role-scoped probe and much stronger than `/health`. The reporter says so
+in its own comment, so nobody reads a green row as more than it is.
+
+**The ingest credential is now sourced cross-path, not copied.** Wave 1 copied
+monitoring's token into suppliers' Vault path, which works but can drift. These
+three reference `secret/prod/monitoring-microservice` property
+`NOTIFICATIONS_SERVICE_TOKEN` directly from their own ExternalSecrets — the
+established cross-path pattern in these manifests — so there is one source of
+truth and no copy to re-sync when it rotates. All three synced `SecretSynced`
+with the fingerprint matching monitoring's running pod.
+
+**Running total: 5 reporters deployed** — the monitoring pilot, suppliers
+(Wave 1), and orders, catalog, invoices (Wave 2). **Six principals are confirmed
+unprobeable with written reasons**: warehouse→orders, payments→orders (write-only
+roles), suppliers→catalog, aukro→catalog (header-derived grants),
+catalog→orders (no credential deployed), catalog→bazos (receiver enforces no
+roles).
+
 ### Task B — reconcile the duplicate principals (finding 1)
 
 Enumerating by `userType` surfaced principals the address convention was hiding,
