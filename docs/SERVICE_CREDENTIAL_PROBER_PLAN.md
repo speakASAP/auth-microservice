@@ -1,8 +1,9 @@
 # Service Credential Prober — Plan
 
-Date: 2026-09-02
+Date: 2026-09-02 (last updated 2026-09-03)
 Status: Phase 1 receiver shipped. Phase 1b: C, D, E done 2026-09-02; A (consumer
-reporters) is the only remaining work, and B now depends on it
+reporters) in progress — Wave 1 (suppliers) shipped 2026-09-03, 13 repos remain;
+B depends on A
 Owner decisions recorded 2026-09-02 — see "Decisions and corrections"
 
 ## Context
@@ -439,6 +440,104 @@ larger, and how many there are is not yet known.
   either way, because ts-jest resolves from source — this only appears in a
   running pod. Verify by requiring the built file directly, not by running the
   suite.
+
+#### Wave 1 shipped 2026-09-03 — suppliers-microservice
+
+`suppliers-microservice` `87ec2f8`. One reporter, not two, and the reason the
+count is one is the finding worth keeping.
+
+| Principal | Grant | Outcome |
+|---|---|---|
+| `svc-suppliers-microservice--warehouse-microservice@alfares.cz` | `warehouse-microservice:admin` | reporter — probes `GET /api/stock/:productId` |
+| `svc-suppliers-microservice--catalog-microservice@alfares.cz` | `catalog-microservice:service` | **unprobeable**, stays `silent` |
+
+**catalog is unprobeable, and this generalises beyond suppliers.**
+`catalog-microservice/src/auth/catalog-auth.guard.ts` derives a caller's grants
+from the `SERVICE_NAME` **header**, not from the JWT's role, and falls back to
+read access for any unlisted name (`grants[source] ?? READ`). A catalog GET
+therefore returns 200 for a credential that has been revoked, expired, or is the
+wrong algorithm entirely. Probing it would report `accepted` for a credential
+nobody is enforcing — the `catalog-contract-monitor` failure of 2026-09-02
+reproduced inside the tool built to detect it.
+
+This is a **live authorization gap in catalog**, not merely a probing
+inconvenience, and it applies equally to
+`svc-aukro-service--catalog-microservice`. Both stay `silent` until catalog grows
+a read-only route that enforces the token's own role. That route is the
+prerequisite for any catalog reporter and is not scheduled here.
+
+`/api/health` was rejected as a probe target for the mirror-image reason: it
+answers 200 with no credential at all, so it can never fail.
+
+**Probeability is better than Task A's first note implied.** That note
+generalised from warehouse→orders. Checking every active pair against the
+receivers' real role constants, most convention principals do have a genuine
+read-only target: `ORDER_CHANNEL_LIFECYCLE_READ_ROLES`, `ORDER_DETAIL_READ_ROLES`,
+`PRODUCT_SALES_STATISTICS_READ_ROLES` and `ORDER_AFFINITY_REPLAY_READ_ROLES` on
+orders, `WAREHOUSE_READ_ROLES` on warehouse, and `LogReadRoleGuard` on logging
+cover roughly 20 of the 24. warehouse→orders is the exception, not the rule.
+
+**The 14 repos are three populations, and the estimate was priced for one.**
+Only `suppliers-microservice` was already Nest + `@nestjs/schedule`. Five Nest
+repos (orders, warehouse, payments, invoices, catalog) have no scheduler and need
+`@nestjs/schedule` plus `ScheduleModule.forRoot()`. Seven are not NestJS at all
+(allegro, aukro, bazos, heureka, flipflop, cliplot, marketing), so the
+`@Injectable`/`@Cron` wrapper does not transfer — the vendored module is portable
+CJS, but each needs its own host. The "3–4 days, a copy and a config" figure holds
+only for the first group.
+
+**A prerequisite that will recur.** `NOTIFICATION_SERVICE_TOKEN` was absent from
+the suppliers pod, so the reporter would have probed correctly and then failed to
+deliver. Added to Vault (`secret/prod/suppliers-microservice` v19, other 9 keys
+preserved) and the ExternalSecret, with `MONITORING_URL` in the ConfigMap. **Vault
+value first, manifest second** — ESO fails an ExternalSecret whose remote property
+is missing and then stops refreshing every key for that service. Expect the same
+two entries in each remaining repo.
+
+This repo has no jest toolchain, so verification follows its existing
+`scripts/verify-*.js` convention (`npm run verify:credential-self-report`, 10
+checks) rather than introducing one. The check that matters is that the vendored
+module reached `dist/`: a missing nest-cli asset entry throws `MODULE_NOT_FOUND`
+at pod boot while a source-resolving suite passes either way.
+
+**Result.** The 05:00Z sweep logged
+`43 principal(s): 1 accepted, 0 rejected, 0 indeterminate, 42 silent, 0 stale`
+— the first non-silent principal in the fleet, and the first end-to-end exercise
+of the receiver Task D shipped.
+
+**A trap worth recording: `NOTIFICATION_SERVICE_TOKEN` is not the key name in
+Vault.** The first report probed correctly and came back
+`{"verdict":"accepted","posted":false,"status":403}` — the verdict was right and
+the delivery was refused, so the principal would have stayed `silent` with
+nothing obviously broken.
+
+Cause: monitoring's ExternalSecret maps env `NOTIFICATION_SERVICE_TOKEN` from
+Vault property **`NOTIFICATIONS_SERVICE_TOKEN`** (plural, `external-secret.yaml`
+line 37-40). Both keys exist in `secret/prod/monitoring-microservice` with
+different values, and the singular one is stale. `MonitoringIngestGuard` compares
+against monitoring's own running value, so copying the singular key produced a
+token that no guard accepts.
+
+Copy the **plural** `NOTIFICATIONS_SERVICE_TOKEN` when wiring each remaining
+reporter (suppliers is on v20). Verify by fingerprint — `sha256 | cut -c1-12` of
+the value in the consumer pod against the same in monitoring's pod — never by
+reading either value. A length match proves nothing here: both are 64 chars.
+
+Note also that a pod holds the env value it booted with. ESO refreshing the
+Secret does not update a running container, so a token change needs a restart —
+the same trap Task E recorded for the watcher's own credential.
+
+**Negative verification, run against the live receiver** (no scratch principal
+minted, no production credential used as a fixture):
+
+| Case | Result |
+|---|---|
+| garbage token | `rejected` (401) — not indeterminate |
+| empty token | `rejected` before any request is sent |
+| unreachable port | `indeterminate` — a receiver outage fires no credential alert |
+
+The empty-token case is the `catalog-contract-monitor` failure of 2026-09-02
+exactly, and the module refuses to call it `accepted`.
 
 ### Task B — reconcile the duplicate principals (finding 1)
 
