@@ -641,6 +641,83 @@ roles), suppliers→catalog, aukro→catalog (header-derived grants),
 catalog→orders (no credential deployed), catalog→bazos (receiver enforces no
 roles).
 
+#### Wave 3 shipped 2026-09-03 — the remaining seven repos
+
+`allegro` `8da8800`, `aukro` `fdf1ec4`, `bazos` `fb6f79e`, `heureka` `8da9d0e`,
+`flipflop` `2d1397b`, `marketing` `2c7703d`, `cliplot` `22bcff3`.
+**Eleven reporters across seven repos** — allegro, aukro, bazos and flipflop
+report two credentials each; heureka, marketing and cliplot one each.
+
+**Correct the Wave 2 claim: five of these seven are NestJS, not "not NestJS at
+all."** That earlier reading came from looking for `nest-cli.json` at each repo
+root. allegro, aukro, bazos, heureka and flipflop are multi-service monorepos
+whose Nest apps live under `services/<name>/`. Only marketing (plain express)
+and cliplot (ESM, no build) genuinely differ.
+
+What actually varies is **the build**, and it matters more than the framework:
+
+| Repo | Build | Vendored module reaches dist via |
+|---|---|---|
+| allegro, aukro, bazos, heureka, flipflop | `tsc && tsc-alias` | **`postbuild` copy** — no asset copier exists |
+| marketing | `tsc` + copy-public | `postbuild` copy |
+| cliplot | none (`node --check`) | `src/` is copied verbatim by the Dockerfile |
+
+**Plain `tsc` has no asset copier at all.** `tsconfig` includes only
+`src/**/*` and `allowJs` is off, so a vendored `.js` is silently dropped from
+`dist/`. This is the invoices crashloop again, in a form no nest-cli asset entry
+can fix: each of these repos needs an explicit `postbuild` copy, and the verify
+script now asserts that step exists rather than only checking the result.
+
+**`@nestjs/schedule` was missing from every marketplace service's own
+package.json**, though present at the monorepo root. allegro compiled anyway via
+hoisting, which is exactly the kind of accident that breaks in a clean Docker
+build. Added at v4 (NestJS 10) to all five.
+
+**cliplot: under `"type": "module"`, the vendored file must be `.cjs`.** A `.js`
+file is ESM regardless of how it is loaded, so `createRequire` still threw
+`module is not defined in ES module scope`. The verify script caught it before
+deploy; a `.js` copy would have crashed the pod at boot. The bridge itself is
+`createRequire(import.meta.url)` — forking an ESM copy of the module would split
+the classification rule, which is the one thing the shared module prevents.
+
+**marketing cannot use `NOTIFICATION_SERVICE_TOKEN` for ingest.** It already
+sets that variable to its own notifications-service credential — verified
+distinct from monitoring's ingest value in production (`05ab8238` vs
+`8087c6a2`). Reusing the name would send the wrong token to the ingest guard, so
+marketing and cliplot read `CREDENTIAL_INGEST_TOKEN` instead, and marketing's
+verify script asserts the reporter never reads the other variable.
+
+**Four more principals are unprobeable, for three distinct reasons:**
+
+| Principal | Why |
+|---|---|
+| `svc-aukro-service--catalog-microservice` | catalog's header-derived grants |
+| `svc-flipflop-service--orders-microservice-status` | `orders:action-admin` is on write routes only |
+| `svc-cliplot--orders-microservice-create` | **duplicate grant** — carries the same `cliplot:service` as the reported principal, and two principals sharing a role cannot be told apart by any probe. A second reporter would duplicate one verdict under two names rather than measure anything. Task B territory. |
+| `svc-catalog-microservice--bazos-service` | bazos enforces no roles anywhere (confirmed in this wave: `@Get` with no `@Roles`) |
+
+**cliplot's probe is valid-credential-scoped, like invoices'** — and for the
+same reason plus one more: `ORDER_DETAIL_READ_ROLES` can't be probed
+(`ParseUUIDPipe` → 404 → `indeterminate`), and `/api/orders/admin/lifecycle`
+returns 403 to cliplot *deliberately*, per the comment in
+`orders.controller.ts` keeping it out of the channel lifecycle lists.
+
+**Running total: 16 reporters deployed** — the monitoring pilot, suppliers,
+orders, catalog and invoices (5), plus Wave 3's eleven. **Eight principals are
+confirmed unprobeable with written reasons**: warehouse→orders and
+payments→orders (write-only roles), suppliers→catalog and aukro→catalog
+(header-derived grants), catalog→orders (no credential deployed), catalog→bazos
+(receiver enforces no roles), flipflop→orders-status (write-only role),
+cliplot→orders-create (duplicate grant).
+
+That accounts for 24 of the 43 active principals. The remaining ~19 are the
+off-convention set from finding 1 — `orders-action-admin`,
+`payments-admin-smoke`, `goal24-flipflop-admin` and similar — which name a role
+or a service pair rather than a caller, have no owning repo to write a reporter
+in, and are the population Task B must classify as live or dead. Their continued
+silence after this wave is now evidence rather than an absence of evidence,
+which is exactly what Task B was blocked on.
+
 ### Task B — reconcile the duplicate principals (finding 1)
 
 Enumerating by `userType` surfaced principals the address convention was hiding,
