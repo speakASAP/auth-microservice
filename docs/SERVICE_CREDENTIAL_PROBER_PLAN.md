@@ -716,6 +716,26 @@ same reason plus one more: `ORDER_DETAIL_READ_ROLES` can't be probed
 returns 403 to cliplot *deliberately*, per the comment in
 `orders.controller.ts` keeping it out of the channel lifecycle lists.
 
+**Verified in production 2026-09-03.** The 07:30Z sweep logged
+`43 principal(s): 16 accepted, 0 rejected, 0 indeterminate, 27 silent, 0 stale`
+— every reporter landed, all seven Wave 3 pods ready with 0 restarts.
+
+Two things surfaced during that verification:
+
+- **Three deployments needed an explicit `env:` entry**, not just the
+  ExternalSecret key. allegro, aukro and heureka map secrets per-key with
+  `secretKeyRef` and have no `envFrom: secretRef`, so the ingest token never
+  reached the container: probes returned `accepted` and posts returned 401.
+  Fixed in `882ce5e`, `6cafc9f`, `a10a788`. This is the failure mode the plan
+  exists to catch, produced by the tool itself — a reporter that looks wired,
+  probes correctly, and delivers nothing.
+- **A transient `indeterminate` appeared once** on allegro and aukro's warehouse
+  lanes under back-to-back calls, then cleared on every retry (3/3 and 2/2
+  `accepted`). Worth noting because the module classified a transient network
+  failure as `indeterminate` rather than `rejected` — exactly the three-way rule
+  working as designed. A prober that collapsed those two would have fired a
+  credential alert for a momentary blip.
+
 **Running total: 16 reporters deployed** — the monitoring pilot, suppliers,
 orders, catalog and invoices (5), plus Wave 3's eleven. **Eight principals are
 confirmed unprobeable with written reasons**: warehouse→orders and
@@ -782,12 +802,22 @@ Then, per repo:
    service's own package.json**, v4 for NestJS 10 and v6 for 11 — a root-level
    dependency can compile locally through hoisting and fail in a clean Docker
    build), or `setInterval(...).unref()` where there is no Nest.
-5. Ingest credential: add to the repo's ExternalSecret, sourcing
-   `secret/prod/monitoring-microservice` property **`NOTIFICATIONS_SERVICE_TOKEN`**
-   (plural — the singular key exists with a stale value the guard rejects). Use
-   env `NOTIFICATION_SERVICE_TOKEN`, unless the repo already uses that name for
-   something else, in which case pick a distinct one and assert the reporter
-   does not read the occupied variable.
+5. Ingest credential — **two steps, and the second is easy to miss**:
+   - Add to the repo's ExternalSecret, sourcing
+     `secret/prod/monitoring-microservice` property
+     **`NOTIFICATIONS_SERVICE_TOKEN`** (plural — the singular key exists with a
+     stale value the guard rejects). Use env `NOTIFICATION_SERVICE_TOKEN` unless
+     the repo already uses that name for something else, in which case pick a
+     distinct one and assert the reporter does not read the occupied variable.
+   - **Check how the deployment consumes secrets.** With
+     `envFrom: secretRef` the new key reaches the container automatically. With
+     per-key `secretKeyRef` entries — which allegro, aukro and heureka use — it
+     does **not**, and an explicit `env:` entry is required. Skipping it gives a
+     reporter that probes correctly and posts 401: the verdict is right, the
+     delivery is refused, and the principal stays `silent` while looking fully
+     wired. Verify with
+     `kubectl get deploy <svc> -o jsonpath='{.spec.template.spec.containers[0].envFrom}'`
+     before assuming the ExternalSecret change was sufficient.
 6. Verify script: copy a neighbour's `scripts/verify-credential-self-report.js`.
    It must resolve the vendored module **relative to the compiled reporter**,
    the way Node does at runtime — a hardcoded `dist/` path passed while the
