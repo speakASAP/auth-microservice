@@ -1,4 +1,4 @@
-# RS256 Service-Token Migration — Per-Pair Identities with Automatic Rotation
+# RS256 Service-Token Migration — Per-Pair Identities with Automatic Rotation (Phase 6 not deployed)
 
 **Status:** approved 2026-08-25 · owner-approved for execution
 **Owner:** ssf
