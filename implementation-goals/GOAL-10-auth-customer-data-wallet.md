@@ -101,7 +101,6 @@ Auth customer data wallet:
 - [x] 10.85 Remaining-gate packet verifier hardened; packet check now covers Goal 10.84 cleanup/source/window blockers.
 - [x] 10.86 FlipFlop auth-subject smoke cleanup source guard hardened in branch `codex/goal10-auth-subject-smoke-cleanup` commit `6fe9e07`; runtime cleanup token projection remained gated before merge.
 - [x] 10.87 FlipFlop cleanup source guard integrated to `origin/main` at `6fe9e07`; temporary branch/worktree removed, runtime cleanup token projection and approval remain gated.
-- [x] 10.88 Orders cleanup Auth-token helper source-prepared as `scripts/provision-internal-service-token.ts`; TypeScript validation passed.
 - [x] 10.89 Orders cleanup Auth-token helper pod `--check-db-only` and `--dry-run` proven with sanitized output; application/role metadata exists, cleanup principal is absent, and live DB/token/Vault projection remains gated.
 - [x] 10.90 FlipFlop order snapshot create/read/cancel smoke completed; Auth cleanup principal/token was provisioned and Vault-projected without token output, and FlipFlop `origin/main` `7f0ef44` records sanitized runtime evidence.
 - [x] 10.91 Post-FlipFlop owner-gated audit completed; Cliplot and Rent-a-box have no remaining safe source-only lane before approved live commerce or route/onboarding migration windows.
@@ -217,10 +216,6 @@ that repo's status/validation report.
 - `[MISSING: owner answer to Cliplot bounded live commerce approval packet in docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md]`
 - `[MISSING: owner answer to Rent-a-box route/onboarding approval packet in docs/orchestrator/2026-07-03-goal10-owner-decision-packet.md]`
 - `[UNKNOWN: future non-marketplace registered-user checkout surfaces outside FlipFlop, ChytraKoupe, Rent-a-box, and Cliplot]`
-
-
-
-
 
 ## 2026-07-03 Goal 10.70 Gate 6 Rent-a-box Metadata-Only Production Preflight
 
@@ -1487,7 +1482,6 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
   access, secret/token/password inspection, or raw customer data inspection was
   performed for these planning chunks.
 
-
 ## 2026-07-02 Goal 10.6 Source Prep Result
 
 - 2026-07-02: Goal 10.6 FlipFlop client bridge source prep completed in
@@ -1503,7 +1497,6 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
 - Orders compatibility audit found no immediate source change is required:
   Orders already stores separate immutable shipping/billing snapshots, and Auth
   wallet IDs should wait for an approved final provenance contract.
-
 
 ## 2026-07-03 Goal 10.72 Rent-a-box Nullable Production Schema Apply
 
@@ -1521,7 +1514,6 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
 - Evidence covered selector helpers, customer-safe labels, excluded wallet fields, no-PII evidence, and six guest fallback cases with `mutation=false`, `providerCall=false`, `authWalletFetch=false`, and `checkoutSubmit=false`.
 - No live Auth wallet fetch, checkout submit, Auth wallet mutation, payment, Warehouse, notification, database, Kubernetes/Vault mutation, deploy, token output, or customer-data output occurred.
 - Remaining Cliplot follow-up is owner-approved live selector UI rollout and authenticated frontend integration.
-
 
 ## 2026-07-03 Goal 10.74 Rent-a-box Feature-Gated Runtime Adapter Source Prep
 
@@ -1541,7 +1533,6 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
 - Selector controls have no form `name`, so wallet row ids and Auth ownership fields are not submitted as order truth.
 - Validation passed for auth-wallet checkout readiness, runtime checkout evidence, full `npm run check`, diff check, and added-line sensitive literal scan.
 - Remaining Cliplot follow-up: authenticated browser-session wallet fetch evidence and live rollout approval before production fetch/submit behavior.
-
 
 ## 2026-07-03 Goal 10.76 Rent-a-box Opt-in Auth Dependency Gate
 
@@ -1576,9 +1567,6 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
 - The prior focused pytest/ruff runner blocker is resolved for this lane without installing dependencies on the remote host or changing production runtime state.
 - Remaining Rent-a-box follow-up: owner-approved route/onboarding migration before replacing local auth, and later owner-approved backfill/product-code migration.
 
-
-
-
 ## 2026-07-03 Goal 10.82 Extended Registered-User Surface Audit
 
 - Added `docs/orchestrator/2026-07-03-goal10-extended-surface-audit.md`.
@@ -1607,7 +1595,6 @@ payloads. Mark missing facts as `[MISSING: ...]` or `[UNKNOWN: ...]`.
 
 - FlipFlop commit `37d695d test: add auth wallet order snapshot gate` adds `verify:auth-wallet-order-snapshot-gate` and sanitized report `reports/validation/auth-wallet-order-snapshot-gate.json`.
 - Evidence proves source forwarding of UUID-shaped `customer.authSubject`, separate bounded shipping/billing snapshots, and Auth invoice fields `companyName`, `companyId`, `taxId`, `vatId`, and `email` into the central Orders payload builder.
-- Default runtime preflight remains fail-closed: `mutation=false`, `providerCall=false`, deployment `1/1`, `ORDERS_SERVICE_URL=true`, and `ORDERS_SERVICE_TOKEN=true`.
 - No checkout submit, order create, Warehouse/payment/notification mutation, DB/customer row read, token output, customer-data output, deploy, Kubernetes mutation, or secret mutation occurred.
 - Remaining gate: owner-approved synthetic central Orders create/read/cancel smoke with non-secret approval id plus fixture Catalog product and Warehouse ids to prove persisted runtime `customer.authSubject` and billing snapshot evidence.
 

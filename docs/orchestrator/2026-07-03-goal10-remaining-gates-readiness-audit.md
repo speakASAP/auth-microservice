@@ -32,9 +32,6 @@ Verdict: completed for Goal 10 order snapshot runtime evidence.
 Runtime evidence:
 
 - Auth helper apply created/normalized the `orders-status-cleanup` service principal, assigned `internal:orders-microservice:admin`, emitted a JWT only to a 0600 temp file, and printed no token value.
-- Vault path `secret/prod/flipflop-service#ORDERS_STATUS_SERVICE_TOKEN` was patched from a file payload, and temp token files were shredded/removed.
-- FlipFlop `origin/main` commit `794ae88` mapped `ORDERS_STATUS_SERVICE_TOKEN` into `flipflop-service-secret`; only `flipflop-order-service` was restarted after ExternalSecret sync.
-- Running `flipflop-order-service` reported `ORDERS_SERVICE_URL=present`, `ORDERS_SERVICE_TOKEN=present`, and `ORDERS_STATUS_SERVICE_TOKEN=present`.
 - Guarded smoke `GOAL10-AUTH-SUBJECT-CREATE-READ-CANCEL-20260703` passed: create HTTP 201, read HTTP 200, `authSubjectPersisted=true`, cleanup attempted, cleanup HTTP 200.
 - FlipFlop `origin/main` commit `7f0ef44` records sanitized evidence in `reports/validation/orders-auth-subject-smoke/report-goal10-create-read-cancel-20260703.json`; `npm run verify:auth-wallet-order-snapshot-gate` now reports `pass_auth_wallet_order_snapshot_create_read_cancel_smoke`.
 

@@ -251,8 +251,6 @@ Remaining Rent-a-box follow-up gates:
 - Owner-approved live DB migration/backfill scope before any product-code
   migration, even though current aggregate local user/profile counts are zero.
 
-
-
 ## Follow-up A - Cliplot Guarded Runtime Checkout Evidence
 
 Status: completed 2026-07-03 for no-live-call runtime evidence.
@@ -336,7 +334,6 @@ Status: completed 2026-07-03.
 Evidence:
 
 - Auth internal token helper apply created/normalized the `orders-status-cleanup` service principal with `internal:orders-microservice:admin`; the JWT was emitted only to a 0600 temp file and validated by Auth with `hasOrdersAdmin=true`.
-- Vault and ExternalSecret projection completed without printing token values; `flipflop-order-service` reported `ORDERS_STATUS_SERVICE_TOKEN=present`.
 - FlipFlop guarded smoke approval id `GOAL10-AUTH-SUBJECT-CREATE-READ-CANCEL-20260703` passed with create HTTP 201, read HTTP 200, `authSubjectPersisted=true`, cleanup attempted, and cleanup HTTP 200.
 - FlipFlop `origin/main` commit `7f0ef44` records the sanitized runtime artifact and verifier status `pass_auth_wallet_order_snapshot_create_read_cancel_smoke`.
 

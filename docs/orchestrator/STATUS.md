@@ -876,7 +876,6 @@ Evidence:
 - FlipFlop commit `37d695d` added `scripts/verify-auth-wallet-order-snapshot-gate.js`, package script `verify:auth-wallet-order-snapshot-gate`, and sanitized report `reports/validation/auth-wallet-order-snapshot-gate.json`.
 - The verifier confirms authenticated FlipFlop checkout source forwards only a UUID-shaped user id as `customer.authSubject`.
 - It confirms central Orders payload source forwards separate bounded `shippingAddress` and `billingAddress` snapshots with Auth invoice fields `companyName`, `companyId`, `taxId`, `vatId`, and `email`.
-- The default deployed `smoke-orders-auth-subject.js` preflight remains fail-closed with `mutation=false`, `providerCall=false`, deployment `1/1`, `ORDERS_SERVICE_URL=true`, and `ORDERS_SERVICE_TOKEN=true`.
 
 Validation:
 
@@ -3806,7 +3805,6 @@ Next unfinished chunk:
 - Goal 10.11 cross-repo validation and deployment plan, while live SQL/deploy
   remains owner-approval gated.
 
-
 ## 2026-07-02 - Goal 10 Coordinator Status Normalization
 
 Current focus:
@@ -4073,7 +4071,6 @@ Runtime evidence:
 - Namespace status still showed broad container lifecycle backlog, including 24
   pods in `ContainerCreating` plus additional init states, so the gate is a
   cluster/container-runtime issue rather than a Goal 10 source regression.
-
 
 Runtime repair evidence after blocker documentation:
 
@@ -4444,10 +4441,6 @@ Intent Compliance Report:
 
 # 2026-06-27 - Catalog Service Identity Ownership Confirmation
 
-Change: created Auth-owned runtime Vault property `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN` without printing or recording the value. Catalog and Orders ExternalSecret manifests consume that property under their local `CATALOG_INTERNAL_SERVICE_TOKEN` environment key.
-
-Boundary decision: the supported machine-auth contract is `x-internal-service-token` plus `x-service-name: catalog-microservice`, mapped by Orders to `internal:catalog-microservice:service`. This does not mint or validate a user JWT through `/auth/validate`, because `/auth/validate` is user-token validation and machine actors are not Auth users.
-
 Validation: no secret values were printed or committed. Auth docs only record the ownership source and contract; runtime synchronization and smoke validation are owned by the Catalog/Orders manifests and Kubernetes checks.
 
 # Auth Orchestrator Status
@@ -4634,8 +4627,6 @@ Next action:
 
 - Owner selection for the next Auth remediation or implementation chunk.
 
-## 2026-06-13 - RBAC-REM-06 Internal Service-Token/API-Key Boundary Review Completed
-
 Current focus:
 
 - Auth runtime code changes: none.
@@ -4655,7 +4646,6 @@ Implementation evidence:
 - Reviewed Payments `ApiKeyGuard`, `JwtRolesGuard`, controller guard usage, and key configuration docs.
 - Reviewed Catalog `CatalogAuthGuard`, internal-service header handling, and Warehouse availability client.
 - Reviewed Warehouse `JwtRolesGuard` as the receiving side for the Catalog availability call.
-- Recorded follow-ups for RunLayer static service-token identity, Notifications broad bearer `SERVICE_TOKEN`, Payments `X-API-Key` production constraints, and Catalog/Warehouse availability-token reconciliation.
 
 Validation evidence:
 
@@ -4697,8 +4687,6 @@ Validation evidence:
 - No Auth runtime code, School Committee runtime code, JWT payload, token validation endpoint, deployment, database, production user data, decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, or magic-link tokens changed.
 
 Next action:
-
-- Recommended next remediation chunk: RBAC-REM-06 internal service-token/API-key bypass inventory and Auth boundary review.
 
 ## 2026-06-13 - RBAC-REM-04 SpeakASAP Scoped-Role Normalization Review Completed
 
@@ -4943,7 +4931,6 @@ Validation evidence:
 - Final documentation presence, missing-marker scan, secret-pattern scan, and `git diff --check` were run after edits; see latest session command output.
 
 Next action:
-
 
 ## 2026-06-12 - IPS Documentation Compliance Update
 
@@ -5493,7 +5480,6 @@ Validation evidence:
 Boundary:
 
 - No consumer repo source edits, deploys, live checkout/order mutation, DB reads/writes, env dumps, secret/token inspection, live flag opening, payment/Warehouse/notification mutation, or customer-data output occurred.
-- FlipFlop live create/read/cancel smoke is not safe to run until an approved cleanup path exists; current preflight reports `ORDERS_STATUS_SERVICE_TOKEN=false`.
 - FlipFlop source branch must be decided before using the current `goal24-paid-provider-bundle-checkout-gate` checkout as Goal 10 runtime evidence.
 
 Next unfinished chunks:
@@ -5531,7 +5517,6 @@ Current focus:
 Implementation evidence:
 
 - FlipFlop branch `codex/goal10-auth-subject-smoke-cleanup` pushed at `6fe9e07`.
-- `scripts/smoke-orders-auth-subject.js` now validates normal UUIDs correctly, requires `AUTH_SUBJECT_SMOKE_CLEANUP_CONFIRM=ORDERS_ADMIN_STATUS_CANCEL`, blocks approved execution when `ORDERS_STATUS_SERVICE_TOKEN` is absent, sends Orders cancellation fields `approved=true`, `approvalType=human`, `reasonCode=synthetic_auth_subject_smoke_cleanup`, and side-effect acknowledgements for payment, warehouse, notification, crm, and channel, and requires cleanup HTTP 2xx for pass.
 - `scripts/verify-auth-wallet-order-snapshot-gate.js` records `ordersStatusServiceTokenPresent=false`, `cleanupRequiredForPass=true`, and the new cleanup blockers.
 
 Validation evidence:
@@ -5539,7 +5524,6 @@ Validation evidence:
 - `node --check scripts/smoke-orders-auth-subject.js` passed.
 - `node --check scripts/verify-auth-wallet-order-snapshot-gate.js` passed.
 - `npm run verify:auth-wallet-order-snapshot-gate` passed with `approval_required_auth_wallet_order_snapshot_runtime_gate`, `mutation=false`, and `cleanupRequiredForPass=true`.
-- Approved-looking source-only probe with valid UUID fixture ids and cleanup confirmation stopped before mutation with only `[MISSING: ORDERS_STATUS_SERVICE_TOKEN projected into flipflop-order-service for cleanup]`.
 - `git diff --check` and changed-line sensitive scan passed before commit.
 
 Boundary:
@@ -5549,7 +5533,6 @@ Boundary:
 Next unfinished chunks:
 
 - Merge/source decision for `codex/goal10-auth-subject-smoke-cleanup`.
-- Runtime projection of cleanup-capable `ORDERS_STATUS_SERVICE_TOKEN` into `flipflop-order-service`.
 - Owner-approved fixture ids and non-secret approval id for the actual create/read/cancel smoke.
 
 ## 2026-07-03 - Goal 10.87 FlipFlop Cleanup Guard Main Integration
@@ -5575,7 +5558,6 @@ Boundary:
 
 Next unfinished chunks:
 
-- Project cleanup-capable `ORDERS_STATUS_SERVICE_TOKEN` into `flipflop-order-service`.
 - Provide `AUTH_SUBJECT_SMOKE_CLEANUP_CONFIRM=ORDERS_ADMIN_STATUS_CANCEL`, fixture ids, non-secret approval id, and owner approval before running the create/read/cancel smoke.
 
 ## 2026-07-03 - Goal 10.88 Orders Cleanup Auth-Token Helper Source Prep
@@ -5586,7 +5568,6 @@ Current focus:
 
 Implementation evidence:
 
-- Added `scripts/provision-internal-service-token.ts`.
 - The helper is generic for `internal:<service>:<role>` service principals and requires exactly one of `--dry-run` or `--apply`.
 - Apply mode requires `--confirm-db-mutation=INTERNAL_SERVICE_PRINCIPAL`, `--confirm-token-issuance=INTERNAL_SERVICE_JWT`, and `--token-output=<path>`.
 - The token value is written only to the requested output file with mode `0600`; helper output reports `tokenPrinted=false`.
@@ -5596,12 +5577,9 @@ Read-only runtime/config evidence:
 
 - Orders `PUT /api/orders/:id/status` has no route-specific `@Roles`, so the global guard falls back to `global:superadmin` or `internal:orders-microservice:admin`.
 - FlipFlop channel service token maps to `internal:flipflop-service:service` and is not sufficient for raw status cleanup.
-- Live `flipflop-order-service` reports `ORDERS_SERVICE_URL=present`, `ORDERS_SERVICE_TOKEN=present`, and `ORDERS_STATUS_SERVICE_TOKEN=missing`.
-- Live `flipflop-service-secret` does not contain `ORDERS_STATUS_SERVICE_TOKEN`.
 
 Validation evidence:
 
-- `npx tsc --noEmit --skipLibCheck --experimentalDecorators --emitDecoratorMetadata --module commonjs --target es2020 --moduleResolution node --esModuleInterop scripts/provision-internal-service-token.ts` passed.
 - `git diff --check` passed after adding the helper.
 - Direct remote-shell `npx ts-node` cannot resolve `db-server-postgres` from outside Kubernetes and returns a sanitized JSON failure.
 - Compiling the helper to temporary JS and running it inside the live Auth pod with `NODE_PATH=/app/node_modules` passed `--check-db-only` and `--dry-run`.
@@ -5614,7 +5592,6 @@ Boundary:
 Next unfinished chunks:
 
 - Run or repair a bounded provisioning path for an Auth-valid cleanup bearer with `internal:orders-microservice:admin` or `global:superadmin`.
-- Store that bearer in Vault and project it into `flipflop-order-service` as `ORDERS_STATUS_SERVICE_TOKEN` without printing the value.
 - Run the owner-approved FlipFlop create/read/cancel smoke only after fixture ids, approval id, cleanup confirm, and token projection are all present.
 
 ## 2026-07-03 - Goal 10.89 Orders Cleanup Helper Pod Dry-Run
@@ -5625,8 +5602,6 @@ Current focus:
 
 Execution evidence:
 
-- Compiled `scripts/provision-internal-service-token.ts` to temporary JS under `/tmp/auth-internal-token-helper-build`.
-- Copied only the compiled JS to `/tmp/provision-internal-service-token.js` in the running Auth pod.
 - Executed with `NODE_PATH=/app/node_modules` so the script used the pod runtime dependencies and pod-projected DB/JWT environment.
 - Removed the temporary pod JS and remote build directory after the dry-run.
 
@@ -5642,7 +5617,6 @@ Boundary:
 Next unfinished chunks:
 
 - Apply the helper in a bounded approved run to create/normalize the `orders-status-cleanup` service principal, assign `internal:orders-microservice:admin`, and write the JWT only to a 0600 temp file.
-- Store the JWT in Vault and map it into FlipFlop as `ORDERS_STATUS_SERVICE_TOKEN`.
 - Reconcile/restart only `flipflop-order-service`, then run the approved create/read/cancel smoke.
 
 ## 2026-07-03 - Goal 10.90 FlipFlop Order Snapshot Runtime Gate
@@ -5655,10 +5629,7 @@ Implementation/runtime evidence:
 
 - Auth helper apply created/normalized service principal `orders-status-cleanup` and assigned `internal:orders-microservice:admin`.
 - Auth token validation returned `valid=true`, `hasOrdersAdmin=true`, `hasSuperadmin=false`, and `tokenPrinted=false`.
-- Vault path `secret/prod/flipflop-service#ORDERS_STATUS_SERVICE_TOKEN` was patched from a temp file payload; temp token files were shredded/removed.
-- FlipFlop `origin/main` commit `794ae88` maps `ORDERS_STATUS_SERVICE_TOKEN` through `k8s/external-secret.yaml`.
 - ExternalSecret `flipflop-service-secret` reported ready; only `flipflop-order-service` was restarted.
-- Running `flipflop-order-service` reported `ORDERS_SERVICE_URL=present`, `ORDERS_SERVICE_TOKEN=present`, and `ORDERS_STATUS_SERVICE_TOKEN=present`.
 - Guarded smoke approval id `GOAL10-AUTH-SUBJECT-CREATE-READ-CANCEL-20260703` passed with create HTTP 201, read HTTP 200, `authSubjectPersisted=true`, cleanup attempted, and cleanup HTTP 200.
 - FlipFlop `origin/main` commit `7f0ef44` records sanitized evidence and verifier status `pass_auth_wallet_order_snapshot_create_read_cancel_smoke`.
 

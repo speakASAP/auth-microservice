@@ -96,7 +96,7 @@ Consumers should preserve Auth role strings and Auth user identifiers. Product s
 
 Local JWT verification is allowed only as a documented exception under `docs/CONSUMER_JWT_VALIDATION_STANDARD.md`. Services using local verification must prove they use Auth-owned verification material, enforce expiry/signature validation, preserve role claims, and do not mint user tokens.
 
-Machine/service tokens are a separate boundary governed by `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`. Do not block hosted human login migration on service-token redesign unless the same guard path validates both user and machine tokens and cannot distinguish user actors from service actors safely.
+Machine identity is governed exclusively by [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md).
 
 ## Registration And Existing Users
 

@@ -103,12 +103,6 @@ Merge order: low-traffic/admin tools first, then commerce/public apps, then high
 
 Status: dependency-gated by repo classification.
 
-Owner: backend auth guard owner per repo.
-Allowed files: auth-client services, guards, validation tests, config schema names only.
-Forbidden files: secret values, Auth JWT signing code outside Auth, user data migration scripts.
-Dependencies: classify whether local JWT use is user-token validation, service-token validation, or documented high-throughput exception.
-Validation: unit tests for valid/invalid token, role preservation, 401/403 behavior; build; no local JWT minting for users.
-
 ### Wave 3 - User Identity Backfill And Reconciliation
 
 Status: approval-gated.

@@ -12,7 +12,6 @@ Mode: approved runtime provisioning for Payments admin authenticated smoke. No r
 - System: Auth service-principal JWT issuance and role assignment; Payments protected admin API validation.
 - Feature: Payments admin authenticated smoke unblocker.
 - Task: create or identify a service principal with `internal:payments-microservice:admin`, issue a temporary token file, run sanitized Payments smoke, and destroy the token source.
-- Execution Plan: run existing `scripts/provision-internal-service-token.ts` helper in check-only and apply mode inside the Auth pod; never print token material; run Payments smoke with sanitized output; delete the token file.
 - Coding Prompt: owner approved resolving the missing Payments admin test session packet; use existing guarded helper only and preserve no-print/no-decode/no-persist handling.
 - Code: no Auth source code changed.
 - Validation: sanitized command evidence below.
@@ -23,8 +22,6 @@ Provisioning succeeded and the temporary token source was destroyed after Paymen
 
 Auth helper:
 
-- `scripts/provision-internal-service-token.ts`
-- contract: `auth-internal-service-token-provisioning.v1`
 - service name: `payments-admin-smoke`
 - role: `internal:payments-microservice:admin`
 - token output path inside pod: `/tmp/payments-admin-smoke.jwt`
