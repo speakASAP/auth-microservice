@@ -76,7 +76,7 @@ IPS chain:
 
 Evidence:
 - The standard declares that machine credentials create service actors, not human users.
-- New machine paths should use `x-internal-service-token` plus `x-service-name`.
+- New machine paths should use `x-internal-service-token` plus `x-service-name`. **[SUPERSEDED 2026-08-25 — new machine paths now use an Auth-issued per-pair RS256 service JWT; see `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`. This line records the June 2026 contract only.]**
 - Existing Payments `x-api-key`, Catalog `x-internal-service-token`, SpeakASAP `x-internal-token`, and service bearer tokens are transitional machine-auth exceptions, not Auth RBAC.
 
 Remaining gates:
