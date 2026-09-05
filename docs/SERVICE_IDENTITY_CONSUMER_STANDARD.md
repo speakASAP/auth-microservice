@@ -6,7 +6,8 @@ Canonical file: `auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`
 
 > **This is the single point of truth for how one service authenticates to
 > another, how service tokens are minted and rotated, and how service RBAC is
-> enforced.** It covers agent-to-agent calls too. Registered in
+> enforced.** It covers agent-to-agent calls over HTTP; see Scope for other
+> channels. Registered in
 > [`shared/docs/DOCUMENTATION_AUTHORITY.md`](../../shared/docs/DOCUMENTATION_AUTHORITY.md)
 > and in the read order of [`shared/AGENTS.md`](../../shared/AGENTS.md).
 >
@@ -24,6 +25,24 @@ Canonical file: `auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`
 > another document contradicts this one, this one wins and the other is a bug
 > to repair in its own source.
 
+## Scope
+
+This standard governs **request/response machine calls over HTTP**. Everything below —
+headers, `POST /auth/validate`, route decorators, per-route role enforcement — is
+HTTP-shaped. For other channels:
+
+- **Message queues (RabbitMQ).** Publishing and consuming authenticate to the *broker*, not
+  per message. A consumer must never treat a message as carrying caller authority: if handling
+  it triggers a privileged action, re-authorise that action through an HTTP call bearing a
+  service JWT.
+- **CronJobs and CLI scripts.** A job that calls a service is a caller like any other and needs
+  its own `(caller → target)` principal. Being internal or scheduled is not an exemption.
+- **Agent-to-agent.** Follows whichever transport the call actually uses; over HTTP, this
+  standard applies unchanged.
+
+If a lane is not covered here, mark it `[MISSING: ...]` and resolve it rather than assuming it
+is exempt.
+
 ## Decision
 
 Auth remains the owner of human identity, credentials, user JWTs, and Auth RBAC role claims. Service-to-service credentials are machine identity, not human identity. Consumers must keep machine identity separate from Auth-issued user access tokens even when both paths meet in the same guard.
@@ -35,10 +54,24 @@ email: svc-<caller>--<target>@internal.alfares.cz
 name:  <caller>--<target>
 role:  internal:<target>:<least-privilege-role>
 alg:   RS256, signed by auth only
-exp:   90 days, rotated automatically
+exp:   90 days (re-minted by hand today — see Rotation)
 ```
 
 Issued exclusively by `scripts/provision-service-token.js`. Receivers validate through `POST /auth/validate` (or the approved local RS256 verifier) and enforce the role claim.
+
+**Minting procedure.** This document defines the *shape and the rules*; the executable steps
+live in two places and are not duplicated here:
+
+- the invocation, its `--dry-run` / `--confirm-db-mutation` / `--confirm-token-issuance` gates
+  and the `--token-output` handling — header comment of
+  `auth-microservice/scripts/provision-service-token.js`;
+- the full Vault → `external-secret.yaml` → Deployment `secretKeyRef` → force-sync → restart →
+  re-probe pipeline — [`RS256_SERVICE_TOKEN_MIGRATION_PLAN.md`](RS256_SERVICE_TOKEN_MIGRATION_PLAN.md) § Phase 1.
+
+Three traps in that pipeline each report success while delivering nothing, so read it rather
+than improvising: a token written to the wrong service's Vault path is inert while ESO still
+reports `SecretSynced`; **a Vault key never reaches a pod until `external-secret.yaml` names
+it**; and roles are per-application rows that must be seeded before minting against them.
 
 ### Why per-pair, and why not a shared static token
 
@@ -68,8 +101,10 @@ Every service accepting service JWTs must therefore:
   callers;
 - scope any remaining static-token bypass to `:readonly`, and log a warning when it is used.
 
-`orders-microservice` is the reference implementation; `warehouse-microservice` is the
-worked migration. Rollout and per-service status: `docs/RS256_SERVICE_TOKEN_MIGRATION_PLAN.md`
+`orders-microservice/src/auth/jwt-roles.guard.ts` is the reference verifier;
+`warehouse-microservice/src/auth/roles.constants.ts` is the reference role-constant layout and
+the worked migration. (Orders keeps its own role sets in `src/admin/admin.service.ts` — that is
+the exception, not the pattern to copy; it has no `src/auth/roles.constants.ts`.) Rollout and per-service status: `docs/RS256_SERVICE_TOKEN_MIGRATION_PLAN.md`
 § Phase 1a.
 
 ### Status of the static header contract
@@ -110,7 +145,9 @@ Existing service-local API keys and bearer service tokens may remain only as doc
 
   Measured 2026-09-04: 30 deployments hold it and log correctly; **11 do not hold it and are silently logging nothing** — `domain-research`, `leads-microservice`, `invoices-microservice`, `ai-microservice`, `shop-assistant`, `rent-a-box-api`, `heureka-service`, `allegro-service`, `bazos-service`, `aukro-service`, `agentic-email-processing-system`. Each has `LOGGING_SERVICE_URL` set, so it believes it is logging while ingest answers 401 and the client's catch discards the rejection.
 
-  Do not close this by handing the shared string to the remaining 11 — that widens the blast radius this standard exists to shrink. Mint per-pair `internal:logging-microservice:ingest` principals instead. Note also that the `secretKeyRef` for the existing holders lives only on live Deployment objects and in no manifest, so an apply from Git drops it silently.
+  Do not close this by handing the shared string to the remaining 11 — that widens the blast radius this standard exists to shrink. Note also that the `secretKeyRef` for the existing holders lives only on live Deployment objects and in no manifest, so an apply from Git drops it silently: each of the 11 needs a **new** manifest entry, and there is no committed working example to copy.
+
+  **Order matters, and the obvious fix does not work yet (verified 2026-09-05).** `logging-microservice` gates ingest on `LOG_INGEST_BEARER_TOKENS`, an opaque string allowlist — `src/auth/log-ingest.guard.ts` does a plain set-membership test with **no RS256 verification and no role enforcement**. Minting 11 per-pair `internal:logging-microservice:ingest` JWTs today produces 11 tokens that ingest rejects exactly as it rejects nothing at all. The receiver must be migrated to verify RS256 and enforce the role **first**; only then is minting the right move. Until that lands, these 11 services stay dark rather than being handed the shared string.
 
 Do not block hosted human login migration on these exceptions unless a single guard path cannot distinguish user and machine actors safely.
 
@@ -144,9 +181,32 @@ Consumers must not:
 
 ## Rotation
 
-Service tokens live 90 days and are rotated automatically. **Rotation must verify acceptance, never trust `exp`.**
+Service tokens live 90 days. **Rotation must verify acceptance, never trust `exp`.**
 
-A token can be unexpired and still refused — a signing-algorithm change, a key rotation, or a deactivated principal all produce a healthy-looking credential that every verifier rejects. On 2026-08-18 that was true of 41 tokens at once, several with `exp` in 2027; an `exp`-based check would have called every one of them healthy. The rotation job asks the receiving service whether the token is accepted and re-mints on any rejection, following the pattern proven in `shared/scripts/rotate-logging-admin-token.sh`.
+> **Corrected 2026-09-05: automatic rotation is designed but NOT deployed.** An
+> earlier revision of this section said service tokens "are rotated
+> automatically" and described "the rotation job" in the present tense. Verified
+> against the live cluster: `kubectl get cronjob -n statex-apps` contains **no**
+> `service-token-rotation` job, and no manifest for one exists in any repo. The
+> Phase 6 design in
+> [`RS256_SERVICE_TOKEN_MIGRATION_PLAN.md`](RS256_SERVICE_TOKEN_MIGRATION_PLAN.md)
+> is a specification, not a description of something running.
+>
+> **A token you mint today will expire unless you re-mint it by hand.**
+>
+> What does run is *detection*, and it is good:
+> `statex-token-health.timer` (daily ~07:15, `shared/scripts/token-health/`,
+> `Persistent=true`) decodes every credential-shaped env var mounted by a running
+> pod and alerts at **WARN 21 days / CRITICAL 7 days**, flagging HS256 and
+> `global:superadmin` regardless of `exp`; failures page via
+> `statex-token-health-failure.service`. The one credential rotated
+> automatically is the logging *admin* token
+> (`shared/scripts/rotate-logging-admin-token.sh`, user crontab 03:15) — the
+> reference implementation for the acceptance-probe pattern.
+>
+> **Until Phase 6 ships, treat a `token-health` WARN as the rotation trigger.**
+
+A token can be unexpired and still refused — a signing-algorithm change, a key rotation, or a deactivated principal all produce a healthy-looking credential that every verifier rejects. On 2026-08-18 that was true of 41 tokens at once, several with `exp` in 2027; an `exp`-based check would have called every one of them healthy. Rotation — by hand today, by the Phase 6 job when it ships — asks the receiving service whether the token is accepted and re-mints on any rejection, following the pattern proven in `shared/scripts/rotate-logging-admin-token.sh`.
 
 Rotation failures must raise and alert. A rotation job that silently skips is how tokens reached 2027 expiries unnoticed.
 
