@@ -332,7 +332,7 @@ Status: completed 2026-07-03.
 
 Evidence:
 
-- Historical direct machine-token provisioning details were removed; any future service call follows the [Service Identity Consumer Standard](../../SERVICE_IDENTITY_CONSUMER_STANDARD.md).
+- Historical direct machine-token provisioning details were removed; any future service call follows the [Service Identity Consumer Standard](../SERVICE_IDENTITY_CONSUMER_STANDARD.md).
 - FlipFlop guarded smoke approval id `GOAL10-AUTH-SUBJECT-CREATE-READ-CANCEL-20260703` passed with create HTTP 201, read HTTP 200, `authSubjectPersisted=true`, cleanup attempted, and cleanup HTTP 200.
 - FlipFlop `origin/main` commit `7f0ef44` records the sanitized runtime artifact and verifier status `pass_auth_wallet_order_snapshot_create_read_cancel_smoke`.
 
@@ -359,4 +359,4 @@ Safety decision:
 
 Status: completed for Goal 10 FlipFlop order snapshot smoke.
 
-- Any future machine-identity integration is governed solely by the [Service Identity Consumer Standard](../../SERVICE_IDENTITY_CONSUMER_STANDARD.md).
+- Any future machine-identity integration is governed solely by the [Service Identity Consumer Standard](../SERVICE_IDENTITY_CONSUMER_STANDARD.md).

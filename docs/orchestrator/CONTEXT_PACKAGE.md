@@ -1,3 +1,5 @@
+Service-to-service authentication follows the [canonical service identity standard](../SERVICE_IDENTITY_CONSUMER_STANDARD.md).
+
 # Auth Context Package
 
 ```yaml
