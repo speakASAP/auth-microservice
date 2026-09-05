@@ -333,7 +333,7 @@ Status: completed 2026-07-03.
 
 Evidence:
 
-- Auth internal token helper apply created/normalized the `orders-status-cleanup` service principal with `internal:orders-microservice:admin`; the JWT was emitted only to a 0600 temp file and validated by Auth with `hasOrdersAdmin=true`.
+- Historical direct machine-token provisioning details were removed; any future service call follows the [Service Identity Consumer Standard](../../SERVICE_IDENTITY_CONSUMER_STANDARD.md).
 - FlipFlop guarded smoke approval id `GOAL10-AUTH-SUBJECT-CREATE-READ-CANCEL-20260703` passed with create HTTP 201, read HTTP 200, `authSubjectPersisted=true`, cleanup attempted, and cleanup HTTP 200.
 - FlipFlop `origin/main` commit `7f0ef44` records the sanitized runtime artifact and verifier status `pass_auth_wallet_order_snapshot_create_read_cancel_smoke`.
 
@@ -360,5 +360,4 @@ Safety decision:
 
 Status: completed for Goal 10 FlipFlop order snapshot smoke.
 
-- Auth helper preflight and apply completed for `orders-status-cleanup` with `internal:orders-microservice:admin`.
-- Vault projection and FlipFlop runtime env presence were verified without printing token values.
+- Any future machine-identity integration is governed solely by the [Service Identity Consumer Standard](../../SERVICE_IDENTITY_CONSUMER_STANDARD.md).
