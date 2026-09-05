@@ -73,3 +73,14 @@ RabbitMQ publishers and consumers authenticate to the broker. A message does
 not carry caller authority. A message handler that initiates a privileged
 service action must make a separately authorized HTTP call under this standard.
 CronJobs and CLI jobs are callers and need their own `(caller -> target)`
+principal.
+
+## Prohibited
+
+Do not create a second service-token format, a shared service credential, a
+self-signed service JWT, an API-key substitute, a self-asserted caller header,
+or a principal without a revocable Auth record. Do not mix service credentials
+with user access tokens or grant user roles from a service token.
+
+If an integration cannot meet this contract, stop and repair the integration;
+do not document an exception or alternative protocol.
