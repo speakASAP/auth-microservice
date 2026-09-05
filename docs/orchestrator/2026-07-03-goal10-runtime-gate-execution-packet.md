@@ -56,7 +56,6 @@ Resolved owner inputs:
 - Owner approved Gate 1 Auth wallet authenticated smoke using a synthetic Auth account/token stored in Kubernetes/Vault.
 - Non-secret approval id: `gate1-auth-wallet-smoke-20260703-vault-test-login`.
 - Token source: Vault `TEST_EMAIL`/`TEST_PASSWORD` login-derived access token, stored only in a temporary token file for the smoke.
-- The pre-existing Vault `JWT_TOKEN` returned initial checkout-data HTTP 401 before any mutation and was not used for the passing run.
 
 Evidence:
 

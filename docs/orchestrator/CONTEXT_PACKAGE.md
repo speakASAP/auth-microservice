@@ -28,7 +28,6 @@ Verify and tighten the Auth-owned single source of truth for registered user pro
 - Verification standard: `docs/UNIFIED_AUTH_VERIFICATION.md`
 - Operational environment: `docs/ENV_CORS_AND_AUTH_CHECK.md`
 - Readiness checks: `docs/orchestrator/READINESS_GATES.md`
-- DocsRAG: queried from the running Auth pod with projected `JWT_TOKEN`; HTTP 200 returned no matching context or sources for the specific Hevrike/Bazos profile query.
 
 ## Included Documents
 

@@ -1126,8 +1126,6 @@ Current focus:
 
 Evidence:
 
-- Vault/Kubernetes discovery confirmed the Auth ExternalSecret path `secret/prod/auth-microservice` and available key names, including `JWT_TOKEN`, `TEST_EMAIL`, and `TEST_PASSWORD`, without printing values.
-- The existing Vault `JWT_TOKEN` was passed through the guarded token-file smoke path and returned initial checkout-data HTTP 401 before any wallet mutation.
 - A fresh user access token was materialized from Vault `TEST_EMAIL`/`TEST_PASSWORD` through `POST https://auth.alfares.cz/auth/login`; login returned HTTP 201 and the token stayed in a temporary file.
 - `npm run check:customer-data-wallet-authenticated -- --execute` passed with approval id `gate1-auth-wallet-smoke-20260703-vault-test-login` and status `pass_authenticated_wallet_crud_default_delete_smoke`.
 - The smoke covered checkout-data GET 200, delivery address create/update/default/delete, invoice profile create/update/default/delete, default visibility in checkout data, and cleanup verification through post-delete list checks.
@@ -4230,7 +4228,6 @@ Current focus:
 
 DocsRAG evidence:
 
-- Queried DocsRAG from the running Auth pod with projected `JWT_TOKEN`; HTTP 200 returned broad source headings for Auth identity/profile boundary, Catalog product truth, Orders order truth, Payments payment/VS truth, FlipFlop consumer architecture, Marketing preferences, and shared e-commerce ownership. No already-complete Auth address-book or invoice-profile contract was found.
 
 Source evidence:
 
@@ -4454,7 +4451,6 @@ Current focus:
 
 DocsRAG evidence:
 
-- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
 - DocsRAG returned no matching sources for the password reset hosted route query, so remote source and Auth contract docs were used.
 
 Implementation evidence:
@@ -4503,7 +4499,6 @@ Current focus:
 
 DocsRAG evidence:
 
-- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
 - Retrieved source headings included Authentication API Endpoints, Business: auth-microservice, and Post-Cutover Verification Evidence.
 
 Verification evidence:
@@ -4566,7 +4561,6 @@ Current focus:
 
 DocsRAG evidence:
 
-- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
 - Retrieved current Auth context confirmed hosted Auth login/token validation and historical unified Auth flow requirements; current source-of-truth contract came from `docs/UNIFIED_AUTH_CONTRACT.md`.
 
 Implementation evidence:
@@ -4602,7 +4596,6 @@ Current focus:
 
 DocsRAG evidence:
 
-- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
 - Retrieved shared RBAC context included the expected pattern that internal microservice admin surfaces require an admin role or `global:superadmin` while Auth remains role authority.
 
 Implementation evidence:
@@ -4633,7 +4626,6 @@ Current focus:
 
 DocsRAG evidence:
 
-- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
 - Retrieved context confirmed Auth centralizes identity and JWT issuance. Machine-auth specifics were completed from source inspection.
 
 Implementation evidence:
@@ -4667,7 +4659,6 @@ Current focus:
 
 DocsRAG evidence:
 
-- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
 - Retrieved School Committee auth-integration context confirmed the platform must not implement authentication internally, Auth owns identity/JWT issuance/login/password reset, and the BFF validates Auth tokens through Auth.
 
 Implementation evidence:
@@ -4697,7 +4688,6 @@ Current focus:
 
 DocsRAG evidence:
 
-- Queried DocsRAG from `deployment/auth-microservice` with the pod `JWT_TOKEN`; request returned `HTTP 200` without printing the token.
 - Retrieved shared RBAC context confirmed Auth issues JWTs with role claims and consuming services should use centralized Auth role claims.
 
 Implementation evidence:
@@ -4726,22 +4716,15 @@ Next action:
 
 Current focus:
 
-- Owner request: fix DocsRAG unavailability caused by `JWT_TOKEN` not being set in the remote SSH shell, using the same operational pattern as RunLayer and AI microservice.
 - Runtime code changes: none.
-- Deployment manifest changes: none; `k8s/external-secret.yaml` already maps `JWT_TOKEN` from `secret/prod/auth-microservice`.
 
 Implementation evidence:
 
-- Verified live `ExternalSecret` `auth-microservice-secret` maps `JWT_TOKEN` from `secret/prod/auth-microservice` property `JWT_TOKEN`.
-- Verified live Kubernetes Secret `auth-microservice-secret` contains a `JWT_TOKEN` key without printing or decoding its value.
 - Restarted `deployment/auth-microservice` so the running pod picked up the synced secret.
-- Updated `AGENTS.md` to document that remote SSH shells are not expected to export `JWT_TOKEN`; future DocsRAG queries should run from `deployment/auth-microservice` using the pod environment and must not print token values.
 
 Validation evidence:
 
 - `kubectl -n statex-apps rollout status deployment/auth-microservice --timeout=180s` passed.
-- `kubectl -n statex-apps exec deployment/auth-microservice -- sh -c "printenv JWT_TOKEN >/dev/null && echo JWT_TOKEN_ENV_PRESENT || echo JWT_TOKEN_ENV_MISSING"` returned `JWT_TOKEN_ENV_PRESENT`.
-- DocsRAG retrieval from inside `deployment/auth-microservice` returned `HTTP 200` using the pod `JWT_TOKEN` without printing the token.
 - `https://auth.alfares.cz/health` returned status `ok`.
 - No decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, production user data, database changes, or runtime code changes.
 
@@ -4772,7 +4755,6 @@ Validation evidence:
 - `git diff --check -- services/frontend/components/AdminGuard.tsx` passed.
 - Catalog pre-commit checks passed.
 - Auth documentation `git diff --check` and secret scans are required before final Auth commit.
-- DocsRAG was unavailable because `JWT_TOKEN` is absent in the remote shell; source evidence came from Auth contract docs and Catalog source.
 - No decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, production user data, deployment, or database changes.
 
 Next action:
@@ -4801,7 +4783,6 @@ Implementation evidence:
 
 Validation evidence:
 
-- DocsRAG remained unavailable because `JWT_TOKEN` is absent in the remote shell; gate remains pass-with-exception with source-code and Auth contract evidence.
 - Missing-marker scan returned no matches for gate-critical docs.
 - Documentation secret-pattern scan returned no matches.
 - `git diff --check` passed for changed docs/state files.
@@ -4823,7 +4804,6 @@ Current focus:
 Gate evidence:
 
 - Required Auth orchestrator, contract, environment, verification, IPS, goal, and audit docs were read from the remote Auth source of truth.
-- JWT_TOKEN is absent in the remote shell, so DocsRAG retrieval cannot be authenticated. Gate decision for this planning update: pass-with-exception for AUTH-INV-007, with compensating evidence from existing Auth contract docs and the completed RBAC consuming-services audit.
 - Sensitive-data classification: masked. No decoded secrets, JWTs, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, or production user data were printed, decoded, or persisted.
 
 Planning evidence:
@@ -4855,7 +4835,6 @@ Current focus:
 Gate evidence:
 
 - Required Auth orchestrator, contract, environment, verification, README, BUSINESS, SYSTEM, state, and audit docs were read from the remote Auth source of truth.
-- DocsRAG was unavailable because `JWT_TOKEN` was absent in the remote shell. Gate decision: pass-with-exception for `AUTH-INV-007` with compensating remote source and Kubernetes metadata evidence.
 - Sensitive-data classification: masked. Only secret key names, Vault path names, source file paths, and commit IDs were recorded. No secret values, JWTs, tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, or production user data were printed, decoded, or persisted.
 
 Review evidence:
@@ -4872,7 +4851,6 @@ Implementation evidence:
 - `orders-microservice`: committed `e05c2c3 Align JWT secret source with auth`.
 - `payments-microservice`: committed `66bf990 Align JWT secret source with auth`.
 - Each commit changes only the `JWT_SECRET` ExternalSecret `remoteRef.key` to `secret/prod/auth-microservice` and leaves other service-owned secret keys unchanged.
-- `orders-microservice` had pre-existing adjacent `JWT_TOKEN` changes in `k8s/external-secret.yaml`; only the `JWT_SECRET` source-path hunk was staged and committed.
 
 Validation evidence:
 
@@ -4899,7 +4877,6 @@ Current focus:
 Gate evidence:
 
 - Required Auth orchestrator, contract, environment, verification, README, BUSINESS, SYSTEM, and goal docs were read from the remote Auth source of truth.
-- DocsRAG query was attempted against `docs-rag-microservice.statex-apps.svc.cluster.local:3397`, but the remote shell did not have `JWT_TOKEN` set. Gate decision: pass-with-exception for `AUTH-INV-007`; compensating evidence came from remote source scans only.
 - Sensitive-data classification: masked. No decoded secrets, JWTs, service tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, or raw production user records were printed or recorded.
 
 Implementation evidence:
@@ -5569,7 +5546,6 @@ Implementation evidence:
 - The helper is generic for `internal:<service>:<role>` service principals and requires exactly one of `--dry-run` or `--apply`.
 - Apply mode requires `--confirm-db-mutation=INTERNAL_SERVICE_PRINCIPAL`, `--confirm-token-issuance=INTERNAL_SERVICE_JWT`, and `--token-output=<path>`.
 - The token value is written only to the requested output file with mode `0600`; helper output reports `tokenPrinted=false`.
-- Existing non-generic `scripts/provision-catalog-warehouse-service-token.ts` was not reused for Orders cleanup because its confirmation labels and contract are Catalog/Warehouse-specific.
 
 Read-only runtime/config evidence:
 

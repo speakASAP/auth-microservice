@@ -261,7 +261,6 @@ that repo's status/validation report.
 ## 2026-07-03 Goal 10.65 Gate 1 Auth Authenticated Wallet Smoke
 
 - Gate 1 passed with owner-approved Vault-backed synthetic credentials and non-secret approval id `gate1-auth-wallet-smoke-20260703-vault-test-login`.
-- Vault/Kubernetes discovery identified the Auth ExternalSecret path and key names without printing values. The existing Vault `JWT_TOKEN` returned HTTP 401 at initial checkout-data before mutation, so a fresh user access token was materialized from Vault `TEST_EMAIL`/`TEST_PASSWORD` through Auth login into a temporary token file.
 - Auth authenticated smoke status was `pass_authenticated_wallet_crud_default_delete_smoke`. It verified checkout-data GET 200, delivery address create/update/default/delete, invoice profile create/update/default/delete, default selection visibility in checkout data, and post-cleanup absence from delivery/invoice lists.
 - Sensitive-data assertions passed: no Authorization header, token, cookie, request body, response body, DB read, secret, password, JWT, decoded claim, or raw production customer data was printed or recorded; rows were synthetic and cleanup passed.
 - Remaining runtime gates are consumer/runtime scoped: FlipFlop guarded gateway wallet smoke, FlipFlop browser/session selector smoke, ChytraKoupe guarded selector smoke, Cliplot synthetic browser/session wallet-read evidence, and Rent-a-box metadata-only production preflight.
