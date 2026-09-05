@@ -4773,7 +4773,7 @@ Decision evidence:
 
 - Default consumer pattern is `POST /auth/validate` for admin panels, browser-facing backends, lower-throughput APIs, and consumers that do not need JWT verification secret material.
 - High-throughput backend exception is an approved shared local verifier pattern, constrained to Auth-sourced verification material, expiry/signature validation, unsafe-algorithm rejection, full Auth role-string preservation, safe logging, and consumer-owned endpoint authorization.
-- Static service tokens and API keys remain separate from Auth user identity and are deferred to RBAC-REM-06.
+- Machine identity is governed solely by the [Service Identity Consumer Standard](../SERVICE_IDENTITY_CONSUMER_STANDARD.md).
 
 Implementation evidence:
 
