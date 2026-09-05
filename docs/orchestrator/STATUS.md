@@ -4604,7 +4604,6 @@ Next action:
 
 Current focus:
 
-- Owner-selected remediation chunk: RBAC-REM-07 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
 - Logging branch: `main`.
 - Logging commit: `4769c51 Enforce Auth roles for logging admin reads`.
 - Auth runtime code changes: none.
@@ -4639,7 +4638,6 @@ Next action:
 
 Current focus:
 
-- Owner-approved remediation chunk: RBAC-REM-06 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
 - Auth runtime code changes: none.
 - Consumer runtime code changes: none.
 - Deployment: not run.
@@ -4651,7 +4649,6 @@ DocsRAG evidence:
 
 Implementation evidence:
 
-- Added `docs/INTERNAL_SERVICE_AUTH_BOUNDARY_REVIEW.md`.
 - Reviewed Auth `InternalServiceGuard`, internal Auth endpoint guards, and `docs/UNIFIED_AUTH_CONTRACT.md`.
 - Reviewed RunLayer `JwtGuard`, service-token env keys, and outbound token clients.
 - Reviewed Notifications `JwtRolesGuard`, deployment notes, and orchestrator/AI service clients.
@@ -4675,7 +4672,6 @@ Next action:
 
 Current focus:
 
-- Owner-selected remediation chunk: RBAC-REM-05 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
 - School Committee branch: `main`.
 - Auth runtime code changes: none.
 - School Committee runtime code changes: none.
@@ -4708,7 +4704,6 @@ Next action:
 
 Current focus:
 
-- Owner-selected remediation chunk: RBAC-REM-04 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
 - SpeakASAP branch: `main`.
 - SpeakASAP commit: `7135483 Preserve scoped Auth roles in SpeakASAP checks`.
 - Auth runtime code changes: none.
@@ -4772,7 +4767,6 @@ Next action:
 
 Current focus:
 
-- Owner-selected remediation chunk: RBAC-REM-03 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
 - Catalog branch: `feature/catalog-goal-04-channel-readiness-model`.
 - Catalog commit: `5f0e087 Make catalog admin guard role aware`.
 - Auth runtime code changes: none.
@@ -4803,7 +4797,6 @@ Next action:
 
 Current focus:
 
-- Owner-selected remediation chunk: RBAC-REM-02 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
 - Runtime Auth code changes: none.
 - Consumer runtime code changes: none.
 - Deployment: not run.
@@ -4818,7 +4811,6 @@ Implementation evidence:
 
 - Added `docs/CONSUMER_JWT_VALIDATION_STANDARD.md`.
 - Updated `docs/UNIFIED_AUTH_CONTRACT.md` with the consumer token validation standard.
-- Updated `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` with RBAC-REM-02 completion, consumer classification, and follow-up chunks.
 - Updated continuation and execution-plan state for RBAC-REM-02 completion.
 
 Validation evidence:
@@ -4837,7 +4829,6 @@ Next action:
 
 Current focus:
 
-- Owner-selected remediation chunk: RBAC-REM-02 from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
 - Objective: standardize when consumers use POST /auth/validate versus an approved shared local verifier for Auth-issued JWTs.
 - Runtime Auth code changes: none in this selection/planning update.
 - Consumer runtime code changes: none in this selection/planning update.
@@ -4870,7 +4861,6 @@ Next action:
 
 Current focus:
 
-- Owner-selected remediation chunk: `RBAC-REM-01` from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`.
 - Runtime Auth code changes: none.
 - Consumer runtime code changes: none.
 - Consumer manifest changes: `k8s/external-secret.yaml` only in catalog, warehouse, suppliers, orders, and payments.
@@ -4928,7 +4918,6 @@ Gate evidence:
 
 Implementation evidence:
 
-- Added `docs/RBAC_CONSUMING_SERVICES_AUDIT.md` with inspected consumer list, Auth contract baseline, compatibility findings, and owner-approvable remediation backlog.
 - Updated Goal 06 status in `docs/orchestrator/GOALS.md`, `implementation-goals/GOAL-06-rbac-consuming-services-audit.md`, `implementation-goals/README.md`, `TASKS.md`, `docs/orchestrator/PLAN.md`, `docs/orchestrator/EXECUTION_PLAN.md`, and `docs/IMPLEMENTATION_STATE.md`.
 - Updated `STATE.json` milestone and next focus.
 
@@ -4955,7 +4944,6 @@ Validation evidence:
 
 Next action:
 
-- Owner should select one remediation chunk from `docs/RBAC_CONSUMING_SERVICES_AUDIT.md`, starting with `RBAC-REM-01` secret-source alignment review for direct JWT consumers.
 
 ## 2026-06-12 - IPS Documentation Compliance Update
 
