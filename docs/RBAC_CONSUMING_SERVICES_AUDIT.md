@@ -1,5 +1,16 @@
 # RBAC Consuming Services Audit
 
+> **HISTORICAL AUDIT — 2026-06-12. Not a standard.**
+> A point-in-time survey of how consumers validated tokens, kept as evidence of
+> what was true then. Service-to-service rules have changed since: the current
+> contract is a per-pair RS256 service JWT with per-route role enforcement.
+>
+> Canonical for service-to-service auth, minting and RBAC:
+> [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md).
+> Canonical for validating user tokens:
+> [`CONSUMER_JWT_VALIDATION_STANDARD.md`](CONSUMER_JWT_VALIDATION_STANDARD.md).
+
+
 Date: 2026-06-12
 Goal: GOAL-06 - RBAC Consuming Services Audit
 Scope: documentation-only audit from remote source repositories under `/home/ssf/Documents/Github`.

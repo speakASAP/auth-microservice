@@ -1,5 +1,20 @@
 # Internal Service Auth Boundary Review
 
+> **SUPERSEDED for anything forward-looking — 2026-08-25.**
+> This is a **2026-06-13 historical inventory**, kept because
+> `SERVICE_IDENTITY_CONSUMER_STANDARD.md` cites its follow-ups. Do not take
+> guidance from it.
+>
+> Its "Decision" below says static service tokens and API keys **may remain
+> valid for service-to-service calls**. That is no longer the contract. The
+> standard for every new machine path is an Auth-issued **per-pair RS256
+> service JWT**; `x-internal-service-token` is legacy and closed to new
+> adopters. Follow-up 4 of this review (Catalog/Orders to Warehouse) was
+> resolved on 2026-08-25 by migrating those lanes to per-pair RS256 — leaving
+> it open is what turned the HS256 retirement into an outage.
+>
+> Canonical: [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md)
+
 Date: 2026-06-13
 Remediation chunk: RBAC-REM-06
 Scope: documentation-only inventory of service-token and API-key machine-auth paths observed in Auth consumers.

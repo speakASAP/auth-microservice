@@ -1,8 +1,28 @@
 # Service Identity Consumer Standard
 
 Date: 2026-06-24 · **revised 2026-08-25**
-Status: active standard
-Canonical file: `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`
+Status: **active standard — canonical, single point of truth**
+Canonical file: `auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`
+
+> **This is the single point of truth for how one service authenticates to
+> another, how service tokens are minted and rotated, and how service RBAC is
+> enforced.** It covers agent-to-agent calls too. Registered in
+> [`shared/docs/DOCUMENTATION_AUTHORITY.md`](../../shared/docs/DOCUMENTATION_AUTHORITY.md)
+> and in the read order of [`shared/AGENTS.md`](../../shared/AGENTS.md).
+>
+> Adjacent lanes, deliberately separate — do not merge them into this one:
+>
+> | Question | Canonical document |
+> | --- | --- |
+> | A service calls another service (machine identity) | **this file** |
+> | A consumer validates a human user's token | [`CONSUMER_JWT_VALIDATION_STANDARD.md`](CONSUMER_JWT_VALIDATION_STANDARD.md) |
+> | An app sends humans to hosted login/registration | [`HOSTED_AUTH_CONSUMER_STANDARD.md`](HOSTED_AUTH_CONSUMER_STANDARD.md) |
+> | Auth endpoints, JWT shape, CORS, OAuth, magic links | [`UNIFIED_AUTH_CONTRACT.md`](UNIFIED_AUTH_CONTRACT.md) |
+> | Per-service migration status and evidence | [`RS256_SERVICE_TOKEN_MIGRATION_PLAN.md`](RS256_SERVICE_TOKEN_MIGRATION_PLAN.md) |
+>
+> Anything else describing service-to-service credentials is historical. If
+> another document contradicts this one, this one wins and the other is a bug
+> to repair in its own source.
 
 ## Decision
 
@@ -86,6 +106,11 @@ Existing service-local API keys and bearer service tokens may remain only as doc
 - `catalog-microservice` `x-internal-service-token` uses Auth-owned runtime secret source `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN` for Goal 17 Catalog-to-Orders product statistics. Consumers still treat it as service identity, not user identity.
 - `speakasap` `/api/v1/internal/...` `x-internal-token` paths are service-owned internal routes.
 - Catalog-to-Warehouse and Orders-to-Warehouse service bearer tokens: **resolved 2026-08-25** as Auth-compatible per-pair RS256 service JWTs. This closes follow-up 4 of `INTERNAL_SERVICE_AUTH_BOUNDARY_REVIEW.md`, open since 2026-06-13. Leaving it open is what made the HS256 retirement an outage rather than a migration.
+- **Log ingest (`logging-ingest-credentials#LOGGING_SERVICE_TOKEN`) is a shared static token, not per-pair — the largest remaining instance of the pattern this standard closes.** One opaque 64-character string is presented by every logger; `logging-microservice` accepts it via `LOG_INGEST_BEARER_TOKENS`. It is exactly the shape described above under "why not a shared static token": one leak forces rotation across every holder at once. (The separate *admin* token is already a compliant per-pair RS256 JWT; only the ingest credential is shared.)
+
+  Measured 2026-09-04: 30 deployments hold it and log correctly; **11 do not hold it and are silently logging nothing** — `domain-research`, `leads-microservice`, `invoices-microservice`, `ai-microservice`, `shop-assistant`, `rent-a-box-api`, `heureka-service`, `allegro-service`, `bazos-service`, `aukro-service`, `agentic-email-processing-system`. Each has `LOGGING_SERVICE_URL` set, so it believes it is logging while ingest answers 401 and the client's catch discards the rejection.
+
+  Do not close this by handing the shared string to the remaining 11 — that widens the blast radius this standard exists to shrink. Mint per-pair `internal:logging-microservice:ingest` principals instead. Note also that the `secretKeyRef` for the existing holders lives only on live Deployment objects and in no manifest, so an apply from Git drops it silently.
 
 Do not block hosted human login migration on these exceptions unless a single guard path cannot distinguish user and machine actors safely.
 
