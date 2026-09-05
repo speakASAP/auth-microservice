@@ -195,14 +195,27 @@ Service tokens live 90 days. **Rotation must verify acceptance, never trust `exp
 > **A token you mint today will expire unless you re-mint it by hand.**
 >
 > What does run is *detection*, and it is good:
-> `statex-token-health.timer` (daily ~07:15, `shared/scripts/token-health/`,
-> `Persistent=true`) decodes every credential-shaped env var mounted by a running
-> pod and alerts at **WARN 21 days / CRITICAL 7 days**, flagging HS256 and
+> **`systemctl --user` `statex-token-health.timer`** (daily 07:15 +≤15min jitter,
+> `shared/scripts/token-health/`, `Persistent=true`) decodes every
+> credential-shaped env var mounted by a running pod and classifies at
+> **WARN 21 days / CRITICAL 7 days**, forcing CRITICAL for HS256 and flagging
 > `global:superadmin` regardless of `exp`; failures page via
-> `statex-token-health-failure.service`. The one credential rotated
-> automatically is the logging *admin* token
-> (`shared/scripts/rotate-logging-admin-token.sh`, user crontab 03:15) — the
-> reference implementation for the acceptance-probe pattern.
+> `statex-token-health-failure.service`.
+>
+> **Check it with `systemctl --user`, not `systemctl`.** A system-level copy is
+> installed at `/etc/systemd/system/statex-token-health.timer` and is
+> **disabled and dead**; the live one is the user timer. The unit files are
+> byte-identical, so a bare `systemctl status` shows "inactive (dead)" and
+> invites the wrong conclusion that detection is not running.
+>
+> It alerts on *transitions*, not standing state — with the exception of
+> CRITICAL inside `URGENT_DAYS=7`, which re-alerts every run.
+>
+> Two credential jobs run automatically, and neither rotates a service token:
+> `shared/scripts/rotate-logging-admin-token.sh` (user crontab 03:15) re-mints
+> the logging *admin* token and is the reference implementation for the
+> acceptance-probe pattern; `vault-eso-token-renew.timer` (daily) *renews* ESO's
+> Vault token rather than re-minting it.
 >
 > **Until Phase 6 ships, treat a `token-health` WARN as the rotation trigger.**
 
