@@ -3,7 +3,10 @@
     "allow": [
       "Bash(rtk *)",
       "mcp__plugin_playwright_playwright__browser_fill_form",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "mcp__postgres__postgres_query",
+      "mcp__postgres__postgres_database_catalog",
+      "mcp__postgres__postgres_list_databases"
     ]
   },
   "enableAllProjectMcpServers": true,
