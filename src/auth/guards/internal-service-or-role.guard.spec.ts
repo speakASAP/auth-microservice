@@ -162,4 +162,36 @@ describe('InternalServiceOrRoleGuard', () => {
       await expect(guard.canActivate(ctx({}))).rejects.toThrow(UnauthorizedException);
     });
   });
+
+  /**
+   * Closing the migration window. Once every caller presents a per-pair bearer,
+   * ALLOW_INTERNAL_STATIC_TOKEN=false removes the shared-secret path entirely —
+   * that flag flip is what ends the non-conformance, so it must actually bite.
+   */
+  describe('when the static path is closed', () => {
+    afterEach(() => {
+      delete process.env.ALLOW_INTERNAL_STATIC_TOKEN;
+    });
+
+    it('refuses a valid static token', async () => {
+      const { guard } = build();
+      process.env.INTERNAL_SERVICE_TOKEN = 'shared-secret';
+      delete process.env.TRUSTED_INTERNAL_SERVICES;
+      process.env.ALLOW_INTERNAL_STATIC_TOKEN = 'false';
+
+      await expect(
+        guard.canActivate(ctx({ 'x-internal-service-token': 'shared-secret' })),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('still accepts a per-pair RS256 principal holding the role', async () => {
+      const { guard } = build();
+      process.env.ALLOW_INTERNAL_STATIC_TOKEN = 'false';
+      mockedVerify.mockResolvedValue({ sub: 'u1' } as never);
+
+      await expect(
+        guard.canActivate(ctx({ authorization: 'Bearer rs256-token' })),
+      ).resolves.toBe(true);
+    });
+  });
 });

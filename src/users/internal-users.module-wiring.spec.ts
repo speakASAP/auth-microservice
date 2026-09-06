@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { AuthService } from '../auth/auth.service';
 import { InternalUsersController } from './internal-users.controller';
 import { UsersService } from './users.service';
+import { RolesService } from '../roles/roles.service';
 
 /**
  * Proves the UsersModule <-> AuthModule dependency cycle actually resolves.
@@ -34,6 +35,11 @@ describe('InternalUsersController DI wiring', () => {
           ),
           useValue: {},
         },
+        // InternalUserExistenceGuard, which now gates this controller, resolves
+        // roles from the database. Nest constructs a route's guard alongside the
+        // controller, so an unsatisfiable guard dependency fails at boot exactly
+        // like a missing forwardRef would — which is what this spec exists to catch.
+        { provide: RolesService, useValue: { getUserRoles: jest.fn(async () => []) } },
       ],
     })
       .overrideProvider(AuthService)
@@ -58,6 +64,7 @@ describe('InternalUsersController DI wiring', () => {
       providers: [
         { provide: UsersService, useValue: {} },
         { provide: AuthService, useValue: { createSessionForUser } },
+        { provide: RolesService, useValue: { getUserRoles: jest.fn(async () => []) } },
       ],
     }).compile();
 

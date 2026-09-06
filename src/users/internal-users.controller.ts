@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, forwardRef, Get, Inject, NotFoundException, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
-import { InternalServiceGuard } from '../auth/guards/internal-service.guard';
+import { InternalUserExistenceGuard } from '../auth/guards/internal-route.guards';
 import { UsersService } from './users.service';
 
 /**
@@ -11,7 +11,7 @@ import { UsersService } from './users.service';
 const MAX_LEGACY_ID_BATCH = 1000;
 
 @Controller('internal/users')
-@UseGuards(InternalServiceGuard)
+@UseGuards(InternalUserExistenceGuard)
 export class InternalUsersController {
   constructor(
     private readonly usersService: UsersService,

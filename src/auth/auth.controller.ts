@@ -20,7 +20,11 @@ import { MagicLinkRequestDto } from './dto/magic-link-request.dto';
 import { MagicLinkVerifyDto } from './dto/magic-link-verify.dto';
 import { ContactCodeRequestDto } from './dto/contact-code-request.dto';
 import { ContactCodeVerifyDto } from './dto/contact-code-verify.dto';
-import { InternalServiceGuard } from './guards/internal-service.guard';
+import {
+  InternalEmailCheckGuard,
+  InternalMagicLinkGuard,
+  InternalPreferencesGuard,
+} from './guards/internal-route.guards';
 import { UpdateUserMarketingPreferencesDto } from './dto/update-user-marketing-preferences.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CreateDeliveryAddressDto, UpdateDeliveryAddressDto } from './dto/delivery-address.dto';
@@ -257,31 +261,31 @@ export class AuthController {
   }
 
   @Get('internal/users/:userId/preferences')
-  @UseGuards(InternalServiceGuard)
+  @UseGuards(InternalPreferencesGuard)
   async getUserPreferences(@Param('userId') userId: string) {
     return this.authService.getUserMarketingPreferences(userId);
   }
 
   @Patch('internal/users/:userId/preferences')
-  @UseGuards(InternalServiceGuard)
+  @UseGuards(InternalPreferencesGuard)
   async updateUserPreferences(@Param('userId') userId: string, @Body() dto: UpdateUserMarketingPreferencesDto) {
     return this.authService.updateUserMarketingPreferences(userId, dto);
   }
 
   @Post('internal/users/:userId/unsubscribe')
-  @UseGuards(InternalServiceGuard)
+  @UseGuards(InternalPreferencesGuard)
   async unsubscribeUser(@Param('userId') userId: string) {
     return this.authService.unsubscribeUser(userId);
   }
 
   @Post('internal/magic-link/token')
-  @UseGuards(InternalServiceGuard)
+  @UseGuards(InternalMagicLinkGuard)
   async createMagicLinkToken(@Body() body: { email: string; return_url: string }) {
     return this.authService.createMagicLinkToken(body.email, body.return_url);
   }
 
   @Get('internal/check-email')
-  @UseGuards(InternalServiceGuard)
+  @UseGuards(InternalEmailCheckGuard)
   async checkEmail(@Query('email') email: string) {
     if (!email) return { exists: false };
     const exists = await this.authService.checkEmailExists(email);

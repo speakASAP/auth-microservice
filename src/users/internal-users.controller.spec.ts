@@ -3,6 +3,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
 import { InternalUsersController } from './internal-users.controller';
 import { UsersService } from './users.service';
+import { RolesService } from '../roles/roles.service';
 
 describe('InternalUsersController', () => {
   let controller: InternalUsersController;
@@ -23,6 +24,11 @@ describe('InternalUsersController', () => {
       providers: [
         { provide: UsersService, useValue: usersService },
         { provide: AuthService, useValue: authService },
+        // InternalUserExistenceGuard resolves roles from the database. These
+        // tests cover controller behaviour, not the gate, so a stub is enough to
+        // satisfy DI; the guard itself is tested in
+        // auth/guards/internal-service-or-role.guard.spec.ts.
+        { provide: RolesService, useValue: { getUserRoles: jest.fn(async () => []) } },
       ],
     }).compile();
     controller = moduleRef.get(InternalUsersController);

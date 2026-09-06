@@ -311,7 +311,9 @@ Internal trusted-service helper:
 
 - `POST /auth/internal/magic-link/token`
 
-This endpoint creates a magic-link verify URL for a trusted service and is protected by the internal service headers documented below.
+This endpoint creates a magic-link verify URL for a calling service. It is a
+service-to-service route and is authenticated as described in the Internal Service
+Contract below.
 
 ## Redirect Allowlist
 
@@ -338,9 +340,32 @@ See `docs/ENV_CORS_AND_AUTH_CHECK.md` for the current environment reference.
 
 ## Internal Service Contract
 
-Trusted internal endpoints use:
+Every `/auth/internal/*` and `/internal/*` route is a service-to-service call. The
+required protocol is an Auth-issued per-pair RS256 service JWT in
+`Authorization: Bearer <token>`, as defined by the canonical
+[`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md). That
+document is authoritative for machine identity, minting, delivery, roles and rotation;
+this contract only enumerates the routes.
 
-`TRUSTED_INTERNAL_SERVICES` optionally restricts allowed caller names.
+A self-asserted caller header is not an authentication mechanism. Do not gate these
+routes on a caller-supplied service name, a static shared token, or an API key, and do
+not treat such a header as proof of caller identity.
+
+**Known non-conformance — the routes below do not meet that protocol today.** Every
+route in both tables is currently gated by `InternalServiceGuard`
+(`src/auth/guards/internal-service.guard.ts`): a static shared `INTERNAL_SERVICE_TOKEN`
+in `x-internal-service-token`, plus a self-asserted `x-service-name` matched against
+`TRUSTED_INTERNAL_SERVICES`. This covers `/auth/internal/users/:userId/preferences`,
+`/auth/internal/users/:userId/unsubscribe`, `/auth/internal/magic-link/token`,
+`/auth/internal/check-email` and `/internal/users/:userId/existence`. There is no RS256
+verification on any of them.
+
+Read the paragraphs above as the target, not as a description of current behaviour. The
+shared secret is not per-caller and not revocable per caller, and any holder of it can
+claim any trusted service name — including on the magic-link route, which mints user
+sessions. Do not add new callers or routes to this guard, and do not cite its presence
+as evidence that service identity is satisfied; the fix is migration to per-pair
+Auth-issued credentials.
 
 Registered-user communication preferences are Auth-owned and exposed only through internal Auth APIs:
 

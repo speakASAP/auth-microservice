@@ -18,6 +18,7 @@ import { MarketingConsentController } from './marketing-consent.controller';
 import { RolesModule } from '../roles/roles.module';
 import { ServicePrincipalsService } from './service-principals.service';
 import { ServicePrincipalsGuard } from './service-principals.guard';
+import { InternalUserExistenceGuard } from '../auth/guards/internal-route.guards';
 import { InternalServicePrincipalsController } from './internal-service-principals.controller';
 
 @Module({
@@ -31,7 +32,7 @@ import { InternalServicePrincipalsController } from './internal-service-principa
     RolesModule,
   ],
   controllers: [InternalUsersController, MarketingConsentController, InternalServicePrincipalsController],
-  providers: [UsersService, MarketingConsentService, UnsubscribeTokenService, ServicePrincipalsService, ServicePrincipalsGuard],
+  providers: [UsersService, MarketingConsentService, UnsubscribeTokenService, ServicePrincipalsService, ServicePrincipalsGuard, InternalUserExistenceGuard],
   exports: [UsersService, MarketingConsentService, UnsubscribeTokenService, ServicePrincipalsService],
 })
 export class UsersModule {}

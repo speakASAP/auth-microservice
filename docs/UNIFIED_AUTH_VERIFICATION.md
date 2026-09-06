@@ -30,7 +30,16 @@ Verify these sections against source before changing Auth behavior:
 - CORS: `CORS_ORIGIN`
 - RBAC enforcement: centralized roles and `roles` token claim
 - First-visit application access: successful hosted flows with configured `client_id` assign `app:<client_id>:user` before token signing; unknown apps, missing default roles, domain mismatch, and expired assignments fail closed
-- Internal registered-user preferences APIs protected by `InternalServiceGuard`
+- Internal registered-user preferences APIs are reachable only by an authenticated
+  caller. **Known non-conformance:** they are currently protected by
+  `InternalServiceGuard`, which checks a static shared `INTERNAL_SERVICE_TOKEN`
+  plus a self-asserted `x-service-name` header against `TRUSTED_INTERNAL_SERVICES`.
+  Both are prohibited by
+  [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md),
+  which requires one Auth-issued RS256 credential per `(caller -> target)` pair.
+  Verifying that this guard is present is **not** a pass for service identity —
+  record it as outstanding drift to repair, and do not extend it to new routes or
+  new callers.
 
 ## First-Visit Application Access
 

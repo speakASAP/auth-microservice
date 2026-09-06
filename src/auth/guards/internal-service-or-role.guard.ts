@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { verifyAuthToken } from '../jwt-verifier';
 import { UsersService } from '../../users/users.service';
 import { RolesService } from '../../roles/roles.service';
@@ -25,6 +25,8 @@ import { RolesService } from '../../roles/roles.service';
  */
 @Injectable()
 export class InternalServiceOrRoleGuard implements CanActivate {
+  private static readonly logger = new Logger(InternalServiceOrRoleGuard.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly rolesService: RolesService,
@@ -87,6 +89,16 @@ export class InternalServiceOrRoleGuard implements CanActivate {
   }
 
   private acceptStaticToken(req: any): boolean {
+    // The migration window. Once every caller presents a per-pair bearer, set
+    // ALLOW_INTERNAL_STATIC_TOKEN=false and this path is gone; the variable
+    // defaults to open so an unconfigured deploy cannot lock out callers that
+    // have not been migrated yet.
+    if (process.env.ALLOW_INTERNAL_STATIC_TOKEN === 'false') {
+      throw new UnauthorizedException(
+        'Static internal service tokens are no longer accepted',
+      );
+    }
+
     const token = req.headers['x-internal-service-token'];
     const serviceName = String(req.headers['x-service-name'] || '').trim();
     const expectedToken = process.env.INTERNAL_SERVICE_TOKEN || '';
@@ -104,6 +116,20 @@ export class InternalServiceOrRoleGuard implements CanActivate {
     if (trustedServices.length > 0 && !trustedServices.includes(serviceName)) {
       throw new UnauthorizedException('Service is not trusted');
     }
+
+    // Named at WARN on every acceptance so the migration has an observable exit
+    // condition: this line going quiet per caller is what proves that caller no
+    // longer needs the shared secret. `exp` on its new credential proves
+    // nothing, and neither does a Secret sync.
+    //
+    // The claimed name is self-asserted and therefore not evidence of identity —
+    // it is logged as a lead for finding the caller, not as an audit record.
+    InternalServiceOrRoleGuard.logger.warn(
+      `Legacy static internal-service token accepted on ${req.method} ${
+        req.route?.path ?? req.url
+      } (claimed x-service-name: ${serviceName || 'none'}). ` +
+        'Migrate this caller to a per-pair RS256 credential.',
+    );
 
     req.authPath = 'static';
     return true;

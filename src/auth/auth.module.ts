@@ -15,6 +15,11 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { InternalServiceGuard } from './guards/internal-service.guard';
+import {
+  InternalEmailCheckGuard,
+  InternalMagicLinkGuard,
+  InternalPreferencesGuard,
+} from './guards/internal-route.guards';
 import { UsersModule } from '../users/users.module';
 import { RolesModule } from '../roles/roles.module';
 import { LoggerModule } from '../../shared/logger/logger.module';
@@ -55,7 +60,17 @@ import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping
     })()),
   ],
   controllers: [AuthController, AdminUsersController, JwksController],
-  providers: [AuthService, JwtStrategy, RolesGuard, InternalServiceGuard],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    RolesGuard,
+    InternalServiceGuard,
+    // Per-route gates for /auth/internal/*. Each resolves roles from the
+    // database, so a revoked role stops working immediately rather than at exp.
+    InternalEmailCheckGuard,
+    InternalMagicLinkGuard,
+    InternalPreferencesGuard,
+  ],
   exports: [AuthService, RolesGuard, JwtModule],
 })
 export class AuthModule {}
