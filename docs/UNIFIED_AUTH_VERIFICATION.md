@@ -30,16 +30,18 @@ Verify these sections against source before changing Auth behavior:
 - CORS: `CORS_ORIGIN`
 - RBAC enforcement: centralized roles and `roles` token claim
 - First-visit application access: successful hosted flows with configured `client_id` assign `app:<client_id>:user` before token signing; unknown apps, missing default roles, domain mismatch, and expired assignments fail closed
-- Internal registered-user preferences APIs are reachable only by an authenticated
-  caller. **Known non-conformance:** they are currently protected by
-  `InternalServiceGuard`, which checks a static shared `INTERNAL_SERVICE_TOKEN`
-  plus a self-asserted `x-service-name` header against `TRUSTED_INTERNAL_SERVICES`.
-  Both are prohibited by
-  [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md),
-  which requires one Auth-issued RS256 credential per `(caller -> target)` pair.
-  Verifying that this guard is present is **not** a pass for service identity —
-  record it as outstanding drift to repair, and do not extend it to new routes or
-  new callers.
+- Internal routes each enforce a per-pair Auth-issued RS256 credential carrying a
+  least-privilege role, per
+  [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md).
+  Verify by effect, not by the presence of a guard class: a credential holding one
+  route's role must be refused on the others with `Principal lacks the required
+  role`. In particular `magic-link/token` must reject an `email-check`
+  credential — it can mint a user session.
+- The legacy shared-secret path (`INTERNAL_SERVICE_TOKEN` plus a self-asserted
+  `x-service-name`) is still accepted while the last callers migrate, and logs a
+  WARN on every acceptance. Treat that log, not `exp` and not a synced Secret, as
+  the signal for whether `ALLOW_INTERNAL_STATIC_TOKEN=false` can be set. Do not
+  extend that path to new routes or callers.
 
 ## First-Visit Application Access
 

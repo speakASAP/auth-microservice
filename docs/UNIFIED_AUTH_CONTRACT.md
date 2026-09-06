@@ -351,21 +351,26 @@ A self-asserted caller header is not an authentication mechanism. Do not gate th
 routes on a caller-supplied service name, a static shared token, or an API key, and do
 not treat such a header as proof of caller identity.
 
-**Known non-conformance — the routes below do not meet that protocol today.** Every
-route in both tables is currently gated by `InternalServiceGuard`
-(`src/auth/guards/internal-service.guard.ts`): a static shared `INTERNAL_SERVICE_TOKEN`
-in `x-internal-service-token`, plus a self-asserted `x-service-name` matched against
-`TRUSTED_INTERNAL_SERVICES`. This covers `/auth/internal/users/:userId/preferences`,
-`/auth/internal/users/:userId/unsubscribe`, `/auth/internal/magic-link/token`,
-`/auth/internal/check-email` and `/internal/users/:userId/existence`. There is no RS256
-verification on any of them.
+Every route below verifies a per-pair credential and enforces a least-privilege role,
+classified by effect rather than HTTP verb:
 
-Read the paragraphs above as the target, not as a description of current behaviour. The
-shared secret is not per-caller and not revocable per caller, and any holder of it can
-claim any trusted service name — including on the magic-link route, which mints user
-sessions. Do not add new callers or routes to this guard, and do not cite its presence
-as evidence that service identity is satisfied; the fix is migration to per-pair
-Auth-issued credentials.
+| Route | Required role |
+| --- | --- |
+| `GET /auth/internal/check-email` | `internal:auth-microservice:email-check` |
+| `GET /internal/users/:userId/existence` | `internal:auth-microservice:user-existence` |
+| `GET`/`PATCH /auth/internal/users/:userId/preferences`, `POST .../unsubscribe` | `internal:auth-microservice:preferences` |
+| `POST /auth/internal/magic-link/token` | `internal:auth-microservice:magic-link` |
+
+Roles resolve from Auth's database on every request, not from the token's own claim, so
+a revoked role stops working immediately rather than at `exp`. `magic-link` is
+deliberately alone on its own role: it can create a logged-in session for any user, and
+must never be reachable by a credential provisioned to check whether an email exists.
+
+**Migration window — closing.** The old shared `INTERNAL_SERVICE_TOKEN` plus
+self-asserted `x-service-name` path is still accepted while remaining callers are
+migrated, and every acceptance logs a WARN naming the route and claimed caller. That log
+going quiet per caller is the exit condition; set `ALLOW_INTERNAL_STATIC_TOKEN=false` to
+close it. Do not add new callers or routes to that path.
 
 Registered-user communication preferences are Auth-owned and exposed only through internal Auth APIs:
 
