@@ -56,7 +56,13 @@ const APP_DESCRIPTION =
 
 const ROLES = [
   {
-    scope: 'app',
+    // 'application', NOT 'app'. The role STRING renders as
+    // app:<name>:user, but RoleScope.APPLICATION is the value stored on the
+    // row, and assignDefaultApplicationAccess looks the default role up by
+    // that scope. Seeding 'app' leaves the lookup empty, which surfaces at
+    // login as "Invalid credentials" -- a configuration fault wearing a
+    // credential fault's message.
+    scope: 'application',
     name: 'user',
     description:
       'Operator access to the recording UI: create, control, review, save and discard own sessions',
