@@ -1,6 +1,10 @@
 import { BadRequestException, Body, Controller, forwardRef, Get, Inject, NotFoundException, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
-import { InternalUserExistenceGuard } from '../auth/guards/internal-route.guards';
+import {
+  InternalLegacyLookupGuard,
+  InternalSsoHandoffGuard,
+  InternalUserExistenceGuard,
+} from '../auth/guards/internal-route.guards';
 import { UsersService } from './users.service';
 
 /**
@@ -10,8 +14,12 @@ import { UsersService } from './users.service';
  */
 const MAX_LEGACY_ID_BATCH = 1000;
 
+/**
+ * Internal user routes. Guards are per-method by effect — never class-level
+ * `user-existence`. That role is an offboarding probe; putting it on the whole
+ * controller let any existence principal also mint sessions and provision users.
+ */
 @Controller('internal/users')
-@UseGuards(InternalUserExistenceGuard)
 export class InternalUsersController {
   constructor(
     private readonly usersService: UsersService,
@@ -21,6 +29,7 @@ export class InternalUsersController {
   ) {}
 
   @Get('by-legacy-id')
+  @UseGuards(InternalLegacyLookupGuard)
   async byLegacyId(@Query('system') system: string, @Query('legacyUserId') legacyUserId: string) {
     const numericId = Number(legacyUserId);
     if (!system || !Number.isInteger(numericId) || numericId <= 0) {
@@ -49,6 +58,7 @@ export class InternalUsersController {
    * them would hide a data defect behind a routine not-found.
    */
   @Get('by-auth-user')
+  @UseGuards(InternalLegacyLookupGuard)
   async byAuthUser(@Query('system') system: string, @Query('authUserId') authUserId: string) {
     if (!system) {
       throw new BadRequestException('system is required');
@@ -75,6 +85,7 @@ export class InternalUsersController {
    * table, and an uncapped `IN (...)` is a cheap way for one caller to hurt everyone.
    */
   @Post('names-by-legacy-ids')
+  @UseGuards(InternalLegacyLookupGuard)
   async namesByLegacyIds(@Body() body: { system: string; legacyUserIds: number[] }) {
     if (!body?.system) {
       throw new BadRequestException('system is required');
@@ -97,6 +108,7 @@ export class InternalUsersController {
 
   /** Contract C9. Shape mirrors `ResolveLegacyUserRequest` in shared/contracts/drills.contracts.ts. */
   @Post('resolve-or-provision-legacy')
+  @UseGuards(InternalSsoHandoffGuard)
   async resolveOrProvisionLegacy(
     @Body() body: { system: string; legacyUserId: number; email: string; firstName?: string; lastName?: string },
   ) {
@@ -124,6 +136,7 @@ export class InternalUsersController {
    * as a fact worth a 200).
    */
   @Get(':userId/existence')
+  @UseGuards(InternalUserExistenceGuard)
   async checkExistence(@Param('userId') userId: string) {
     const trimmed = (userId || '').trim();
     if (!this.isUuid(trimmed)) {
@@ -155,6 +168,7 @@ export class InternalUsersController {
    * cannot leak into a browser handoff by accident.
    */
   @Post(':userId/session')
+  @UseGuards(InternalSsoHandoffGuard)
   async createSession(@Param('userId') userId: string) {
     const trimmed = (userId || '').trim();
     if (!trimmed) {

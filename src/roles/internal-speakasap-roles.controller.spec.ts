@@ -7,6 +7,7 @@ import {
   SPEAKASAP_APPLICATION_NAME,
   SPEAKASAP_TEACHER_ROLE_NAME,
 } from './internal-speakasap-roles.controller';
+import { InternalSpeakasapTeacherGrantGuard } from '../auth/guards/internal-route.guards';
 
 describe('InternalSpeakasapRolesController', () => {
   let controller: InternalSpeakasapRolesController;
@@ -29,7 +30,10 @@ describe('InternalSpeakasapRolesController', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [InternalSpeakasapRolesController],
       providers: [{ provide: RolesService, useValue: rolesService }],
-    }).compile();
+    })
+      .overrideGuard(InternalSpeakasapTeacherGrantGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
     controller = moduleRef.get(InternalSpeakasapRolesController);
   });
 
@@ -38,7 +42,10 @@ describe('InternalSpeakasapRolesController', () => {
     rolesService.hasRoleAssignment.mockResolvedValue(false);
     rolesService.assignRoleToUser.mockResolvedValue({ id: 'ur-1' });
 
-    const result = await controller.grantTeacher(USER_ID, { 'x-service-name': 'user-service' });
+    const result = await controller.grantTeacher(USER_ID, {
+      authPath: 'rs256',
+      user: { email: 'svc-user-service--auth-microservice@internal.alfares.cz' },
+    });
 
     expect(rolesService.findByNameForApplication).toHaveBeenCalledWith(
       SPEAKASAP_TEACHER_ROLE_NAME,
@@ -48,10 +55,26 @@ describe('InternalSpeakasapRolesController', () => {
       USER_ID,
       TEACHER_ROLE.id,
       TEACHER_ROLE.applicationId,
-      'internal:user-service',
+      'internal:svc-user-service--auth-microservice@internal.alfares.cz',
       undefined,
     );
     expect(result).toEqual({ userId: USER_ID, role: 'app:speakasap:teacher', granted: true });
+  });
+
+  it('records static-legacy actor when RS256 path is not used', async () => {
+    rolesService.findByNameForApplication.mockResolvedValue(TEACHER_ROLE);
+    rolesService.hasRoleAssignment.mockResolvedValue(false);
+    rolesService.assignRoleToUser.mockResolvedValue({ id: 'ur-1' });
+
+    await controller.grantTeacher(USER_ID, { authPath: 'static' });
+
+    expect(rolesService.assignRoleToUser).toHaveBeenCalledWith(
+      USER_ID,
+      TEACHER_ROLE.id,
+      TEACHER_ROLE.applicationId,
+      'internal:static-legacy',
+      undefined,
+    );
   });
 
   /**
@@ -63,7 +86,7 @@ describe('InternalSpeakasapRolesController', () => {
     rolesService.findByNameForApplication.mockResolvedValue(TEACHER_ROLE);
     rolesService.hasRoleAssignment.mockResolvedValue(true);
 
-    const result = await controller.grantTeacher(USER_ID, { 'x-service-name': 'user-service' });
+    const result = await controller.grantTeacher(USER_ID, { authPath: 'rs256', user: { email: 'x' } });
 
     expect(rolesService.assignRoleToUser).not.toHaveBeenCalled();
     expect(result).toEqual({ userId: USER_ID, role: 'app:speakasap:teacher', granted: false });
@@ -78,13 +101,13 @@ describe('InternalSpeakasapRolesController', () => {
     rolesService.findByNameForApplication.mockResolvedValue(null);
 
     await expect(
-      controller.grantTeacher(USER_ID, { 'x-service-name': 'user-service' }),
+      controller.grantTeacher(USER_ID, { authPath: 'rs256', user: { email: 'x' } }),
     ).rejects.toThrow(NotFoundException);
     expect(rolesService.assignRoleToUser).not.toHaveBeenCalled();
   });
 
   it('rejects a blank userId', async () => {
-    await expect(controller.grantTeacher('  ', { 'x-service-name': 'user-service' })).rejects.toThrow(
+    await expect(controller.grantTeacher('  ', { authPath: 'static' })).rejects.toThrow(
       BadRequestException,
     );
     expect(rolesService.findByNameForApplication).not.toHaveBeenCalled();
@@ -99,7 +122,10 @@ describe('InternalSpeakasapRolesController', () => {
     rolesService.hasRoleAssignment.mockResolvedValue(false);
     rolesService.assignRoleToUser.mockResolvedValue({ id: 'ur-1' });
 
-    await controller.grantTeacher(USER_ID, { 'x-service-name': 'user-service' });
+    await controller.grantTeacher(USER_ID, {
+      authPath: 'rs256',
+      user: { email: 'svc-user-service--auth-microservice@internal.alfares.cz' },
+    });
 
     expect(rolesService.findByNameForApplication.mock.calls).toEqual([
       [SPEAKASAP_TEACHER_ROLE_NAME, SPEAKASAP_APPLICATION_NAME],
