@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 /**
- * Creates `internal:domain-research:service`, idempotently.
+ * Creates `internal:domain-research:service` and
+ * `internal:domain-research:jobs`, idempotently.
+ *
+ *   service - general machine access to domain-research internal APIs
+ *   jobs    - CronJob / CLI callers of /api/internal/jobs/*
  *
  * Dry run:
  *   kubectl exec -n statex-apps deploy/auth-microservice -c app -- \
@@ -17,8 +21,16 @@ const DB_CONFIRMATION = 'SERVICE_PRINCIPAL';
 
 const APP_NAME = 'domain-research';
 const ROLE_SCOPE = 'internal';
-const ROLE_NAME = 'service';
-const ROLE_DESCRIPTION = 'Machine access to domain-research internal APIs';
+const ROLES = [
+  {
+    name: 'service',
+    description: 'Machine access to domain-research internal APIs',
+  },
+  {
+    name: 'jobs',
+    description: 'Enqueue and run domain-research internal jobs (CronJob / CLI)',
+  },
+];
 
 const args = process.argv.slice(2);
 const argValue = (name) => {
@@ -42,14 +54,11 @@ async function main() {
 
   const app = await NestFactory.createApplicationContext(AppModule, { logger: false });
 
-  const roleString = `${ROLE_SCOPE}:${APP_NAME}:${ROLE_NAME}`;
   const result = {
     contract: CONTRACT,
     mode: apply ? 'apply' : 'dry-run',
     application: APP_NAME,
-    role: roleString,
-    roleExists: false,
-    createdRole: false,
+    roles: [],
     mutatedDatabase: false,
     status: 'ok',
   };
@@ -63,19 +72,26 @@ async function main() {
       throw new Error(`Application ${APP_NAME} not found. Seed base RBAC first.`);
     }
 
-    const existing = await rolesService.findByName(ROLE_NAME, ROLE_SCOPE, application.id);
-    if (existing) {
-      result.roleExists = true;
-    } else if (!apply) {
-      result.wouldCreateRole = true;
-    } else {
+    for (const role of ROLES) {
+      const roleString = `${ROLE_SCOPE}:${APP_NAME}:${role.name}`;
+      const existing = await rolesService.findByName(role.name, ROLE_SCOPE, application.id);
+      if (existing) {
+        result.roles.push({ role: roleString, roleExists: true, createdRole: false });
+        continue;
+      }
+
+      if (!apply) {
+        result.roles.push({ role: roleString, roleExists: false, wouldCreateRole: true });
+        continue;
+      }
+
       await rolesService.create({
-        name: ROLE_NAME,
+        name: role.name,
         scope: ROLE_SCOPE,
-        description: ROLE_DESCRIPTION,
+        description: role.description,
         applicationId: application.id,
       });
-      result.createdRole = true;
+      result.roles.push({ role: roleString, roleExists: false, createdRole: true });
       result.mutatedDatabase = true;
     }
 
