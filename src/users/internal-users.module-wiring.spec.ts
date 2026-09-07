@@ -5,6 +5,11 @@ import { AuthService } from '../auth/auth.service';
 import { InternalUsersController } from './internal-users.controller';
 import { UsersService } from './users.service';
 import { RolesService } from '../roles/roles.service';
+import {
+  InternalLegacyLookupGuard,
+  InternalSsoHandoffGuard,
+  InternalUserExistenceGuard,
+} from '../auth/guards/internal-route.guards';
 
 /**
  * Proves the UsersModule <-> AuthModule dependency cycle actually resolves.
@@ -19,6 +24,13 @@ import { RolesService } from '../roles/roles.service';
  * a broken forwardRef surfaces here instead of in a rollout.
  */
 describe('InternalUsersController DI wiring', () => {
+  const roleProviders = [
+    { provide: RolesService, useValue: { getUserRoles: jest.fn(async () => []) } },
+    InternalUserExistenceGuard,
+    InternalLegacyLookupGuard,
+    InternalSsoHandoffGuard,
+  ];
+
   it('constructs with AuthService injected through the module cycle', async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [InternalUsersController],
@@ -35,11 +47,11 @@ describe('InternalUsersController DI wiring', () => {
           ),
           useValue: {},
         },
-        // InternalUserExistenceGuard, which now gates this controller, resolves
-        // roles from the database. Nest constructs a route's guard alongside the
-        // controller, so an unsatisfiable guard dependency fails at boot exactly
-        // like a missing forwardRef would — which is what this spec exists to catch.
-        { provide: RolesService, useValue: { getUserRoles: jest.fn(async () => []) } },
+        // Per-method InternalServiceOrRoleGuard subclasses resolve roles from the
+        // database. Nest constructs a route's guard alongside the controller, so an
+        // unsatisfiable guard dependency fails at boot exactly like a missing
+        // forwardRef would — which is what this spec exists to catch.
+        ...roleProviders,
       ],
     })
       .overrideProvider(AuthService)
@@ -64,7 +76,7 @@ describe('InternalUsersController DI wiring', () => {
       providers: [
         { provide: UsersService, useValue: {} },
         { provide: AuthService, useValue: { createSessionForUser } },
-        { provide: RolesService, useValue: { getUserRoles: jest.fn(async () => []) } },
+        ...roleProviders,
       ],
     }).compile();
 

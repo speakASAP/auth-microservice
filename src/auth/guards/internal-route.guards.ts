@@ -71,3 +71,43 @@ export class InternalMagicLinkGuard extends InternalServiceOrRoleGuard {
     return ['internal:auth-microservice:magic-link'];
   }
 }
+
+/**
+ * SpeakASAP legacy id ↔ auth UUID lookups (read only).
+ *
+ * Covers `by-legacy-id`, `by-auth-user`, and `names-by-legacy-ids`. Never
+ * shared with provision or session mint: education-service needs the reverse
+ * map for drill identity, not the ability to create users or sessions.
+ */
+@Injectable()
+export class InternalLegacyLookupGuard extends InternalServiceOrRoleGuard {
+  protected requiredRoles(): string[] {
+    return ['internal:auth-microservice:legacy-lookup'];
+  }
+}
+
+/**
+ * SpeakASAP portal SSO handoff: resolve-or-provision + session mint.
+ *
+ * One role for both steps of one flow (same pattern as preferences). A
+ * credential holding it can create Auth users and mint browser sessions —
+ * keep it on speakasap-frontend only.
+ */
+@Injectable()
+export class InternalSsoHandoffGuard extends InternalServiceOrRoleGuard {
+  protected requiredRoles(): string[] {
+    return ['internal:auth-microservice:sso-handoff'];
+  }
+}
+
+/**
+ * `POST /internal/roles/speakasap/teacher/:userId` — fixed teacher grant only.
+ *
+ * Own role so a legacy-lookup or SSO credential cannot grant app roles.
+ */
+@Injectable()
+export class InternalSpeakasapTeacherGrantGuard extends InternalServiceOrRoleGuard {
+  protected requiredRoles(): string[] {
+    return ['internal:auth-microservice:speakasap-teacher-grant'];
+  }
+}

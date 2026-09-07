@@ -10,21 +10,24 @@
  * `provision-service-token.js` refuses to mint against a role that does not
  * exist ("Role not found ... Run seed first.").
  *
- * Why four roles and not one `admin`: the standard requires the smallest
+ * Why discrete roles and not one `admin`: the standard requires the smallest
  * authority that lets the call succeed, classified by effect rather than HTTP
  * verb. These routes do materially different things, and one role would let any
  * caller of the cheapest route do the most dangerous one:
  *
- *   - `email-check`     reads whether an email exists. A pure existence probe.
- *   - `user-existence`  reads whether a userId still resolves. Also an existence
- *                       probe, but keyed by id and used for offboarding
- *                       reconciliation, so it is separable from email lookup.
- *   - `preferences`     reads AND writes registered-user communication
- *                       preferences, including unsubscribe state. A write.
- *   - `magic-link`      mints a magic-link verify URL — that is, it can create a
- *                       usable user session. This is by far the most dangerous
- *                       route on the list and must never be reachable by a
- *                       credential provisioned for an email lookup.
+ *   - `email-check`              reads whether an email exists. A pure existence probe.
+ *   - `user-existence`           reads whether a userId still resolves. Also an existence
+ *                                probe, but keyed by id and used for offboarding
+ *                                reconciliation, so it is separable from email lookup.
+ *   - `preferences`              reads AND writes registered-user communication
+ *                                preferences, including unsubscribe state. A write.
+ *   - `magic-link`               mints a magic-link verify URL — that is, it can create a
+ *                                usable user session. This is by far the most dangerous
+ *                                route on the list and must never be reachable by a
+ *                                credential provisioned for an email lookup.
+ *   - `legacy-lookup`            SpeakASAP legacy id ↔ auth UUID read maps.
+ *   - `sso-handoff`              SpeakASAP portal SSO: provision legacy user + mint session.
+ *   - `speakasap-teacher-grant`  Fixed `app:speakasap:teacher` grant only.
  *
  * `auth-microservice` is typed INFRASTRUCTURE, so `seed-rbac.ts` creates no
  * internal roles for it (see `inferType`). This follows
@@ -66,6 +69,20 @@ const ROLES = [
   {
     name: 'magic-link',
     description: 'Mint a magic-link verify URL for a user (POST /auth/internal/magic-link/token)',
+  },
+  {
+    name: 'legacy-lookup',
+    description:
+      'Read SpeakASAP legacy id ↔ auth UUID maps (by-legacy-id, by-auth-user, names-by-legacy-ids)',
+  },
+  {
+    name: 'sso-handoff',
+    description:
+      'SpeakASAP portal SSO handoff: resolve-or-provision-legacy and mint /internal/users/:id/session',
+  },
+  {
+    name: 'speakasap-teacher-grant',
+    description: 'Grant app:speakasap:teacher via POST /internal/roles/speakasap/teacher/:userId',
   },
 ];
 

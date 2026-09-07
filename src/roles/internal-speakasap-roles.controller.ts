@@ -1,13 +1,13 @@
 import {
   BadRequestException,
   Controller,
-  Headers,
   NotFoundException,
   Param,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
-import { InternalServiceGuard } from '../auth/guards/internal-service.guard';
+import { InternalSpeakasapTeacherGrantGuard } from '../auth/guards/internal-route.guards';
 import { RolesService } from './roles.service';
 
 export const SPEAKASAP_APPLICATION_NAME = 'speakasap';
@@ -25,17 +25,19 @@ export const SPEAKASAP_TEACHER_ROLE_NAME = 'teacher';
  * segment that can redirect the grant to another role or another application, so the
  * blast radius of this token is exactly one role.
  *
- * Callers: user-service, when portal sync upserts a teacher row.
+ * Callers: user-service, when portal sync upserts a teacher row. Auth path:
+ * `InternalSpeakasapTeacherGrantGuard` (RS256 principal with
+ * `internal:auth-microservice:speakasap-teacher-grant`, or legacy static until closed).
  */
 @Controller('internal/roles/speakasap')
-@UseGuards(InternalServiceGuard)
+@UseGuards(InternalSpeakasapTeacherGrantGuard)
 export class InternalSpeakasapRolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Post('teacher/:userId')
   async grantTeacher(
     @Param('userId') userId: string,
-    @Headers() headers: Record<string, string | undefined>,
+    @Req() req: { user?: { email?: string }; authPath?: string },
   ): Promise<{ userId: string; role: string; granted: boolean }> {
     const targetUserId = String(userId ?? '').trim();
     if (!targetUserId) {
@@ -67,7 +69,11 @@ export class InternalSpeakasapRolesController {
       return { userId: targetUserId, role: roleString, granted: false };
     }
 
-    const actor = `internal:${String(headers['x-service-name'] ?? '').trim() || 'unknown-service'}`;
+    // Prefer the RS256 principal email; static path has no identity so stay explicit.
+    const actor =
+      req.authPath === 'rs256' && req.user?.email
+        ? `internal:${req.user.email}`
+        : 'internal:static-legacy';
     await this.rolesService.assignRoleToUser(
       targetUserId,
       role.id,
