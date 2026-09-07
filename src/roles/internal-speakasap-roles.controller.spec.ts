@@ -44,7 +44,10 @@ describe('InternalSpeakasapRolesController', () => {
 
     const result = await controller.grantTeacher(USER_ID, {
       authPath: 'rs256',
-      user: { email: 'svc-user-service--auth-microservice@internal.alfares.cz' },
+      user: {
+        id: '3fa57d34-f2f8-47ad-ab66-d958e68693c6',
+        email: 'svc-user-service--auth-microservice@internal.alfares.cz',
+      },
     });
 
     expect(rolesService.findByNameForApplication).toHaveBeenCalledWith(
@@ -55,13 +58,13 @@ describe('InternalSpeakasapRolesController', () => {
       USER_ID,
       TEACHER_ROLE.id,
       TEACHER_ROLE.applicationId,
-      'internal:svc-user-service--auth-microservice@internal.alfares.cz',
+      '3fa57d34-f2f8-47ad-ab66-d958e68693c6',
       undefined,
     );
     expect(result).toEqual({ userId: USER_ID, role: 'app:speakasap:teacher', granted: true });
   });
 
-  it('records static-legacy actor when RS256 path is not used', async () => {
+  it('omits grantedBy on the static legacy path', async () => {
     rolesService.findByNameForApplication.mockResolvedValue(TEACHER_ROLE);
     rolesService.hasRoleAssignment.mockResolvedValue(false);
     rolesService.assignRoleToUser.mockResolvedValue({ id: 'ur-1' });
@@ -72,7 +75,7 @@ describe('InternalSpeakasapRolesController', () => {
       USER_ID,
       TEACHER_ROLE.id,
       TEACHER_ROLE.applicationId,
-      'internal:static-legacy',
+      undefined,
       undefined,
     );
   });
@@ -124,7 +127,10 @@ describe('InternalSpeakasapRolesController', () => {
 
     await controller.grantTeacher(USER_ID, {
       authPath: 'rs256',
-      user: { email: 'svc-user-service--auth-microservice@internal.alfares.cz' },
+      user: {
+        id: '3fa57d34-f2f8-47ad-ab66-d958e68693c6',
+        email: 'svc-user-service--auth-microservice@internal.alfares.cz',
+      },
     });
 
     expect(rolesService.findByNameForApplication.mock.calls).toEqual([

@@ -37,7 +37,7 @@ export class InternalSpeakasapRolesController {
   @Post('teacher/:userId')
   async grantTeacher(
     @Param('userId') userId: string,
-    @Req() req: { user?: { email?: string }; authPath?: string },
+    @Req() req: { user?: { id?: string; email?: string }; authPath?: string },
   ): Promise<{ userId: string; role: string; granted: boolean }> {
     const targetUserId = String(userId ?? '').trim();
     if (!targetUserId) {
@@ -69,11 +69,11 @@ export class InternalSpeakasapRolesController {
       return { userId: targetUserId, role: roleString, granted: false };
     }
 
-    // Prefer the RS256 principal email; static path has no identity so stay explicit.
+    // grantedBy is a UUID column (UserRole.grantedBy). Pass the RS256 principal's
+    // user id — never an email or "internal:…" label (those 500 as invalid uuid).
+    // Static path has no principal; leave grantedBy unset.
     const actor =
-      req.authPath === 'rs256' && req.user?.email
-        ? `internal:${req.user.email}`
-        : 'internal:static-legacy';
+      req.authPath === 'rs256' && req.user?.id ? req.user.id : undefined;
     await this.rolesService.assignRoleToUser(
       targetUserId,
       role.id,
