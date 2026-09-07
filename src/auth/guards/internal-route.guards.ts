@@ -4,28 +4,18 @@ import { InternalServiceOrRoleGuard } from './internal-service-or-role.guard';
 /**
  * Per-route gates for auth's own `/auth/internal/*` and `/internal/*` routes.
  *
- * These replace bare `InternalServiceGuard` on those routes. That guard accepted
- * a static shared `INTERNAL_SERVICE_TOKEN` plus a self-asserted `x-service-name`
- * header — a credential with no identity, not revocable per caller, and where
- * the caller chose which service it claimed to be. Both are prohibited by
- * `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`.
+ * Each guard accepts only a per-pair RS256 Bearer principal per
+ * `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`. Static shared tokens and
+ * self-asserted `x-service-name` headers are not accepted.
  *
- * Each guard below names the smallest role that lets its route succeed, so a
+ * Each guard names the smallest role that lets its route succeed, so a
  * credential minted for one route cannot drive another. That separation is the
- * point: before this, any holder of the shared secret could call
- * `magic-link/token` — which mints a usable user session — with a credential
- * provisioned to check whether an email exists.
+ * point: a credential provisioned to check whether an email exists must not be
+ * able to call `magic-link/token` — which mints a usable user session.
  *
  * Roles are classified by effect, not HTTP verb, per the standard. They are
  * created by `scripts/seed-internal-route-roles.js` and must exist before
  * `provision-service-token.js` can mint against them.
- *
- * The inherited static-token path stays open for now so existing callers keep
- * working while their per-pair credentials are provisioned; it is closed by
- * setting `ALLOW_INTERNAL_STATIC_TOKEN=false` once every caller presents a
- * bearer. RS256 is tried first regardless, so a caller holding a real principal
- * is always identified as that principal rather than as an anonymous holder of
- * the shared secret.
  */
 
 /** `GET /auth/internal/check-email` — existence probe keyed by email. */

@@ -676,7 +676,7 @@ export class AuthService {
    * Built for the speakasap portal SSO handoff: the portal signs a short-lived token,
    * the platform verifies it and calls `resolve-or-provision-legacy` to learn *who* the
    * student is, and this turns that answer into a session. Internal callers only — the
-   * route is behind `InternalServiceGuard`.
+   * route is behind `InternalSsoHandoffGuard` (RS256 per-pair principal).
    *
    * Two deliberate differences from `generateTokens`, both narrowing:
    *

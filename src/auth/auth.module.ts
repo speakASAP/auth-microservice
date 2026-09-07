@@ -14,7 +14,6 @@ import { AdminUsersController } from './admin-users.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
-import { InternalServiceGuard } from './guards/internal-service.guard';
 import {
   InternalEmailCheckGuard,
   InternalMagicLinkGuard,
@@ -64,7 +63,6 @@ import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping
     AuthService,
     JwtStrategy,
     RolesGuard,
-    InternalServiceGuard,
     // Per-route gates for /auth/internal/*. Each resolves roles from the
     // database, so a revoked role stops working immediately rather than at exp.
     InternalEmailCheckGuard,
