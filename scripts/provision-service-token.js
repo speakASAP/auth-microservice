@@ -1,33 +1,11 @@
 #!/usr/bin/env node
 /**
- * Approval-gated RS256 service-token provisioning, runnable inside the auth pod.
+ * Sole service-token provisioner. Follow
+ * auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md; do not invent
+ * alternate mint scripts or algorithms.
  *
- * THE single provisioning script. It replaced three predecessors on 2026-08-25,
- * all of which minted credentials that auth no longer accepts:
- *
- *   - provision-internal-service-token.ts     signed with `new JwtService({ secret:
- *                                             process.env.JWT_SECRET })` — HS256
- *   - provision-catalog-warehouse-service-token.ts  same, via the app's JwtService
- *   - provision-goal24-actor-token.js         hand-rolled `crypto.createHmac('sha256')`
- *
- * Since auth retired HS256 (9269a86, 2026-08-18) every one of those emits a token
- * that looks healthy — correct roles, far-future exp — and is refused by every
- * verifier in the ecosystem. Four scripts also meant each incident spawned a
- * fourth rather than fixing the third. There is now one, and it asserts RS256 on
- * the token it just signed rather than trusting configuration.
- *
- * It runs inside the pod, against the compiled `dist/`: reaching the auth DB from
- * a workstation would need a port-forward and a Vault-read DB password, both
- * forbidden by the postgres MCP agent guide. The credentials never leave the
- * cluster. `--check-db-only` is carried over from the generic predecessor.
- *
- * Unlike that predecessor, principal creation goes through UsersService rather
- * than raw `INSERT INTO users`, so entity defaults, hooks, and validation apply.
- *
- * Context (TASK-KEY-F3): auth retired HS256 on 2026-08-18 and verifies RS256
- * only. Fifteen services were still holding HS256 service tokens, several with
- * `exp` in 2027 — tokens that look valid in every dashboard and are rejected by
- * every verifier. This script reissues them.
+ * Runs inside the auth pod against compiled `dist/`. Credentials never leave
+ * the cluster. Token is written only to --token-output (mode 0600), never printed.
  *
  * Dry run (no writes, no token):
  *   kubectl exec -n statex-apps deploy/auth-microservice -c app -- \
@@ -42,10 +20,6 @@
  *     --confirm-db-mutation=SERVICE_PRINCIPAL \
  *     --confirm-token-issuance=SERVICE_JWT \
  *     --token-output=/tmp/<service>.jwt
- *
- * The token is never printed. It is written only to --token-output, mode 0600.
- * Read it back with `kubectl exec ... -- cat`, pipe it straight into the Vault
- * write, and delete it. Never echo it to a terminal that is being transcribed.
  */
 
 const { writeFileSync, chmodSync } = require('fs');

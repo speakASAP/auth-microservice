@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 /**
  * Ensures `speakasap-api-gateway` exists with `internal:speakasap-api-gateway:proxy`.
- *
- * Gateway `/api/v1/internal/*` entry requires this role (least privilege). Callers
- * mint via provision-service-token.js as svc-<caller>--speakasap-api-gateway@.
+ * Callers mint per auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md.
  *
  * Dry run:
  *   kubectl exec -n statex-apps deploy/auth-microservice -c app -- \
