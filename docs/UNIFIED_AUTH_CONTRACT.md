@@ -366,9 +366,8 @@ a revoked role stops working immediately rather than at `exp`. `magic-link` is
 deliberately alone on its own role: it can create a logged-in session for any user, and
 must never be reachable by a credential provisioned to check whether an email exists.
 
-Internal routes accept Auth-issued RS256 service JWTs only. Static shared secrets,
-self-asserted caller headers, dual-accept migration flags, and HS256 service tokens
-are not accepted.
+Internal routes accept only the Auth-issued RS256 protocol in
+[`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md).
 
 Registered-user communication preferences are Auth-owned and exposed only through internal Auth APIs:
 
