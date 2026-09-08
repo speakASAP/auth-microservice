@@ -366,11 +366,9 @@ a revoked role stops working immediately rather than at `exp`. `magic-link` is
 deliberately alone on its own role: it can create a logged-in session for any user, and
 must never be reachable by a credential provisioned to check whether an email exists.
 
-**Migration window — closing.** The old shared `INTERNAL_SERVICE_TOKEN` plus
-self-asserted `x-service-name` path is still accepted while remaining callers are
-migrated, and every acceptance logs a WARN naming the route and claimed caller. That log
-going quiet per caller is the exit condition; set `ALLOW_INTERNAL_STATIC_TOKEN=false` to
-close it. Do not add new callers or routes to that path.
+Internal routes accept Auth-issued RS256 service JWTs only. Static shared secrets,
+self-asserted caller headers, dual-accept migration flags, and HS256 service tokens
+are not accepted.
 
 Registered-user communication preferences are Auth-owned and exposed only through internal Auth APIs:
 

@@ -36,12 +36,8 @@ Verify these sections against source before changing Auth behavior:
   Verify by effect, not by the presence of a guard class: a credential holding one
   route's role must be refused on the others with `Principal lacks the required
   role`. In particular `magic-link/token` must reject an `email-check`
-  credential — it can mint a user session.
-- The legacy shared-secret path (`INTERNAL_SERVICE_TOKEN` plus a self-asserted
-  `x-service-name`) is still accepted while the last callers migrate, and logs a
-  WARN on every acceptance. Treat that log, not `exp` and not a synced Secret, as
-  the signal for whether `ALLOW_INTERNAL_STATIC_TOKEN=false` can be set. Do not
-  extend that path to new routes or callers.
+  credential — it can mint a user session. Static shared secrets, self-asserted
+  caller headers, dual-accept flags, and HS256 service tokens must be refused.
 
 ## First-Visit Application Access
 
