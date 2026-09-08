@@ -6,12 +6,15 @@ The old Phase 0/Sync A prompts were removed in commit `3338638` as obsolete. Do 
 
 Current sources of truth:
 
+- Machine identity (S2S / HTTP agent-to-agent) SPOT: `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`
+- Human/user Auth contract: `docs/UNIFIED_AUTH_CONTRACT.md`
+- Consumer user-JWT validation: `docs/CONSUMER_JWT_VALIDATION_STANDARD.md`
+- Hosted login consumer: `docs/HOSTED_AUTH_CONSUMER_STANDARD.md`
 - `docs/orchestrator/MASTER_PROMPT.md`
 - `docs/orchestrator/INTENT.md`
 - `docs/orchestrator/GOALS.md`
 - `docs/orchestrator/PLAN.md`
-- `docs/orchestrator/STATUS.md`
+- `docs/orchestrator/STATUS.md` (historical log only)
 - `docs/orchestrator/PROMPTS.md`
-- `docs/UNIFIED_AUTH_CONTRACT.md`
 - `docs/ENV_CORS_AND_AUTH_CHECK.md`
 - `docs/UNIFIED_AUTH_VERIFICATION.md`

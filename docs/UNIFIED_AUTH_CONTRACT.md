@@ -338,7 +338,7 @@ CORS is configured separately from redirect validation through `CORS_ORIGIN`.
 
 See `docs/ENV_CORS_AND_AUTH_CHECK.md` for the current environment reference.
 
-## Internal Service Contract
+## Auth inbound route roles (not a second S2S protocol)
 
 Protocol for every `/auth/internal/*` and `/internal/*` call:
 [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md) only.

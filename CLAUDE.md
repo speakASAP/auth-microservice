@@ -40,10 +40,11 @@ response means that source documentation does not exist.
 
 ### Key constraints
 
-- Never expose or log JWT secrets — K8s Secret `auth-microservice-secret` from Vault via ESO
+- Human callers: hosted Auth / consumer JWT standards
+- Machine callers: [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md) only
+- Never expose or log JWTs or secrets — K8s Secret `auth-microservice-secret` from Vault via ESO
 - Password hashing: bcrypt only — no alternatives
 - No direct DB writes to the `users` table by AI agents
-- All other services authenticate through this service via JWT
 
 ### Infrastructure refs
 

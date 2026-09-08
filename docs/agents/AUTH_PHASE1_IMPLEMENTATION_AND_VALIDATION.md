@@ -8,7 +8,8 @@ Current validation checklist:
 
 Current contract:
 
-- `docs/UNIFIED_AUTH_CONTRACT.md`
+- Human/user: `docs/UNIFIED_AUTH_CONTRACT.md`
+- Machine identity SPOT: `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`
 
 Current workflow:
 

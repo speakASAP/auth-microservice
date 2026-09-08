@@ -5,6 +5,7 @@ Historical DocsRAG snapshots reference this path. The old validation report appr
 - `docs/orchestrator/STATUS.md`
 - `docs/UNIFIED_AUTH_VERIFICATION.md`
 
-The current restored contract path is:
+The current restored contract paths are:
 
-- `docs/UNIFIED_AUTH_CONTRACT.md`
+- Human/user: `docs/UNIFIED_AUTH_CONTRACT.md`
+- Machine identity SPOT: `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`

@@ -4620,35 +4620,9 @@ Next action:
 
 - Owner selection for the next Auth remediation or implementation chunk.
 
-Current focus:
+## 2026-06-13 - RBAC-REM-06 Service-Auth Review
 
-- Auth runtime code changes: none.
-- Consumer runtime code changes: none.
-- Deployment: not run.
-
-DocsRAG evidence:
-
-- Retrieved context confirmed Auth centralizes identity and JWT issuance. Machine-auth specifics were completed from source inspection.
-
-Implementation evidence:
-
-- Reviewed Auth `InternalServiceGuard`, internal Auth endpoint guards, and `docs/UNIFIED_AUTH_CONTRACT.md`.
-- Reviewed RunLayer `JwtGuard`, service-token env keys, and outbound token clients.
-- Reviewed Notifications `JwtRolesGuard`, deployment notes, and orchestrator/AI service clients.
-- Reviewed Payments `ApiKeyGuard`, `JwtRolesGuard`, controller guard usage, and key configuration docs.
-- Reviewed Catalog `CatalogAuthGuard`, internal-service header handling, and Warehouse availability client.
-- Reviewed Warehouse `JwtRolesGuard` as the receiving side for the Catalog availability call.
-
-Validation evidence:
-
-- `git diff --check` passed for changed Auth documentation/state files.
-- Auth documentation missing-marker scan returned no matches for gate-critical docs.
-- Auth documentation secret-pattern scan returned no matches.
-- No Auth runtime code, consumer runtime code, JWT payload, token validation endpoint, deployment, database, production user data, decoded secrets, JWTs, API keys, refresh tokens, service tokens, passwords, OAuth tokens, reset tokens, or magic-link tokens changed.
-
-Next action:
-
-- RBAC-REM-07 completed later on 2026-06-13; next chunk requires owner selection.
+Superseded — see `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`.
 
 ## 2026-06-13 - RBAC-REM-05 School Committee Local-Role Contract Note Completed
 
@@ -4827,46 +4801,7 @@ Next action:
 
 ## 2026-06-12 - RBAC-REM-01 Secret-Source Alignment Review
 
-Current focus:
-
-- Runtime Auth code changes: none.
-- Consumer runtime code changes: none.
-- Consumer manifest changes: `k8s/external-secret.yaml` only in catalog, warehouse, suppliers, orders, and payments.
-- Deployment: not run.
-
-Gate evidence:
-
-- Required Auth orchestrator, contract, environment, verification, README, BUSINESS, SYSTEM, state, and audit docs were read from the remote Auth source of truth.
-- Sensitive-data classification: masked. Only secret key names, Vault path names, source file paths, and commit IDs were recorded. No secret values, JWTs, tokens, passwords, OAuth tokens, reset tokens, magic-link tokens, or production user data were printed, decoded, or persisted.
-
-Review evidence:
-
-- Live ExternalSecret metadata before remediation mapped `JWT_SECRET` to service-specific Vault paths for catalog, warehouse, suppliers, orders, and payments.
-- `notifications-microservice` remained the positive aligned pattern with `JWT_SECRET` sourced from `secret/prod/auth-microservice`.
-- Live Kubernetes Secret key-name checks confirmed the relevant secrets expose a `JWT_SECRET` key, without decoding or printing values.
-
-Implementation evidence:
-
-- `catalog-microservice`: committed `fcb1919 Align JWT secret source with auth`.
-- `warehouse-microservice`: committed `015cf4f Align JWT secret source with auth`.
-- `suppliers-microservice`: committed `c1e92d2 Align JWT secret source with auth`.
-- `orders-microservice`: committed `e05c2c3 Align JWT secret source with auth`.
-- `payments-microservice`: committed `66bf990 Align JWT secret source with auth`.
-- Each commit changes only the `JWT_SECRET` ExternalSecret `remoteRef.key` to `secret/prod/auth-microservice` and leaves other service-owned secret keys unchanged.
-
-Validation evidence:
-
-- `kubectl apply --dry-run=server -f k8s/external-secret.yaml` passed for all five target consumer manifests.
-- `git diff --check -- k8s/external-secret.yaml` passed for all five target consumer manifests.
-- Staged diff review confirmed only the intended `JWT_SECRET` source-path hunk was committed in each consumer repo.
-- Consumer repository pre-commit hooks passed for all five commits.
-- Auth documentation missing-marker, secret-pattern, and `git diff --check` checks were run after documentation updates.
-
-Residual risks and follow-ups:
-
-- Source manifests are committed but not deployed by this session. Final live metadata showed catalog already aligned, while warehouse, suppliers, orders, and payments still used their previous source paths; those remaining live changes require consumer deployment or GitOps sync.
-- `suppliers-microservice`, `orders-microservice`, and `payments-microservice` retain unrelated dirty worktree files from other sessions. Those were not staged or committed here.
-- Next remediation chunk: `RBAC-REM-02` standardize consumer JWT validation pattern (`/auth/validate` versus shared local verifier).
+Superseded — see `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`. Historical `JWT_SECRET` ExternalSecret alignment is not a consumer verifier or machine-identity pattern.
 
 ## 2026-06-12 - Goal 06 RBAC Consuming Services Audit
 
@@ -4895,11 +4830,11 @@ Source evidence summary:
 
 Findings summary:
 
-- Direct JWT consumers generally match Auth role-string shape, but catalog, warehouse, suppliers, orders, and payments source `JWT_SECRET` from service-specific Vault paths instead of the Auth Vault path in their K8s ExternalSecret files; notifications shows the aligned pattern.
+- Direct JWT consumers generally match Auth role-string shape. Historical `JWT_SECRET` Vault-path notes from this audit are superseded — see `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md` (not a verifier or S2S pattern).
 - Catalog frontend AdminGuard contains stale text saying Auth does not support roles and only gates by authentication client-side.
 - SpeakASAP scope-stripping role normalization can collapse Auth role scopes into unscoped names.
 - School Committee uses Auth for identity validation and local DB roles for school authorization; this should remain documented as app-local authorization.
-- Runlayer, notifications, payments, and catalog have machine-auth bypass paths that need separate service-auth review.
+- Machine identity is governed solely by `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`; do not treat ApiKey/header bypass archaeology from this audit as protocol.
 - Logging web admin Auth validation was found, but role enforcement was not proven in inspected web files.
 
 Validation evidence:
@@ -5039,7 +4974,7 @@ Git history evidence:
 
 Implementation evidence:
 
-- Restored `docs/UNIFIED_AUTH_CONTRACT.md` as the current authoritative contract for hosted entry points, core API endpoints, JWT shape, OAuth, magic links, redirect allowlist, CORS, internal service auth, registered-user preferences, and client responsibilities.
+- Restored `docs/UNIFIED_AUTH_CONTRACT.md` as the human/user Auth contract for hosted entry points, core API endpoints, user JWT shape, OAuth, magic links, redirect allowlist, CORS, registered-user preferences, and client responsibilities. Machine identity SPOT is only `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md` (not UNIFIED).
 - Restored `docs/ENV_CORS_AND_AUTH_CHECK.md` with current K8s/Vault-managed CORS and Auth URL behavior.
 - Restored `docs/UNIFIED_AUTH_VERIFICATION.md` with static, reachability, contract, redirect-safety, and secret-safety checks.
 - Added supersession stubs under `docs/agents/` so historical DocsRAG references resolve but point future agents to `docs/orchestrator/*` and the restored contract docs.

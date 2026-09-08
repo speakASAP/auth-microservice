@@ -73,4 +73,4 @@ Verification output must not include:
 
 ## DocsRAG Reconciliation
 
-Historical DocsRAG references to `docs/agents/*` should resolve to supersession notes. Current implementation instructions are in `docs/orchestrator/`; current integration contract is `docs/UNIFIED_AUTH_CONTRACT.md`.
+Historical DocsRAG references to `docs/agents/*` should resolve to supersession notes. Current implementation instructions are in `docs/orchestrator/`. Human/user integration contract is `docs/UNIFIED_AUTH_CONTRACT.md`. Machine identity SPOT is only `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md` — do not treat UNIFIED or STATUS archaeology as S2S protocol.
