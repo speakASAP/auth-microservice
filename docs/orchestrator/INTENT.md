@@ -30,7 +30,7 @@ Before any change, ask:
 
 AI agents may clarify, summarize, or link this intent, but must not weaken it. Human owner approval is required before changing:
 
-- Auth's ownership of identity, credentials, token issuance, token validation, RBAC claims, OAuth, magic links, registered-user preferences, consent flags, or internal service-authentication contracts.
+- Auth's ownership of identity, credentials, token issuance, token validation, RBAC claims, OAuth, magic links, registered-user preferences, consent flags, or internal service-authentication contracts (machine identity SPOT: [`docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../SERVICE_IDENTITY_CONSUMER_STANDARD.md)).
 - Auth's non-ownership of catalog, warehouse, orders, payment, leads for non-registered contacts, marketing campaign execution, notification sending, logging storage, database infrastructure, and gateway routing.
 - The rule that secrets, passwords, JWTs, refresh tokens, OAuth tokens, magic-link tokens, password-reset tokens, and internal-service tokens must not be placed in docs, logs, URLs, frontend bundles, prompts, examples, tests, or reports.
 

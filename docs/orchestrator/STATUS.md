@@ -1,3 +1,5 @@
+> Historical log only. Machine identity SPOT: `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md` — do not treat ApiKey/JWT_SECRET archaeology as current protocol.
+
 ## 2026-07-06 - Profile Centralization Approved Runtime Window Executed
 
 Current focus:

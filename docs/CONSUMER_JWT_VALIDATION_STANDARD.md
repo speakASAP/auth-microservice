@@ -16,7 +16,7 @@ Consumers must validate Auth-issued user access tokens with one of two approved 
 
 Auth remains the identity, token, and RBAC role-claim authority in both patterns. Consumers may enforce endpoint authorization locally, but they must not mint Auth user JWTs, rewrite Auth role ownership, or silently change Auth role scope semantics.
 
-Auth signs user and service JWTs with **RS256 only**. Consumers must not verify tokens with `JWT_SECRET` (HMAC). `JWT_SECRET` is Auth-internal material for non-JWT HMAC helpers and is not a verifier secret.
+Auth signs user JWTs with **RS256 only**. Consumers must not verify tokens with `JWT_SECRET` (HMAC). `JWT_SECRET` is Auth-internal material for non-JWT HMAC helpers and is not a verifier secret.
 
 The shared local verifier is an approved human-lane pattern for **user** tokens only. Do not use it for service tokens, and do not mix service credentials into user validation.
 

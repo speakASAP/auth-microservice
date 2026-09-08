@@ -5,7 +5,9 @@
 Production identity and access service; IPS planning adoption is complete.
 
 ## Documentation Authority
-BUSINESS.md, SYSTEM.md, and docs/UNIFIED_AUTH_CONTRACT.md are authoritative.
+BUSINESS.md and SYSTEM.md are authoritative for product scope.
+Machine S2S identity: [`docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`](docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md) (SPOT).
+Human/user auth surface: [`docs/UNIFIED_AUTH_CONTRACT.md`](docs/UNIFIED_AUTH_CONTRACT.md) — does not own S2S.
 
 ## Capabilities
 Registration, login, JWT refresh and validation, RBAC, OAuth, magic links, password recovery, and user preferences.

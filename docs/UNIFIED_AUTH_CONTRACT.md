@@ -1,12 +1,12 @@
 # Unified Auth Contract
 
-This document is the current Auth contract for applications and services that integrate with auth-microservice. Consumer implementation details for hosted redirects, callback fragment parsing, session storage, logout, and the draft client registry are maintained in docs/HOSTED_AUTH_CONSUMER_STANDARD.md.
+This document is the human/user Auth contract for applications that integrate with auth-microservice. Machine S2S identity is owned only by [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md). Consumer hosted-login details live in [`HOSTED_AUTH_CONSUMER_STANDARD.md`](HOSTED_AUTH_CONSUMER_STANDARD.md).
 
-Historical DocsRAG snapshots may reference older Phase 0/Sync A agent prompts. Those prompts are superseded by the orchestrator pack in `docs/orchestrator/`, but this contract path remains authoritative for endpoint, JWT, redirect, CORS, OAuth, magic-link, and RBAC behavior.
+Historical DocsRAG snapshots may reference older Phase 0/Sync A agent prompts. Those prompts are superseded by the orchestrator pack in `docs/orchestrator/`. This path remains authoritative for hosted entry points, user JWT/RBAC, OAuth, magic-link, redirect, and CORS — not for machine identity.
 
 ## Ownership Boundary
 
-Auth owns identity, credentials, JWT shape, refresh tokens, OAuth, magic links, RBAC role claims, registered-user communication preferences, consent flags, and service-authentication boundaries.
+Auth owns human identity, credentials, user JWT shape, refresh tokens, OAuth, magic links, RBAC role claims, registered-user communication preferences, and consent flags. Machine identity boundaries are defined only in [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md).
 
 Auth does not own product truth, stock, orders, payments, lead records for non-registered contacts, marketing campaign execution, notification sending, logs storage, database infrastructure, or gateway routing.
 
@@ -210,7 +210,7 @@ and returns a new `accessToken` and `refreshToken`.
 
 ## JWT Contract
 
-Auth issues **user** access and refresh tokens. Auth signs those tokens with **RS256** (`JWT_PRIVATE_KEY` / `JWT_KEY_ID`). Verifiers use JWKS or `JWT_PUBLIC_KEY` — never `JWT_SECRET` as a JWT algorithm. `JWT_SECRET` is Auth-owned material for non-JWT HMAC helpers only; it is not a service-to-service credential and must not be used to mint or verify access tokens. Machine identity uses Auth-issued per-pair RS256 service JWTs only — see [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md). Secrets must stay in Vault-backed runtime configuration and must not be written to docs, logs, frontend bundles, URLs, or git.
+Auth issues **user** access and refresh tokens. Auth signs those tokens with **RS256** (`JWT_PRIVATE_KEY` / `JWT_KEY_ID`). Verifiers use JWKS or `JWT_PUBLIC_KEY` — never `JWT_SECRET` as a JWT algorithm. `JWT_SECRET` is Auth-owned material for non-JWT HMAC helpers only; it is not a service-to-service credential and must not be used to mint or verify access tokens. Machine identity: [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md) only. Secrets must stay in Vault-backed runtime configuration and must not be written to docs, logs, frontend bundles, URLs, or git.
 
 Current user-token payload includes:
 
@@ -311,9 +311,9 @@ Internal trusted-service helper:
 
 - `POST /auth/internal/magic-link/token`
 
-This endpoint creates a magic-link verify URL for a calling service. It is a
-service-to-service route and is authenticated as described in the Internal Service
-Contract below.
+Creates a magic-link verify URL for a calling service. Auth via
+[`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md);
+role in the Internal Service Contract table below.
 
 ## Redirect Allowlist
 
@@ -340,19 +340,9 @@ See `docs/ENV_CORS_AND_AUTH_CHECK.md` for the current environment reference.
 
 ## Internal Service Contract
 
-Every `/auth/internal/*` and `/internal/*` route is a service-to-service call. The
-required protocol is an Auth-issued per-pair RS256 service JWT in
-`Authorization: Bearer <token>`, as defined by the canonical
-[`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md). That
-document is authoritative for machine identity, minting, delivery, roles and rotation;
-this contract only enumerates the routes.
-
-A self-asserted caller header is not an authentication mechanism. Do not gate these
-routes on a caller-supplied service name, a static shared token, or an API key, and do
-not treat such a header as proof of caller identity.
-
-Every route below verifies a per-pair credential and enforces a least-privilege role,
-classified by effect rather than HTTP verb:
+Protocol for every `/auth/internal/*` and `/internal/*` call:
+[`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md) only.
+This section enumerates Auth routes and required roles.
 
 | Route | Required role |
 | --- | --- |
@@ -361,13 +351,9 @@ classified by effect rather than HTTP verb:
 | `GET`/`PATCH /auth/internal/users/:userId/preferences`, `POST .../unsubscribe` | `internal:auth-microservice:preferences` |
 | `POST /auth/internal/magic-link/token` | `internal:auth-microservice:magic-link` |
 
-Roles resolve from Auth's database on every request, not from the token's own claim, so
-a revoked role stops working immediately rather than at `exp`. `magic-link` is
-deliberately alone on its own role: it can create a logged-in session for any user, and
-must never be reachable by a credential provisioned to check whether an email exists.
-
-Internal routes accept only the Auth-issued RS256 protocol in
-[`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md).
+Roles resolve from Auth's database on every request (revocation is immediate).
+`magic-link` stays on its own role: it can create a logged-in session and must not
+share a credential with email-check.
 
 Registered-user communication preferences are Auth-owned and exposed only through internal Auth APIs:
 

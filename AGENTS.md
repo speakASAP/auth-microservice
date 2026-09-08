@@ -2,7 +2,7 @@
 
 
 ## Required Reading
-Read AGENTS.md, TASKS.md, STATE.json, BUSINESS.md, SYSTEM.md, docs/UNIFIED_AUTH_CONTRACT.md, and applicable orchestrator material.
+Read AGENTS.md, TASKS.md, STATE.json, BUSINESS.md, SYSTEM.md, docs/UNIFIED_AUTH_CONTRACT.md, docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md, and applicable orchestrator material.
 
 ## Authority
 Repository source and approved business documents are authoritative; Git is authoritative when retrieval is unavailable.

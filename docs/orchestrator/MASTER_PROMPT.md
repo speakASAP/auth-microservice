@@ -8,7 +8,7 @@ Auth exists to provide one trusted identity, login, JWT, refresh-token, RBAC, OA
 
 ## Non-Negotiable Boundaries
 
-- Auth owns identity, credentials, JWT shape, refresh tokens, OAuth, magic links, RBAC, registered-user preferences and consent flags, and service-to-service auth contracts.
+- Auth owns identity, credentials, JWT shape, refresh tokens, OAuth, magic links, RBAC, registered-user preferences and consent flags, and service-to-service auth contracts (SPOT only: [`docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../SERVICE_IDENTITY_CONSUMER_STANDARD.md)).
 - Auth never owns product truth, stock, orders, payment identity, lead records for non-registered contacts, marketing campaign execution, notification sending, logs storage, database infrastructure, or gateway routing.
 - Consumers must use Auth APIs or JWT validation contracts instead of copying login forms, storing passwords, or writing Auth-owned data directly.
 - JWT secrets and OAuth/client secrets must stay in Vault-backed runtime configuration. Never write secrets to docs, logs, frontend bundles, or git.

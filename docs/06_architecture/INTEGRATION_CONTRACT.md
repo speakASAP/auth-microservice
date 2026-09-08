@@ -28,7 +28,9 @@ Record Auth boundaries and reviewed ecosystem capabilities.
 Auth owns registered-user identity, authentication data, RBAC, and registered-user communication preferences.
 
 ## Authentication and Authorization
-JWT and RBAC protect documented interfaces; Vault through ESO supplies secrets.
+Human JWT/RBAC: [`docs/UNIFIED_AUTH_CONTRACT.md`](../UNIFIED_AUTH_CONTRACT.md).
+Machine S2S: [`docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../SERVICE_IDENTITY_CONSUMER_STANDARD.md) (SPOT) only.
+Vault through ESO supplies secrets.
 
 ## Synchronous Dependencies
 PostgreSQL, Redis, logging, and notifications are documented operational dependencies.
