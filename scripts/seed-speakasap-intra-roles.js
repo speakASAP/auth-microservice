@@ -17,6 +17,7 @@
  *   internal:salary-service:internal
  *   internal:course-service:internal
  *   internal:payment-service:internal
+ *   internal:speakasap-portal:internal
  *
  * Dry run (default, no writes):
  *   kubectl exec -n statex-apps deploy/auth-microservice -c app -- \
@@ -120,6 +121,16 @@ const TARGETS = [
       {
         name: 'internal',
         description: 'Call SpeakASAP payment-service internal routes (gateway second hop)',
+      },
+    ],
+  },
+  {
+    name: 'speakasap-portal',
+    displayName: 'SpeakASAP Portal (Legacy Django)',
+    roles: [
+      {
+        name: 'internal',
+        description: 'Call speakasap-portal /api/v1/internal lesson/roster routes',
       },
     ],
   },
