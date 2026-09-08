@@ -37,10 +37,7 @@ import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping
     PassportModule,
     HttpModule,
     TypeOrmModule.forFeature([PasswordResetToken, MagicLinkToken, EmailChangeToken, LegacyIdentityMapping]),
-    // TASK-KEY-F3 step 3: the signing algorithm is chosen once, here. Under RS256 the
-    // private key signs and `secret` remains only so tokens minted before the flip
-    // (7d access / 30d refresh) still verify. `getSigningConfig()` throws rather than
-    // downgrading if RS256 is requested without usable key material.
+    // RS256 only. getSigningConfig() throws if key material is missing.
     JwtModule.register((() => {
       const cfg = getSigningConfig();
       // eslint-disable-next-line no-console
@@ -48,12 +45,11 @@ import { LegacyIdentityMapping } from '../users/entities/legacy-identity-mapping
         `[auth] JWT signing algorithm: ${cfg.algorithm}${cfg.keyid ? ` (kid=${cfg.keyid})` : ''}`,
       );
       return {
-        ...(cfg.secret ? { secret: cfg.secret } : {}),
-        ...(cfg.privateKey ? { privateKey: cfg.privateKey } : {}),
+        privateKey: cfg.privateKey,
         signOptions: {
           expiresIn: process.env.JWT_EXPIRES_IN || '7d',
           algorithm: cfg.algorithm,
-          ...(cfg.keyid ? { keyid: cfg.keyid } : {}),
+          keyid: cfg.keyid,
         },
       };
     })()),

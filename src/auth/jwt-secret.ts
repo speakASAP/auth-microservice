@@ -1,23 +1,20 @@
 /**
- * Single source of truth for the JWT signing secret.
+ * JWT signing material for auth-microservice (RS256 only).
  *
- * auth-microservice is the ecosystem's only JWT issuer, so this value signs
- * every token every other service trusts. The previous `|| 'default-secret'`
- * fallbacks meant a missing env var would not fail — the service would boot
- * and mint production tokens signed with a publicly known string, and the
- * verification path would happily accept them. That is a silent failure with
- * total auth bypass as its blast radius.
+ * Auth is the ecosystem's only JWT issuer. Tokens are signed with JWT_PRIVATE_KEY
+ * (RS256). Verifiers use JWT_PUBLIC_KEY / JWKS and cannot mint tokens.
  *
- * Fail at startup instead: this is evaluated at module load, so a misconfigured
- * deploy crashes immediately rather than serving forgeable tokens.
+ * JWT_SECRET remains Auth-owned material for non-JWT HMAC uses (e.g. contact-code
+ * digests). It is not a signing algorithm for access or service tokens.
  */
+
 export function requireJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
 
   if (!secret || secret.trim() === '') {
     throw new Error(
-      'JWT_SECRET is not set. auth-microservice signs every JWT in the ecosystem ' +
-        'and refuses to start without it. Set it from Vault (secret/prod/auth-microservice).',
+      'JWT_SECRET is not set. auth-microservice requires it for Auth-owned HMAC ' +
+        'helpers (contact codes). Set it from Vault (secret/prod/auth-microservice).',
     );
   }
 
@@ -31,20 +28,6 @@ export function requireJwtSecret(): string {
   return secret;
 }
 
-/**
- * RS256 signing material (TASK-KEY-F3).
- *
- * The HS256 secret above is symmetric: every service that *verifies* a token also
- * holds everything needed to *mint* one. Ten services shared one such value, so any
- * of them could forge a token — including `global:superadmin` — that all the others
- * would accept. Splitting the shared secret per service would shrink the blast radius
- * but keep that property; moving to RS256 removes it. Verifiers get only the public
- * key and become structurally incapable of signing.
- *
- * Returns null when the keys are absent so the migration can be staged: during the
- * transition auth still signs HS256, and verifiers accept both algorithms. Once every
- * verifier accepts RS256, signing flips over and HS256 is retired.
- */
 export function getJwtPrivateKey(): string | null {
   const key = process.env.JWT_PRIVATE_KEY;
   if (!key || key.trim() === '') return null;
@@ -75,22 +58,16 @@ export function getJwtKeyId(): string | null {
 }
 
 /**
- * Whether to sign new tokens with RS256. Off until every verifier accepts RS256 —
- * flipping this before then would invalidate every token in the ecosystem at once.
+ * Whether to sign new tokens with RS256. Required in production.
  */
 export function shouldSignRs256(): boolean {
   if (process.env.JWT_SIGN_ALGORITHM !== 'RS256') return false;
 
-  // Requested RS256 but the key is missing: previously this returned false, which
-  // silently downgraded to HS256 — the operator sets the flag, sees a healthy boot,
-  // and believes the migration happened while auth still mints symmetric tokens.
-  // Refuse to start instead.
   const key = getJwtPrivateKey();
   if (!key) {
     throw new Error(
-      'JWT_SIGN_ALGORITHM=RS256 but JWT_PRIVATE_KEY is not set. auth-microservice will not ' +
-        'silently fall back to HS256. Set the PEM from Vault (secret/prod/auth-microservice) ' +
-        'or unset JWT_SIGN_ALGORITHM to stay on HS256.',
+      'JWT_SIGN_ALGORITHM=RS256 but JWT_PRIVATE_KEY is not set. Set the PEM from ' +
+        'Vault (secret/prod/auth-microservice).',
     );
   }
 
@@ -105,31 +82,22 @@ export function shouldSignRs256(): boolean {
 }
 
 /**
- * The signing configuration for JwtModule. Centralised so the algorithm decision is made
- * in exactly one place and can be logged at boot.
+ * The signing configuration for JwtModule. RS256 only.
  */
 export function getSigningConfig(): {
-  algorithm: 'RS256' | 'HS256';
-  secret?: string;
-  privateKey?: string;
-  keyid?: string;
+  algorithm: 'RS256';
+  privateKey: string;
+  keyid: string;
 } {
   if (shouldSignRs256()) {
-    // `secret` is deliberately omitted: @nestjs/jwt prefers it over `privateKey` when both
-    // are present and would hand the HMAC string to RS256 ("secretOrPrivateKey must be an
-    // asymmetric key"). Verification of pre-flip HS256 tokens does not run through
-    // JwtService at all — every path uses verifyAuthToken(), which reads JWT_SECRET itself.
     return {
       algorithm: 'RS256',
       privateKey: getJwtPrivateKey() as string,
       keyid: getJwtKeyId() as string,
     };
   }
-  // TASK-KEY-F3 step 4: HS256 signing is retired. Reaching here means the flag is unset
-  // or the key material vanished — booting on HS256 would mint tokens no verifier in the
-  // ecosystem still accepts, which looks like a healthy service issuing dead credentials.
   throw new Error(
-    'auth-microservice signs RS256 only (TASK-KEY-F3 step 4). Set JWT_SIGN_ALGORITHM=RS256 ' +
+    'auth-microservice signs RS256 only. Set JWT_SIGN_ALGORITHM=RS256 ' +
       'with JWT_PRIVATE_KEY and JWT_KEY_ID from Vault (secret/prod/auth-microservice).',
   );
 }

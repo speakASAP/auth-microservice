@@ -26,8 +26,8 @@ export const SPEAKASAP_TEACHER_ROLE_NAME = 'teacher';
  * blast radius of this token is exactly one role.
  *
  * Callers: user-service, when portal sync upserts a teacher row. Auth path:
- * `InternalSpeakasapTeacherGrantGuard` (RS256 principal with
- * `internal:auth-microservice:speakasap-teacher-grant`, or legacy static until closed).
+ * `InternalSpeakasapTeacherGrantGuard` (Auth-issued RS256 principal with
+ * `internal:auth-microservice:speakasap-teacher-grant` only).
  */
 @Controller('internal/roles/speakasap')
 @UseGuards(InternalSpeakasapTeacherGrantGuard)
@@ -37,7 +37,7 @@ export class InternalSpeakasapRolesController {
   @Post('teacher/:userId')
   async grantTeacher(
     @Param('userId') userId: string,
-    @Req() req: { user?: { id?: string; email?: string }; authPath?: string },
+    @Req() req: { user?: { id?: string; email?: string } },
   ): Promise<{ userId: string; role: string; granted: boolean }> {
     const targetUserId = String(userId ?? '').trim();
     if (!targetUserId) {
@@ -71,9 +71,7 @@ export class InternalSpeakasapRolesController {
 
     // grantedBy is a UUID column (UserRole.grantedBy). Pass the RS256 principal's
     // user id — never an email or "internal:…" label (those 500 as invalid uuid).
-    // Static path has no principal; leave grantedBy unset.
-    const actor =
-      req.authPath === 'rs256' && req.user?.id ? req.user.id : undefined;
+    const actor = req.user?.id;
     await this.rolesService.assignRoleToUser(
       targetUserId,
       role.id,

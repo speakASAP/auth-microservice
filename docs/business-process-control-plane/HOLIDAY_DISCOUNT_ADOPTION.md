@@ -12,13 +12,13 @@ Identity and authorization owner for BPCP admin UI and service-to-service access
 ## Responsibilities
 
 - Provide hosted auth/RBAC for visual process editor.
-- Provide service identity validation for BPCP adapter calls.
+- Provide service identity validation for BPCP adapter calls per [`../SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../SERVICE_IDENTITY_CONSUMER_STANDARD.md).
 - Keep process definitions out of Auth storage.
 
 ## Required interfaces
 
 - Admin roles for view/edit/validate/publish/pause.
-- Service identity JWT validation.
+- Service identity JWT validation ([`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../SERVICE_IDENTITY_CONSUMER_STANDARD.md)).
 - Audit-friendly actor identity.
 
 ## Boundaries
@@ -46,7 +46,7 @@ Identity and authorization owner for BPCP admin UI and service-to-service access
 ## Validation evidence required before implementation is accepted
 
 - RBAC matrix test for view/edit/publish/pause.
-- Service identity verification for BPCP calls.
+- Service identity verification for BPCP calls per [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../SERVICE_IDENTITY_CONSUMER_STANDARD.md).
 - Hosted auth flow remains the shared auth surface.
 
 ## Parallel handoff

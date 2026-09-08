@@ -43,7 +43,6 @@ describe('InternalSpeakasapRolesController', () => {
     rolesService.assignRoleToUser.mockResolvedValue({ id: 'ur-1' });
 
     const result = await controller.grantTeacher(USER_ID, {
-      authPath: 'rs256',
       user: {
         id: '3fa57d34-f2f8-47ad-ab66-d958e68693c6',
         email: 'svc-user-service--auth-microservice@internal.alfares.cz',
@@ -64,22 +63,6 @@ describe('InternalSpeakasapRolesController', () => {
     expect(result).toEqual({ userId: USER_ID, role: 'app:speakasap:teacher', granted: true });
   });
 
-  it('omits grantedBy on the static legacy path', async () => {
-    rolesService.findByNameForApplication.mockResolvedValue(TEACHER_ROLE);
-    rolesService.hasRoleAssignment.mockResolvedValue(false);
-    rolesService.assignRoleToUser.mockResolvedValue({ id: 'ur-1' });
-
-    await controller.grantTeacher(USER_ID, { authPath: 'static' });
-
-    expect(rolesService.assignRoleToUser).toHaveBeenCalledWith(
-      USER_ID,
-      TEACHER_ROLE.id,
-      TEACHER_ROLE.applicationId,
-      undefined,
-      undefined,
-    );
-  });
-
   /**
    * Portal sync re-sends the whole teacher roster on every run, so an already-granted
    * role is the common case, not an error. It must not surface as the service's 409 —
@@ -89,7 +72,7 @@ describe('InternalSpeakasapRolesController', () => {
     rolesService.findByNameForApplication.mockResolvedValue(TEACHER_ROLE);
     rolesService.hasRoleAssignment.mockResolvedValue(true);
 
-    const result = await controller.grantTeacher(USER_ID, { authPath: 'rs256', user: { email: 'x' } });
+    const result = await controller.grantTeacher(USER_ID, { user: { email: 'x' } });
 
     expect(rolesService.assignRoleToUser).not.toHaveBeenCalled();
     expect(result).toEqual({ userId: USER_ID, role: 'app:speakasap:teacher', granted: false });
@@ -104,13 +87,13 @@ describe('InternalSpeakasapRolesController', () => {
     rolesService.findByNameForApplication.mockResolvedValue(null);
 
     await expect(
-      controller.grantTeacher(USER_ID, { authPath: 'rs256', user: { email: 'x' } }),
+      controller.grantTeacher(USER_ID, { user: { email: 'x' } }),
     ).rejects.toThrow(NotFoundException);
     expect(rolesService.assignRoleToUser).not.toHaveBeenCalled();
   });
 
   it('rejects a blank userId', async () => {
-    await expect(controller.grantTeacher('  ', { authPath: 'static' })).rejects.toThrow(
+    await expect(controller.grantTeacher('  ', {})).rejects.toThrow(
       BadRequestException,
     );
     expect(rolesService.findByNameForApplication).not.toHaveBeenCalled();
@@ -126,7 +109,6 @@ describe('InternalSpeakasapRolesController', () => {
     rolesService.assignRoleToUser.mockResolvedValue({ id: 'ur-1' });
 
     await controller.grantTeacher(USER_ID, {
-      authPath: 'rs256',
       user: {
         id: '3fa57d34-f2f8-47ad-ab66-d958e68693c6',
         email: 'svc-user-service--auth-microservice@internal.alfares.cz',

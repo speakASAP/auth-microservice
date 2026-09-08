@@ -16,5 +16,8 @@ Work remotely in the repository and never print secrets, tokens, passwords, or p
 ## Project-Specific Rules
 Keep Auth within identity and access; do not add consumer-specific concepts to a future registration event.
 
+## Service-to-service auth
+Sole authority: [`docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`](docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md).
+
 ## Required Final Report
 Report files, validation evidence, debt, blockers, deviations, and next action.

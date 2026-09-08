@@ -1,20 +1,8 @@
 /**
- * Dual-algorithm JWT verification (TASK-KEY-F3).
+ * Auth-issued JWT verification — RS256 only.
  *
- * HS256 is symmetric: holding the secret needed to *verify* a token is the same as
- * holding the secret needed to *mint* one. Every service sharing auth's JWT_SECRET
- * could therefore forge any token, including `global:superadmin`. Under RS256 the
- * verifier holds only auth's public key and cannot sign at all.
- *
- * During the migration both are accepted, RS256 first:
- *
- *   1. auth publishes its public key at /.well-known/jwks.json  (done)
- *   2. verifiers accept RS256 *and* HS256                       (this file)
- *   3. auth switches to signing RS256
- *   4. HS256 is removed and the shared secret rotated
- *
- * The order matters. Accepting RS256 before auth issues it is a no-op; issuing it
- * before verifiers accept it invalidates every token in the ecosystem at once.
+ * Verifiers hold Auth's public key (local JWT_PUBLIC_KEY on the issuer, or JWKS
+ * elsewhere) and cannot mint tokens. HS256 and any other algorithm are rejected.
  *
  * The key set is cached because it is fetched on the request path; a miss on an
  * unknown `kid` refetches once so key rotation does not need a redeploy.
@@ -61,8 +49,7 @@ async function refreshJwks(): Promise<void> {
       cachedKeys = next;
       cachedAt = Date.now();
     } catch (err) {
-      // Never swallow: a JWKS outage must be visible, not silently degrade to
-      // HS256-only. Verification still falls back, but the failure is logged.
+      // Never swallow: a JWKS outage must be visible.
       const message = err instanceof Error ? err.message : String(err);
       console.error(`[jwt-verifier] JWKS refresh failed from ${url}: ${message}`);
       throw err;
@@ -121,12 +108,6 @@ const logger = new Logger('JwtVerifier');
 /**
  * Reject a token, at error level, with enough context to identify the caller.
  *
- * Every rejection path used to throw a bare UnauthorizedException and log nothing.
- * When HS256 was retired (2026-08-18) that turned an ecosystem-wide credential
- * outage into silence: fifteen services held now-dead HS256 tokens, and the only
- * visible symptom was a downstream 503 naming neither auth nor the algorithm. It
- * went unnoticed for six days.
- *
  * `sub` and `alg` are safe to log and are what makes a failure actionable — they
  * name which principal presented what. The token itself is never logged: it is a
  * live bearer credential, and a rejection here does not mean it is worthless
@@ -144,7 +125,7 @@ function rejectToken(reason: string, context: { alg?: string; kid?: string; sub?
 }
 
 /**
- * Verify an auth-issued token. RS256 only; HS256 was retired in F3 step 4.
+ * Verify an auth-issued token. RS256 only.
  * Throws UnauthorizedException if the token is not accepted.
  */
 export async function verifyAuthToken(token: string): Promise<VerifiedPayload> {
@@ -164,8 +145,5 @@ export async function verifyAuthToken(token: string): Promise<VerifiedPayload> {
     }
   }
 
-  // TASK-KEY-F3 step 4: HS256 is retired. auth signs RS256 only, so any non-RS256 token
-  // is either a pre-migration leftover or a forgery attempt. Accepting HS256 here would
-  // keep the shared secret forgery-capable, which is the whole point of the migration.
   rejectToken(`Unsupported token algorithm ${alg ?? 'none'}; RS256 required`, { alg, sub });
 }

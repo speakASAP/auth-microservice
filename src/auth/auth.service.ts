@@ -105,13 +105,28 @@ export class AuthService {
     private readonly authEvents: AuthEventPublisher,
     private readonly marketingConsent: MarketingConsentService,
   ) {
-    this.notificationsServiceUrl = process.env.NOTIFICATION_SERVICE_URL || '';
-    if (!this.notificationsServiceUrl) {
-      this.logger.warn('NOTIFICATION_SERVICE_URL is not set. Email notifications will not work.', 'AuthService');
+    this.notificationsServiceUrl = (process.env.NOTIFICATION_SERVICE_URL || '').trim();
+    this.notificationServiceToken = (process.env.NOTIFICATION_SERVICE_TOKEN || '').trim();
+    // Pair credential for auth → notifications (SERVICE_IDENTITY_CONSUMER_STANDARD).
+    // URL without token (or token without URL) is a misconfigured deploy: fail loud.
+    if (this.notificationsServiceUrl && !this.notificationServiceToken) {
+      throw new Error(
+        'NOTIFICATION_SERVICE_TOKEN is not set. auth→notifications requires an Auth-issued ' +
+          'per-pair RS256 Bearer (svc-auth-microservice--notifications-microservice). ' +
+          'Mint with scripts/provision-service-token.js and deliver via Vault.',
+      );
     }
-    this.notificationServiceToken = process.env.NOTIFICATION_SERVICE_TOKEN || '';
-    if (!this.notificationServiceToken) {
-      this.logger.warn('NOTIFICATION_SERVICE_TOKEN is not set. Notification requests will be rejected with 401.', 'AuthService');
+    if (this.notificationServiceToken && !this.notificationsServiceUrl) {
+      throw new Error(
+        'NOTIFICATION_SERVICE_TOKEN is set but NOTIFICATION_SERVICE_URL is empty. ' +
+          'Set both or neither.',
+      );
+    }
+    if (!this.notificationsServiceUrl) {
+      this.logger.warn(
+        'NOTIFICATION_SERVICE_URL is not set. Email/contact notifications will not work.',
+        'AuthService',
+      );
     }
 
     this.magicLinkTtlMinutes = Number(process.env.AUTH_MAGIC_LINK_TTL_MINUTES || '15');
@@ -311,9 +326,8 @@ export class AuthService {
   async validateToken(token: string) {
     const startedAt = Date.now();
     try {
-      // TASK-KEY-F3 step 3: accepts RS256 (this service's own key) and HS256 (tokens
-      // minted before the flip). 15 services delegate to POST /auth/validate rather than
-      // verifying locally, so this single call decides whether they can authenticate.
+      // RS256 only (HS256 retired). Consumers that call POST /auth/validate get the
+      // same algorithm policy as local JWKS verifiers.
       const payload = await verifyAuthToken(token);
 
       if (!this.isUuid(payload.sub)) {
@@ -384,8 +398,7 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     const startedAt = Date.now();
     try {
-      // Refresh tokens live 30 days, so HS256 ones stay in flight well past the RS256
-      // flip. Dual verification is what makes the migration non-breaking for them.
+      // RS256 only. HS256 refresh tokens are rejected.
       const payload = await verifyAuthToken(refreshToken);
 
       const user = await this.usersService.findById(payload.sub);

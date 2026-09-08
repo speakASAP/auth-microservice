@@ -210,9 +210,9 @@ and returns a new `accessToken` and `refreshToken`.
 
 ## JWT Contract
 
-Auth signs JWTs with the runtime `JWT_SECRET`. Secrets must stay in Vault-backed runtime configuration and must not be written to docs, logs, frontend bundles, URLs, or git.
+Auth issues **user** access and refresh tokens. Auth signs those tokens with **RS256** (`JWT_PRIVATE_KEY` / `JWT_KEY_ID`). Verifiers use JWKS or `JWT_PUBLIC_KEY` — never `JWT_SECRET` as a JWT algorithm. `JWT_SECRET` is Auth-owned material for non-JWT HMAC helpers only; it is not a service-to-service credential and must not be used to mint or verify access tokens. Machine identity uses Auth-issued per-pair RS256 service JWTs only — see [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md). Secrets must stay in Vault-backed runtime configuration and must not be written to docs, logs, frontend bundles, URLs, or git.
 
-Current token payload includes:
+Current user-token payload includes:
 
 - `sub`: Auth user ID.
 - `email`: primary email address.
@@ -236,9 +236,9 @@ Services may enforce roles locally, but Auth remains the authority for role assi
 
 ## Consumer Token Validation Standard
 
-Consumers validate Auth-issued access tokens through one of two approved patterns. The default pattern is a server-side call to `POST /auth/validate`, which verifies the token with Auth and returns the current Auth user plus Auth-owned roles.
+Consumers validate Auth-issued **user** access tokens through one of two approved patterns documented in [`CONSUMER_JWT_VALIDATION_STANDARD.md`](CONSUMER_JWT_VALIDATION_STANDARD.md). The default pattern is a server-side call to `POST /auth/validate`, which verifies the user token with Auth and returns the current Auth user plus Auth-owned roles.
 
-Consumers must not mint Auth JWTs locally, validate user tokens with service-owned signing secrets, strip Auth role scopes as a generic rule, or treat static service tokens/API keys as user identity. Machine identity handling is defined in `docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md`.
+Consumers must not mint Auth user JWTs locally, validate user tokens with service-owned signing secrets, or strip Auth role scopes as a generic rule. Machine identity is governed exclusively by [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md); do not document alternate S2S protocols here.
 
 ## OAuth Contract
 
@@ -403,7 +403,8 @@ Applications integrating with Auth must:
 - Store tokens according to the client security model.
 - Send API requests with `Authorization: Bearer <accessToken>`.
 - Never log tokens, password reset tokens, magic-link tokens, OAuth tokens, client secrets, or JWT secrets.
-- Never mint Auth JWTs locally.
+- Never mint Auth user JWTs locally.
+- For service-to-service calls, follow only [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](SERVICE_IDENTITY_CONSUMER_STANDARD.md).
 
 ## Historical Notes
 

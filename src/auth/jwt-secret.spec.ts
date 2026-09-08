@@ -1,7 +1,7 @@
 import { generateKeyPairSync } from 'crypto';
 import { shouldSignRs256, getSigningConfig } from './jwt-secret';
 
-describe('signing algorithm selection (F3 step 3)', () => {
+describe('signing algorithm selection (RS256 only)', () => {
   const originalEnv = process.env;
   let privatePem: string;
 
@@ -43,14 +43,18 @@ describe('signing algorithm selection (F3 step 3)', () => {
     expect(cfg.keyid).toBe('kid-1');
   });
 
-  it('omits `secret` under RS256 so @nestjs/jwt does not sign with the HMAC string', () => {
-    // jsonwebtoken throws "secretOrPrivateKey must be an asymmetric key" if both are set,
-    // because @nestjs/jwt prefers `secret`. Regression guard for a real crash.
+  it('returns only RS256 privateKey material (no HMAC secret field)', () => {
     process.env.JWT_SIGN_ALGORITHM = 'RS256';
     process.env.JWT_PRIVATE_KEY = privatePem;
     process.env.JWT_KEY_ID = 'kid-1';
 
-    expect(getSigningConfig().secret).toBeUndefined();
+    const cfg = getSigningConfig();
+    expect(cfg).toEqual({
+      algorithm: 'RS256',
+      privateKey: privatePem,
+      keyid: 'kid-1',
+    });
+    expect(Object.keys(cfg)).not.toContain('secret');
   });
 
   it('throws rather than silently downgrading when RS256 is requested without a key', () => {

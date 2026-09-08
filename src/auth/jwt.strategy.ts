@@ -14,9 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      // TASK-KEY-F3 step 3: passport resolves the key per token, so both algorithms work
-      // during the migration. `secretOrKeyProvider` is the only hook that sees the header;
-      // a fixed `secretOrKey` could not tell RS256 and HS256 tokens apart.
+      // RS256 only. Resolve the public key from the token kid; reject any other alg.
       secretOrKeyProvider: (_req: unknown, rawJwt: string, done: (err: Error | null, key?: string) => void) => {
         try {
           const header = JSON.parse(
@@ -35,8 +33,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             return done(null, pem);
           }
 
-          // TASK-KEY-F3 step 4: HS256 retired. Nothing signs it any more, so a non-RS256
-          // token is a leftover or a forgery.
           return done(new Error(`Unsupported token algorithm ${header.alg ?? 'none'}; RS256 required`));
         } catch (err) {
           return done(err instanceof Error ? err : new Error('Malformed JWT header'));

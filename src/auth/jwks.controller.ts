@@ -1,13 +1,11 @@
 /**
- * JWKS endpoint (TASK-KEY-F3).
+ * JWKS endpoint.
  *
- * Publishes the RS256 *public* key so verifying services no longer need any shared
- * signing material. This endpoint is deliberately public and unauthenticated: a public
- * key is not a secret, and requiring a credential to fetch it would reintroduce the
- * bootstrap problem the migration exists to remove.
+ * Publishes the RS256 public key so verifying services verify without holding
+ * signing material. Public and unauthenticated: a public key is not a secret.
  *
- * Serving an empty key set (rather than erroring) while the keys are unset is what lets
- * verifiers deploy their RS256 support before signing flips over.
+ * An empty key set means keys are not provisioned — that is a misconfigured
+ * issuer; callers must not fall back to any other algorithm.
  *
  * This service has no global auth guard: routes are open unless they declare @UseGuards,
  * so this controller needs no decorator to stay reachable.
@@ -35,8 +33,7 @@ export class JwksController {
     const kid = getJwtKeyId();
 
     if (!pem || !kid) {
-      // Keys not provisioned yet. An empty set is the correct answer during the
-      // migration — it is not an error, and callers fall back to HS256.
+      // Keys not provisioned — empty JWKS. Callers must fail closed (RS256 required).
       return { keys: [] };
     }
 

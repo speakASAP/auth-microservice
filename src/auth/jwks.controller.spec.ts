@@ -27,9 +27,8 @@ describe('JwksController', () => {
     process.env = originalEnv;
   });
 
-  it('serves an empty key set before the keys are provisioned', () => {
-    // The migration depends on this: verifiers ship RS256 support first and must not
-    // break while auth is still HS256-only.
+  it('serves an empty key set when keys are not provisioned', () => {
+    // Misconfigured issuer: empty JWKS. Verifiers must fail closed (RS256 required).
     expect(new JwksController().getJwks()).toEqual({ keys: [] });
   });
 
