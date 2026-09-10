@@ -46,6 +46,42 @@ through the approved Vault -> ExternalSecret -> Kubernetes Secret ->
 `secretKeyRef` path. Do not put credential material in a ConfigMap, source
 tree, report, test fixture, command history, or logs.
 
+## Retirement and deprovisioning
+
+Retirement is two stages. Stage 1 is what closes the access; stage 2 is
+optional cleanup.
+
+1. **Deactivate.** Set `isActive=false` on the principal. `POST /auth/validate`
+   rejects an inactive principal, so this alone invalidates every token it ever
+   signed, without waiting for `exp`. It is reversible.
+2. **Delete.** Remove the principal row and its role bindings. Irreversible,
+   and only ever appropriate once the principal is already deactivated, holds
+   no live credential, and nothing references it.
+
+Delete only with:
+
+```bash
+auth-microservice/scripts/deprovision-service-principal.js
+```
+
+Never delete a principal or a `user_roles` row by hand in psql: the script
+enforces the preconditions and removes the bindings and the row in one
+transaction. It refuses to act unless the principal is already inactive, was
+deactivated at least `--min-age-days` ago (default 7), and every role it holds
+is still held by another active principal — deleting the last holder of a role
+silently removes a capability nobody can grant any more. It refuses outright on
+any address outside the machine-identity namespaces, so a human account can
+never be removed through it.
+
+Before deleting, confirm no Vault key still stores a token for that principal;
+the auth pod cannot read Vault, so that check is separate. Removing a stale key
+uses `vault kv patch -remove-data=<KEY> secret/prod/<service>`.
+
+Deactivating is always safe. Deleting is a cleanup convenience, and leaving a
+retired principal deactivated indefinitely is a valid end state: the address
+stays claimed, so a later mint cannot silently recreate it and inherit its
+roles.
+
 ## Receiver requirements
 
 A receiver validates service JWTs through `POST /auth/validate` or an approved
